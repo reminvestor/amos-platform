@@ -7,6 +7,7 @@ import 'package:amos_mobile/services/hub_service.dart';
 import 'package:amos_mobile/providers/realtime_provider.dart';
 import 'package:amos_mobile/utils/error_handler.dart';
 import 'package:amos_mobile/utils/logger.dart';
+import 'package:amos_mobile/widgets/branded_app_bar.dart';
 
 /// List of direct message conversations - like iMessage main screen
 class DmListScreen extends ConsumerStatefulWidget {
@@ -154,8 +155,7 @@ class _DmListScreenState extends ConsumerState<DmListScreen> with ErrorHandler {
     final _ = ref.watch(realtimeProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Messages'),
+      appBar: BrandedAppBar(
         actions: [
           IconButton(
             icon: const Icon(LucideIcons.refreshCw),

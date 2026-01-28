@@ -128,9 +128,11 @@ class _ConnectionsListScreenState extends ConsumerState<ConnectionsListScreen> {
 
   Color _getStatusColor(ConnectionStatus status) {
     switch (status) {
+      case ConnectionStatus.connected:
       case ConnectionStatus.active:
         return Colors.green;
       case ConnectionStatus.inactive:
+      case ConnectionStatus.disconnected:
         return Colors.grey;
       case ConnectionStatus.error:
         return Colors.red;
@@ -139,10 +141,14 @@ class _ConnectionsListScreenState extends ConsumerState<ConnectionsListScreen> {
 
   String _getStatusLabel(ConnectionStatus status) {
     switch (status) {
+      case ConnectionStatus.connected:
+        return 'Connected';
       case ConnectionStatus.active:
         return 'Active';
       case ConnectionStatus.inactive:
         return 'Inactive';
+      case ConnectionStatus.disconnected:
+        return 'Disconnected';
       case ConnectionStatus.error:
         return 'Error';
     }

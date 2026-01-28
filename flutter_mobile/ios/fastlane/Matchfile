@@ -1,5 +1,5 @@
 # Git repository for storing certificates
-git_url(ENV["MATCH_GIT_URL"])
+git_url(ENV["MATCH_GIT_URL"] || "https://github.com/NuvolaNetworks/amos-ios-certificates.git")
 
 # Storage mode (git, google_cloud, s3)
 storage_mode("git")
@@ -11,7 +11,13 @@ app_identifier([ENV["APP_IDENTIFIER"] || "com.amoslabs.mobile"])
 type("appstore")
 
 # For CI/CD, use readonly mode
-readonly(is_ci)
+readonly(ENV["CI"] == "true")
 
-# Clone using SSH
+# Git branch
 git_branch("main")
+
+# Team ID
+team_id(ENV["TEAM_ID"] || "65M4R87855")
+
+# Apple ID
+username(ENV["APPLE_ID"] || "ryan@amoslabs.com")

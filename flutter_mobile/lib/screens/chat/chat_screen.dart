@@ -6,13 +6,10 @@ import 'package:intl/intl.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/models/chat.dart';
 import 'package:amos_mobile/models/agent_question.dart';
-import 'package:amos_mobile/models/space.dart';
 import 'package:amos_mobile/providers/app_providers.dart';
-import 'package:amos_mobile/providers/space_provider.dart';
-import 'package:amos_mobile/providers/realtime_provider.dart';
 import 'package:amos_mobile/services/chat_service.dart';
 import 'package:amos_mobile/services/file_upload_service.dart';
-import 'package:amos_mobile/widgets/model_selector.dart';
+// Model selector removed - defaulting to auto
 import 'package:amos_mobile/widgets/file_attachment_chip.dart';
 import 'package:amos_mobile/widgets/voice_input_button.dart';
 import 'package:amos_mobile/widgets/question_queue.dart';
@@ -338,32 +335,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     final sessionId = ref.watch(chatSessionProvider) ?? '';
 
-    final currentSpace = ref.watch(currentSpaceProvider);
-    final unreadCount = ref.watch(unreadTeamMessagesProvider);
-
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 12,
+        centerTitle: true,
         title: Image.asset(
           'assets/images/logo-header.png',
           height: 28,
           fit: BoxFit.contain,
         ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(44),
-          child: Padding(
-            padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
-            child: _SpaceSwitcherBar(
-              currentSpace: currentSpace,
-              unreadTeamCount: unreadCount,
-              onSpaceSelected: (space) {
-                ref.read(spaceProvider.notifier).switchSpace(space);
-              },
-              onNewChat: _startNewChat,
-              onSettings: () => context.goNamed('settings'),
-            ),
+        actions: [
+          // New chat button
+          _ActionButton(
+            icon: LucideIcons.circlePlus,
+            onTap: _startNewChat,
+            tooltip: 'New Chat',
           ),
-        ),
+          const SizedBox(width: 4),
+          // Settings button
+          _ActionButton(
+            icon: LucideIcons.settings,
+            onTap: () => context.goNamed('settings'),
+            tooltip: 'Settings',
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Stack(
         children: [
@@ -455,19 +450,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
-                LucideIcons.messageSquare,
+                LucideIcons.bot,
                 size: 48,
                 color: context.primaryColor,
               ),
             ),
             const SizedBox(height: 24),
             Text(
-              'Start a conversation',
+              'How can I help?',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text(
-              'Ask Amos to help you with marketing tasks, content creation, and more.',
+              'Ask me anything or try one of the suggestions below.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: context.textSecondary,
@@ -480,25 +475,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               alignment: WrapAlignment.center,
               children: [
                 _SuggestionChip(
-                  label: 'Create a campaign',
+                  label: 'Deep research',
                   onTap: () {
-                    _textController.text = 'Help me create an email campaign';
+                    _textController.text = 'Do deep research on ';
+                    _textController.selection = TextSelection.fromPosition(
+                      TextPosition(offset: _textController.text.length),
+                    );
+                    _focusNode.requestFocus();
+                  },
+                ),
+                _SuggestionChip(
+                  label: 'What needs attention?',
+                  onTap: () {
+                    _textController.text = 'What needs my attention today?';
                     _sendMessage();
                   },
                 ),
                 _SuggestionChip(
-                  label: 'Build a landing page',
+                  label: 'Check status',
                   onTap: () {
-                    _textController.text =
-                        'Help me build a landing page for my product';
+                    _textController.text = 'Show me the status of my campaigns and tasks';
                     _sendMessage();
                   },
                 ),
                 _SuggestionChip(
-                  label: 'Analyze my contacts',
+                  label: 'Quick question',
                   onTap: () {
-                    _textController.text =
-                        'Analyze my contact list and suggest improvements';
+                    _textController.text = '';
+                    _focusNode.requestFocus();
+                  },
+                ),
+                _SuggestionChip(
+                  label: "What's happening today?",
+                  onTap: () {
+                    _textController.text = "What's happening today?";
                     _sendMessage();
                   },
                 ),
@@ -563,43 +573,45 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Model selector (brain icon)
-          const ModelSelector(),
-
-          // File attachment button - compact
-          SizedBox(
-            width: 36,
-            height: 40,
-            child: IconButton(
-              onPressed: _isUploading ? null : _pickAndUploadFiles,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: _isUploading
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: context.primaryColor,
-                      ),
-                    )
-                  : Icon(LucideIcons.paperclip, size: 20, color: context.textSecondary),
-              tooltip: 'Attach files',
-            ),
+          // Attach and voice buttons stacked vertically
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // File attachment button
+              SizedBox(
+                width: 36,
+                height: 32,
+                child: IconButton(
+                  onPressed: _isUploading ? null : _pickAndUploadFiles,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: _isUploading
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: context.primaryColor,
+                          ),
+                        )
+                      : Icon(LucideIcons.paperclip, size: 18, color: context.textSecondary),
+                  tooltip: 'Attach files',
+                ),
+              ),
+              // Voice input button
+              SizedBox(
+                width: 36,
+                height: 32,
+                child: VoiceInputButton(
+                  onTranscript: (transcript) {
+                    _sendMessage(voiceText: transcript);
+                  },
+                ),
+              ),
+            ],
           ),
 
-          // Voice input button - compact
-          SizedBox(
-            width: 36,
-            height: 40,
-            child: VoiceInputButton(
-              onTranscript: (transcript) {
-                _sendMessage(voiceText: transcript);
-              },
-            ),
-          ),
-
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
 
           // Text input - takes remaining space
           Expanded(
@@ -873,104 +885,7 @@ class _TypingDotState extends State<_TypingDot>
   }
 }
 
-/// Horizontal space switcher bar with action buttons
-class _SpaceSwitcherBar extends StatelessWidget {
-  final Space currentSpace;
-  final int unreadTeamCount;
-  final ValueChanged<Space> onSpaceSelected;
-  final VoidCallback onNewChat;
-  final VoidCallback onSettings;
-
-  const _SpaceSwitcherBar({
-    required this.currentSpace,
-    required this.unreadTeamCount,
-    required this.onSpaceSelected,
-    required this.onNewChat,
-    required this.onSettings,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Row(
-      children: [
-        // New chat button on the left
-        _ActionButton(
-          icon: LucideIcons.circlePlus,
-          onTap: onNewChat,
-          tooltip: 'New Chat',
-        ),
-
-        // Spacer to push space icons to center
-        const Spacer(),
-
-        // Mode switcher icons in the center (Personal/Operations/Design)
-        ...Space.all.map((space) {
-          final isSelected = space.slug == currentSpace.slug;
-          // Badge not used for 2-mode architecture (no unread messages concept)
-          const showBadge = false;
-
-          IconData icon;
-          Color color;
-          if (space.isPersonal) {
-            icon = LucideIcons.user;
-            color = Colors.blue;
-          } else if (space.isOperations) {
-            icon = LucideIcons.settings;
-            color = Colors.purple;
-          } else {
-            icon = LucideIcons.circle;
-            color = Colors.grey;
-          }
-
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Material(
-              color: isSelected
-                  ? color.withOpacity(0.15)
-                  : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(8),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => onSpaceSelected(space),
-                child: Container(
-                  width: 44,
-                  height: 36,
-                  alignment: Alignment.center,
-                  child: Badge(
-                    isLabelVisible: showBadge,
-                    label: Text(
-                      unreadTeamCount > 9 ? '9+' : '$unreadTeamCount',
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                    child: Icon(
-                      icon,
-                      size: 20,
-                      color: isSelected ? color : theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-
-        // Spacer to balance the layout
-        const Spacer(),
-
-        // Settings button on the right
-        _ActionButton(
-          icon: LucideIcons.settings,
-          onTap: onSettings,
-          tooltip: 'Settings',
-        ),
-      ],
-    );
-  }
-}
-
-/// Small action button for the space switcher bar
+/// Small action button for the app bar
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;

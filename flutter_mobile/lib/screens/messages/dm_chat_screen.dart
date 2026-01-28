@@ -8,6 +8,7 @@ import 'package:amos_mobile/providers/realtime_provider.dart';
 import 'package:amos_mobile/providers/auth_provider.dart';
 import 'package:amos_mobile/utils/error_handler.dart';
 import 'package:amos_mobile/utils/logger.dart';
+import 'package:amos_mobile/services/notification_sound_service.dart';
 
 /// Direct message chat screen - iMessage-like experience
 class DmChatScreen extends ConsumerStatefulWidget {
@@ -46,6 +47,8 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> with ErrorHandler {
     ref.read(realtimeProvider.notifier).setCurrentScreen('dm_chat', threadId: widget.threadId);
     // Subscribe to real-time updates
     ref.read(realtimeProvider.notifier).subscribeToThread(widget.threadId);
+    // Initialize notification sound
+    NotificationSoundService.instance.initialize();
   }
 
   @override
@@ -186,6 +189,10 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> with ErrorHandler {
             _scrollToBottom();
             // Mark as read since we're viewing it
             _markAsRead();
+            // Play notification sound for incoming messages (not from me)
+            if (newMessage.senderId != _currentUserId) {
+              NotificationSoundService.instance.playMessageSound();
+            }
           }
         }
       }

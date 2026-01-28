@@ -15,13 +15,24 @@ module ApplicationCable
     private
 
     def find_verified_user
-      # Try to get user from Warden (Devise)
-      if request.env["warden"]&.user
-        request.env["warden"].user
-      else
-        Rails.logger.warn "ActionCable connection rejected - no authenticated user found"
-        reject_unauthorized_connection
+      # Try API token from query params (mobile app)
+      if (token = request.params["token"]).present?
+        user = User.find_by(api_key: token)
+        if user
+          Rails.logger.info "ActionCable authenticated via API token for user #{user.id}"
+          return user
+        else
+          Rails.logger.warn "ActionCable connection rejected - invalid API token"
+        end
       end
+
+      # Try to get user from Warden (Devise) - web app
+      if request.env["warden"]&.user
+        return request.env["warden"].user
+      end
+
+      Rails.logger.warn "ActionCable connection rejected - no authenticated user found"
+      reject_unauthorized_connection
     end
   end
 end

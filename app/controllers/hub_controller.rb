@@ -253,7 +253,8 @@ class HubController < ApplicationController
     # Broadcast to channel subscribers
     HubChannel.broadcast_to_thread(@thread.id, {
       type: 'new_message',
-      message: message_json(message)
+      thread_id: @thread.id,
+      message: message.as_broadcast_json
     })
     
     respond_to do |format|
