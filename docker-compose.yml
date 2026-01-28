@@ -4,7 +4,7 @@ name: amos
 
 services:
   db:
-    image: pgvector/pgvector:pg16
+    image: ankane/pgvector:latest
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123password

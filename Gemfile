@@ -93,6 +93,7 @@ gem "aws-sdk-comprehend", "~> 1.0"
 gem "aws-sdk-opensearchservice", "~> 1.0"
 gem "aws-sdk-rails", "~> 3.10"
 gem "aws-sdk-sesv2"
+gem "aws-sdk-sns", "~> 1.0"  # Push notifications via APNs/FCM
 
 # Vector storage and RAG
 gem "pinecone", "~> 1.2"

@@ -1,8 +1,11 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:amos_mobile/services/storage_service.dart';
-import 'dart:convert';
+import 'package:amos_mobile/services/dictation_service.dart';
 
 /// Note model
 class Note {
@@ -148,8 +151,19 @@ class PersonalNotesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notes'),
-        centerTitle: false,
+        title: Image.asset(
+          'assets/images/logo-header.png',
+          height: 26,
+          color: Theme.of(context).brightness == Brightness.light
+              ? const Color(0xFF1a1a2e)
+              : null,
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(LucideIcons.bell),
+            onPressed: () => context.push('/notifications'),
+          ),
+        ],
       ),
       body: notes.isEmpty
           ? _buildEmptyState(context, ref)
@@ -488,27 +502,94 @@ class _NoteEditorScreen extends StatefulWidget {
   State<_NoteEditorScreen> createState() => _NoteEditorScreenState();
 }
 
-class _NoteEditorScreenState extends State<_NoteEditorScreen> {
+class _NoteEditorScreenState extends State<_NoteEditorScreen>
+    with SingleTickerProviderStateMixin {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
   String? _selectedColor;
   bool _hasChanges = false;
 
+  // Dictation support
+  DictationService? _dictationService;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  StreamSubscription<DictationState>? _dictationStateSubscription;
+  StreamSubscription<String>? _interimSubscription;
+  DictationState _dictationState = DictationState.idle;
+  String _interimText = '';
+
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.note?.title ?? '');
-    _contentController = TextEditingController(text: widget.note?.content ?? '');
+    _contentController =
+        TextEditingController(text: widget.note?.content ?? '');
     _selectedColor = widget.note?.color;
 
     _titleController.addListener(() => setState(() => _hasChanges = true));
     _contentController.addListener(() => setState(() => _hasChanges = true));
+
+    _initDictation();
+  }
+
+  void _initDictation() {
+    _dictationService = DictationService(textController: _contentController);
+
+    // Setup pulse animation for listening state
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // Listen to dictation state changes
+    _dictationStateSubscription =
+        _dictationService!.stateStream.listen((state) {
+      if (mounted) {
+        setState(() => _dictationState = state);
+        if (state == DictationState.listening) {
+          _pulseController.repeat(reverse: true);
+        } else {
+          _pulseController.stop();
+          _pulseController.reset();
+        }
+      }
+    });
+
+    // Listen to interim text changes
+    _interimSubscription = _dictationService!.interimTextStream.listen((text) {
+      if (mounted) {
+        setState(() => _interimText = text);
+      }
+    });
+  }
+
+  Future<void> _toggleDictation() async {
+    try {
+      await _dictationService?.toggle();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Dictation error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    // Clean up dictation
+    _pulseController.dispose();
+    _dictationStateSubscription?.cancel();
+    _interimSubscription?.cancel();
+    _dictationService?.dispose();
     super.dispose();
   }
 
@@ -530,6 +611,10 @@ class _NoteEditorScreenState extends State<_NoteEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isListening = _dictationState == DictationState.listening;
+    final isInitializing = _dictationState == DictationState.initializing;
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -544,6 +629,34 @@ class _NoteEditorScreenState extends State<_NoteEditorScreen> {
         ),
         title: Text(widget.note == null ? 'New Note' : 'Edit Note'),
         actions: [
+          // Dictation button in app bar
+          AnimatedBuilder(
+            animation: _pulseAnimation,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: isListening ? _pulseAnimation.value : 1.0,
+                child: IconButton(
+                  icon: isInitializing
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: theme.colorScheme.primary,
+                          ),
+                        )
+                      : Icon(
+                          isListening ? LucideIcons.micOff : LucideIcons.mic,
+                          color: isListening
+                              ? Colors.red
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
+                  onPressed: isInitializing ? null : _toggleDictation,
+                  tooltip: isListening ? 'Stop dictation' : 'Start dictation',
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(LucideIcons.palette),
             onPressed: _showColorPicker,
@@ -569,16 +682,59 @@ class _NoteEditorScreenState extends State<_NoteEditorScreen> {
               textCapitalization: TextCapitalization.sentences,
             ),
             const Divider(),
-            Expanded(
-              child: TextField(
-                controller: _contentController,
-                decoration: const InputDecoration(
-                  hintText: 'Start typing...',
-                  border: InputBorder.none,
+            // Show interim text indicator when listening
+            if (isListening && _interimText.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.mic,
+                      size: 14,
+                      color: Colors.red.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _interimText,
+                        style: TextStyle(
+                          fontStyle: FontStyle.italic,
+                          color: theme.colorScheme.onSurfaceVariant
+                              .withValues(alpha: 0.7),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-                maxLines: null,
-                expands: true,
-                textCapitalization: TextCapitalization.sentences,
+              ),
+            Expanded(
+              child: Container(
+                decoration: isListening
+                    ? BoxDecoration(
+                        border: Border.all(
+                          color: Colors.red.withValues(alpha: 0.3),
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      )
+                    : null,
+                child: TextField(
+                  controller: _contentController,
+                  decoration: InputDecoration(
+                    hintText: isListening
+                        ? 'Listening... speak now'
+                        : 'Start typing or tap mic to dictate...',
+                    border: InputBorder.none,
+                    contentPadding:
+                        isListening ? const EdgeInsets.all(8) : null,
+                  ),
+                  maxLines: null,
+                  expands: true,
+                  textCapitalization: TextCapitalization.sentences,
+                ),
               ),
             ),
           ],

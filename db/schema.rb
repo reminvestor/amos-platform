@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_27_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_27_231647) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2076,6 +2076,19 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_27_000001) do
     t.index ["status"], name: "index_design_plans_on_status"
     t.index ["user_id"], name: "index_design_plans_on_user_id"
     t.index ["website_id"], name: "index_design_plans_on_website_id"
+  end
+
+  create_table "device_tokens", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "token", null: false
+    t.string "platform", null: false
+    t.string "endpoint_arn"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["token"], name: "index_device_tokens_on_token", unique: true
+    t.index ["user_id", "active"], name: "index_device_tokens_on_user_id_and_active"
+    t.index ["user_id"], name: "index_device_tokens_on_user_id"
   end
 
   create_table "document_analytics", force: :cascade do |t|
@@ -6019,6 +6032,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_27_000001) do
   add_foreign_key "design_plans", "landing_pages"
   add_foreign_key "design_plans", "users"
   add_foreign_key "design_plans", "websites"
+  add_foreign_key "device_tokens", "users"
   add_foreign_key "document_analytics", "rag_documents"
   add_foreign_key "document_annotations", "rag_documents"
   add_foreign_key "document_annotations", "users"

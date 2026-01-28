@@ -87,13 +87,53 @@ Deploy to App Store (production)
 
 Add new device and refresh provisioning profiles
 
+### ios screenshots_native
+
+```sh
+[bundle exec] fastlane ios screenshots_native
+```
+
+Take screenshots for App Store (native Xcode UI tests)
+
 ### ios screenshots
 
 ```sh
 [bundle exec] fastlane ios screenshots
 ```
 
-Take screenshots for App Store
+Take screenshots using Flutter integration tests
+
+### ios screenshot_device
+
+```sh
+[bundle exec] fastlane ios screenshot_device
+```
+
+Take screenshots on a single device
+
+### ios frame_screenshots
+
+```sh
+[bundle exec] fastlane ios frame_screenshots
+```
+
+Add device frames to screenshots
+
+### ios upload_screenshots
+
+```sh
+[bundle exec] fastlane ios upload_screenshots
+```
+
+Upload screenshots to App Store Connect
+
+### ios screenshots_full
+
+```sh
+[bundle exec] fastlane ios screenshots_full
+```
+
+Full screenshot pipeline: capture, frame, and upload
 
 ### ios create_app
 

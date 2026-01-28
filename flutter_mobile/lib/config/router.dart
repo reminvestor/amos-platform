@@ -40,6 +40,8 @@ import 'package:amos_mobile/screens/help/help_center_screen.dart';
 import 'package:amos_mobile/screens/contacts/contact_list_screen.dart';
 // Email screens
 import 'package:amos_mobile/screens/email/email_inbox_screen.dart';
+// Scanner screens
+import 'package:amos_mobile/screens/scanner/scanner_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -50,14 +52,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authStateProvider);
       final isLoggedIn = authState.isAuthenticated;
       final mfaRequired = authState.mfaRequired;
-      final user = authState.user;
 
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup' ||
           state.matchedLocation == '/forgot-password' ||
           state.matchedLocation == '/mfa-verification';
-
-      final isMfaSetupRoute = state.matchedLocation == '/mfa-setup';
 
       // Check if we're in development mode (localhost API)
       const apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
@@ -68,13 +67,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/mfa-verification';
       }
 
-      // Enforce MFA setup: if logged in but MFA not enabled, force MFA setup
-      // Skip this in development mode for easier testing
-      if (isLoggedIn && user != null && !user.mfaEnabled && !isDevMode) {
-        if (!isMfaSetupRoute && !isAuthRoute) {
-          return '/mfa-setup';
-        }
-      }
+      // MFA setup is NOT enforced globally - only required when adding integrations
+      // (matching web behavior where require_two_factor! is only on oauth_controller)
 
       if (!isLoggedIn && !isAuthRoute && !mfaRequired) {
         return '/login';
@@ -256,6 +250,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/contacts',
             name: 'contacts',
             builder: (context, state) => const ContactListScreen(),
+          ),
+          GoRoute(
+            path: '/scanner',
+            name: 'scanner',
+            builder: (context, state) => const ScannerScreen(),
           ),
           GoRoute(
             path: '/dm/:threadId',

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:amos_mobile/config/env.dart';
 import 'package:amos_mobile/models/user.dart';
 import 'package:amos_mobile/services/auth_service.dart';
+import 'package:amos_mobile/services/push_notification_service.dart';
 
 // Auth state
 class AuthState {
@@ -84,6 +85,8 @@ class AuthNotifier extends Notifier<AuthState> {
               token: mfaResult.token,
               isLoading: false,
             );
+            // Register device for push notifications
+            _registerForPushNotifications();
             return;
           } catch (_) {
             // If auto-verify fails, fall through to normal MFA flow
@@ -104,6 +107,8 @@ class AuthNotifier extends Notifier<AuthState> {
           token: result.authResult!.token,
           isLoading: false,
         );
+        // Register device for push notifications
+        _registerForPushNotifications();
       }
     } catch (e) {
       state = state.copyWith(
@@ -136,11 +141,25 @@ class AuthNotifier extends Notifier<AuthState> {
         token: result.token,
         isLoading: false,
       );
+      // Register device for push notifications
+      _registerForPushNotifications();
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
         error: 'Invalid verification code',
       );
+    }
+  }
+
+  /// Register device for push notifications after successful auth
+  Future<void> _registerForPushNotifications() async {
+    try {
+      final pushService = PushNotificationService();
+      await pushService.initialize();
+      await pushService.requestPermissions();
+      await pushService.registerDeviceIfNeeded();
+    } catch (e) {
+      // Don't fail auth if push registration fails
     }
   }
 
@@ -156,6 +175,13 @@ class AuthNotifier extends Notifier<AuthState> {
 
   void clearMFA() {
     state = state.clearMfa();
+  }
+
+  /// Clear loading state (used after splash screen timeout)
+  void clearLoadingState() {
+    if (state.isLoading) {
+      state = state.copyWith(isLoading: false);
+    }
   }
 
   Future<void> register({
@@ -190,6 +216,10 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> logout() async {
     state = state.copyWith(isLoading: true);
     try {
+      // Unregister device from push notifications
+      final pushService = PushNotificationService();
+      await pushService.unregisterDevice();
+
       await _authService.logout();
     } finally {
       state = const AuthState();
@@ -207,6 +237,8 @@ class AuthNotifier extends Notifier<AuthState> {
           token: result.token,
           isLoading: false,
         );
+        // Register device for push notifications on app launch
+        _registerForPushNotifications();
       } else {
         state = const AuthState();
       }

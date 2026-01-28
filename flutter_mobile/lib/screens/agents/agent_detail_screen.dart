@@ -20,12 +20,12 @@ class _AgentDetailScreenState extends ConsumerState<AgentDetailScreen> {
   final _taskController = TextEditingController();
   final _agentsService = AgentsService();
   bool _isExecuting = false;
-  bool _isLoading = true;
   Agent? _fullAgent;
   String? _result;
 
   // Model selection state
   double _modelPower = 50;
+  // ignore: unused_field - Will be used when API call is implemented
   String _selectedModel = 'claude-3-5-sonnet';
   String _selectedModelName = 'Claude 3.5 Sonnet';
 
@@ -43,15 +43,10 @@ class _AgentDetailScreenState extends ConsumerState<AgentDetailScreen> {
       if (mounted) {
         setState(() {
           _fullAgent = agent;
-          _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      // Error handled silently - UI uses _fullAgent == null to show fallback
     }
   }
 

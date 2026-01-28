@@ -162,6 +162,10 @@ class _DmListScreenState extends ConsumerState<DmListScreen> with ErrorHandler {
             onPressed: _isLoading ? null : _loadData,
             tooltip: 'Refresh',
           ),
+          IconButton(
+            icon: const Icon(LucideIcons.bell),
+            onPressed: () => context.push('/notifications'),
+          ),
         ],
       ),
       body: _buildBody(),
@@ -260,6 +264,7 @@ class _DmListScreenState extends ConsumerState<DmListScreen> with ErrorHandler {
                   extra: thread.displayName,
                 );
               },
+              onArchive: () => _archiveThread(thread),
             )).toList(),
           ),
         ],
@@ -360,16 +365,50 @@ class _DmListScreenState extends ConsumerState<DmListScreen> with ErrorHandler {
       if (mounted) showError(context, e);
     }
   }
+
+  Future<void> _archiveThread(DmThread thread) async {
+    try {
+      await _hubService.archiveThread(thread.id);
+      if (mounted) {
+        setState(() {
+          _threads.removeWhere((t) => t.id == thread.id);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Conversation with ${thread.displayName} archived'),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () async {
+                try {
+                  await _hubService.unarchiveThread(thread.id);
+                  if (mounted) {
+                    _loadData(); // Reload to restore the thread
+                  }
+                } catch (e) {
+                  AppLogger.error('Failed to unarchive: $e');
+                }
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to archive thread', error: e, stackTrace: stackTrace);
+      if (mounted) showError(context, e);
+    }
+  }
 }
 
-/// Individual DM thread tile - iMessage style
+/// Individual DM thread tile - iMessage style with swipe-to-archive
 class _DmThreadTile extends StatelessWidget {
   final DmThread thread;
   final VoidCallback onTap;
+  final VoidCallback? onArchive;
 
   const _DmThreadTile({
     required this.thread,
     required this.onTap,
+    this.onArchive,
   });
 
   @override
@@ -377,7 +416,7 @@ class _DmThreadTile extends StatelessWidget {
     final theme = Theme.of(context);
     final hasUnread = thread.unreadCount > 0;
 
-    return ListTile(
+    final tile = ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: _buildAvatar(context),
@@ -444,6 +483,42 @@ class _DmThreadTile extends StatelessWidget {
               color: Colors.grey.shade400,
             ),
     );
+
+    // Wrap in Dismissible for swipe-to-archive
+    if (onArchive != null) {
+      return Dismissible(
+        key: Key('dm-thread-${thread.id}'),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          color: Colors.orange.shade600,
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Icon(LucideIcons.archive, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Archive',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        confirmDismiss: (direction) async {
+          return true; // Allow the dismiss
+        },
+        onDismissed: (direction) {
+          onArchive!();
+        },
+        child: tile,
+      );
+    }
+
+    return tile;
   }
 
   Widget _buildAvatar(BuildContext context) {
@@ -476,7 +551,12 @@ class _DmThreadTile extends StatelessWidget {
     final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
 
     if (messageDate == today) {
-      return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+      // Convert to 12-hour format with AM/PM
+      final hour = dateTime.hour;
+      final minute = dateTime.minute.toString().padLeft(2, '0');
+      final period = hour >= 12 ? 'PM' : 'AM';
+      final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+      return '$hour12:$minute $period';
     } else if (messageDate == today.subtract(const Duration(days: 1))) {
       return 'Yesterday';
     } else if (now.difference(dateTime).inDays < 7) {

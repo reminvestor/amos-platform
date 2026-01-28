@@ -1,0 +1,59 @@
+# Snapfile - Screenshot Configuration for AMOS Mobile
+# https://docs.fastlane.tools/actions/snapshot/
+
+# Devices to capture screenshots on (App Store requires multiple sizes)
+devices([
+  "iPhone 16 Pro Max",      # 6.9" - Required
+  "iPhone 16 Pro",          # 6.3" - Required
+  "iPhone 16",              # 6.1"
+  "iPhone SE (3rd generation)", # 4.7" - For older device support
+  "iPad Pro 13-inch (M4)",  # Required for iPad
+  "iPad Pro 11-inch (M4)"   # Required for iPad
+])
+
+# Languages/Locales for screenshots
+languages([
+  "en-US"
+  # Add more as needed:
+  # "es-ES",
+  # "fr-FR",
+  # "de-DE",
+  # "ja-JP"
+])
+
+# Xcode scheme
+scheme("Runner")
+
+# Output directory for screenshots
+output_directory("./screenshots")
+
+# Clear previous screenshots before capture
+clear_previous_screenshots(true)
+
+# Stop on first error
+stop_after_first_error(false)
+
+# Number of concurrent simulators (adjust based on your Mac's power)
+concurrent_simulators(true)
+number_of_retries(1)
+
+# Override status bar (iOS 16+)
+override_status_bar(true)
+
+# Dark mode screenshots (run twice, once light, once dark)
+dark_mode(false)
+
+# Localize simulator
+localize_simulator(true)
+
+# Reinstall app for each language
+reinstall_app(false)
+
+# App bundle identifier
+app_identifier("com.amoslabs.mobile")
+
+# Skip open summary
+skip_open_summary(true)
+
+# Headless mode (faster, no UI)
+headless(true)
