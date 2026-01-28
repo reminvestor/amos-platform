@@ -48,7 +48,7 @@ module Amos
         session_id: @session_id,
         user_id: @user.id,
         entity_id: @entity.id,
-        recent_messages: recent_messages(10),
+        recent_messages: recent_messages(12),  # Full 12 message context window
         active_jobs: @job_results.keys,
         entity_context: entity_snapshot,
         timestamp: Time.current
