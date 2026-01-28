@@ -1448,10 +1448,13 @@ class ScoutController < ApplicationController
         if canvas_data[:plan_id].present?
           design_plan = DesignPlan.find_by(id: canvas_data[:plan_id], entity_id: current_entity.id, user_id: current_user.id)
           if design_plan
+            # Merge plan data and include design_type at both levels for ERB compatibility
+            plan_data_with_type = (design_plan.plan_data || {}).merge('design_type' => design_plan.design_type)
             canvas_data = canvas_data.merge(
-              plan: design_plan.plan_data,
+              plan: plan_data_with_type,
               plan_id: design_plan.id,
-              status: design_plan.status
+              status: design_plan.status,
+              design_type: design_plan.design_type  # Also at top level
             ).with_indifferent_access
           end
         end

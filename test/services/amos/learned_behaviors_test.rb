@@ -11,20 +11,38 @@ class Amos::LearnedBehaviorsTest < ActiveSupport::TestCase
     
     @behaviors = Amos::LearnedBehaviors.new(user: @user, entity: @entity)
     
-    # Clean up
+    # Clean up completely - use unique test isolation
     @behaviors.clear_all
+    # Also flush any potentially polluted keys
+    flush_test_redis_keys
   end
 
   def teardown
     @behaviors.clear_all if @behaviors
+    flush_test_redis_keys
   end
   
   private
   
   def redis_available?
-    Redis.new(url: ENV.fetch('REDIS_URL', 'redis://localhost:6379/1')).ping == "PONG"
+    # Check that $redis is a real Redis, not NullRedis
+    return false if $redis.nil?
+    return false if $redis.is_a?(NullRedis)
+    
+    # Also verify it's actually connected
+    result = $redis.ping
+    result == "PONG"
   rescue => e
     false
+  end
+  
+  def flush_test_redis_keys
+    return unless redis_available?
+    # Delete all learned behavior keys for test user/entity
+    keys = $redis.keys("amos:learned:#{@user&.id}:#{@entity&.id}:*")
+    $redis.del(*keys) if keys.any?
+  rescue => e
+    # Ignore cleanup errors
   end
 
   # ─────────────────────────────────────────────────────────────────────────────
