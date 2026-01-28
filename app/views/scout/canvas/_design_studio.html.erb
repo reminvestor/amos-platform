@@ -4945,6 +4945,15 @@ function buildSectionCard(section, idx, pageIndex) {
         emptyState.outerHTML = workspaceHtml;
         if (typeof lucide !== 'undefined') lucide.createIcons();
         
+        // CRITICAL: Update container data attributes for component visibility
+        container.dataset.designType = type;
+        container.dataset.isAppOrCanvas = (type === 'app' || type === 'canvas') ? 'true' : 'false';
+        container.dataset.createType = type;
+        console.log('🎨 Updated design type to:', type, 'isAppOrCanvas:', container.dataset.isAppOrCanvas);
+        
+        // Update component visibility in sidebar
+        updateComponentVisibility();
+        
         // Setup drop zones for the new workspace
         setupDropZones();
         
@@ -5113,7 +5122,14 @@ function buildSectionCard(section, idx, pageIndex) {
       navigationCategory.style.display = isAppOrCanvas ? 'none' : '';
     }
     
-    console.log('🎨 Component visibility updated: designType=' + designType + ', isAppOrCanvas=' + isAppOrCanvas);
+    console.log('🎨 Component visibility updated:', {
+      designType: designType,
+      isAppOrCanvas: isAppOrCanvas,
+      datasetIsAppOrCanvas: container.dataset.isAppOrCanvas,
+      landingPageComponentsFound: !!landingPageComponents,
+      appLayoutCategoryFound: !!appLayoutCategory,
+      dashboardCategoryFound: !!dashboardCategory
+    });
   }
   
   // Setup Data Model button handlers
