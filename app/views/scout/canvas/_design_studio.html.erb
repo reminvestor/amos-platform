@@ -39,9 +39,10 @@
 <% end %>
 <% has_plan = plan_id.present? || sections.any? || plan_pages.any? %>
 <%# design_type priority: plan > canvas_data > create_type > default %>
-<% plan_design_type = plan[:design_type] || plan['design_type'] || data[:design_type] || create_type || 'landing_page' %>
+<%# design_type resolution: plan takes precedence, then explicit data keys, then create_type, finally default %>
+<% plan_design_type = plan[:design_type] || plan['design_type'] || data[:design_type] || data['design_type'] || create_type || 'landing_page' %>
 <% is_app_or_canvas = %w[app canvas].include?(plan_design_type.to_s) %>
-<% Rails.logger.info "Design Studio Canvas: plan_id=#{plan_id}, has_plan=#{has_plan}, is_website_plan=#{is_website_plan}, design_type=#{plan_design_type}, sections_count=#{sections.length}, plan_pages_count=#{plan_pages.length}" %>
+<% Rails.logger.info "🎨 Design Studio Canvas: plan_id=#{plan_id}, has_plan=#{has_plan}, is_website_plan=#{is_website_plan}, design_type=#{plan_design_type}, is_app_or_canvas=#{is_app_or_canvas}, create_type=#{create_type}, data_keys=#{data.keys.join(',')}" %>
 <% is_built = landing_page_id.present? || website_id.present? %>
 <div class="design-studio-canvas" id="design-studio-<%= SecureRandom.hex(4) %>"
      data-plan-id="<%= plan_id %>"
@@ -73,8 +74,14 @@
       </div>
       
       <div class="component-categories">
-        <!-- Layout -->
-        <div class="component-category">
+        <%# 
+          COMPONENT VISIBILITY LOGIC:
+          - Landing Pages/Websites: Show Layout (Hero, Features, etc.), Typography, Elements, Navigation
+          - Apps/Canvases: Show Dashboard, Data Sources, Data Models, Forms, App Layout
+        %>
+        
+        <!-- Landing Page Layout (for landing pages/websites only) -->
+        <div class="component-category" id="landing-page-components" style="<%= is_app_or_canvas ? 'display: none;' : '' %>">
           <div class="category-header" data-toggle="collapse" data-target="layout">
             <i data-lucide="layout-grid" style="width: 14px; height: 14px;"></i>
             <span>Layout</span>
@@ -185,8 +192,8 @@
           </div>
         </div>
         
-        <!-- Typography -->
-        <div class="component-category">
+        <!-- Typography (for landing pages/websites only) -->
+        <div class="component-category" id="typography-category" style="<%= is_app_or_canvas ? 'display: none;' : '' %>">
           <div class="category-header" data-toggle="collapse" data-target="typography">
             <i data-lucide="type" style="width: 14px; height: 14px;"></i>
             <span>Typography</span>
@@ -212,8 +219,8 @@
           </div>
         </div>
         
-        <!-- Media -->
-        <div class="component-category">
+        <!-- Media (for landing pages/websites only) -->
+        <div class="component-category" id="media-category" style="<%= is_app_or_canvas ? 'display: none;' : '' %>">
           <div class="category-header" data-toggle="collapse" data-target="media">
             <i data-lucide="image" style="width: 14px; height: 14px;"></i>
             <span>Media</span>
@@ -235,9 +242,9 @@
           </div>
         </div>
         
-        <!-- Forms -->
-        <div class="component-category">
-          <div class="category-header" data-toggle="collapse" data-target="forms">
+        <!-- Landing Page Forms (for landing pages/websites only) -->
+        <div class="component-category" id="lp-forms-category" style="<%= is_app_or_canvas ? 'display: none;' : '' %>">
+          <div class="category-header" data-toggle="collapse" data-target="lpforms">
             <i data-lucide="text-cursor-input" style="width: 14px; height: 14px;"></i>
             <span>Forms</span>
             <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
@@ -262,8 +269,8 @@
           </div>
         </div>
         
-        <!-- Cards -->
-        <div class="component-category">
+        <!-- Cards (for landing pages/websites only) -->
+        <div class="component-category" id="cards-category" style="<%= is_app_or_canvas ? 'display: none;' : '' %>">
           <div class="category-header" data-toggle="collapse" data-target="cards">
             <i data-lucide="credit-card" style="width: 14px; height: 14px;"></i>
             <span>Cards</span>
@@ -289,8 +296,8 @@
           </div>
         </div>
         
-        <!-- Navigation -->
-        <div class="component-category">
+        <!-- Navigation (for landing pages/websites only) -->
+        <div class="component-category" id="navigation-category" style="<%= is_app_or_canvas ? 'display: none;' : '' %>">
           <div class="category-header" data-toggle="collapse" data-target="navigation">
             <i data-lucide="navigation" style="width: 14px; height: 14px;"></i>
             <span>Navigation</span>
@@ -304,6 +311,63 @@
             <div class="studio-component" draggable="true" data-component-type="footer" data-variant="default">
               <div class="component-preview"><i data-lucide="panel-bottom" style="width: 18px; height: 18px;"></i></div>
               <span>Footer</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- App Layout (for apps/canvases only) -->
+        <div class="component-category" id="app-layout-category" style="<%= is_app_or_canvas ? '' : 'display: none;' %>">
+          <div class="category-header" data-toggle="collapse" data-target="app-layout">
+            <i data-lucide="layout-dashboard" style="width: 14px; height: 14px;"></i>
+            <span>App Layout</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items show" id="category-app-layout">
+            <div class="component-group">
+              <div class="component-group-label">Structure</div>
+              <div class="studio-component" draggable="true" data-component-type="app_header" data-variant="default">
+                <div class="component-preview"><i data-lucide="panel-top" style="width: 18px; height: 18px;"></i></div>
+                <span>App Header</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="app_sidebar" data-variant="default">
+                <div class="component-preview"><i data-lucide="panel-left" style="width: 18px; height: 18px;"></i></div>
+                <span>Sidebar Nav</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="section" data-variant="container">
+                <div class="component-preview"><i data-lucide="square" style="width: 18px; height: 18px;"></i></div>
+                <span>Container</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="section" data-variant="row">
+                <div class="component-preview"><i data-lucide="rectangle-horizontal" style="width: 18px; height: 18px;"></i></div>
+                <span>Row</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="section" data-variant="column">
+                <div class="component-preview"><i data-lucide="rectangle-vertical" style="width: 18px; height: 18px;"></i></div>
+                <span>Column</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="section" data-variant="grid">
+                <div class="component-preview"><i data-lucide="grid-2x2" style="width: 18px; height: 18px;"></i></div>
+                <span>Grid</span>
+              </div>
+            </div>
+            <div class="component-group">
+              <div class="component-group-label">UI Elements</div>
+              <div class="studio-component" draggable="true" data-component-type="tabs" data-variant="default">
+                <div class="component-preview"><i data-lucide="layout-template" style="width: 18px; height: 18px;"></i></div>
+                <span>Tabs</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="accordion" data-variant="default">
+                <div class="component-preview"><i data-lucide="chevrons-down-up" style="width: 18px; height: 18px;"></i></div>
+                <span>Accordion</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="modal_trigger" data-variant="default">
+                <div class="component-preview"><i data-lucide="app-window" style="width: 18px; height: 18px;"></i></div>
+                <span>Modal Trigger</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="card" data-variant="app">
+                <div class="component-preview"><i data-lucide="credit-card" style="width: 18px; height: 18px;"></i></div>
+                <span>App Card</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1728,6 +1792,89 @@
   .drop-hint span {
     font-size: 0.9rem;
   }
+  
+  /* App Placeholder Grid (for apps/canvases) */
+  .app-drop-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+    max-width: 800px;
+  }
+  
+  .app-placeholder-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    width: 100%;
+  }
+  
+  .app-placeholder-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px 16px;
+    border: 2px dashed rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    background: rgba(99, 102, 241, 0.02);
+    color: #6b6b8a;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .app-placeholder-item:hover {
+    border-color: rgba(99, 102, 241, 0.6);
+    background: rgba(99, 102, 241, 0.08);
+    color: #818cf8;
+  }
+  
+  .app-placeholder-item span {
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  
+  .app-placeholder-item small {
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+  
+  .app-placeholder-item.drag-over {
+    border-color: #6366f1;
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    transform: scale(1.02);
+  }
+  
+  .drop-hint-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #6b6b8a;
+    font-size: 0.85rem;
+    margin-top: 8px;
+  }
+  
+  /* Light mode - App Placeholders */
+  [data-theme="light"] .app-placeholder-item { 
+    border-color: rgba(99, 102, 241, 0.2); 
+    background: rgba(99, 102, 241, 0.02); 
+    color: #6b7280; 
+  }
+  [data-theme="light"] .app-placeholder-item:hover { 
+    border-color: #6366f1; 
+    background: rgba(99, 102, 241, 0.08); 
+    color: #6366f1; 
+  }
+  [data-theme="light"] .app-placeholder-item.drag-over { 
+    border-color: #6366f1; 
+    background: rgba(99, 102, 241, 0.12); 
+    color: #6366f1; 
+  }
+  [data-theme="light"] .drop-hint-text { color: #9ca3af; }
   
   #freeform-drop-zone.drag-over {
     background: rgba(99, 102, 241, 0.05);
@@ -4718,36 +4865,57 @@ function buildSectionCard(section, idx, pageIndex) {
         // Create blank workspace based on type
         var workspaceHtml = '';
         
-        if (type === 'canvas') {
-          // Canvas gets a different template - freeform with data sources
+        if (type === 'canvas' || type === 'app') {
+          // Canvas and App get a different template - freeform with data sources and app-specific placeholders
+          var appIcon = type === 'app' ? 'layers' : 'frame';
           workspaceHtml = '<div class="blank-canvas-workspace" data-type="' + type + '">' +
             '<div class="canvas-toolbar-mini">' +
-              '<span class="workspace-type-label"><i data-lucide="frame"></i> New ' + typeNames[type] + '</span>' +
+              '<span class="workspace-type-label"><i data-lucide="' + appIcon + '"></i> New ' + typeNames[type] + '</span>' +
               '<button class="btn-add-data-source" id="add-data-source-btn" title="Connect data source">' +
                 '<i data-lucide="database" style="width: 14px; height: 14px;"></i> Add Data Source' +
               '</button>' +
             '</div>' +
             '<div class="canvas-freeform-area" id="freeform-drop-zone">' +
-              '<div class="drop-hint">' +
-                '<i data-lucide="mouse-pointer-click" style="width: 24px; height: 24px;"></i>' +
-                '<span>Drag components here or ask Amos to help</span>' +
+              '<div class="app-drop-hint">' +
+                '<div class="app-placeholder-grid">' +
+                  '<div class="app-placeholder-item" data-section="metrics">' +
+                    '<i data-lucide="hash" style="width: 24px; height: 24px;"></i>' +
+                    '<span>KPIs & Metrics</span>' +
+                    '<small>Drag dashboard components here</small>' +
+                  '</div>' +
+                  '<div class="app-placeholder-item" data-section="charts">' +
+                    '<i data-lucide="bar-chart-3" style="width: 24px; height: 24px;"></i>' +
+                    '<span>Charts & Visualizations</span>' +
+                    '<small>Drag chart components here</small>' +
+                  '</div>' +
+                  '<div class="app-placeholder-item" data-section="data">' +
+                    '<i data-lucide="table" style="width: 24px; height: 24px;"></i>' +
+                    '<span>Data Tables</span>' +
+                    '<small>Drag table or list components here</small>' +
+                  '</div>' +
+                  '<div class="app-placeholder-item" data-section="forms">' +
+                    '<i data-lucide="file-input" style="width: 24px; height: 24px;"></i>' +
+                    '<span>Forms & Actions</span>' +
+                    '<small>Drag form components here</small>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="drop-hint-text">' +
+                  '<i data-lucide="mouse-pointer-click" style="width: 18px; height: 18px;"></i>' +
+                  '<span>Drag components or ask Amos to help design your ' + type + '</span>' +
+                '</div>' +
               '</div>' +
             '</div>' +
           '</div>';
           
-          // Setup data source button for canvas
+          // Setup data source button for canvas/app
           setupDataSourceButton();
         } else {
-          // Landing page, website, app get page-based template
-          var showDataBtn = (type === 'app');
-          var iconName = type === 'landing_page' ? 'file-text' : (type === 'website' ? 'layout-template' : 'layers');
-          var dataBtnHtml = showDataBtn ? '<button class="btn-add-data-source" id="add-data-source-btn" title="Connect data source">' +
-            '<i data-lucide="database" style="width: 14px; height: 14px;"></i> Add Data Source</button>' : '';
+          // Landing page, website get page-based template
+          var iconName = type === 'landing_page' ? 'file-text' : 'layout-template';
           
           workspaceHtml = '<div class="blank-page-workspace" data-type="' + type + '">' +
             '<div class="page-toolbar-mini">' +
               '<span class="workspace-type-label"><i data-lucide="' + iconName + '"></i> New ' + typeNames[type] + '</span>' +
-              dataBtnHtml +
             '</div>' +
             '<div class="page-sections-area" id="sections-drop-zone">' +
               '<div class="page-section-placeholder" data-section="header">' +
@@ -4892,13 +5060,26 @@ function buildSectionCard(section, idx, pageIndex) {
     var designType = container.dataset.designType;
     var isAppOrCanvas = container.dataset.isAppOrCanvas === 'true' || 
                         designType === 'canvas' || designType === 'app';
+    
+    // App/Canvas components - show only for apps/canvases
+    var appLayoutCategory = container.querySelector('#app-layout-category');
     var dashboardCategory = container.querySelector('#dashboard-components');
     var dataSourcesCategory = container.querySelector('#data-sources-category');
     var dataModelCategory = container.querySelector('#data-model-category');
-    var formsCategory = container.querySelector('#forms-category');
-    var layoutCategory = container.querySelector('#category-layout');
+    var appFormsCategory = container.querySelector('#forms-category');
     
-    // Dashboard, Data Sources, Data Models, Forms - only for apps/canvases
+    // Landing Page/Website components - hide for apps/canvases
+    var landingPageComponents = container.querySelector('#landing-page-components');
+    var typographyCategory = container.querySelector('#typography-category');
+    var mediaCategory = container.querySelector('#media-category');
+    var lpFormsCategory = container.querySelector('#lp-forms-category');
+    var cardsCategory = container.querySelector('#cards-category');
+    var navigationCategory = container.querySelector('#navigation-category');
+    
+    // App/Canvas components - show for apps/canvases
+    if (appLayoutCategory) {
+      appLayoutCategory.style.display = isAppOrCanvas ? '' : 'none';
+    }
     if (dashboardCategory) {
       dashboardCategory.style.display = isAppOrCanvas ? '' : 'none';
     }
@@ -4908,18 +5089,31 @@ function buildSectionCard(section, idx, pageIndex) {
     if (dataModelCategory) {
       dataModelCategory.style.display = isAppOrCanvas ? '' : 'none';
     }
-    if (formsCategory) {
-      formsCategory.style.display = isAppOrCanvas ? '' : 'none';
+    if (appFormsCategory) {
+      appFormsCategory.style.display = isAppOrCanvas ? '' : 'none';
     }
     
-    // Layout category (Hero, Features, etc) - hide for canvases, show for landing pages
-    if (layoutCategory && layoutCategory.closest('.component-category')) {
-      var layoutWrapper = layoutCategory.closest('.component-category');
-      // Hide landing page components for pure canvases (not apps which are websites with data)
-      if (designType === 'canvas') {
-        layoutWrapper.style.display = 'none';
-      }
+    // Landing Page/Website components - hide for apps/canvases
+    if (landingPageComponents) {
+      landingPageComponents.style.display = isAppOrCanvas ? 'none' : '';
     }
+    if (typographyCategory) {
+      typographyCategory.style.display = isAppOrCanvas ? 'none' : '';
+    }
+    if (mediaCategory) {
+      mediaCategory.style.display = isAppOrCanvas ? 'none' : '';
+    }
+    if (lpFormsCategory) {
+      lpFormsCategory.style.display = isAppOrCanvas ? 'none' : '';
+    }
+    if (cardsCategory) {
+      cardsCategory.style.display = isAppOrCanvas ? 'none' : '';
+    }
+    if (navigationCategory) {
+      navigationCategory.style.display = isAppOrCanvas ? 'none' : '';
+    }
+    
+    console.log('🎨 Component visibility updated: designType=' + designType + ', isAppOrCanvas=' + isAppOrCanvas);
   }
   
   // Setup Data Model button handlers
@@ -5142,9 +5336,13 @@ function buildSectionCard(section, idx, pageIndex) {
   
   // Setup drop zones for drag and drop
   function setupDropZones() {
-    var dropZones = container.querySelectorAll('.page-section-placeholder, #freeform-drop-zone, #sections-drop-zone');
+    var dropZones = container.querySelectorAll('.page-section-placeholder, .app-placeholder-item, #freeform-drop-zone, #sections-drop-zone');
     
     dropZones.forEach(function(zone) {
+      // Skip if already initialized
+      if (zone.dataset.dropInitialized) return;
+      zone.dataset.dropInitialized = 'true';
+      
       zone.addEventListener('dragover', function(e) {
         e.preventDefault();
         this.classList.add('drag-over');
@@ -5164,8 +5362,19 @@ function buildSectionCard(section, idx, pageIndex) {
           
           // Add component to this zone
           var componentHtml = getComponentHtml(data);
-          if (this.classList.contains('page-section-placeholder')) {
+          
+          if (this.classList.contains('page-section-placeholder') || this.classList.contains('app-placeholder-item')) {
+            // Replace the placeholder with the component
             this.outerHTML = componentHtml;
+          } else if (this.id === 'freeform-drop-zone') {
+            // For freeform area, append and remove hints
+            this.insertAdjacentHTML('beforeend', componentHtml);
+            // Remove app-drop-hint if present
+            var appHint = this.querySelector('.app-drop-hint');
+            if (appHint) appHint.remove();
+            // Remove regular drop hint if present
+            var hint = this.querySelector('.drop-hint');
+            if (hint) hint.remove();
           } else {
             this.insertAdjacentHTML('beforeend', componentHtml);
             // Remove drop hint if present

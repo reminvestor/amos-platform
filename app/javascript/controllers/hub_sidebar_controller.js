@@ -717,6 +717,44 @@ export default class extends Controller {
     }
   }
   
+  // Load canvas with additional parameters from data-canvas-data attribute
+  loadCanvasWithParams(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    
+    const canvasType = event.currentTarget.dataset.canvas
+    let canvasData = {}
+    
+    // Parse canvas data from the data-canvas-data attribute
+    const canvasDataAttr = event.currentTarget.dataset.canvasData
+    if (canvasDataAttr) {
+      try {
+        canvasData = JSON.parse(canvasDataAttr)
+      } catch (e) {
+        console.warn("🌐 Failed to parse canvas data:", e)
+      }
+    }
+    
+    console.log("🌐 Loading canvas with params:", canvasType, canvasData)
+    
+    // Close user menu if open
+    const menu = document.getElementById('hub-user-menu')
+    menu?.classList.remove('open')
+    
+    // Use the scout controller to load the canvas with data
+    const scoutController = this.application?.getControllerForElementAndIdentifier(
+      document.getElementById('workspace'),
+      'scout'
+    )
+    
+    if (scoutController && typeof scoutController.loadScoutCanvas === 'function') {
+      scoutController.loadScoutCanvas(canvasType, canvasData)
+    } else {
+      // Fallback: AJAX call
+      this.loadCanvasViaAjax(canvasType, canvasData)
+    }
+  }
+  
   async loadCanvasViaAjax(canvasType, canvasData = {}) {
     try {
       console.log("🌐 Loading canvas via AJAX:", canvasType)
