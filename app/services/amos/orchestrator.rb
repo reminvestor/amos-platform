@@ -47,6 +47,9 @@ module Amos
         Rails.logger.info "[Amos] Canvas metadata passed to context: #{metadata[:canvas].inspect}"
       end
       
+      # Analyze for corrections/learned behaviors (if previous response exists)
+      analyze_for_learned_behaviors(content)
+      
       # ═══════════════════════════════════════════════════════════════════════
       # INTENT-BASED MODE DETECTION & ROUTING
       # ═══════════════════════════════════════════════════════════════════════
@@ -462,6 +465,27 @@ module Amos
       end
     end
     
+    # Analyze user message for corrections or explicit preferences
+    # This feeds into the LearnedBehaviors system
+    def analyze_for_learned_behaviors(content)
+      return unless @user && @entity
+      
+      begin
+        # Get the last assistant message for context
+        recent = @context.recent_messages(3)
+        last_amos_response = recent.find { |m| m[:role] == :assistant || m[:role] == 'assistant' }
+        amos_content = last_amos_response&.dig(:content) || ""
+        
+        behaviors = Amos::LearnedBehaviors.new(user: @user, entity: @entity)
+        behaviors.analyze_for_corrections(
+          user_message: content,
+          amos_response: amos_content
+        )
+      rescue => e
+        Rails.logger.debug "[Amos] Could not analyze for learned behaviors: #{e.message}"
+      end
+    end
+
     def analyze_intent(content)
       # ═══════════════════════════════════════════════════════════════════════
       # INTENT-BASED MODE DETECTION (Phases 1-3 of seamless mode adaptation)

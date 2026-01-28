@@ -248,7 +248,7 @@ module Admin
         positive: traces_7d.where(outcome: 'success').count,
         negative: traces_7d.where(outcome: 'failure').count,
         detection_methods: traces_7d
-          .where.not("outcome_details->>'detection_method'" => nil)
+          .where("outcome_details->>'detection_method' IS NOT NULL")
           .group("outcome_details->>'detection_method'")
           .count
       }
