@@ -283,26 +283,78 @@ module Api
         data = service.extract_document(image_data, mime_type: mime_type)
         return render json: { success: false, error: data[:error] }, status: :unprocessable_entity if data[:error]
 
-        # Create a document asset with the extracted text
-        document = current_user.entity.document_assets.create!(
-          user: current_user,
+        # Find or create default RAG store for entity
+        rag_store = current_user.entity.rag_stores.find_or_create_by!(
+          name: "Knowledge Base",
+          app_name: "amos",
+          store_type: "entity",
+          user: current_user
+        ) do |store|
+          store.status = "active"
+        end
+
+        # Create a temp file from the scanned image
+        extension = mime_type_to_extension(mime_type)
+        filename = "#{sanitize_filename(data[:title] || 'Scanned_Document')}_#{Time.current.strftime('%Y%m%d_%H%M%S')}.#{extension}"
+        temp_file = Tempfile.new([filename, ".#{extension}"])
+        temp_file.binmode
+        temp_file.write(Base64.decode64(image_data))
+        temp_file.rewind
+
+        # Calculate file hash
+        file_hash = Digest::SHA256.file(temp_file.path).hexdigest
+
+        # Create RAG document
+        document = rag_store.rag_documents.create!(
+          original_filename: filename,
           title: data[:title] || "Scanned Document",
-          content: data[:text],
-          source: "scan",
-          metadata: { scan_data: data, scanned_at: Time.current.iso8601 }
+          content_type: mime_type,
+          file_size_bytes: temp_file.size,
+          file_hash: file_hash,
+          processing_status: "completed",
+          is_latest_version: true,
+          version: 1,
+          docling_metadata: {
+            extracted_text: data[:text],
+            scan_data: data,
+            source: "mobile_scanner",
+            scanned_at: Time.current.iso8601
+          }
         )
 
-        render json: { success: true, id: document.id, message: "Document added to knowledge base!" }
-      rescue => e
-        # Fallback: save as a note if document_assets doesn't exist
-        note = current_user.entity.hub_threads.create!(
-          user: current_user,
-          thread_type: "personal_note",
-          title: data[:title] || "Scanned Document",
-          content: data[:text],
-          metadata: { source: "document_scan", document_data: data }
+        # Attach the image file
+        document.file.attach(
+          io: temp_file,
+          filename: filename,
+          content_type: mime_type
         )
-        render json: { success: true, id: note.id, message: "Document saved to notes!" }
+
+        # Clean up temp file
+        temp_file.close
+        temp_file.unlink
+
+        # Create a single chunk with the extracted text for RAG queries
+        if data[:text].present?
+          document.rag_chunks.create!(
+            content: data[:text],
+            chunk_index: 0,
+            metadata: {
+              source: "mobile_scan",
+              title: data[:title],
+              type: data[:type]
+            }
+          )
+        end
+
+        render json: {
+          success: true,
+          id: document.id,
+          message: "Document added to Knowledge Base!"
+        }
+      rescue => e
+        Rails.logger.error("Failed to save scanned document: #{e.message}")
+        Rails.logger.error(e.backtrace.first(5).join("\n"))
+        render json: { success: false, error: "Failed to save document: #{e.message}" }, status: :internal_server_error
       end
 
       def save_whiteboard(service, image_data, mime_type)
@@ -354,6 +406,25 @@ module Api
         lines << "*Raw text:*"
         lines << data[:text] if data[:text]
         lines.join("\n")
+      end
+
+      def mime_type_to_extension(mime_type)
+        case mime_type&.downcase
+        when 'image/jpeg', 'image/jpg'
+          'jpg'
+        when 'image/png'
+          'png'
+        when 'image/heic', 'image/heif'
+          'heic'
+        when 'image/webp'
+          'webp'
+        else
+          'jpg'
+        end
+      end
+
+      def sanitize_filename(name)
+        name.to_s.gsub(/[^a-zA-Z0-9_\-]/, '_').slice(0, 50)
       end
 
       def extract_image_from_request
