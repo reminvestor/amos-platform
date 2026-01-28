@@ -235,6 +235,14 @@
         <i data-lucide="hammer"></i>
         Build
       </button>
+      <button type="button" class="designer-btn-test" id="test-workflow-btn" title="Test run this workflow" disabled>
+        <i data-lucide="play-circle"></i>
+        Test
+      </button>
+      <button type="button" class="designer-btn-activate" id="activate-workflow-btn" title="Activate this workflow for production use" disabled>
+        <i data-lucide="rocket"></i>
+        Activate
+      </button>
     </div>
   </div>
   
@@ -711,6 +719,72 @@
   
   .designer-btn-build.built {
     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  }
+  
+  .designer-btn-test {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .designer-btn-test:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  }
+  
+  .designer-btn-test:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .designer-btn-test i {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .designer-btn-test.running {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  }
+  
+  .designer-btn-activate {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .designer-btn-activate:hover:not(:disabled) {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  }
+  
+  .designer-btn-activate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .designer-btn-activate i {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .designer-btn-activate.active {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   }
   
   .designer-btn-primary i,
@@ -3473,6 +3547,9 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
         buildBtn.classList.add('built');
         buildBtn.innerHTML = '<i data-lucide="check"></i> Built';
         
+        // Enable test button after successful build
+        enableTestButton();
+        
         // Show warnings if any
         if (result.warnings && result.warnings.length > 0) {
           statusBanner.className = 'build-status-banner warning';
@@ -3510,6 +3587,148 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
   container.querySelector('#close-build-status')?.addEventListener('click', () => {
     container.querySelector('#build-status-banner').style.display = 'none';
   });
+  
+  // ========== Test Workflow ==========
+  const testBtn = container.querySelector('#test-workflow-btn');
+  testBtn?.addEventListener('click', testWorkflow);
+  
+  async function testWorkflow() {
+    if (!currentWorkflowId) {
+      alert('Please save and build the workflow first');
+      return;
+    }
+    
+    const statusBanner = container.querySelector('#build-status-banner');
+    const statusText = statusBanner.querySelector('.build-status-text');
+    const statusDetails = statusBanner.querySelector('.build-status-details');
+    const statusIcon = statusBanner.querySelector('.build-status-icon');
+    
+    testBtn.disabled = true;
+    testBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Testing...';
+    testBtn.classList.add('running');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    try {
+      const response = await fetch('/scout/test_workflow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({ 
+          workflow_id: currentWorkflowId,
+          context: { test: true, timestamp: new Date().toISOString() }
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        statusBanner.className = 'build-status-banner';
+        statusBanner.style.display = 'flex';
+        statusIcon.innerHTML = '<i data-lucide="check-circle"></i>';
+        statusText.textContent = 'Test passed!';
+        statusDetails.textContent = `Duration: ${result.duration_ms || 0}ms`;
+        
+        testBtn.innerHTML = '<i data-lucide="check"></i> Passed';
+        
+        // Enable activate button after successful test
+        const activateBtn = container.querySelector('#activate-workflow-btn');
+        if (activateBtn) activateBtn.disabled = false;
+      } else {
+        statusBanner.className = 'build-status-banner error';
+        statusBanner.style.display = 'flex';
+        statusIcon.innerHTML = '<i data-lucide="x-circle"></i>';
+        statusText.textContent = 'Test failed';
+        statusDetails.textContent = result.error || 'Unknown error';
+        
+        testBtn.innerHTML = '<i data-lucide="x"></i> Failed';
+      }
+    } catch (error) {
+      console.error('Test error:', error);
+      statusBanner.className = 'build-status-banner error';
+      statusBanner.style.display = 'flex';
+      statusIcon.innerHTML = '<i data-lucide="alert-circle"></i>';
+      statusText.textContent = 'Test error';
+      statusDetails.textContent = error.message;
+      
+      testBtn.innerHTML = '<i data-lucide="play-circle"></i> Test';
+    } finally {
+      testBtn.disabled = false;
+      testBtn.classList.remove('running');
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  }
+  
+  // ========== Activate Workflow ==========
+  const activateBtn = container.querySelector('#activate-workflow-btn');
+  activateBtn?.addEventListener('click', activateWorkflow);
+  
+  async function activateWorkflow() {
+    if (!currentWorkflowId) {
+      alert('Please save and build the workflow first');
+      return;
+    }
+    
+    const statusBanner = container.querySelector('#build-status-banner');
+    const statusText = statusBanner.querySelector('.build-status-text');
+    const statusDetails = statusBanner.querySelector('.build-status-details');
+    const statusIcon = statusBanner.querySelector('.build-status-icon');
+    
+    activateBtn.disabled = true;
+    activateBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Activating...';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    try {
+      const response = await fetch('/scout/activate_workflow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({ workflow_id: currentWorkflowId })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        statusBanner.className = 'build-status-banner';
+        statusBanner.style.display = 'flex';
+        statusIcon.innerHTML = '<i data-lucide="rocket"></i>';
+        statusText.textContent = 'Workflow activated!';
+        statusDetails.textContent = 'Now running in production';
+        
+        activateBtn.innerHTML = '<i data-lucide="check"></i> Active';
+        activateBtn.classList.add('active');
+      } else {
+        statusBanner.className = 'build-status-banner error';
+        statusBanner.style.display = 'flex';
+        statusIcon.innerHTML = '<i data-lucide="x-circle"></i>';
+        statusText.textContent = 'Activation failed';
+        statusDetails.textContent = result.error || 'Unknown error';
+        
+        activateBtn.innerHTML = '<i data-lucide="rocket"></i> Activate';
+      }
+    } catch (error) {
+      console.error('Activation error:', error);
+      statusBanner.className = 'build-status-banner error';
+      statusBanner.style.display = 'flex';
+      statusIcon.innerHTML = '<i data-lucide="alert-circle"></i>';
+      statusText.textContent = 'Activation error';
+      statusDetails.textContent = error.message;
+      
+      activateBtn.innerHTML = '<i data-lucide="rocket"></i> Activate';
+    } finally {
+      activateBtn.disabled = false;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  }
+  
+  // Enable test button after successful build
+  function enableTestButton() {
+    const testBtn = container.querySelector('#test-workflow-btn');
+    if (testBtn) testBtn.disabled = false;
+  }
   
   // ========== Init Lucide Icons ==========
   if (typeof lucide !== 'undefined') lucide.createIcons();

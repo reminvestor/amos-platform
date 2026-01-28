@@ -2951,6 +2951,11 @@ class ScoutController < ApplicationController
     executor = Workflows::ExecutorService.new(execution)
     result = executor.execute!
 
+    # Mark as tested on success
+    if result[:success]
+      automation.update!(is_tested: true)
+    end
+
     render json: {
       success: result[:success],
       execution_id: execution.id,
@@ -2960,6 +2965,39 @@ class ScoutController < ApplicationController
     }
   rescue => e
     Rails.logger.error "Failed to test workflow: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
+  # Activate a workflow for production use
+  def activate_workflow
+    workflow_id = params[:workflow_id]
+    
+    automation = AutomationCode.find_by(id: workflow_id, entity: current_entity)
+    return render json: { success: false, error: 'Workflow not found' }, status: :not_found unless automation
+    return render json: { success: false, error: 'Workflow not compiled' }, status: :unprocessable_entity unless automation.is_compiled?
+    
+    # Check if it's been tested
+    unless automation.is_tested?
+      return render json: { 
+        success: false, 
+        error: 'Please test the workflow before activating' 
+      }, status: :unprocessable_entity
+    end
+    
+    begin
+      automation.activate!
+      
+      render json: {
+        success: true,
+        automation_id: automation.id,
+        status: automation.status,
+        message: "Workflow '#{automation.name}' is now active!"
+      }
+    rescue AutomationCode::InvalidTransition => e
+      render json: { success: false, error: e.message }, status: :unprocessable_entity
+    end
+  rescue => e
+    Rails.logger.error "Failed to activate workflow: #{e.message}"
     render json: { success: false, error: e.message }, status: :internal_server_error
   end
 
