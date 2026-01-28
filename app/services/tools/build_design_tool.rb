@@ -84,6 +84,22 @@ module Tools
 
     private
 
+    # Set explicit session focus when building something
+    def set_session_focus(type, id, name = nil)
+      return unless @context&.dig(:session_id)
+      
+      begin
+        focus = Amos::SessionFocus.new(
+          session_id: @context[:session_id],
+          user: user,
+          entity: entity
+        )
+        focus.set_focus(type: type, id: id, name: name)
+      rescue => e
+        Rails.logger.warn "[BuildDesignTool] Could not set session focus: #{e.message}"
+      end
+    end
+
     # ============================================
     # BUILD LANDING PAGE
     # ============================================
@@ -155,6 +171,9 @@ module Tools
           status: 'completed',
           landing_page_id: result[:id]
         )
+
+        # Update session focus to the built landing page
+        set_session_focus(:landing_page, result[:id], design_plan.name)
 
         success_response(
           plan_id: design_plan.id,
