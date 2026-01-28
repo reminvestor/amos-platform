@@ -2898,6 +2898,71 @@ class ScoutController < ApplicationController
     }
   end
   
+  # Create a new design plan (for Design Studio auto-save)
+  def create_design_plan
+    design_type = params[:design_type] || 'landing_page'
+    name = params[:name] || "Untitled #{design_type.titleize}"
+    sections = params[:sections] || []
+    
+    plan = DesignPlan.create!(
+      entity: current_entity,
+      user: current_user,
+      name: name,
+      design_type: design_type,
+      status: 'draft',
+      plan_data: {
+        'name' => name,
+        'sections' => sections.map(&:to_h),
+        'color_scheme' => {},
+        'style' => 'modern'
+      },
+      data_sources: []
+    )
+    
+    Rails.logger.info "[DesignStudio] ✅ Created new design plan: #{plan.id} (#{design_type})"
+    
+    render json: {
+      success: true,
+      plan_id: plan.id,
+      message: "Design plan created"
+    }
+  rescue => e
+    Rails.logger.error "[DesignStudio] ❌ Failed to create design plan: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+  
+  # Save/update design plan (for Design Studio auto-save)
+  def save_design
+    plan_id = params[:plan_id]
+    sections = params[:sections] || []
+    
+    plan = DesignPlan.find_by(id: plan_id, entity: current_entity, user: current_user)
+    
+    unless plan
+      return render json: { success: false, error: 'Design plan not found' }, status: :not_found
+    end
+    
+    # Update the sections in plan_data
+    plan_data = plan.plan_data || {}
+    plan_data['sections'] = sections.map do |s|
+      s.respond_to?(:to_h) ? s.to_h : s
+    end
+    
+    plan.update!(plan_data: plan_data, updated_at: Time.current)
+    
+    Rails.logger.info "[DesignStudio] 💾 Saved design plan: #{plan.id} with #{sections.length} sections"
+    
+    render json: {
+      success: true,
+      plan_id: plan.id,
+      section_count: sections.length,
+      message: "Design saved"
+    }
+  rescue => e
+    Rails.logger.error "[DesignStudio] ❌ Failed to save design: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+  
   # Compile a workflow from visual design to executable
   def compile_workflow
     workflow_id = params[:workflow_id]

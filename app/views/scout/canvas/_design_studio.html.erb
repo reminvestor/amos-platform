@@ -2007,6 +2007,146 @@
     margin-top: 8px;
   }
   
+  /* Dashboard Components */
+  .dashboard-component {
+    display: flex;
+    flex-direction: column;
+    background: #1e1e38;
+    border: 1px solid #2d2d44;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+  }
+  
+  .dashboard-component:hover {
+    border-color: #6366f1;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  }
+  
+  .dashboard-component .component-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(99, 102, 241, 0.08);
+    border-bottom: 1px solid #2d2d44;
+    color: #a5a5c0;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  
+  .dashboard-component .component-body {
+    padding: 20px;
+    min-height: 60px;
+  }
+  
+  .dashboard-component .component-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    border: 2px dashed rgba(99, 102, 241, 0.2);
+    border-radius: 8px;
+    color: #6b6b8a;
+    font-size: 0.8rem;
+  }
+  
+  .dashboard-component .component-actions {
+    display: flex;
+    gap: 4px;
+    padding: 8px 14px;
+    background: rgba(0, 0, 0, 0.1);
+    border-top: 1px solid #2d2d44;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .dashboard-component:hover .component-actions {
+    opacity: 1;
+  }
+  
+  .dashboard-component .component-action-btn {
+    padding: 4px 8px;
+    background: transparent;
+    border: 1px solid #3d3d5c;
+    border-radius: 4px;
+    color: #8f8faa;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .dashboard-component .component-action-btn:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: #6366f1;
+    color: #818cf8;
+  }
+  
+  /* KPI Component */
+  .dashboard-component.component-kpi .component-body,
+  .dashboard-component.component-metric .component-body {
+    text-align: center;
+  }
+  
+  /* Chart Component */
+  .dashboard-component.component-chart .component-body,
+  .dashboard-component.component-line_chart .component-body,
+  .dashboard-component.component-bar_chart .component-body,
+  .dashboard-component.component-pie_chart .component-body {
+    min-height: 120px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.02), rgba(129, 140, 248, 0.02));
+  }
+  
+  /* Table Component */
+  .dashboard-component.component-table .component-body {
+    padding: 12px;
+  }
+  
+  /* Save Indicator */
+  .save-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    color: #6b6b8a;
+    border-radius: 6px;
+    transition: opacity 0.3s;
+  }
+  
+  .save-indicator.success {
+    color: #10b981;
+  }
+  
+  .save-indicator.error {
+    color: #ef4444;
+  }
+  
+  .save-indicator.fade-out {
+    opacity: 0;
+  }
+  
+  .save-indicator .spin {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  /* Light mode - Dashboard Components */
+  [data-theme="light"] .dashboard-component { background: #fff; border-color: #e5e7eb; }
+  [data-theme="light"] .dashboard-component:hover { border-color: #6366f1; }
+  [data-theme="light"] .dashboard-component .component-header { background: rgba(99, 102, 241, 0.05); border-color: #e5e7eb; color: #4b5563; }
+  [data-theme="light"] .dashboard-component .component-body { }
+  [data-theme="light"] .dashboard-component .component-placeholder { border-color: rgba(99, 102, 241, 0.15); color: #9ca3af; }
+  [data-theme="light"] .dashboard-component .component-actions { background: #f9fafb; border-color: #e5e7eb; }
+  [data-theme="light"] .dashboard-component .component-action-btn { border-color: #d1d5db; color: #6b7280; }
+  [data-theme="light"] .save-indicator { color: #9ca3af; }
+  [data-theme="light"] .save-indicator.success { color: #059669; }
+  [data-theme="light"] .save-indicator.error { color: #dc2626; }
+  
   /* Light mode - App Placeholders */
   [data-theme="light"] .app-placeholder-item { 
     border-color: rgba(99, 102, 241, 0.2); 
@@ -4936,14 +5076,22 @@ function buildSectionCard(section, idx, pageIndex) {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
   
-  // Generate component HTML
+  // Generate component HTML based on design type
   function getComponentHtml(data) {
     var type = data.type;
     var variant = data.variant;
+    var label = data.label || variant;
+    var designType = container.dataset.designType || container.dataset.createType || 'landing_page';
+    var isAppOrCanvas = (designType === 'app' || designType === 'canvas');
     
-    // Simple preview sections for plan mode
+    // For app/canvas, return dashboard-specific component HTML
+    if (isAppOrCanvas && (type === 'Dashboard' || type === 'Data Sources' || type === 'Data Models' || type === 'Forms' || type === 'App Layout')) {
+      return getDashboardComponentHtml(variant, label, data);
+    }
+    
+    // Default: landing page style preview section
     return '<div class="preview-section section-' + variant + '" draggable="true" data-section="' + variant + '">' +
-      '<div class="section-label">' + data.label + '</div>' +
+      '<div class="section-label">' + label + '</div>' +
       '<div class="section-content">' +
         '<span class="section-type-badge">' + type + '</span>' +
         '<p class="section-hint">Drag to reorder or configure this section</p>' +
@@ -4953,6 +5101,172 @@ function buildSectionCard(section, idx, pageIndex) {
         '<button class="section-action-btn" data-action="remove" title="Remove"><i data-lucide="trash-2" style="width: 12px;"></i></button>' +
       '</div>' +
     '</div>';
+  }
+  
+  // Generate dashboard-specific component HTML
+  function getDashboardComponentHtml(variant, label, data) {
+    var icons = {
+      'kpi': 'hash', 'metric': 'trending-up', 'chart': 'bar-chart-3', 'line_chart': 'line-chart',
+      'pie_chart': 'pie-chart', 'bar_chart': 'bar-chart-3', 'table': 'table', 'data_loop': 'repeat',
+      'conditional': 'git-branch', 'data_field': 'text-cursor', 'form': 'file-input',
+      'input': 'text-cursor-input', 'button': 'mouse-pointer-click', 'select': 'list',
+      'app_header': 'layout-dashboard', 'sidebar_nav': 'sidebar', 'container': 'square',
+      'row': 'columns', 'column': 'rows', 'grid': 'grid-3x3', 'tabs': 'folder-tree',
+      'accordion': 'chevrons-down', 'modal_trigger': 'maximize-2', 'app_card': 'credit-card'
+    };
+    var icon = icons[variant] || 'component';
+    
+    return '<div class="dashboard-component component-' + variant + '" draggable="true" data-component="' + variant + '">' +
+      '<div class="component-header">' +
+        '<i data-lucide="' + icon + '" style="width: 16px; height: 16px;"></i>' +
+        '<span class="component-label">' + label + '</span>' +
+      '</div>' +
+      '<div class="component-body">' +
+        '<div class="component-placeholder">' +
+          '<span class="component-config-hint">Click to configure</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="component-actions">' +
+        '<button class="component-action-btn" data-action="configure" title="Configure"><i data-lucide="settings" style="width: 12px;"></i></button>' +
+        '<button class="component-action-btn" data-action="remove" title="Remove"><i data-lucide="trash-2" style="width: 12px;"></i></button>' +
+      '</div>' +
+    '</div>';
+  }
+  
+  // Auto-save design after component changes
+  function autoSaveDesign() {
+    var planId = container.dataset.planId;
+    if (!planId) {
+      console.log('📝 No plan ID - creating new plan...');
+      createNewPlan();
+      return;
+    }
+    
+    // Collect current components
+    var components = collectCanvasComponents();
+    console.log('💾 Auto-saving design with', components.length, 'components');
+    
+    // Send to server via AJAX
+    fetch('/scout/save_design', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      },
+      body: JSON.stringify({
+        plan_id: planId,
+        sections: components
+      })
+    }).then(function(response) {
+      return response.json();
+    }).then(function(data) {
+      if (data.success) {
+        console.log('✅ Design auto-saved');
+        showSaveIndicator('saved');
+      } else {
+        console.error('❌ Save failed:', data.error);
+        showSaveIndicator('error');
+      }
+    }).catch(function(err) {
+      console.error('❌ Save error:', err);
+      showSaveIndicator('error');
+    });
+  }
+  
+  // Create a new plan when user starts designing
+  function createNewPlan() {
+    var designType = container.dataset.createType || container.dataset.designType || 'landing_page';
+    var components = collectCanvasComponents();
+    
+    fetch('/scout/create_design_plan', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      },
+      body: JSON.stringify({
+        design_type: designType,
+        name: 'New ' + (designType === 'landing_page' ? 'Landing Page' : designType.charAt(0).toUpperCase() + designType.slice(1)),
+        sections: components
+      })
+    }).then(function(response) {
+      return response.json();
+    }).then(function(data) {
+      if (data.success && data.plan_id) {
+        console.log('✅ New plan created:', data.plan_id);
+        container.dataset.planId = data.plan_id;
+        showSaveIndicator('saved');
+      } else {
+        console.error('❌ Plan creation failed:', data.error);
+      }
+    }).catch(function(err) {
+      console.error('❌ Plan creation error:', err);
+    });
+  }
+  
+  // Collect components from the canvas
+  function collectCanvasComponents() {
+    var components = [];
+    var canvasEl = container.querySelector('#studio-canvas');
+    if (!canvasEl) return components;
+    
+    // Collect dashboard components
+    canvasEl.querySelectorAll('.dashboard-component').forEach(function(comp) {
+      components.push({
+        type: comp.dataset.component || 'unknown',
+        label: comp.querySelector('.component-label')?.textContent || '',
+        config: {}
+      });
+    });
+    
+    // Collect preview sections
+    canvasEl.querySelectorAll('.preview-section').forEach(function(section) {
+      components.push({
+        type: section.dataset.section || 'unknown',
+        name: section.querySelector('.section-label')?.textContent || '',
+        config: {}
+      });
+    });
+    
+    return components;
+  }
+  
+  // Show save indicator
+  function showSaveIndicator(status) {
+    var indicator = container.querySelector('.save-indicator');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'save-indicator';
+      var toolbar = container.querySelector('.studio-toolbar');
+      if (toolbar) toolbar.appendChild(indicator);
+    }
+    
+    if (status === 'saved') {
+      indicator.innerHTML = '<i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Saved';
+      indicator.classList.remove('error');
+      indicator.classList.add('success');
+    } else if (status === 'error') {
+      indicator.innerHTML = '<i data-lucide="alert-circle" style="width: 14px; height: 14px;"></i> Save failed';
+      indicator.classList.remove('success');
+      indicator.classList.add('error');
+    } else {
+      indicator.innerHTML = '<i data-lucide="loader" style="width: 14px; height: 14px;" class="spin"></i> Saving...';
+      indicator.classList.remove('success', 'error');
+    }
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Hide after 2 seconds
+    setTimeout(function() {
+      indicator.classList.add('fade-out');
+    }, 2000);
+  }
+  
+  // Debounce auto-save
+  var autoSaveTimeout = null;
+  function scheduleAutoSave() {
+    if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+    autoSaveTimeout = setTimeout(autoSaveDesign, 1500);
   }
   
   // Creation cards - What do you want to create?
@@ -5680,6 +5994,9 @@ function buildSectionCard(section, idx, pageIndex) {
           }
           
           if (typeof lucide !== 'undefined') lucide.createIcons();
+          
+          // Auto-save after component drop
+          scheduleAutoSave();
         } catch (err) {
           console.error('Drop error:', err);
         }
