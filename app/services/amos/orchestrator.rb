@@ -1076,9 +1076,23 @@ module Amos
     end
     
     def broadcast_to_user(content, metadata = {})
+      # Process response to detect and extract HTML to canvas
+      # Only do this for complete (non-streaming) messages without existing canvas suggestion
+      processed = if !metadata[:streaming] && !metadata[:canvas_suggestion] && content.present?
+        Amos::ResponseHtmlProcessor.process(content, metadata)
+      else
+        { content: content, canvas_suggestion: nil }
+      end
+      
+      # Merge any extracted canvas suggestion into metadata
+      if processed[:canvas_suggestion]
+        metadata = metadata.merge(processed[:canvas_suggestion])
+        Rails.logger.info "[Amos] HTML auto-extracted to canvas: #{processed[:canvas_suggestion][:canvas_data][:title]}"
+      end
+      
       data = {
         type: 'amos_response',
-        content: content,
+        content: processed[:content],
         metadata: metadata,
         timestamp: Time.current.iso8601
       }
