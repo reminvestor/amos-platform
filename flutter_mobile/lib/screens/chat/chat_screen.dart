@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,11 +10,11 @@ import 'package:amos_mobile/models/agent_question.dart';
 import 'package:amos_mobile/providers/app_providers.dart';
 import 'package:amos_mobile/services/chat_service.dart';
 import 'package:amos_mobile/services/file_upload_service.dart';
-// Model selector removed - defaulting to auto
+import 'package:amos_mobile/services/dictation_service.dart';
 import 'package:amos_mobile/widgets/file_attachment_chip.dart';
-import 'package:amos_mobile/widgets/voice_input_button.dart';
 import 'package:amos_mobile/widgets/question_queue.dart';
 import 'package:amos_mobile/widgets/thinking_indicator.dart';
+import 'package:amos_mobile/widgets/canvas/canvas_overlay.dart';
 import 'package:amos_mobile/utils/logger.dart';
 import 'package:amos_mobile/genui/genui_renderer.dart';
 
@@ -26,7 +27,8 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> {
+class _ChatScreenState extends ConsumerState<ChatScreen>
+    with SingleTickerProviderStateMixin {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   final _focusNode = FocusNode();
@@ -43,10 +45,54 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   List<String> _toolSteps = [];
   bool _isThinking = false;
 
+  // Dictation support
+  DictationService? _dictationService;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  StreamSubscription<DictationState>? _dictationStateSubscription;
+  StreamSubscription<String>? _interimSubscription;
+  DictationState _dictationState = DictationState.idle;
+  String _interimText = '';
+
   @override
   void initState() {
     super.initState();
     _initSession();
+    _initDictation();
+  }
+
+  void _initDictation() {
+    _dictationService = DictationService(textController: _textController);
+
+    // Setup pulse animation for listening state
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // Listen to dictation state changes
+    _dictationStateSubscription =
+        _dictationService!.stateStream.listen((state) {
+      if (mounted) {
+        setState(() => _dictationState = state);
+        if (state == DictationState.listening) {
+          _pulseController.repeat(reverse: true);
+        } else {
+          _pulseController.stop();
+          _pulseController.reset();
+        }
+      }
+    });
+
+    // Listen to interim text changes
+    _interimSubscription = _dictationService!.interimTextStream.listen((text) {
+      if (mounted) {
+        setState(() => _interimText = text);
+      }
+    });
   }
 
   Future<void> _initSession() async {
@@ -73,6 +119,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _textController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
+    // Clean up dictation
+    _pulseController.dispose();
+    _dictationStateSubscription?.cancel();
+    _interimSubscription?.cancel();
+    _dictationService?.dispose();
     super.dispose();
   }
 
@@ -92,6 +143,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         duration: Duration(seconds: 2),
       ),
     );
+  }
+
+  Future<void> _toggleDictation() async {
+    try {
+      await _dictationService?.toggle();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Dictation error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _pickAndUploadFiles() async {
@@ -233,6 +299,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           case ChatStreamEventType.canvas:
             // Handle canvas events (landing page editor, etc.)
             AppLogger.info('Canvas event: ${event.canvasType}');
+            _showCanvas(event.canvasType ?? 'unknown', event.data);
             break;
 
           case ChatStreamEventType.question:
@@ -326,14 +393,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  /// Show a canvas overlay when receiving a canvas event from Amos
+  void _showCanvas(String canvasType, dynamic canvasData) {
+    // Update canvas state
+    ref.read(currentCanvasProvider.notifier).showCanvas(canvasType, canvasData);
+    ref.read(canvasVisibleProvider.notifier).show();
+
+    AppLogger.info('Showing canvas: $canvasType');
+  }
+
+  /// Close the current canvas overlay
+  void _closeCanvas() {
+    ref.read(canvasVisibleProvider.notifier).hide();
+    ref.read(currentCanvasProvider.notifier).closeCanvas();
+    ref.read(canvasHistoryProvider.notifier).clear();
+  }
+
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(chatMessagesProvider);
     final isLoading = ref.watch(chatLoadingProvider);
     final status = ref.watch(chatStatusProvider);
     final attachedFiles = ref.watch(attachedFilesProvider);
+    final isCanvasVisible = ref.watch(canvasVisibleProvider);
 
     final sessionId = ref.watch(chatSessionProvider) ?? '';
+
+    // Show canvas overlay when active
+    if (isCanvasVisible) {
+      return const CanvasOverlay();
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -557,6 +646,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Use viewPadding.bottom (not padding.bottom) to get safe area without keyboard inset
     // This prevents double-padding when keyboard opens since Scaffold handles keyboard avoidance
     final bottomSafeArea = MediaQuery.of(context).viewPadding.bottom;
+    final isListening = _dictationState == DictationState.listening;
+    final isInitializing = _dictationState == DictationState.initializing;
+
     return Container(
       padding: EdgeInsets.only(
         left: 12,
@@ -570,17 +662,43 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           top: BorderSide(color: context.borderColor),
         ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Attach and voice buttons stacked vertically
-          Column(
-            mainAxisSize: MainAxisSize.min,
+          // Show interim text when dictating
+          if (isListening && _interimText.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4, left: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.mic,
+                    size: 12,
+                    color: Colors.red.withValues(alpha: 0.7),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      _interimText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: context.textSecondary.withValues(alpha: 0.7),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               // File attachment button
               SizedBox(
                 width: 36,
-                height: 32,
+                height: 40,
                 child: IconButton(
                   onPressed: _isUploading ? null : _pickAndUploadFiles,
                   padding: EdgeInsets.zero,
@@ -594,61 +712,98 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             color: context.primaryColor,
                           ),
                         )
-                      : Icon(LucideIcons.paperclip, size: 18, color: context.textSecondary),
+                      : Icon(LucideIcons.paperclip,
+                          size: 18, color: context.textSecondary),
                   tooltip: 'Attach files',
                 ),
               ),
-              // Voice input button
-              SizedBox(
-                width: 36,
-                height: 32,
-                child: VoiceInputButton(
-                  onTranscript: (transcript) {
-                    _sendMessage(voiceText: transcript);
+
+              const SizedBox(width: 4),
+
+              // Text input with mic button inside
+              Expanded(
+                child: Builder(
+                  builder: (context) {
+                    final isLoading = ref.watch(chatLoadingProvider);
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        border: isListening
+                            ? Border.all(
+                                color: Colors.red.withValues(alpha: 0.5),
+                                width: 2)
+                            : null,
+                      ),
+                      child: TextField(
+                        controller: _textController,
+                        focusNode: _focusNode,
+                        maxLines: null,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _sendMessage(),
+                        decoration: InputDecoration(
+                          hintText: isLoading
+                              ? 'Type to add context...'
+                              : 'Type or speak...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: context.backgroundColor,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          isDense: true,
+                          // Mic button inside text field
+                          suffixIcon: AnimatedBuilder(
+                            animation: _pulseAnimation,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: isListening ? _pulseAnimation.value : 1.0,
+                                child: IconButton(
+                                  onPressed:
+                                      isInitializing ? null : _toggleDictation,
+                                  padding: const EdgeInsets.all(8),
+                                  constraints: const BoxConstraints(),
+                                  icon: isInitializing
+                                      ? SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: context.primaryColor,
+                                          ),
+                                        )
+                                      : Icon(
+                                          isListening
+                                              ? LucideIcons.micOff
+                                              : LucideIcons.mic,
+                                          size: 18,
+                                          color: isListening
+                                              ? Colors.red
+                                              : context.textSecondary,
+                                        ),
+                                  tooltip: isListening
+                                      ? 'Stop dictation'
+                                      : 'Start dictation',
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
                   },
                 ),
               ),
+
+              const SizedBox(width: 8),
+
+              // Send/Stop button - compact
+              _buildSendOrStopButton(),
             ],
           ),
-
-          const SizedBox(width: 4),
-
-          // Text input - takes remaining space
-          Expanded(
-            child: Builder(
-              builder: (context) {
-                final isLoading = ref.watch(chatLoadingProvider);
-                return TextField(
-                  controller: _textController,
-                  focusNode: _focusNode,
-                  maxLines: null,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _sendMessage(),
-                  decoration: InputDecoration(
-                    hintText: isLoading
-                        ? 'Type to add context...'
-                        : 'Type a message...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: context.backgroundColor,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    isDense: true,
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Send/Stop button - compact
-          _buildSendOrStopButton(),
         ],
       ),
     );

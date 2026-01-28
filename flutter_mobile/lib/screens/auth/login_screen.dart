@@ -91,19 +91,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
           context.pushNamed('mfa-verification');
         } else if (state.isAuthenticated) {
           AppLogger.info('Login successful');
-          // Check if MFA setup is required
-          final mfaEnabled = state.user?.mfaEnabled ?? false;
-          if (!mfaEnabled) {
-            AppLogger.info('MFA not enabled, redirecting to setup');
-            context.go('/mfa-setup');
-          } else {
-            showSuccess(context, 'Welcome back!');
-            // Enable biometric for future logins
-            if (_biometricAvailable && !_biometricEnabled) {
-              _offerBiometricSetup();
-            }
-            context.go('/chat');
+          showSuccess(context, 'Welcome back!');
+          // MFA setup is NOT enforced here - only required when adding integrations
+          // (matching web behavior where require_two_factor! is only on oauth_controller)
+          // Enable biometric for future logins
+          if (_biometricAvailable && !_biometricEnabled) {
+            _offerBiometricSetup();
           }
+          context.go('/chat');
         }
       }
     } catch (e, stackTrace) {
@@ -141,15 +136,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
           context.pushNamed('mfa-verification');
         } else if (state.isAuthenticated) {
           AppLogger.info('Biometric login successful');
-          // Check if MFA setup is required
-          final mfaEnabled = state.user?.mfaEnabled ?? false;
-          if (!mfaEnabled) {
-            AppLogger.info('MFA not enabled, redirecting to setup');
-            context.go('/mfa-setup');
-          } else {
-            showSuccess(context, 'Welcome back!');
-            context.go('/chat');
-          }
+          // MFA setup is NOT enforced here - only required when adding integrations
+          showSuccess(context, 'Welcome back!');
+          context.go('/chat');
         }
       }
     } catch (e, stackTrace) {

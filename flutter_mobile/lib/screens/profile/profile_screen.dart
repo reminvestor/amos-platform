@@ -144,47 +144,6 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
 
-          // Danger Zone
-          _SectionHeader(title: 'Danger Zone'),
-          ListTile(
-            leading: Icon(LucideIcons.trash2, color: context.errorColor),
-            title: Text(
-              'Delete Account',
-              style: TextStyle(color: context.errorColor),
-            ),
-            subtitle: const Text('Permanently delete your account and data'),
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Delete Account?'),
-                  content: const Text(
-                    'This action cannot be undone. All your data will be permanently deleted.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Account deletion coming soon'),
-                          ),
-                        );
-                      },
-                      child: Text(
-                        'Delete',
-                        style: TextStyle(color: context.errorColor),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
           const SizedBox(height: 32),
         ],
       ),

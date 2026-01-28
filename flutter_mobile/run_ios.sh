@@ -21,13 +21,42 @@ fi
 echo "📦 Ensuring Docker services are running..."
 (cd "$PROJECT_ROOT" && docker compose up -d)
 
-# Always open iOS Simulator
-echo "📱 Opening iOS Simulator..."
-open -a Simulator
+# Check if a simulator is already booted
+SIMULATOR_ID=$(xcrun simctl list devices | grep -i "booted" | sed -n 's/.*(\([A-F0-9-]*\)).*/\1/p' | head -1)
 
-# Wait for simulator to boot
-echo "⏳ Waiting for Simulator to boot..."
-sleep 5
+if [ -z "$SIMULATOR_ID" ]; then
+    echo "📱 No simulator booted. Starting iPhone 16 Pro..."
+    # Find iPhone 16 Pro simulator ID
+    SIMULATOR_ID=$(xcrun simctl list devices | grep "iPhone 16 Pro" | grep -v "Max" | sed -n 's/.*(\([A-F0-9-]*\)).*/\1/p' | head -1)
+
+    if [ -z "$SIMULATOR_ID" ]; then
+        # Fallback to any available iPhone
+        SIMULATOR_ID=$(xcrun simctl list devices | grep "iPhone" | grep -v "unavailable" | sed -n 's/.*(\([A-F0-9-]*\)).*/\1/p' | head -1)
+    fi
+
+    if [ -z "$SIMULATOR_ID" ]; then
+        echo "❌ No iPhone simulator found. Please install one via Xcode."
+        exit 1
+    fi
+
+    # Boot the simulator
+    xcrun simctl boot "$SIMULATOR_ID" 2>/dev/null || true
+    open -a Simulator
+
+    # Wait for simulator to fully boot
+    echo "⏳ Waiting for Simulator to boot..."
+    for i in {1..30}; do
+        BOOT_STATUS=$(xcrun simctl list devices | grep "$SIMULATOR_ID" | grep -i "booted")
+        if [ -n "$BOOT_STATUS" ]; then
+            echo "✅ Simulator booted"
+            break
+        fi
+        sleep 1
+    done
+else
+    echo "📱 Using already booted simulator..."
+    open -a Simulator
+fi
 
 # Wait for Rails API to be ready
 echo "⏳ Waiting for Rails API..."
@@ -49,13 +78,13 @@ cd "$SCRIPT_DIR"
 echo "📥 Getting Flutter dependencies..."
 flutter pub get
 
-# Find the booted simulator ID
+# Re-check for booted simulator (in case it changed)
 SIMULATOR_ID=$(xcrun simctl list devices | grep -i "booted" | sed -n 's/.*(\([A-F0-9-]*\)).*/\1/p' | head -1)
 
 if [ -z "$SIMULATOR_ID" ]; then
-    echo "❌ No simulator is booted. Please open Simulator app first."
+    echo "❌ Simulator failed to boot. Try running: xcrun simctl boot 'iPhone 16 Pro'"
     exit 1
 fi
 
-echo "📱 Launching app on simulator $SIMULATOR_ID..."
+echo "📱 Launching app on simulator..."
 flutter run -d "$SIMULATOR_ID" --dart-define=API_BASE_URL="$API_URL"

@@ -56,6 +56,7 @@ class User < ApplicationRecord
   has_one :hub_presence, as: :participant, dependent: :destroy
   has_many :started_hub_threads, class_name: 'HubThread', as: :started_by, dependent: :nullify
   has_many :task_sessions, dependent: :destroy
+  has_many :device_tokens, dependent: :destroy
   has_many :user_feedbacks, dependent: :destroy
   has_many :user_favorites, dependent: :destroy
   has_many :favorite_agents, through: :user_favorites, source: :favoritable, source_type: 'AgentPlugin'

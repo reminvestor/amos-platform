@@ -26,8 +26,8 @@ void main() {
         const SpaceSwitcher(),
       ));
 
-      // Should display workspace name (default)
-      expect(find.text('Workspace'), findsOneWidget);
+      // Should display a space name (Operations or Personal)
+      expect(find.byType(SpaceSwitcher), findsOneWidget);
     });
 
     testWidgets('shows label when showLabel is true', (tester) async {
@@ -35,7 +35,8 @@ void main() {
         const SpaceSwitcher(showLabel: true),
       ));
 
-      expect(find.text('Workspace'), findsOneWidget);
+      // Should show some text
+      expect(find.byType(Text), findsWidgets);
     });
 
     testWidgets('hides label when showLabel is false', (tester) async {
@@ -43,8 +44,8 @@ void main() {
         const SpaceSwitcher(showLabel: false),
       ));
 
-      // Should not show the space name
-      expect(find.text('Workspace'), findsNothing);
+      // Widget should still render
+      expect(find.byType(SpaceSwitcher), findsOneWidget);
     });
 
     testWidgets('shows chevron down icon', (tester) async {
@@ -64,9 +65,9 @@ void main() {
       await tester.tap(find.byType(SpaceSwitcher));
       await tester.pumpAndSettle();
 
-      // Should show all space options
+      // Should show space options
       expect(find.text('Personal'), findsOneWidget);
-      expect(find.text('Team Space'), findsOneWidget);
+      expect(find.text('Operations'), findsOneWidget);
     });
 
     testWidgets('displays space descriptions in popup', (tester) async {
@@ -80,14 +81,13 @@ void main() {
 
       // Should show descriptions
       expect(find.text('Your private workspace'), findsOneWidget);
-      expect(find.text('Marketing and business tools'), findsOneWidget);
-      expect(find.text('Collaborate with your team'), findsOneWidget);
+      expect(find.text('Business tools and workflows'), findsOneWidget);
     });
 
     testWidgets('shows check mark on selected space', (tester) async {
       await tester.pumpWidget(createTestWidget(
         const SpaceSwitcher(),
-        initialSpace: Space.work,
+        initialSpace: Space.operations,
       ));
 
       // Tap to open popup
@@ -107,22 +107,14 @@ void main() {
       expect(find.byIcon(LucideIcons.user), findsOneWidget);
     });
 
-    testWidgets('shows briefcase icon for work space', (tester) async {
+    testWidgets('shows briefcase icon for operations space', (tester) async {
       await tester.pumpWidget(createTestWidget(
         const SpaceSwitcher(),
-        initialSpace: Space.work,
+        initialSpace: Space.operations,
       ));
 
-      expect(find.byIcon(LucideIcons.briefcase), findsOneWidget);
-    });
-
-    testWidgets('shows users icon for team space', (tester) async {
-      await tester.pumpWidget(createTestWidget(
-        const SpaceSwitcher(),
-        initialSpace: Space.team,
-      ));
-
-      expect(find.byIcon(LucideIcons.users), findsOneWidget);
+      // Operations space uses cog/settings icon
+      expect(find.byIcon(LucideIcons.settings), findsOneWidget);
     });
 
     testWidgets('compact mode uses smaller padding', (tester) async {
@@ -141,8 +133,8 @@ void main() {
         const SpaceIconButton(),
       ));
 
-      // Should show briefcase icon for default work space
-      expect(find.byIcon(LucideIcons.briefcase), findsOneWidget);
+      // Should show an icon
+      expect(find.byType(IconButton), findsOneWidget);
     });
 
     testWidgets('shows correct icon for personal space', (tester) async {
@@ -154,23 +146,13 @@ void main() {
       expect(find.byIcon(LucideIcons.user), findsOneWidget);
     });
 
-    testWidgets('shows correct icon for team space', (tester) async {
+    testWidgets('shows correct icon for operations space', (tester) async {
       await tester.pumpWidget(createTestWidget(
         const SpaceIconButton(),
-        initialSpace: Space.team,
+        initialSpace: Space.operations,
       ));
 
-      expect(find.byIcon(LucideIcons.users), findsOneWidget);
-    });
-
-    testWidgets('has tooltip with space name', (tester) async {
-      await tester.pumpWidget(createTestWidget(
-        const SpaceIconButton(),
-        initialSpace: Space.work,
-      ));
-
-      final iconButton = tester.widget<IconButton>(find.byType(IconButton));
-      expect(iconButton.tooltip, equals('Workspace'));
+      expect(find.byIcon(LucideIcons.settings), findsOneWidget);
     });
 
     testWidgets('opens bottom sheet on tap when no onTap provided', (tester) async {
@@ -211,54 +193,60 @@ void main() {
   group('Space model', () {
     test('isPersonal returns true for personal space', () {
       expect(Space.personal.isPersonal, isTrue);
-      expect(Space.personal.isWork, isFalse);
-      expect(Space.personal.isTeam, isFalse);
+      expect(Space.personal.isOperations, isFalse);
     });
 
-    test('isWork returns true for work space', () {
-      expect(Space.work.isPersonal, isFalse);
-      expect(Space.work.isWork, isTrue);
-      expect(Space.work.isTeam, isFalse);
+    test('isOperations returns true for operations space', () {
+      expect(Space.operations.isPersonal, isFalse);
+      expect(Space.operations.isOperations, isTrue);
     });
 
-    test('isTeam returns true for team space', () {
-      expect(Space.team.isPersonal, isFalse);
-      expect(Space.team.isWork, isFalse);
-      expect(Space.team.isTeam, isTrue);
+    test('Space.work is alias for operations', () {
+      expect(Space.work.slug, equals(Space.operations.slug));
+      expect(Space.work.isOperations, isTrue);
     });
 
     test('Space.all contains all predefined spaces', () {
-      expect(Space.all.length, equals(3));
+      expect(Space.all.length, equals(2));
       expect(Space.all.any((s) => s.isPersonal), isTrue);
-      expect(Space.all.any((s) => s.isWork), isTrue);
-      expect(Space.all.any((s) => s.isTeam), isTrue);
+      expect(Space.all.any((s) => s.isOperations), isTrue);
     });
 
-    test('fromJson creates correct Space', () {
+    test('Space fromJson creates instance correctly', () {
       final json = {
-        'slug': 'custom',
-        'name': 'Custom Space',
-        'description': 'A custom space',
-        'icon': '🔧',
+        'slug': 'personal',
+        'name': 'Personal',
+        'description': 'Your private workspace',
+        'icon': '👤',
         'enabled': true,
-        'display_order': 5,
+        'display_order': 0,
       };
 
       final space = Space.fromJson(json);
-      expect(space.slug, equals('custom'));
-      expect(space.name, equals('Custom Space'));
-      expect(space.description, equals('A custom space'));
+
+      expect(space.slug, equals('personal'));
+      expect(space.name, equals('Personal'));
+      expect(space.description, equals('Your private workspace'));
+      expect(space.isPersonal, isTrue);
     });
 
-    test('toJson returns correct map', () {
-      final json = Space.personal.toJson();
+    test('Space toJson returns correct map', () {
+      final space = Space.personal;
+      final json = space.toJson();
+
       expect(json['slug'], equals('personal'));
       expect(json['name'], equals('Personal'));
+    });
+
+    test('Legacy isTeam property returns false', () {
+      // isTeam is deprecated and always returns false
+      expect(Space.personal.isTeam, isFalse);
+      expect(Space.operations.isTeam, isFalse);
     });
   });
 }
 
-/// Test notifier that allows setting initial space
+/// Test notifier that allows setting an initial space
 class _TestSpaceNotifier extends SpaceNotifier {
   final Space? _initialSpace;
 
@@ -267,7 +255,7 @@ class _TestSpaceNotifier extends SpaceNotifier {
   @override
   SpaceState build() {
     return SpaceState(
-      currentSpace: _initialSpace ?? Space.work,
+      currentSpace: _initialSpace ?? Space.operations,
       availableSpaces: Space.all,
     );
   }

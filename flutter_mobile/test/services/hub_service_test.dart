@@ -1032,5 +1032,82 @@ void main() {
         throwsA(isA<DioException>()),
       );
     });
+
+    test('POST /hub/thread/:id/archive archives thread', () async {
+      dioAdapter.onPost(
+        '/hub/thread/123/archive',
+        (server) => server.reply(200, {
+          'success': true,
+          'status': 'archived',
+          'message': 'Conversation archived',
+        }),
+      );
+
+      final response = await dio.post('/hub/thread/123/archive');
+
+      expect(response.statusCode, equals(200));
+      expect(response.data['success'], isTrue);
+      expect(response.data['status'], equals('archived'));
+    });
+
+    test('POST /hub/thread/:id/unarchive restores thread', () async {
+      dioAdapter.onPost(
+        '/hub/thread/123/unarchive',
+        (server) => server.reply(200, {
+          'success': true,
+          'status': 'active',
+          'message': 'Conversation restored',
+        }),
+      );
+
+      final response = await dio.post('/hub/thread/123/unarchive');
+
+      expect(response.statusCode, equals(200));
+      expect(response.data['success'], isTrue);
+      expect(response.data['status'], equals('active'));
+    });
+
+    test('archive thread handles 403 for non-participant', () async {
+      dioAdapter.onPost(
+        '/hub/thread/999/archive',
+        (server) => server.reply(403, {
+          'success': false,
+          'error': 'Not a participant',
+        }),
+      );
+
+      expect(
+        () => dio.post('/hub/thread/999/archive'),
+        throwsA(isA<DioException>()),
+      );
+    });
+
+    test('archive thread handles 401 unauthorized', () async {
+      dioAdapter.onPost(
+        '/hub/thread/123/archive',
+        (server) => server.reply(401, {'error': 'Unauthorized'}),
+      );
+
+      expect(
+        () => dio.post('/hub/thread/123/archive'),
+        throwsA(isA<DioException>()),
+      );
+    });
+  });
+
+  group('Archive Thread Request Building', () {
+    test('archive thread endpoint format', () {
+      const threadId = 123;
+      final endpoint = '/hub/thread/$threadId/archive';
+
+      expect(endpoint, equals('/hub/thread/123/archive'));
+    });
+
+    test('unarchive thread endpoint format', () {
+      const threadId = 456;
+      final endpoint = '/hub/thread/$threadId/unarchive';
+
+      expect(endpoint, equals('/hub/thread/456/unarchive'));
+    });
   });
 }
