@@ -309,9 +309,16 @@
                     <strong><%= sections_count %></strong> sections
                   </div>
                 </div>
-                <div class="creation-type-badge design-plan">
-                  <i data-lucide="<%= plan.design_type == 'website' ? 'globe' : 'file-text' %>" style="width: 12px; height: 12px;"></i>
-                  <%= plan.design_type == 'website' ? 'Website' : 'Landing Page' %> Plan
+                <% 
+                  type_icons = { 'website' => 'globe', 'app' => 'layers', 'canvas' => 'frame', 'landing_page' => 'file-text' }
+                  type_labels = { 'website' => 'Website', 'app' => 'App', 'canvas' => 'Canvas', 'landing_page' => 'Landing Page' }
+                  plan_type = plan.design_type.to_s
+                  type_icon = type_icons[plan_type] || 'file-text'
+                  type_label = type_labels[plan_type] || 'Landing Page'
+                %>
+                <div class="creation-type-badge design-plan <%= plan_type %>-plan">
+                  <i data-lucide="<%= type_icon %>" style="width: 12px; height: 12px;"></i>
+                  <%= type_label %> Plan
                 </div>
                 <div class="creation-status <%= is_built ? 'published' : 'draft' %>">
                   <%= is_built ? 'Built' : 'Draft' %>
