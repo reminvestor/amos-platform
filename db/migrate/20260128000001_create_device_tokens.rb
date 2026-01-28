@@ -2,6 +2,9 @@
 
 class CreateDeviceTokens < ActiveRecord::Migration[7.1]
   def change
+    # Make migration idempotent - skip if table already exists
+    return if table_exists?(:device_tokens)
+
     create_table :device_tokens do |t|
       t.references :user, null: false, foreign_key: true
       t.references :entity, null: false, foreign_key: true
@@ -30,10 +33,10 @@ class CreateDeviceTokens < ActiveRecord::Migration[7.1]
       t.timestamps
     end
 
-    add_index :device_tokens, :token, unique: true
-    add_index :device_tokens, :platform_arn, unique: true, where: "platform_arn IS NOT NULL"
-    add_index :device_tokens, [:user_id, :platform, :active]
-    add_index :device_tokens, :device_id
-    add_index :device_tokens, :active
+    add_index :device_tokens, :token, unique: true unless index_exists?(:device_tokens, :token)
+    add_index :device_tokens, :platform_arn, unique: true, where: "platform_arn IS NOT NULL" unless index_exists?(:device_tokens, :platform_arn)
+    add_index :device_tokens, [:user_id, :platform, :active] unless index_exists?(:device_tokens, [:user_id, :platform, :active])
+    add_index :device_tokens, :device_id unless index_exists?(:device_tokens, :device_id)
+    add_index :device_tokens, :active unless index_exists?(:device_tokens, :active)
   end
 end
