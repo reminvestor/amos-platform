@@ -793,7 +793,7 @@
       alert(`Preview for "${templateName}" coming soon!`);
     }
     
-    // Use button handler - Create new item from template
+    // Use button handler - Open Design Studio with plan based on template
     async function handleUseClick(e) {
       e.stopPropagation();
       const btn = e.currentTarget;
@@ -803,44 +803,48 @@
       const category = card.dataset.category;
       
       // Show loading state
-      btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Creating...';
+      btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Opening...';
       btn.disabled = true;
       
-      // For landing pages, create directly and open editor
-      if (category === 'landing_pages') {
-        try {
-          const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
-          const response = await fetch('/landing_pages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'X-CSRF-Token': csrf
-            },
-            body: JSON.stringify({
-              landing_page: {
-                title: templateName + ' - ' + new Date().toLocaleDateString(),
-                template_id: templateId
-              }
-            })
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.landing_page?.id) {
-              // Load the landing page editor with the new page
-              window.scoutLoadCanvas?.('landing_page_editor', { landing_page_id: data.landing_page.id });
-              return;
-            }
+      // Map category to design type
+      const designTypeMap = {
+        'landing_pages': 'landing_page',
+        'websites': 'website',
+        'apps': 'app',
+        'email_templates': 'email',
+        'campaigns': 'campaign'
+      };
+      
+      const designType = designTypeMap[category] || 'landing_page';
+      
+      // For landing pages, websites, and apps - use Design Studio Plan → Build workflow
+      if (['landing_pages', 'websites', 'apps'].includes(category)) {
+        // Load Design Studio canvas first
+        window.scoutLoadCanvas?.('design_studio', { 
+          create_type: designType,
+          template_name: templateName,
+          template_id: templateId
+        });
+        
+        // After a brief delay, send message to Amos to create the plan
+        setTimeout(() => {
+          const chatInput = document.querySelector('.chat-input') || document.getElementById('chat-input');
+          const chatForm = document.querySelector('.chat-form') || document.getElementById('message-form');
+          if (chatInput && chatForm) {
+            // Tell Amos to create a design plan based on the template
+            chatInput.value = `Create a design plan for a ${designType.replace('_', ' ')} based on the "${templateName}" template.`;
+            chatForm.dispatchEvent(new Event('submit', { bubbles: true }));
           }
-          throw new Error('Failed to create landing page');
-        } catch (err) {
-          console.error('Error creating landing page:', err);
-          // Fall back to chat
-        }
+        }, 500);
+        
+        // Reset button state
+        btn.innerHTML = '<i data-lucide="rocket"></i> Use';
+        btn.disabled = false;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
       }
       
-      // For other categories, use chat to create
+      // For email templates and campaigns, use chat to create directly
       const chatInput = document.querySelector('.chat-input') || document.getElementById('chat-input');
       const chatForm = document.querySelector('.chat-form') || document.getElementById('message-form');
       if (chatInput && chatForm) {

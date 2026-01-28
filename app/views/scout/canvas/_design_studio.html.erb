@@ -12,6 +12,10 @@
 <% landing_page = data[:landing_page] %>
 <% landing_page_id = data[:landing_page_id] %>
 <% is_website = website_id.present? || pages.any? %>
+<%# Template-based creation params %>
+<% create_type = data[:create_type] %>
+<% template_name = data[:template_name] %>
+<% template_id = data[:template_id] %>
 
 <%# Get design defaults from BusinessProfile %>
 <% 
@@ -48,6 +52,9 @@
      data-is-app-or-canvas="<%= is_app_or_canvas %>"
      data-has-plan="<%= has_plan %>"
      data-is-built="<%= is_built %>"
+     data-create-type="<%= create_type %>"
+     data-template-name="<%= template_name %>"
+     data-template-id="<%= template_id %>"
      data-plan-pages="<%= plan_pages.to_json.gsub('"', '&quot;') %>"
      data-current-page-index="0">
   <div class="studio-layout">
