@@ -35,12 +35,29 @@ class ScannerService {
         }
       } else {
         return ScanResult.error(
-          response.data['error'] ?? 'Server error: ${response.statusCode}',
+          _extractErrorMessage(response.data, response.statusCode),
         );
       }
     } catch (e) {
       return ScanResult.error('Failed to scan: $e');
     }
+  }
+
+  /// Extract user-friendly error message from API response
+  String _extractErrorMessage(dynamic data, int? statusCode) {
+    if (data is Map) {
+      // Prefer 'message' over 'error' for user-friendly messages
+      final message = data['message'] as String?;
+      final error = data['error'] as String?;
+
+      if (message != null && message.isNotEmpty) {
+        return message;
+      }
+      if (error != null && error.isNotEmpty && error != 'no_entity') {
+        return error;
+      }
+    }
+    return 'Server error: ${statusCode ?? 'unknown'}';
   }
 
   /// Save the scan result based on mode
@@ -74,11 +91,13 @@ class ScannerService {
             message: data['message'] ?? 'Saved successfully!',
           );
         } else {
-          return ScanResult.error(data['error'] ?? 'Failed to save');
+          return ScanResult.error(
+            _extractErrorMessage(data, response.statusCode),
+          );
         }
       } else {
         return ScanResult.error(
-          response.data['error'] ?? 'Server error: ${response.statusCode}',
+          _extractErrorMessage(response.data, response.statusCode),
         );
       }
     } catch (e) {
