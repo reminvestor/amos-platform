@@ -176,7 +176,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
-        setState(() => _biometricEnabled = true);
+        setState(() => _legacyBiometricEnabled = true);
         if (mounted) {
           showSuccess(context, '$_biometricTypeName enabled!');
         }
