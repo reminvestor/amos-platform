@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:amos_mobile/providers/auth_provider.dart';
 import 'package:amos_mobile/services/biometric_service.dart';
+import 'package:amos_mobile/services/mfa_service.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -16,9 +17,11 @@ class MFAVerificationScreen extends ConsumerStatefulWidget {
 class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
   final TextEditingController _otpController = TextEditingController();
   final BiometricService _biometricService = BiometricService();
+  final MfaService _mfaService = MfaService();
   bool _isLoading = false;
   bool _biometricAvailable = false;
-  bool _biometricEnabled = false;
+  bool _hasTrustedDevice = false;
+  bool _legacyBiometricEnabled = false;
   String _biometricTypeName = 'Biometric';
 
   @override
@@ -29,13 +32,15 @@ class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
 
   Future<void> _checkBiometric() async {
     final available = await _biometricService.isBiometricAvailable();
-    final enabled = await _biometricService.isBiometricLoginEnabled();
+    final hasTrusted = await _biometricService.hasTrustedDeviceToken();
+    final legacyEnabled = await _biometricService.isBiometricLoginEnabled();
     final typeName = await _biometricService.getBiometricTypeName();
 
     if (mounted) {
       setState(() {
         _biometricAvailable = available;
-        _biometricEnabled = enabled;
+        _hasTrustedDevice = hasTrusted;
+        _legacyBiometricEnabled = legacyEnabled;
         _biometricTypeName = typeName;
       });
     }
@@ -45,6 +50,31 @@ class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Try to use trusted device token first
+      final deviceCreds = await _biometricService.authenticateAndGetDeviceToken();
+      if (deviceCreds != null) {
+        // Clear MFA state and login with device token
+        ref.read(authStateProvider.notifier).clearMFA();
+
+        // Login with trusted device token (bypasses MFA)
+        final success = await ref.read(authStateProvider.notifier).loginWithDeviceToken(
+          deviceCreds.email,
+          deviceCreds.deviceToken,
+        );
+
+        if (!success && mounted) {
+          // Device token was invalid/expired - clear it
+          await _biometricService.clearTrustedDeviceToken();
+          _showError('Device trust expired. Please enter the verification code.');
+          setState(() {
+            _hasTrustedDevice = false;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      // Fallback to legacy credential-based biometric (if configured)
       final credentials = await _biometricService.authenticateAndGetCredentials();
       if (credentials == null) {
         _showError('$_biometricTypeName authentication failed');
@@ -55,7 +85,7 @@ class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
       // Clear MFA state and start fresh login with stored credentials
       ref.read(authStateProvider.notifier).clearMFA();
 
-      // Re-login with stored credentials - device is trusted
+      // Re-login with stored credentials
       await ref.read(authStateProvider.notifier).login(
         credentials.email,
         credentials.password,
@@ -93,11 +123,143 @@ class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
 
     try {
       await ref.read(authStateProvider.notifier).verifyMFA(_otpController.text);
+
+      // Check if verification was successful
+      if (mounted) {
+        final state = ref.read(authStateProvider);
+        if (state.isAuthenticated && _biometricAvailable && !_hasTrustedDevice) {
+          // Offer to trust this device for future logins
+          await _offerDeviceTrust();
+        }
+      }
     } catch (e) {
       _showError('Verification failed. Please try again.');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _offerDeviceTrust() async {
+    final shouldTrust = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(LucideIcons.shieldCheck, color: Theme.of(context).primaryColor),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Trust This Device?')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Would you like to use $_biometricTypeName to sign in next time instead of entering a code?',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(LucideIcons.info, size: 18, color: Colors.blue[700]),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'You can manage trusted devices in Settings.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.blue[700],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Not Now'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(LucideIcons.scan, size: 18),
+            label: Text('Enable $_biometricTypeName'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldTrust == true && mounted) {
+      await _trustDevice();
+    }
+  }
+
+  Future<void> _trustDevice() async {
+    try {
+      // Authenticate with biometric first
+      final authenticated = await _biometricService.authenticate(
+        reason: 'Confirm $_biometricTypeName to enable quick sign-in',
+      );
+
+      if (!authenticated) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$_biometricTypeName authentication cancelled'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Get device info
+      final deviceInfo = await _biometricService.getDeviceIdentity();
+
+      // Request trust token from server
+      final response = await _mfaService.trustDevice(
+        deviceName: deviceInfo.name,
+        deviceIdentifier: deviceInfo.identifier,
+        platform: deviceInfo.platform,
+      );
+
+      if (response.success) {
+        // Store the device token locally
+        final authState = ref.read(authStateProvider);
+        final email = authState.user?.email ?? '';
+
+        await _biometricService.storeTrustedDeviceToken(
+          token: response.deviceToken,
+          email: email,
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$_biometricTypeName enabled for quick sign-in'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          _showError('Failed to enable $_biometricTypeName');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError('Failed to enable $_biometricTypeName');
       }
     }
   }
@@ -265,8 +427,8 @@ class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
                 ),
               ),
 
-              // Biometric alternative
-              if (_biometricAvailable && _biometricEnabled) ...[
+              // Biometric alternative (show if device is trusted or legacy biometric is enabled)
+              if (_biometricAvailable && (_hasTrustedDevice || _legacyBiometricEnabled)) ...[
                 const SizedBox(height: 16),
                 Row(
                   children: [

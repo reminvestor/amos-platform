@@ -123,4 +123,32 @@ class AuthService {
   Future<void> forgotPassword(String email) async {
     await _api.post('/api/auth/forgot-password', data: {'email': email});
   }
+
+  /// Login with a trusted device token (bypasses MFA)
+  /// This is used when the user has previously trusted this device and
+  /// is using Face ID/biometrics to sign in.
+  Future<LoginResult> loginWithDeviceToken({
+    required String email,
+    required String deviceToken,
+  }) async {
+    final response = await _api.post('/api/auth/login-device', data: {
+      'email': email,
+      'device_token': deviceToken,
+    });
+
+    // Login successful with device token
+    final user = User.fromJson(response['user']);
+    final token = (response['api_key'] ?? response['token']) as String;
+
+    // Set token directly on ApiClient
+    ApiClient.instance.setAuthToken(token);
+
+    // Also store in secure storage for persistence
+    await _storage.write(_tokenKey, token);
+    await _storage.write(_userKey, user.id);
+
+    return LoginResult(
+      authResult: AuthResult(user: user, token: token),
+    );
+  }
 }

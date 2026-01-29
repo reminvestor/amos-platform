@@ -30,6 +30,7 @@ Rails.application.routes.draw do
   namespace :api do
     # Mobile App Authentication
     post 'auth/login', to: 'auth#login'
+    post 'auth/login-device', to: 'auth#login_with_device_token'
     post 'auth/verify-mfa', to: 'auth#verify_mfa'
     post 'auth/register', to: 'auth#register'
     post 'auth/logout', to: 'auth#logout'
@@ -82,6 +83,11 @@ Rails.application.routes.draw do
       post :confirm, to: 'mfa#confirm'
       delete :disable, to: 'mfa#disable'
       post :regenerate_backup_codes, to: 'mfa#regenerate_backup_codes'
+      # Trusted Device endpoints (for Face ID/biometric MFA bypass)
+      post :trust_device, to: 'mfa#trust_device'
+      get :trusted_devices, to: 'mfa#trusted_devices'
+      delete 'trusted_devices/:id', to: 'mfa#revoke_trusted_device'
+      delete :trusted_devices, to: 'mfa#revoke_all_trusted_devices'
     end
 
     # Business Profile API
