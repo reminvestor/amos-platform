@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_29_030002) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_29_040000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -5309,7 +5309,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_030002) do
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "disbursement_currency", default: "amos"
+    t.jsonb "swap_quote"
+    t.string "swap_transaction_signature"
+    t.decimal "final_amount", precision: 18, scale: 9
+    t.decimal "swap_rate", precision: 18, scale: 9
     t.index ["created_at"], name: "index_token_claims_on_created_at"
+    t.index ["disbursement_currency"], name: "index_token_claims_on_disbursement_currency"
     t.index ["entity_id"], name: "index_token_claims_on_entity_id"
     t.index ["status"], name: "index_token_claims_on_status"
     t.index ["transaction_signature"], name: "index_token_claims_on_transaction_signature", unique: true
@@ -5762,6 +5768,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_030002) do
     t.datetime "wallet_verified_at"
     t.string "wallet_verification_message"
     t.string "wallet_verification_signature"
+    t.string "preferred_disbursement_currency", default: "amos"
+    t.boolean "auto_convert_to_stable", default: false
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"

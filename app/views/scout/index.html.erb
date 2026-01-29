@@ -2276,6 +2276,75 @@ document.addEventListener('turbo:load', function() {
     // No-op: typing is now shown in unified chat messages
   }
 
+  // Track the current thinking/working indicator element
+  let thinkingIndicatorElement = null;
+  
+  // Show immediate "thinking" indicator with animated dots
+  function showThinkingIndicator(message = 'Thinking') {
+    // Remove any existing indicator first
+    hideThinkingIndicator();
+    
+    const indicator = document.createElement('div');
+    indicator.className = 'message assistant thinking-indicator-message';
+    indicator.innerHTML = `
+      <div class="message-avatar">
+        <div class="avatar-circle assistant-avatar">
+          <i data-lucide="bot" class="avatar-icon"></i>
+        </div>
+      </div>
+      <div class="message-bubble">
+        <div class="message-content thinking-content">
+          <span class="thinking-text">${message}</span>
+          <span class="thinking-dots">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </span>
+        </div>
+      </div>
+    `;
+    
+    chatMessages.appendChild(indicator);
+    thinkingIndicatorElement = indicator;
+    
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+  
+  // Show "working" indicator during tool execution
+  function showWorkingIndicator(message = 'Working', toolName = null) {
+    // Update existing indicator if present, or create new one
+    if (thinkingIndicatorElement) {
+      const textEl = thinkingIndicatorElement.querySelector('.thinking-text');
+      if (textEl) {
+        textEl.textContent = message;
+      }
+    } else {
+      showThinkingIndicator(message);
+    }
+  }
+  
+  // Hide the thinking/working indicator
+  function hideThinkingIndicator() {
+    if (thinkingIndicatorElement) {
+      thinkingIndicatorElement.remove();
+      thinkingIndicatorElement = null;
+    }
+    // Also remove any orphaned indicators
+    document.querySelectorAll('.thinking-indicator-message').forEach(el => el.remove());
+  }
+  
+  // Show transient message (for backward compatibility)
+  function showTransientMessage(message) {
+    // Update the thinking indicator with the transient message
+    showWorkingIndicator(message);
+  }
+
   // Add source citations to the last assistant message
   function addSourceCitations(sources) {
     console.log('📚 addSourceCitations called with:', sources);
@@ -2906,6 +2975,9 @@ document.addEventListener('turbo:load', function() {
                   }
                 }
               } else if (data.type === 'content') {
+                // Hide thinking indicator when actual content starts
+                hideThinkingIndicator();
+                
                 // Route content chunks to unified chat message
                 console.log('📝 Content chunk received:', data.content?.substring(0, 50) + '...');
                 if (streamingMessage && data.content) {
@@ -2981,6 +3053,14 @@ document.addEventListener('turbo:load', function() {
                 // Handle transient progress messages (tool usage, phase progress, etc.)
                 console.log('🔄 Transient update:', data.message);
                 showTransientMessage(data.message);
+              } else if (data.type === 'thinking') {
+                // Show immediate "thinking" indicator with animated dots
+                console.log('🤔 Thinking indicator received');
+                showThinkingIndicator(data.message || 'Thinking');
+              } else if (data.type === 'working') {
+                // Show "working" indicator during tool execution
+                console.log('⚙️ Working indicator:', data.message);
+                showWorkingIndicator(data.message || 'Working', data.tool_name);
               } else if (data.type === 'load_canvas') {
                 // Immediately load a canvas (e.g., task progress)
                 console.log('🎨 Received canvas load request:', data.canvas, 'at', new Date().toISOString());
@@ -3013,16 +3093,20 @@ document.addEventListener('turbo:load', function() {
                   }, loadDelay); // Use dynamic delay based on canvas type
                 }
               } else if (data.type === 'tool_detected') {
-                // Tool detected during streaming
+                // Tool detected during streaming - show working indicator
                 console.log('🔧 Tool detected:', data.name);
-                // Tool messages are now saved to database and shown via add_tool_message event
+                const friendlyName = getToolDisplayName(data.name) || 'Working';
+                showWorkingIndicator(friendlyName, data.name);
                 
                 // Track in tool panel if not already tracked
                 if (!currentToolCallId || data.tool_id !== currentToolCallId) {
                   currentToolCallId = data.tool_id || addToolCall(data.name, 'Detected, preparing to execute...');
                 }
               } else if (data.type === 'tool_start') {
-                // Tool execution starting
+                // Tool execution starting - show working indicator with friendly name
+                const friendlyName = getToolDisplayName(data.name) || 'Working';
+                showWorkingIndicator(friendlyName, data.name);
+                
                 if (data.name && data.arguments) {
                   const toolId = addToolCall(data.name, 'Executing with arguments...');
                   updateToolCall(toolId, 'running', `Running ${getToolDisplayName(data.name)}...`, JSON.stringify(data.arguments, null, 2));
@@ -3033,6 +3117,7 @@ document.addEventListener('turbo:load', function() {
               } else if (data.type === 'response') {
                 hideStreamingStatus();
                 hideTypingIndicator();
+                hideThinkingIndicator();
                 
                 if (data.data.error) {
                   addMessage('Sorry, I encountered an error. Please try again.', 'assistant');

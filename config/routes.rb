@@ -254,6 +254,33 @@ Rails.application.routes.draw do
       # Crawler Job Logging
       post "crawler_jobs/:id/logs", to: "crawler_job_logs#create"
 
+      # Token Economy API
+      scope :token_economy, controller: 'token_economy' do
+        get 'stats', action: :stats
+        get 'distribution', action: :distribution
+        get 'leaderboard', action: :leaderboard
+      end
+
+      # Solana Wallet Integration
+      scope :wallet, controller: 'token_wallet' do
+        post 'connect', action: :connect
+        delete 'disconnect', action: :disconnect
+        get 'balance', action: :balance
+        post 'claim', action: :claim
+        post 'deposit', action: :deposit
+        get 'transactions', action: :transactions
+        get 'claim/:id', action: :claim_status
+        post 'claim/:id/retry', action: :retry_claim
+      end
+
+      # Token Swap (Jupiter DEX)
+      scope :swap, controller: 'token_swap' do
+        get 'quote', action: :quote
+        get 'price', action: :price
+        get 'supported_tokens', action: :supported_tokens
+        post 'prepare', action: :prepare
+      end
+
       # Custom Agents API
       resources :agents, only: [ :index, :show ] do
         member do

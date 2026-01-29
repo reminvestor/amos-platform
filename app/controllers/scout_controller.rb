@@ -6375,6 +6375,9 @@ class ScoutController < ApplicationController
   end
   
     def process_through_amos(message, file_urls, canvas, model_preference)
+      # Stream "thinking" indicator IMMEDIATELY so user sees feedback right away
+      stream_thinking_indicator
+      
       # Build metadata for Amos - ensure canvas is a regular hash
       canvas_hash = if canvas.is_a?(ActionController::Parameters)
                       canvas.permit!.to_h

@@ -1,5 +1,6 @@
 // Solana Wallet Integration for AMOS Platform
 // Supports: Phantom, Solflare, and other Solana wallets
+// Includes: Token claims, deposits, and Jupiter swaps
 
 class AmosWallet {
   constructor() {
@@ -14,11 +15,6 @@ class AmosWallet {
     return window.solana && window.solana.isPhantom;
   }
 
-  // Check if any Solana wallet is available
-  isSolanaAvailable() {
-    return !!window.solana;
-  }
-
   // Get the wallet provider
   getProvider() {
     if ('phantom' in window) {
@@ -27,11 +23,9 @@ class AmosWallet {
         return provider;
       }
     }
-    
     if (window.solana) {
       return window.solana;
     }
-
     return null;
   }
 
@@ -39,7 +33,6 @@ class AmosWallet {
   async connect() {
     try {
       const provider = this.getProvider();
-      
       if (!provider) {
         throw new Error('No Solana wallet found. Please install Phantom.');
       }
@@ -49,12 +42,7 @@ class AmosWallet {
       this.publicKey = response.publicKey.toString();
       this.connected = true;
 
-      // Set up disconnect listener
-      provider.on('disconnect', () => {
-        this.handleDisconnect();
-      });
-
-      // Set up account change listener
+      provider.on('disconnect', () => this.handleDisconnect());
       provider.on('accountChanged', (publicKey) => {
         if (publicKey) {
           this.publicKey = publicKey.toString();
@@ -66,14 +54,12 @@ class AmosWallet {
 
       this.emit('connected', this.publicKey);
       return this.publicKey;
-
     } catch (error) {
       console.error('Wallet connection failed:', error);
       throw error;
     }
   }
 
-  // Disconnect from wallet
   async disconnect() {
     if (this.provider) {
       await this.provider.disconnect();
@@ -94,198 +80,175 @@ class AmosWallet {
       throw new Error('Wallet not connected');
     }
 
-    try {
-      const encodedMessage = new TextEncoder().encode(message);
-      const signedMessage = await this.provider.signMessage(encodedMessage, 'utf8');
-      
-      // Convert signature to base58
-      const signature = this.toBase58(signedMessage.signature);
-      
-      return {
-        message: message,
-        signature: signature,
-        publicKey: this.publicKey
-      };
-    } catch (error) {
-      console.error('Message signing failed:', error);
-      throw error;
-    }
+    const encodedMessage = new TextEncoder().encode(message);
+    const signedMessage = await this.provider.signMessage(encodedMessage, 'utf8');
+    const signature = this.toBase58(signedMessage.signature);
+
+    return { message, signature, publicKey: this.publicKey };
   }
 
-  // Connect wallet to AMOS platform
+  // Sign and send a transaction
+  async signAndSendTransaction(serializedTransaction) {
+    if (!this.provider || !this.connected) {
+      throw new Error('Wallet not connected');
+    }
+
+    // Decode base64 transaction
+    const transaction = this.decodeTransaction(serializedTransaction);
+    
+    // Sign and send
+    const signature = await this.provider.signAndSendTransaction(transaction);
+    return signature;
+  }
+
+  // === PLATFORM API METHODS ===
+
   async connectToPlatform() {
     if (!this.connected) {
       await this.connect();
     }
 
-    // Get verification message from server
-    const response = await fetch('/api/v1/wallet/connect', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': this.getCsrfToken()
-      },
-      body: JSON.stringify({
-        wallet_address: this.publicKey
-      })
+    // Get verification message
+    const response = await this.apiPost('/api/v1/wallet/connect', {
+      wallet_address: this.publicKey
     });
 
-    const data = await response.json();
+    if (response.message && !response.success) {
+      // Sign the message
+      const signed = await this.signMessage(response.message);
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to get verification message');
-    }
-
-    // Sign the verification message
-    const signed = await this.signMessage(data.message);
-
-    // Submit signed message to server
-    const verifyResponse = await fetch('/api/v1/wallet/connect', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': this.getCsrfToken()
-      },
-      body: JSON.stringify({
+      // Submit signature
+      const verifyResponse = await this.apiPost('/api/v1/wallet/connect', {
         wallet_address: this.publicKey,
         message: signed.message,
         signature: signed.signature
-      })
-    });
+      });
 
-    const verifyData = await verifyResponse.json();
-
-    if (!verifyResponse.ok) {
-      throw new Error(verifyData.error || 'Wallet verification failed');
+      this.emit('platformConnected', verifyResponse);
+      return verifyResponse;
     }
 
-    this.emit('platformConnected', verifyData);
-    return verifyData;
+    return response;
   }
 
-  // Disconnect wallet from platform
   async disconnectFromPlatform() {
-    const response = await fetch('/api/v1/wallet/disconnect', {
+    const response = await this.apiDelete('/api/v1/wallet/disconnect');
+    await this.disconnect();
+    return response;
+  }
+
+  async getBalance() {
+    return this.apiGet('/api/v1/wallet/balance');
+  }
+
+  async claimTokens(amount, disbursementCurrency = 'amos') {
+    const response = await this.apiPost('/api/v1/wallet/claim', { 
+      amount,
+      disbursement_currency: disbursementCurrency
+    });
+    this.emit('claimSubmitted', response);
+    return response;
+  }
+
+  async submitDeposit(transactionSignature, amount, walletAddress) {
+    const response = await this.apiPost('/api/v1/wallet/deposit', {
+      transaction_signature: transactionSignature,
+      amount,
+      wallet_address: walletAddress
+    });
+    this.emit('depositSubmitted', response);
+    return response;
+  }
+
+  async getTransactions() {
+    return this.apiGet('/api/v1/wallet/transactions');
+  }
+
+  // === SWAP METHODS ===
+
+  async getSwapQuote(amount, outputCurrency = 'usdc') {
+    return this.apiGet(`/api/v1/swap/quote?amount=${amount}&output_currency=${outputCurrency}`);
+  }
+
+  async getAmosPrice() {
+    return this.apiGet('/api/v1/swap/price');
+  }
+
+  async getSupportedTokens() {
+    return this.apiGet('/api/v1/swap/supported_tokens');
+  }
+
+  async prepareSwap(amount, outputCurrency = 'usdc') {
+    return this.apiPost('/api/v1/swap/prepare', {
+      amount,
+      output_currency: outputCurrency
+    });
+  }
+
+  // Execute a swap (user signs the transaction)
+  async executeSwap(amount, outputCurrency = 'usdc') {
+    // Get the prepared swap transaction
+    const prepared = await this.prepareSwap(amount, outputCurrency);
+    
+    if (!prepared.swap_transaction) {
+      throw new Error('Failed to prepare swap');
+    }
+
+    // Sign and send with wallet
+    const signature = await this.signAndSendTransaction(prepared.swap_transaction);
+    
+    this.emit('swapExecuted', {
+      signature,
+      inputAmount: amount,
+      outputAmount: prepared.quote.output_amount,
+      outputCurrency
+    });
+
+    return {
+      signature,
+      ...prepared.quote
+    };
+  }
+
+  // === HELPER METHODS ===
+
+  async apiGet(url) {
+    const response = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return response.json();
+  }
+
+  async apiPost(url, data) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': this.getCsrfToken()
+      },
+      body: JSON.stringify(data)
+    });
+    return response.json();
+  }
+
+  async apiDelete(url) {
+    const response = await fetch(url, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRF-Token': this.getCsrfToken()
       }
     });
-
-    if (response.ok) {
-      await this.disconnect();
-    }
-
     return response.json();
   }
 
-  // Get wallet balance
-  async getBalance() {
-    const response = await fetch('/api/v1/wallet/balance', {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': this.getCsrfToken()
-      }
-    });
-
-    return response.json();
-  }
-
-  // Request token claim
-  async claimTokens(amount) {
-    const response = await fetch('/api/v1/wallet/claim', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': this.getCsrfToken()
-      },
-      body: JSON.stringify({ amount: amount })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Claim failed');
-    }
-
-    this.emit('claimSubmitted', data);
-    return data;
-  }
-
-  // Submit deposit transaction
-  async submitDeposit(transactionSignature, amount, walletAddress) {
-    const response = await fetch('/api/v1/wallet/deposit', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': this.getCsrfToken()
-      },
-      body: JSON.stringify({
-        transaction_signature: transactionSignature,
-        amount: amount,
-        wallet_address: walletAddress
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Deposit submission failed');
-    }
-
-    this.emit('depositSubmitted', data);
-    return data;
-  }
-
-  // Get transaction history
-  async getTransactions() {
-    const response = await fetch('/api/v1/wallet/transactions', {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': this.getCsrfToken()
-      }
-    });
-
-    return response.json();
-  }
-
-  // Get claim status
-  async getClaimStatus(claimId) {
-    const response = await fetch(`/api/v1/wallet/claim/${claimId}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': this.getCsrfToken()
-      }
-    });
-
-    return response.json();
-  }
-
-  // Retry failed claim
-  async retryClaim(claimId) {
-    const response = await fetch(`/api/v1/wallet/claim/${claimId}/retry`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': this.getCsrfToken()
-      }
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Retry failed');
-    }
-
-    return data;
+  getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
   }
 
   // Event handling
   on(event, callback) {
-    if (!this.listeners[event]) {
-      this.listeners[event] = [];
-    }
+    if (!this.listeners[event]) this.listeners[event] = [];
     this.listeners[event].push(callback);
   }
 
@@ -301,12 +264,7 @@ class AmosWallet {
     }
   }
 
-  // Utility functions
-  getCsrfToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-  }
-
-  // Base58 encoding (simplified)
+  // Base58 encoding
   toBase58(buffer) {
     const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
     let result = '';
@@ -318,22 +276,30 @@ class AmosWallet {
       num = num / 58n;
     }
     
-    // Add leading zeros
     for (const byte of new Uint8Array(buffer)) {
-      if (byte === 0) {
-        result = '1' + result;
-      } else {
-        break;
-      }
+      if (byte === 0) result = '1' + result;
+      else break;
     }
     
     return result;
   }
 
-  // Format address for display
+  // Decode base64 transaction for signing
+  decodeTransaction(base64Transaction) {
+    const bytes = Uint8Array.from(atob(base64Transaction), c => c.charCodeAt(0));
+    return bytes;
+  }
+
   formatAddress(address, chars = 4) {
     if (!address) return '';
     return `${address.slice(0, chars)}...${address.slice(-chars)}`;
+  }
+
+  formatAmount(amount, decimals = 4) {
+    return Number(amount).toLocaleString(undefined, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals
+    });
   }
 }
 
