@@ -75,6 +75,12 @@ class User < ApplicationRecord
   # Affiliate Association
   has_one :affiliate, dependent: :destroy
 
+  # Token Economy Associations
+  has_many :token_stakes, dependent: :destroy
+  has_many :token_stake_transactions, through: :token_stakes
+  has_many :token_claims, dependent: :destroy
+  has_many :token_deposits, dependent: :destroy
+
   # Billing Association
   has_one :user_billing_account, dependent: :destroy
 

@@ -239,6 +239,18 @@ Rails.application.routes.draw do
         post 'contributions', action: :create_contribution
       end
 
+      # Solana Wallet Integration
+      scope :wallet, controller: 'token_wallet' do
+        post 'connect', action: :connect
+        delete 'disconnect', action: :disconnect
+        get 'balance', action: :balance
+        post 'claim', action: :claim
+        post 'deposit', action: :deposit
+        get 'transactions', action: :transactions
+        get 'claim/:id', action: :claim_status
+        post 'claim/:id/retry', action: :retry_claim
+      end
+
       # Crawler Job Logging
       post "crawler_jobs/:id/logs", to: "crawler_job_logs#create"
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_29_020000) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_29_030002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -5289,6 +5289,62 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_020000) do
     t.index ["entity_id"], name: "index_tenant_quotas_on_entity_id"
   end
 
+  create_table "token_claims", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id"
+    t.decimal "amount", precision: 18, scale: 9, null: false
+    t.string "wallet_address", null: false
+    t.string "status", default: "pending", null: false
+    t.string "transaction_signature"
+    t.string "blockhash"
+    t.bigint "slot"
+    t.datetime "confirmed_at"
+    t.decimal "network_fee", precision: 18, scale: 9
+    t.decimal "platform_fee", precision: 18, scale: 9
+    t.text "error_message"
+    t.integer "retry_count", default: 0
+    t.datetime "last_retry_at"
+    t.string "ip_address"
+    t.string "user_agent"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_token_claims_on_created_at"
+    t.index ["entity_id"], name: "index_token_claims_on_entity_id"
+    t.index ["status"], name: "index_token_claims_on_status"
+    t.index ["transaction_signature"], name: "index_token_claims_on_transaction_signature", unique: true
+    t.index ["user_id", "status"], name: "index_token_claims_on_user_id_and_status"
+    t.index ["user_id"], name: "index_token_claims_on_user_id"
+    t.index ["wallet_address"], name: "index_token_claims_on_wallet_address"
+  end
+
+  create_table "token_deposits", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id"
+    t.bigint "token_stake_id"
+    t.decimal "amount", precision: 18, scale: 9, null: false
+    t.string "wallet_address", null: false
+    t.string "status", default: "pending", null: false
+    t.string "transaction_signature", null: false
+    t.string "blockhash"
+    t.bigint "slot"
+    t.datetime "confirmed_at"
+    t.boolean "verified", default: false
+    t.datetime "verified_at"
+    t.text "error_message"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_token_deposits_on_entity_id"
+    t.index ["status"], name: "index_token_deposits_on_status"
+    t.index ["token_stake_id"], name: "index_token_deposits_on_token_stake_id"
+    t.index ["transaction_signature"], name: "index_token_deposits_on_transaction_signature", unique: true
+    t.index ["user_id", "status"], name: "index_token_deposits_on_user_id_and_status"
+    t.index ["user_id"], name: "index_token_deposits_on_user_id"
+    t.index ["verified"], name: "index_token_deposits_on_verified"
+    t.index ["wallet_address"], name: "index_token_deposits_on_wallet_address"
+  end
+
   create_table "token_stake_transactions", force: :cascade do |t|
     t.bigint "token_stake_id", null: false
     t.bigint "user_id", null: false
@@ -5702,12 +5758,17 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_020000) do
     t.string "terms_version"
     t.datetime "privacy_accepted_at"
     t.string "privacy_version"
+    t.string "solana_wallet_address"
+    t.datetime "wallet_verified_at"
+    t.string "wallet_verification_message"
+    t.string "wallet_verification_signature"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"
     t.index ["otp_required_for_login"], name: "index_users_on_otp_required_for_login"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true, where: "(provider IS NOT NULL)"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["solana_wallet_address"], name: "index_users_on_solana_wallet_address", unique: true
     t.index ["stripe_customer_id"], name: "index_users_on_stripe_customer_id", unique: true
     t.index ["tts_preferences"], name: "index_users_on_tts_preferences", using: :gin
   end
@@ -6606,6 +6667,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_020000) do
   add_foreign_key "team_invites", "entities"
   add_foreign_key "team_invites", "users", column: "invited_by_id"
   add_foreign_key "tenant_quotas", "entities"
+  add_foreign_key "token_claims", "entities"
+  add_foreign_key "token_claims", "users"
+  add_foreign_key "token_deposits", "entities"
+  add_foreign_key "token_deposits", "token_stakes"
+  add_foreign_key "token_deposits", "users"
   add_foreign_key "token_stake_transactions", "token_stakes"
   add_foreign_key "token_stake_transactions", "users"
   add_foreign_key "token_stakes", "entities"
