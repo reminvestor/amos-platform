@@ -680,12 +680,24 @@
                       'modal_trigger' => 'square-plus', 'app_card' => 'credit-card'
                     }
                     comp_icon = icon_map[comp_type.to_s] || 'component'
+                    comp_icon = icon_map[comp_type.to_s] || 'component'
+                    # Grid positioning from saved data
+                    grid_col = section[:grid_col] || section[:gridCol]
+                    grid_row = section[:grid_row] || section[:gridRow]
+                    grid_style = [
+                      grid_col.present? ? "grid-column: #{grid_col}" : nil,
+                      grid_row.present? ? "grid-row: #{grid_row}" : nil
+                    ].compact.join('; ')
                   %>
-                  <div class="dashboard-component component-<%= comp_type %>" 
+                  <div class="dashboard-component grid-item component-<%= comp_type %>" 
+                       draggable="true"
                        data-component-type="<%= comp_type %>"
                        data-component-idx="<%= idx %>"
                        data-title="<%= section[:title] || comp_label %>"
-                       data-value="<%= section[:value] %>">
+                       data-value="<%= section[:value] %>"
+                       data-grid-col="<%= grid_col || 'auto' %>"
+                       data-grid-row="<%= grid_row || 'auto' %>"
+                       <%= grid_style.present? ? "style=\"#{grid_style}\"".html_safe : '' %>>
                     <div class="component-header">
                       <i data-lucide="<%= comp_icon %>" style="width: 14px; height: 14px;"></i>
                       <span class="component-label"><%= section[:title] || comp_label %></span>
@@ -707,6 +719,7 @@
                         <i data-lucide="trash-2" style="width: 12px;"></i>
                       </button>
                     </div>
+                    <div class="resize-handle" title="Drag to resize"></div>
                   </div>
                 <% end %>
               </div>
@@ -1815,9 +1828,261 @@
     background: #fff;
     border-radius: 0 0 12px 12px;
     min-height: calc(100vh - 300px);
-    align-items: flex-start;
-    justify-content: flex-start;
     padding: 20px;
+    
+    /* Grid-based layout */
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: minmax(80px, auto);
+    gap: 16px;
+    align-content: start;
+  }
+  
+  /* Grid cell background for visual guidance */
+  .studio-canvas.full-width-mode .canvas-freeform-area::before {
+    content: '';
+    position: absolute;
+    inset: 20px;
+    background: 
+      linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+    background-size: calc((100% - 40px) / 12) 80px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .canvas-freeform-area {
+    position: relative;
+  }
+  
+  /* Grid-positioned components */
+  .dashboard-component.grid-item {
+    position: relative;
+    z-index: 1;
+    cursor: move;
+  }
+  
+  /* Default grid spans */
+  .dashboard-component.component-kpi,
+  .dashboard-component.component-metric { grid-column: span 3; }
+  .dashboard-component.component-chart,
+  .dashboard-component.component-bar_chart,
+  .dashboard-component.component-line_chart { grid-column: span 6; grid-row: span 3; }
+  .dashboard-component.component-pie_chart { grid-column: span 4; grid-row: span 3; }
+  .dashboard-component.component-table,
+  .dashboard-component.component-data_table { grid-column: span 12; grid-row: span 4; }
+  .dashboard-component.component-app_header { grid-column: span 12; }
+  .dashboard-component.component-app_sidebar { grid-column: span 2; grid-row: span 6; }
+  .dashboard-component.component-container { grid-column: span 6; grid-row: span 2; }
+  .dashboard-component.component-row { grid-column: span 12; }
+  .dashboard-component.component-column { grid-column: span 4; grid-row: span 2; }
+  .dashboard-component.component-grid { grid-column: span 6; grid-row: span 3; }
+  .dashboard-component.component-form { grid-column: span 6; grid-row: span 4; }
+  .dashboard-component.component-tabs { grid-column: span 12; grid-row: span 2; }
+  .dashboard-component.component-accordion { grid-column: span 6; grid-row: span 3; }
+  .dashboard-component.component-modal_trigger { grid-column: span 2; }
+  .dashboard-component.component-app_card { grid-column: span 4; grid-row: span 2; }
+  
+  /* Resize handle */
+  .dashboard-component .resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .dashboard-component:hover .resize-handle {
+    opacity: 1;
+  }
+  
+  .resize-handle::before {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #6366f1;
+    border-bottom: 2px solid #6366f1;
+  }
+  
+  /* Drag placeholder */
+  .dashboard-component.dragging {
+    opacity: 0.5;
+    z-index: 1000;
+  }
+  
+  .grid-drop-indicator {
+    background: rgba(99, 102, 241, 0.1);
+    border: 2px dashed #6366f1;
+    border-radius: 8px;
+    pointer-events: none;
+  }
+  
+  .dashboard-component.resizing {
+    opacity: 0.8;
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+  }
+  
+  /* Grid item hover state */
+  .dashboard-component.grid-item:hover {
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
+    transform: translateY(-1px);
+  }
+  
+  /* Grid size indicators on resize */
+  .dashboard-component.resizing::after {
+    content: attr(data-grid-col) ' × ' attr(data-grid-row);
+    position: absolute;
+    bottom: 4px;
+    right: 24px;
+    font-size: 10px;
+    color: #6366f1;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  
+  /* Better component styling */
+  .dashboard-component.grid-item {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s, transform 0.2s;
+    min-height: 80px;
+  }
+  
+  .dashboard-component.grid-item .component-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f3f4f6;
+    margin-bottom: 12px;
+  }
+  
+  .dashboard-component.grid-item .component-label {
+    font-weight: 600;
+    font-size: 14px;
+    color: #374151;
+  }
+  
+  .dashboard-component.grid-item .component-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .dashboard-component.grid-item .component-placeholder {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 13px;
+  }
+  
+  .dashboard-component.grid-item .component-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding-top: 12px;
+    border-top: 1px solid #f3f4f6;
+    margin-top: auto;
+  }
+  
+  .dashboard-component.grid-item .component-action-btn {
+    padding: 6px 10px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .dashboard-component.grid-item .component-action-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+    border-color: #d1d5db;
+  }
+  
+  /* KPI/Metric specific styling */
+  .dashboard-component.component-kpi .component-value,
+  .dashboard-component.component-metric .component-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #111827;
+  }
+  
+  /* Chart placeholder */
+  .dashboard-component.component-chart .component-placeholder,
+  .dashboard-component.component-line_chart .component-placeholder,
+  .dashboard-component.component-bar_chart .component-placeholder,
+  .dashboard-component.component-pie_chart .component-placeholder {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border-radius: 8px;
+    width: 100%;
+    height: 100%;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Table placeholder */
+  .dashboard-component.component-table .component-placeholder,
+  .dashboard-component.component-data_table .component-placeholder {
+    background: repeating-linear-gradient(
+      0deg,
+      #f9fafb,
+      #f9fafb 32px,
+      #f3f4f6 32px,
+      #f3f4f6 33px
+    );
+    border-radius: 8px;
+    width: 100%;
+    min-height: 150px;
+  }
+  
+  /* Dark mode overrides for grid */
+  [data-theme="dark"] .dashboard-component.grid-item {
+    background: #1e1e2e;
+    border-color: #2d2d44;
+  }
+  
+  [data-theme="dark"] .dashboard-component.grid-item .component-header {
+    border-color: #2d2d44;
+  }
+  
+  [data-theme="dark"] .dashboard-component.grid-item .component-label {
+    color: #e2e8f0;
+  }
+  
+  [data-theme="dark"] .dashboard-component.grid-item .component-actions {
+    border-color: #2d2d44;
+  }
+  
+  [data-theme="dark"] .dashboard-component.grid-item .component-action-btn {
+    background: #252536;
+    border-color: #3d3d5c;
+    color: #8f8faa;
+  }
+  
+  [data-theme="dark"] .dashboard-component.grid-item:hover {
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.2);
+  }
+  
+  [data-theme="dark"] .dashboard-component.component-kpi .component-value,
+  [data-theme="dark"] .dashboard-component.component-metric .component-value {
+    color: #f3f4f6;
   }
   
   .studio-canvas.full-width-mode .app-drop-hint {
@@ -5372,13 +5637,25 @@ function buildSectionCard(section, idx, pageIndex) {
       'pie_chart': 'pie-chart', 'bar_chart': 'bar-chart-3', 'table': 'table', 'data_loop': 'repeat',
       'conditional': 'git-branch', 'data_field': 'text-cursor', 'form': 'file-input',
       'input': 'text-cursor-input', 'button': 'mouse-pointer-click', 'select': 'list',
-      'app_header': 'layout-dashboard', 'sidebar_nav': 'sidebar', 'container': 'square',
-      'row': 'columns', 'column': 'rows', 'grid': 'grid-3x3', 'tabs': 'folder-tree',
+      'app_header': 'panel-top', 'app_sidebar': 'panel-left', 'container': 'square',
+      'row': 'rows', 'column': 'columns', 'grid': 'grid-3x3', 'tabs': 'folder-tree',
       'accordion': 'chevrons-down', 'modal_trigger': 'maximize-2', 'app_card': 'credit-card'
     };
     var icon = icons[variant] || 'component';
     
-    return '<div class="dashboard-component component-' + variant + '" draggable="true" data-component="' + variant + '">' +
+    // Get grid position from data or use defaults
+    var gridCol = data.gridCol || '';
+    var gridRow = data.gridRow || '';
+    var gridStyle = '';
+    if (gridCol) gridStyle += 'grid-column: ' + gridCol + ';';
+    if (gridRow) gridStyle += 'grid-row: ' + gridRow + ';';
+    
+    return '<div class="dashboard-component grid-item component-' + variant + '" ' +
+      'draggable="true" ' +
+      'data-component-type="' + variant + '" ' +
+      'data-grid-col="' + (gridCol || 'auto') + '" ' +
+      'data-grid-row="' + (gridRow || 'auto') + '" ' +
+      (gridStyle ? 'style="' + gridStyle + '"' : '') + '>' +
       '<div class="component-header">' +
         '<i data-lucide="' + icon + '" style="width: 16px; height: 16px;"></i>' +
         '<span class="component-label">' + label + '</span>' +
@@ -5392,6 +5669,7 @@ function buildSectionCard(section, idx, pageIndex) {
         '<button class="component-action-btn" data-action="configure" title="Configure"><i data-lucide="settings" style="width: 12px;"></i></button>' +
         '<button class="component-action-btn" data-action="remove" title="Remove"><i data-lucide="trash-2" style="width: 12px;"></i></button>' +
       '</div>' +
+      '<div class="resize-handle" title="Drag to resize"></div>' +
     '</div>';
   }
   
@@ -5521,20 +5799,30 @@ function buildSectionCard(section, idx, pageIndex) {
     var canvasEl = container.querySelector('#studio-canvas');
     if (!canvasEl) return components;
     
-    // Collect dashboard components
-    canvasEl.querySelectorAll('.dashboard-component').forEach(function(comp) {
+    // Collect dashboard components with grid positions
+    canvasEl.querySelectorAll('.dashboard-component').forEach(function(comp, idx) {
       components.push({
-        type: comp.dataset.component || 'unknown',
+        type: comp.dataset.componentType || comp.dataset.component || 'unknown',
         label: comp.querySelector('.component-label')?.textContent || '',
-        config: {}
+        title: comp.dataset.title || '',
+        value: comp.dataset.value || '',
+        gridCol: comp.dataset.gridCol || comp.style.gridColumn || '',
+        gridRow: comp.dataset.gridRow || comp.style.gridRow || '',
+        order: idx,
+        config: {
+          title: comp.dataset.title,
+          value: comp.dataset.value,
+          dataSource: comp.dataset.dataSource
+        }
       });
     });
     
-    // Collect preview sections
-    canvasEl.querySelectorAll('.preview-section').forEach(function(section) {
+    // Collect preview sections (landing page mode)
+    canvasEl.querySelectorAll('.preview-section').forEach(function(section, idx) {
       components.push({
         type: section.dataset.section || 'unknown',
         name: section.querySelector('.section-label')?.textContent || '',
+        order: idx,
         config: {}
       });
     });
@@ -6588,6 +6876,165 @@ function buildSectionCard(section, idx, pageIndex) {
     scheduleAutoSave();
     console.log('💾 Component config saved');
   }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GRID DRAG-AND-DROP & RESIZE
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // Initialize grid component interactions
+  function initGridComponents() {
+    var gridArea = container.querySelector('#freeform-drop-zone');
+    if (!gridArea) return;
+    
+    // Make grid items draggable within the grid
+    gridArea.addEventListener('dragstart', function(e) {
+      var component = e.target.closest('.dashboard-component.grid-item');
+      if (!component) return;
+      
+      component.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', 'grid-reorder');
+      e.dataTransfer.effectAllowed = 'move';
+      
+      // Store the component being dragged
+      window._draggingGridComponent = component;
+    });
+    
+    gridArea.addEventListener('dragend', function(e) {
+      var component = e.target.closest('.dashboard-component.grid-item');
+      if (component) {
+        component.classList.remove('dragging');
+      }
+      window._draggingGridComponent = null;
+      
+      // Remove any drop indicators
+      gridArea.querySelectorAll('.grid-drop-indicator').forEach(function(el) { el.remove(); });
+    });
+    
+    // Handle grid reordering
+    gridArea.addEventListener('dragover', function(e) {
+      if (!window._draggingGridComponent) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+    
+    gridArea.addEventListener('drop', function(e) {
+      if (!window._draggingGridComponent) return;
+      e.preventDefault();
+      
+      var component = window._draggingGridComponent;
+      var rect = gridArea.getBoundingClientRect();
+      var dropX = e.clientX - rect.left;
+      var dropY = e.clientY - rect.top;
+      
+      // Calculate grid position (12 columns)
+      var colWidth = (rect.width - 40) / 12; // Subtract padding
+      var rowHeight = 96; // 80px + 16px gap
+      
+      var col = Math.floor(dropX / colWidth) + 1;
+      var row = Math.floor(dropY / rowHeight) + 1;
+      
+      // Get the component's span
+      var style = window.getComputedStyle(component);
+      var colSpan = parseInt(style.gridColumnEnd) - parseInt(style.gridColumnStart) || 3;
+      if (isNaN(colSpan) || colSpan < 1) colSpan = 3;
+      
+      // Ensure it fits within the grid
+      col = Math.min(col, 13 - colSpan);
+      col = Math.max(col, 1);
+      
+      // Update component position
+      component.style.gridColumn = col + ' / span ' + colSpan;
+      component.style.gridRow = row;
+      component.dataset.gridCol = col + ' / span ' + colSpan;
+      component.dataset.gridRow = row.toString();
+      
+      console.log('📍 Component moved to grid position:', col, row);
+      scheduleAutoSave();
+    });
+    
+    // Initialize resize handles
+    initResizeHandles(gridArea);
+  }
+  
+  // Initialize resize functionality
+  function initResizeHandles(gridArea) {
+    var resizing = false;
+    var resizeComponent = null;
+    var startX, startY, startWidth, startHeight;
+    var colWidth, rowHeight;
+    
+    gridArea.addEventListener('mousedown', function(e) {
+      var handle = e.target.closest('.resize-handle');
+      if (!handle) return;
+      
+      e.preventDefault();
+      resizing = true;
+      resizeComponent = handle.closest('.dashboard-component');
+      
+      var rect = resizeComponent.getBoundingClientRect();
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = rect.width;
+      startHeight = rect.height;
+      
+      var gridRect = gridArea.getBoundingClientRect();
+      colWidth = (gridRect.width - 40) / 12;
+      rowHeight = 96;
+      
+      resizeComponent.classList.add('resizing');
+      document.body.style.cursor = 'nwse-resize';
+    });
+    
+    document.addEventListener('mousemove', function(e) {
+      if (!resizing || !resizeComponent) return;
+      
+      var deltaX = e.clientX - startX;
+      var deltaY = e.clientY - startY;
+      
+      // Calculate new spans
+      var newColSpan = Math.max(2, Math.round((startWidth + deltaX) / colWidth));
+      var newRowSpan = Math.max(1, Math.round((startHeight + deltaY) / rowHeight));
+      
+      // Limit to grid bounds
+      newColSpan = Math.min(newColSpan, 12);
+      newRowSpan = Math.min(newRowSpan, 8);
+      
+      // Get current column start
+      var currentStyle = window.getComputedStyle(resizeComponent);
+      var colStart = parseInt(resizeComponent.dataset.gridCol) || 1;
+      if (typeof colStart === 'string' && colStart.includes('span')) {
+        colStart = parseInt(colStart.split('/')[0]) || 1;
+      }
+      
+      // Ensure it fits
+      if (colStart + newColSpan > 13) {
+        newColSpan = 13 - colStart;
+      }
+      
+      resizeComponent.style.gridColumn = colStart + ' / span ' + newColSpan;
+      resizeComponent.style.gridRow = 'span ' + newRowSpan;
+    });
+    
+    document.addEventListener('mouseup', function(e) {
+      if (!resizing || !resizeComponent) return;
+      
+      resizing = false;
+      resizeComponent.classList.remove('resizing');
+      document.body.style.cursor = '';
+      
+      // Save the new size
+      resizeComponent.dataset.gridCol = resizeComponent.style.gridColumn;
+      resizeComponent.dataset.gridRow = resizeComponent.style.gridRow;
+      
+      console.log('📐 Component resized:', resizeComponent.dataset.gridCol, resizeComponent.dataset.gridRow);
+      scheduleAutoSave();
+      
+      resizeComponent = null;
+    });
+  }
+  
+  // Initialize grid components on load
+  initGridComponents();
   
   // Viewport controls
   container.querySelectorAll('.viewport-btn').forEach(function(btn) {
