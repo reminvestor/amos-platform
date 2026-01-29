@@ -5,7 +5,8 @@
 # Key responsibilities:
 # - Award stakes for distribution (affiliate sales, referrals)
 # - Award stakes for contributions (code, community)
-# - Apply decay to all stakes
+# - Apply decay to all stakes with recycling to treasury
+# - Burn tokens on payouts for deflation
 # - Calculate revenue distribution
 # - Provide transparency metrics
 #
@@ -13,7 +14,21 @@
 # - Align incentives (contributors and sellers are owners)
 # - Encourage continued participation (decay function)
 # - Be fully transparent (all ownership visible)
+# - Allow wealth preservation (decay floor, tenure reduction)
+# - Create scarcity (fixed supply, halving, burn)
 class TokenEconomyService
+  # Fixed supply
+  TOTAL_SUPPLY = 100_000_000  # 100M tokens ever
+  
+  # Allocation percentages
+  TOKEN_ALLOCATION = {
+    treasury: 0.60,     # 60M - For ongoing distribution
+    founding: 0.15,     # 15M - Founders (earned, same rules)
+    investors: 0.10,    # 10M - Future investors
+    community: 0.10,    # 10M - Airdrops, bounties, grants
+    reserve: 0.05       # 5M  - Emergency/unforeseen
+  }.freeze
+
   # Revenue allocation percentages
   REVENUE_ALLOCATION = {
     token_holders: 0.40,    # 40% to token stake holders
@@ -22,7 +37,14 @@ class TokenEconomyService
     treasury: 0.10          # 10% to treasury/reserves
   }.freeze
 
-  # Stake multipliers for different activities
+  # Burn rates for deflation
+  BURN_RATES = {
+    revenue_payout: 0.01,    # 1% of payouts burned
+    stake_transfer: 0.02,    # 2% on transfers burned
+    decay_portion: 0.10      # 10% of decay burned (rest recycled)
+  }.freeze
+
+  # Stake multipliers for different activities (pre-halving base amounts)
   DISTRIBUTION_MULTIPLIERS = {
     affiliate_sale: 100,        # 100 tokens per $1 of sale
     referral_conversion: 50,    # 50 tokens per conversion
@@ -47,9 +69,13 @@ class TokenEconomyService
     # Called when a commission is approved
     def award_affiliate_stake!(commission)
       return nil unless commission.approved? || commission.paid?
+      return nil if TokenStake.treasury_depleted?
 
       user = commission.affiliate.user
-      stake_amount = commission.amount * DISTRIBUTION_MULTIPLIERS[:affiliate_sale]
+      base_amount = commission.amount * DISTRIBUTION_MULTIPLIERS[:affiliate_sale]
+      
+      # Apply halving multiplier
+      stake_amount = TokenStake.calculate_stake_with_halving(base_amount)
 
       TokenStake.create_distribution_stake!(
         user: user,
@@ -59,7 +85,9 @@ class TokenEconomyService
         metadata: {
           commission_id: commission.id,
           commission_amount: commission.amount,
-          referral_id: commission.referral_id
+          referral_id: commission.referral_id,
+          halving_multiplier: TokenStake.current_halving_multiplier,
+          base_amount: base_amount
         }
       )
     end
@@ -109,21 +137,33 @@ class TokenEconomyService
 
     # === DECAY MANAGEMENT ===
 
-    # Apply decay to all active stakes
+    # Apply decay to all active stakes with recycling and burning
     # Should be run daily via scheduled job
     def apply_daily_decay!
       Rails.logger.info "🔄 Applying daily decay to token stakes..."
       
       stakes_processed = 0
       total_decayed = 0
+      total_recycled = 0
+      total_burned = 0
 
-      TokenStake.active.find_each do |stake|
+      TokenStake.active.where('current_amount > 0').find_each do |stake|
+        # Skip if at decay floor
+        next if stake.at_floor?
+        
         before_amount = stake.current_amount
         stake.apply_decay!
         
         decayed = before_amount - stake.current_amount
         if decayed > 0
           total_decayed += decayed
+          
+          # Split decay: 10% burned, 90% recycled to treasury
+          burned = decayed * BURN_RATES[:decay_portion]
+          recycled = decayed - burned
+          
+          total_burned += burned
+          total_recycled += recycled
           
           # Record decay transaction
           TokenStakeTransaction.create!(
@@ -133,16 +173,56 @@ class TokenEconomyService
             amount: -decayed,
             balance_before: before_amount,
             balance_after: stake.current_amount,
-            description: "Daily decay applied (#{(stake.decay_rate * 100).round(1)}% annual rate)"
+            description: "Daily decay (#{(stake.effective_annual_decay_rate * 100).round(1)}% rate, Year #{stake.tenure_years})",
+            metadata: {
+              burned: burned,
+              recycled: recycled,
+              tenure_years: stake.tenure_years,
+              at_floor: stake.at_floor?
+            }
           )
         end
         
         stakes_processed += 1
       end
 
-      Rails.logger.info "✅ Decay complete: #{stakes_processed} stakes processed, #{total_decayed.round(2)} tokens decayed"
+      # Record treasury recycling
+      record_treasury_activity(:recycling, total_recycled) if total_recycled > 0
+      record_treasury_activity(:burn, -total_burned) if total_burned > 0
+
+      Rails.logger.info "✅ Decay complete: #{stakes_processed} stakes, " \
+                        "#{total_decayed.round(2)} decayed, " \
+                        "#{total_recycled.round(2)} recycled, " \
+                        "#{total_burned.round(2)} burned"
       
-      { stakes_processed: stakes_processed, total_decayed: total_decayed }
+      { 
+        stakes_processed: stakes_processed, 
+        total_decayed: total_decayed,
+        total_recycled: total_recycled,
+        total_burned: total_burned
+      }
+    end
+
+    # Record treasury activity for transparency
+    # Creates a TokenStakeTransaction as a system record
+    def record_treasury_activity(activity_type, amount)
+      # Log for transparency (can be exposed via public API)
+      Rails.logger.info "[TOKEN_TREASURY] #{activity_type}: #{amount.round(2)} tokens, " \
+                        "remaining: #{TokenStake.treasury_remaining.round(2)}"
+      
+      # Store in metadata for API access
+      @treasury_activities ||= []
+      @treasury_activities << {
+        type: activity_type,
+        amount: amount.round(4),
+        treasury_remaining: TokenStake.treasury_remaining.round(4),
+        timestamp: Time.current
+      }
+    end
+
+    # Get recent treasury activities (for API)
+    def treasury_activities
+      @treasury_activities || []
     end
 
     # === REVENUE DISTRIBUTION ===

@@ -3,10 +3,47 @@
 # TokenStake represents ownership in the platform's future revenue
 # Stakes are earned through contributions (code, distribution, community)
 # and decay over time to incentivize continued participation
+#
+# WEALTH PRESERVATION FEATURES:
+# - Decay floor: 25% of initial stake never decays (permanent base)
+# - Tenure-based decay: Rate decreases the longer you hold
+# - Staking vaults: Lock tokens for reduced/zero decay
+# - Inheritance: Stakes can transfer to family/estate
 class TokenStake < ApplicationRecord
   belongs_to :user
   belongs_to :entity, optional: true
   belongs_to :source, polymorphic: true, optional: true # Contribution, Referral, etc.
+  belongs_to :beneficiary, class_name: 'User', optional: true # For inheritance
+
+  # Fixed supply constants
+  TOTAL_SUPPLY = 100_000_000  # 100M tokens ever
+  DECAY_FLOOR = 0.25  # 25% of initial stake is permanent (never decays)
+  
+  # Halving schedule - rewards decrease over time
+  HALVING_SCHEDULE = {
+    0 => 1.0,    # Year 0-2: Full rewards
+    2 => 0.5,    # Year 2-4: 50% rewards
+    4 => 0.25,   # Year 4-6: 25% rewards
+    6 => 0.125,  # Year 6-8: 12.5% rewards
+    8 => 0.0625  # Year 8+: 6.25% rewards
+  }.freeze
+
+  # Tenure-based decay reduction (longer hold = lower decay)
+  TENURE_DECAY_RATES = {
+    0 => 0.40,   # Year 0-2: 40% annual decay
+    2 => 0.25,   # Year 2-5: 25% annual decay  
+    5 => 0.15,   # Year 5-10: 15% annual decay
+    10 => 0.05   # Year 10+: 5% annual decay (near-permanent)
+  }.freeze
+
+  # Staking vault tiers (lock for reduced decay)
+  STAKING_TIERS = {
+    none: { decay_reduction: 0.0, min_lock_years: 0 },
+    bronze: { decay_reduction: 0.25, min_lock_years: 1 },
+    silver: { decay_reduction: 0.50, min_lock_years: 3 },
+    gold: { decay_reduction: 0.75, min_lock_years: 5 },
+    permanent: { decay_reduction: 1.0, min_lock_years: 10 }
+  }.freeze
 
   # Stake types
   STAKE_TYPES = %w[
@@ -16,6 +53,7 @@ class TokenStake < ApplicationRecord
     founding
     investor
     bonus
+    inherited
   ].freeze
 
   # Stake categories for distribution type
@@ -64,21 +102,80 @@ class TokenStake < ApplicationRecord
   after_create :record_stake_transaction
 
   # Instance methods
+  
+  # Calculate the permanent floor amount (never decays)
+  def permanent_floor_amount
+    initial_amount * DECAY_FLOOR
+  end
+
+  # Calculate the decayable portion
+  def decayable_amount
+    initial_amount * (1 - DECAY_FLOOR)
+  end
+
+  # Get tenure in years
+  def tenure_years
+    ((Time.current - earned_at) / 1.year).floor
+  end
+
+  # Get effective decay rate based on tenure and staking
+  def effective_annual_decay_rate
+    base_rate = tenure_based_decay_rate
+    
+    # Apply staking reduction if locked
+    if locked? && staking_tier.present?
+      tier = STAKING_TIERS[staking_tier.to_sym]
+      if tier
+        reduction = tier[:decay_reduction]
+        base_rate = base_rate * (1 - reduction)
+      end
+    end
+    
+    base_rate
+  end
+
+  # Get decay rate based on how long stake has been held
+  def tenure_based_decay_rate
+    years = tenure_years
+    
+    # Find the applicable rate based on tenure
+    applicable_rate = TENURE_DECAY_RATES[0]
+    TENURE_DECAY_RATES.each do |threshold, rate|
+      applicable_rate = rate if years >= threshold
+    end
+    
+    applicable_rate
+  end
+
   def apply_decay!
     return if fully_decayed?
+    return if at_floor? # Already at permanent floor, no more decay
 
     days_since_last_decay = (Time.current - (last_decay_at || earned_at)) / 1.day
     return if days_since_last_decay < 1
 
-    # Calculate decay: amount * (1 - decay_rate)^days
-    decay_factor = (1 - daily_decay_rate) ** days_since_last_decay.floor
-    new_amount = (initial_amount * decay_factor).round(4)
+    # Only decay the decayable portion (above the floor)
+    floor = permanent_floor_amount
+    decayable = current_amount - floor
+    
+    return if decayable <= 0 # Already at or below floor
+
+    # Calculate decay with tenure-based rate
+    daily_rate = 1 - ((1 - effective_annual_decay_rate) ** (1.0 / 365))
+    decay_factor = (1 - daily_rate) ** days_since_last_decay.floor
+    new_decayable = (decayable * decay_factor).round(4)
+    
+    new_amount = floor + new_decayable
 
     update!(
-      current_amount: [new_amount, 0].max,
+      current_amount: [new_amount, floor].max,
       last_decay_at: Time.current,
-      total_decayed: initial_amount - [new_amount, 0].max
+      total_decayed: initial_amount - [new_amount, floor].max
     )
+  end
+
+  def at_floor?
+    current_amount <= permanent_floor_amount
   end
 
   def fully_decayed?
@@ -95,23 +192,79 @@ class TokenStake < ApplicationRecord
   end
 
   def daily_decay_rate
-    # Convert annual decay rate to daily
-    # Formula: daily_rate = 1 - (1 - annual_rate)^(1/365)
-    1 - ((1 - decay_rate) ** (1.0 / 365))
+    # Convert annual decay rate to daily using effective rate
+    1 - ((1 - effective_annual_decay_rate) ** (1.0 / 365))
   end
 
   def projected_value_at(future_date)
     days_until = (future_date - Time.current) / 1.day
     return current_amount if days_until <= 0
 
+    floor = permanent_floor_amount
+    decayable = current_amount - floor
+    
+    return floor if decayable <= 0
+
     decay_factor = (1 - daily_decay_rate) ** days_until
-    (current_amount * decay_factor).round(4)
+    projected = floor + (decayable * decay_factor)
+    projected.round(4)
   end
 
   def half_life_days
-    return Float::INFINITY if decay_rate.zero?
-    # t_half = ln(0.5) / ln(1 - daily_rate)
-    Math.log(0.5) / Math.log(1 - daily_decay_rate)
+    rate = effective_annual_decay_rate
+    return Float::INFINITY if rate.zero?
+    daily_rate = 1 - ((1 - rate) ** (1.0 / 365))
+    Math.log(0.5) / Math.log(1 - daily_rate)
+  end
+
+  # Lock stake in vault for reduced decay
+  def lock_in_vault!(years:)
+    tier_name = STAKING_TIERS.find { |name, config| config[:min_lock_years] == years }&.first
+    raise ArgumentError, "Invalid lock period: #{years} years. Valid: #{STAKING_TIERS.map { |k, v| v[:min_lock_years] }.join(', ')}" unless tier_name
+    
+    update!(
+      locked_until: years.years.from_now,
+      is_locked: true,
+      staking_tier: tier_name.to_s
+    )
+  end
+
+  # Check if stake is currently locked
+  def locked?
+    is_locked && locked_until.present? && locked_until > Time.current
+  end
+
+  # Transfer stake to beneficiary (inheritance)
+  def transfer_to_beneficiary!(new_owner)
+    raise "Cannot transfer locked stake" if locked?
+    raise "No beneficiary designated" unless new_owner
+    
+    # Create new stake for beneficiary with inherited type
+    inherited_stake = TokenStake.create!(
+      user: new_owner,
+      entity: new_owner.entity,
+      stake_type: 'inherited',
+      category: "inherited_from_#{stake_type}",
+      initial_amount: current_amount,
+      current_amount: current_amount,
+      decay_rate: 0.10, # Reduced decay for inherited stakes
+      earned_at: Time.current,
+      source: self,
+      metadata: {
+        inherited_from_user_id: user_id,
+        original_stake_id: id,
+        original_earned_at: earned_at
+      }
+    )
+    
+    # Zero out original stake
+    update!(
+      current_amount: 0,
+      transferred_at: Time.current,
+      transferred_to_id: new_owner.id
+    )
+    
+    inherited_stake
   end
 
   # Class methods
@@ -181,14 +334,47 @@ class TokenStake < ApplicationRecord
     end
 
     def default_decay_rate_for(stake_type)
+      # NOTE: These are INITIAL rates - they reduce over time via TENURE_DECAY_RATES
+      # All stake types now start at same rate for fairness (except inherited)
       case stake_type
-      when 'distribution' then 0.50    # 50% annual decay
-      when 'contribution' then 0.40    # 40% annual decay (code becomes legacy)
-      when 'community' then 0.30       # 30% annual decay
-      when 'founding' then 0.10        # 10% annual decay (founders vest slower)
-      when 'investor' then 0.05        # 5% annual decay
-      else 0.50
+      when 'distribution' then 0.40    # Same as others
+      when 'contribution' then 0.40    # Same as others
+      when 'community' then 0.40       # Same as others
+      when 'founding' then 0.40        # NOW SAME - founders earn via timing, not special rules
+      when 'investor' then 0.40        # Same as others
+      when 'inherited' then 0.10       # Reduced decay for inherited stakes
+      when 'bonus' then 0.40           # Same as others
+      else 0.40
       end
+    end
+
+    # Get current halving multiplier based on platform age
+    def current_halving_multiplier
+      # Assuming platform launch date - adjust as needed
+      platform_launch = Time.parse('2024-01-01')
+      years_since_launch = ((Time.current - platform_launch) / 1.year).floor
+      
+      applicable_multiplier = 1.0
+      HALVING_SCHEDULE.each do |threshold, multiplier|
+        applicable_multiplier = multiplier if years_since_launch >= threshold
+      end
+      
+      applicable_multiplier
+    end
+
+    # Calculate stake amount with halving applied
+    def calculate_stake_with_halving(base_amount)
+      (base_amount * current_halving_multiplier).round(4)
+    end
+
+    # Check remaining treasury supply
+    def treasury_remaining
+      total_issued = active.sum(:initial_amount)
+      TOTAL_SUPPLY * 0.60 - total_issued # 60% allocated to treasury
+    end
+
+    def treasury_depleted?
+      treasury_remaining <= 0
     end
   end
 

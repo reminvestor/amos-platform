@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_29_010002) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_29_020000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -5328,13 +5328,23 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_010002) do
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "staking_tier", default: "none"
+    t.datetime "locked_until"
+    t.bigint "beneficiary_id"
+    t.bigint "transferred_to_id"
+    t.datetime "transferred_at"
+    t.decimal "permanent_floor", precision: 18, scale: 4
+    t.index ["beneficiary_id"], name: "index_token_stakes_on_beneficiary_id"
     t.index ["category"], name: "index_token_stakes_on_category"
     t.index ["current_amount"], name: "index_token_stakes_active", where: "(current_amount > (0)::numeric)"
     t.index ["earned_at"], name: "index_token_stakes_on_earned_at"
     t.index ["entity_id", "stake_type"], name: "index_token_stakes_on_entity_id_and_stake_type"
     t.index ["entity_id"], name: "index_token_stakes_on_entity_id"
+    t.index ["locked_until"], name: "index_token_stakes_on_locked_until"
     t.index ["source_type", "source_id"], name: "index_token_stakes_on_source"
     t.index ["stake_type"], name: "index_token_stakes_on_stake_type"
+    t.index ["staking_tier"], name: "index_token_stakes_on_staking_tier"
+    t.index ["transferred_to_id"], name: "index_token_stakes_on_transferred_to_id"
     t.index ["user_id", "stake_type"], name: "index_token_stakes_on_user_id_and_stake_type"
     t.index ["user_id"], name: "index_token_stakes_on_user_id"
   end
@@ -6600,6 +6610,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_010002) do
   add_foreign_key "token_stake_transactions", "users"
   add_foreign_key "token_stakes", "entities"
   add_foreign_key "token_stakes", "users"
+  add_foreign_key "token_stakes", "users", column: "beneficiary_id"
+  add_foreign_key "token_stakes", "users", column: "transferred_to_id"
   add_foreign_key "tool_definitions", "app_modules"
   add_foreign_key "tool_definitions", "entities"
   add_foreign_key "tool_definitions", "users", column: "created_by_id"
