@@ -25,7 +25,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
 
   final BiometricService _biometricService = BiometricService();
   bool _biometricAvailable = false;
-  bool _biometricEnabled = false;
+  bool _hasTrustedDevice = false;
+  bool _legacyBiometricEnabled = false;
   String _biometricTypeName = 'Biometric';
 
   @override
@@ -38,7 +39,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
   Future<void> _autoTriggerBiometric() async {
     // Wait a moment for UI to settle
     await Future.delayed(const Duration(milliseconds: 300));
-    if (mounted && _biometricEnabled) {
+    if (mounted && (_hasTrustedDevice || _legacyBiometricEnabled)) {
       AppLogger.debug('Auto-triggering biometric authentication');
       _handleBiometricLogin();
     }
@@ -46,18 +47,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
 
   Future<void> _checkBiometricAvailability() async {
     final available = await _biometricService.isBiometricAvailable();
-    final enabled = await _biometricService.isBiometricLoginEnabled();
+    final hasTrusted = await _biometricService.hasTrustedDeviceToken();
+    final legacyEnabled = await _biometricService.isBiometricLoginEnabled();
     final typeName = await _biometricService.getBiometricTypeName();
 
     if (mounted) {
       setState(() {
         _biometricAvailable = available;
-        _biometricEnabled = enabled;
+        _hasTrustedDevice = hasTrusted;
+        _legacyBiometricEnabled = legacyEnabled;
         _biometricTypeName = typeName;
       });
 
-      // Auto-trigger biometric if enabled
-      if (available && enabled) {
+      // Auto-trigger biometric if trusted device exists or legacy biometric enabled
+      if (available && (hasTrusted || legacyEnabled)) {
         _autoTriggerBiometric();
       }
     }
@@ -94,8 +97,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
           showSuccess(context, 'Welcome back!');
           // MFA setup is NOT enforced here - only required when adding integrations
           // (matching web behavior where require_two_factor! is only on oauth_controller)
-          // Enable biometric for future logins
-          if (_biometricAvailable && !_biometricEnabled) {
+          // Offer legacy biometric only if no trusted device (device trust is set up via MFA flow)
+          if (_biometricAvailable && !_hasTrustedDevice && !_legacyBiometricEnabled) {
             _offerBiometricSetup();
           }
           context.go('/chat');
@@ -111,6 +114,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
 
   Future<void> _handleBiometricLogin() async {
     try {
+      // Try trusted device token first (bypasses MFA entirely)
+      if (_hasTrustedDevice) {
+        final deviceCreds = await _biometricService.authenticateAndGetDeviceToken();
+        if (deviceCreds != null) {
+          AppLogger.debug('Biometric login with trusted device token');
+
+          final success = await ref.read(authStateProvider.notifier).loginWithDeviceToken(
+                deviceCreds.email,
+                deviceCreds.deviceToken,
+              );
+
+          if (success && mounted) {
+            AppLogger.info('Trusted device login successful');
+            showSuccess(context, 'Welcome back!');
+            context.go('/chat');
+            return;
+          } else if (mounted) {
+            // Device token was invalid/expired - clear it and fall back
+            await _biometricService.clearTrustedDeviceToken();
+            setState(() => _hasTrustedDevice = false);
+            AppLogger.info('Device trust expired, falling back to normal login');
+          }
+        }
+      }
+
+      // Fallback to legacy credential-based biometric
       final credentials = await _biometricService.authenticateAndGetCredentials();
 
       if (credentials == null) {
@@ -120,7 +149,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
         return;
       }
 
-      AppLogger.debug('Biometric login attempt');
+      AppLogger.debug('Biometric login attempt with stored credentials');
 
       await ref.read(authStateProvider.notifier).login(
             credentials.email,
@@ -297,8 +326,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
                   ),
                 ),
 
-                // Biometric Login Button
-                if (_biometricAvailable && _biometricEnabled) ...[
+                // Biometric Login Button (show if trusted device or legacy biometric)
+                if (_biometricAvailable && (_hasTrustedDevice || _legacyBiometricEnabled)) ...[
                   const SizedBox(height: 16),
                   Row(
                     children: [

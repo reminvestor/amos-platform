@@ -151,6 +151,39 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  /// Login using a trusted device token (bypasses MFA)
+  /// Returns true if login was successful, false if device token was invalid
+  Future<bool> loginWithDeviceToken(String email, String deviceToken) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      final result = await _authService.loginWithDeviceToken(
+        email: email,
+        deviceToken: deviceToken,
+      );
+
+      if (result.authResult != null) {
+        // Login successful with device token
+        state = AuthState(
+          user: result.authResult!.user,
+          token: result.authResult!.token,
+          isLoading: false,
+        );
+        // Register device for push notifications
+        _registerForPushNotifications();
+        return true;
+      }
+
+      // Unexpected state
+      state = state.copyWith(isLoading: false);
+      return false;
+    } catch (e) {
+      // Device token was invalid/expired - don't show error, let caller handle
+      state = state.copyWith(isLoading: false);
+      return false;
+    }
+  }
+
   /// Register device for push notifications after successful auth
   Future<void> _registerForPushNotifications() async {
     try {
