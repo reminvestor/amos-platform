@@ -7,7 +7,7 @@ class TokenStakeTransaction < ApplicationRecord
   belongs_to :user
 
   # Transaction types
-  TRANSACTION_TYPES = %w[earn decay transfer burn vest].freeze
+  TRANSACTION_TYPES = %w[earn decay transfer burn vest withdrawal deposit].freeze
 
   validates :transaction_type, presence: true, inclusion: { in: TRANSACTION_TYPES }
   validates :amount, presence: true

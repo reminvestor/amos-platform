@@ -98,7 +98,12 @@ gem "aws-sdk-sns", "~> 1.0"  # Push notifications via APNs/FCM
 # Vector storage and RAG
 gem "pinecone", "~> 1.2"
 
-# HTTP client for API calls (Serper, etc)
+# Solana blockchain integration (lightweight - no native deps)
+# We use HTTParty for RPC calls, ed25519 for signatures
+gem "ed25519", "~> 1.3"          # Cryptographic signatures
+gem "base58", "~> 0.2"           # Base58 encoding for Solana addresses
+
+# HTTP client for API calls (Serper, Solana RPC, etc)
 gem "httparty", "~> 0.22.0"
 
 # GitHub API client for AI Pipeline
