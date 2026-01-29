@@ -45,8 +45,11 @@ class TokenEconomyServiceTest < ActiveSupport::TestCase
     assert_equal @user, stake.user
     assert_equal 'distribution', stake.stake_type
     assert_equal 'affiliate_sale', stake.category
-    # 100 * 100 (multiplier) = 10,000 tokens
-    assert_equal 10_000, stake.initial_amount
+    # 100 * 100 (multiplier) * halving_multiplier = base tokens
+    # Halving may reduce this depending on platform age
+    base_amount = 100 * 100
+    expected = TokenStake.calculate_stake_with_halving(base_amount)
+    assert_equal expected, stake.initial_amount
   end
 
   test "does not award stake for pending commission" do
