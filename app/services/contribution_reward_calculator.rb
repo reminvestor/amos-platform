@@ -1,40 +1,43 @@
 # frozen_string_literal: true
 
-# ContributionRewardCalculator determines token rewards based on:
-# - Contribution type and complexity
-# - Current token price (USD-denominated fairness)
-# - Halving schedule
-# - Platform operating conditions
+# ContributionRewardCalculator determines token rewards using a
+# POOL-BASED RELATIVE SCORING model (no USD denomination)
 #
-# This ensures contributors are fairly compensated regardless of:
-# - Token price fluctuations
-# - Compute cost changes
-# - Market conditions
+# How it works:
+# 1. Daily/weekly emission pool = fixed AMOS allocated for period
+# 2. Each contribution earns "points" based on type & complexity
+# 3. Your reward = (your points / total platform points) × emission pool
+#
+# This ensures:
+# - No dependency on external prices (no USD reference)
+# - Collaborative distribution (everyone shares the pool)
+# - Self-balancing economics
+# - Simple to understand: more contribution = bigger slice
 class ContributionRewardCalculator
-  # Base USD values for contribution types (pre-multipliers)
-  BASE_VALUES_USD = {
+  # Base contribution points (internal scoring, not USD)
+  BASE_POINTS = {
     # Code contributions
-    feature: 500,           # $500 for a new feature
-    bug_fix: 100,           # $100 for bug fix
-    security_fix: 300,      # $300 for security fix
-    refactor: 150,          # $150 for refactoring
-    documentation: 50,      # $50 for docs
-    code_review: 25,        # $25 per review
+    feature: 500,           # Major feature implementation
+    bug_fix: 100,           # Bug fix
+    security_fix: 300,      # Security vulnerability fix
+    refactor: 150,          # Code refactoring
+    documentation: 50,      # Documentation improvement
+    code_review: 25,        # Code review participation
 
     # Distribution (sales/referrals)
-    affiliate_sale: 0.10,   # 10% of sale value
-    enterprise_deal: 0.15,  # 15% of deal value
-    referral: 20,           # $20 per converted referral
+    affiliate_sale: 200,    # Brought in a paying customer
+    enterprise_deal: 500,   # Enterprise sale
+    referral: 50,           # Referred user who became active
 
     # Community
-    support_ticket: 10,     # $10 per resolved ticket
-    content_post: 25,       # $25 per content piece
-    tutorial: 75,           # $75 per tutorial
-    translation: 100,       # $100 per language
+    support_ticket: 25,     # Resolved community question
+    content_post: 50,       # Created helpful content
+    tutorial: 150,          # Created comprehensive tutorial
+    translation: 100,       # Translated content to new language
     
     # Governance
-    proposal: 50,           # $50 for governance proposal
-    vote_participation: 5   # $5 per vote (encourages participation)
+    proposal: 100,          # Submitted governance proposal
+    vote_participation: 10  # Participated in governance vote
   }.freeze
 
   # Complexity multipliers (1-5 scale)
@@ -46,67 +49,124 @@ class ContributionRewardCalculator
     5 => 2.5    # Exceptional
   }.freeze
 
-  # Price bands for dynamic adjustment
-  PRICE_BANDS = {
-    very_low: { max_price: 0.01, multiplier: 2.0 },    # Under $0.01 - boost rewards
-    low: { max_price: 0.05, multiplier: 1.5 },          # $0.01-$0.05
-    normal: { max_price: 0.20, multiplier: 1.0 },       # $0.05-$0.20 (target range)
-    high: { max_price: 0.50, multiplier: 0.75 },        # $0.20-$0.50
-    very_high: { max_price: Float::INFINITY, multiplier: 0.5 }  # Over $0.50
+  # Daily emission pool from treasury (decreases via halving)
+  # 60M tokens for rewards over ~10 years
+  # Year 1: ~16,000 AMOS/day → Year 10: ~1,000 AMOS/day
+  BASE_DAILY_EMISSION = 16_000
+
+  # SUCCESS REWARD MULTIPLIERS (flip of old logic)
+  # When token price rises, we INCREASE recognition, not decrease it
+  # When price falls, we maintain baseline (protect contributors)
+  SUCCESS_MULTIPLIERS = {
+    # price_threshold => { point_multiplier, rationale }
+    struggling: { max_price: 0.01, multiplier: 1.0 },     # Baseline protection
+    building: { max_price: 0.05, multiplier: 1.1 },       # Slight boost
+    growing: { max_price: 0.20, multiplier: 1.25 },       # Success bonus
+    thriving: { max_price: 0.50, multiplier: 1.5 },       # Share the success!
+    soaring: { max_price: Float::INFINITY, multiplier: 2.0 }  # Big success = big rewards
   }.freeze
 
   # Minimum token reward (prevent dust amounts)
   MINIMUM_TOKENS = 10
 
   # Maximum single reward (prevent gaming)
-  MAXIMUM_TOKENS = 1_000_000
+  MAXIMUM_TOKENS = 100_000
 
   class << self
     # Calculate token reward for a contribution
     # @param contribution_type [Symbol] Type of contribution
     # @param complexity [Integer] 1-5 complexity scale
-    # @param value [Numeric] Optional value (for sales/referrals)
+    # @param period_contributions [Integer] Total contributions this period (for pool calc)
     # @return [Hash] Reward details including token amount
-    def calculate(contribution_type:, complexity: 3, value: nil)
-      base_usd = get_base_usd_value(contribution_type, value)
+    def calculate(contribution_type:, complexity: 3, period_contributions: nil)
+      # Get base points for contribution type
+      base_points = BASE_POINTS[contribution_type.to_sym]
+      if base_points.nil?
+        Rails.logger.warn "[REWARD_CALC] Unknown contribution type: #{contribution_type}"
+        base_points = 50  # Default
+      end
+
+      # Apply complexity multiplier
       complexity_mult = COMPLEXITY_MULTIPLIERS[complexity] || 1.0
+      contribution_points = base_points * complexity_mult
+
+      # Apply halving schedule
       halving_mult = TokenStake.current_halving_multiplier
-      price_mult = price_band_multiplier
+      adjusted_points = contribution_points * halving_mult
 
-      # Calculate USD value after multipliers
-      usd_value = base_usd * complexity_mult
+      # Apply success multiplier (rewards success, not punishes it)
+      success_mult = success_multiplier
+      final_points = adjusted_points * success_mult
 
-      # Convert to tokens at current price
-      token_price = current_token_price
-      raw_tokens = usd_value / token_price
-
-      # Apply halving and price band adjustments
-      adjusted_tokens = raw_tokens * halving_mult * price_mult
+      # Calculate share of daily emission pool
+      # If we don't have period data, use single contribution model
+      daily_emission = current_daily_emission
+      
+      if period_contributions && period_contributions > 0
+        # Pool-based: your share of the daily pool
+        share_of_pool = final_points.to_f / period_contributions
+        tokens = (daily_emission * share_of_pool).round(4)
+      else
+        # Single contribution model: points directly convert
+        # This is used when calculating individual rewards
+        tokens = point_to_token_ratio * final_points
+      end
 
       # Apply bounds
-      final_tokens = [
-        [adjusted_tokens, MINIMUM_TOKENS].max,
-        MAXIMUM_TOKENS
-      ].min.round(4)
+      final_tokens = [[tokens, MINIMUM_TOKENS].max, MAXIMUM_TOKENS].min.round(4)
 
       {
         tokens: final_tokens,
-        usd_value: usd_value.round(2),
-        token_price: token_price,
+        points: final_points.round(2),
+        contribution_type: contribution_type,
         halving_multiplier: halving_mult,
-        price_band_multiplier: price_mult,
+        success_multiplier: success_mult,
         complexity_multiplier: complexity_mult,
         breakdown: {
-          base_usd: base_usd,
-          after_complexity: base_usd * complexity_mult,
-          raw_tokens: raw_tokens.round(4),
-          after_halving: (raw_tokens * halving_mult).round(4),
-          after_price_band: final_tokens
+          base_points: base_points,
+          after_complexity: (base_points * complexity_mult).round(2),
+          after_halving: (base_points * complexity_mult * halving_mult).round(2),
+          after_success: final_points.round(2),
+          token_value: final_tokens
         }
       }
     end
 
-    # Get current token price in USD
+    # Calculate daily emission pool with halving applied
+    def current_daily_emission
+      BASE_DAILY_EMISSION * TokenStake.current_halving_multiplier
+    end
+
+    # Simple point-to-token ratio for individual calculations
+    # Approximately: 1 point = 1 AMOS (with halving applied)
+    def point_to_token_ratio
+      # Ratio decreases with halving
+      TokenStake.current_halving_multiplier
+    end
+
+    # Get current success multiplier (rewards success)
+    def success_multiplier
+      price = current_token_price
+
+      SUCCESS_MULTIPLIERS.each do |_band, config|
+        return config[:multiplier] if price < config[:max_price]
+      end
+
+      1.0  # Fallback
+    end
+
+    # Get current success band name
+    def current_success_band
+      price = current_token_price
+
+      SUCCESS_MULTIPLIERS.each do |band, config|
+        return band if price < config[:max_price]
+      end
+
+      :growing
+    end
+
+    # Get current token price (for success multiplier only)
     def current_token_price
       # Try to get live price from Jupiter
       price = JupiterSwapService.amos_price_usdc
@@ -119,71 +179,47 @@ class ContributionRewardCalculator
       0.05  # Default $0.05
     end
 
-    # Determine price band multiplier
-    def price_band_multiplier
-      price = current_token_price
+    # Calculate reward for a sales commission (percentage-based)
+    def calculate_sales_reward(sale_value:, is_enterprise: false)
+      # Sales rewards are based on bringing value to platform
+      # More valuable sales = more points
+      base_type = is_enterprise ? :enterprise_deal : :affiliate_sale
+      
+      # Scale points by sale value (every $100 = base points)
+      value_multiplier = [(sale_value / 100.0), 0.5].max
+      scaled_complexity = [[value_multiplier.ceil, 5].min, 1].max
 
-      PRICE_BANDS.each do |_band, config|
-        return config[:multiplier] if price < config[:max_price]
-      end
-
-      1.0  # Fallback
+      calculate(contribution_type: base_type, complexity: scaled_complexity)
     end
 
-    # Get current price band name
-    def current_price_band
-      price = current_token_price
-
-      PRICE_BANDS.each do |band, config|
-        return band if price < config[:max_price]
-      end
-
-      :normal
-    end
-
-    # Calculate reward for a sales commission
-    def calculate_sales_reward(sale_amount:, is_enterprise: false)
-      type = is_enterprise ? :enterprise_deal : :affiliate_sale
-      rate = BASE_VALUES_USD[type]
-      value = sale_amount * rate
-
-      calculate(contribution_type: type, value: value, complexity: 3)
+    # Calculate total points earned in a period
+    def total_period_points(start_date: 1.day.ago, end_date: Time.current)
+      TokenStake.earned_between(start_date, end_date).sum(:initial_amount)
     end
 
     # Get summary stats for transparency
     def stats
       {
-        token_price_usd: current_token_price,
-        price_band: current_price_band,
-        price_band_multiplier: price_band_multiplier,
+        daily_emission: current_daily_emission,
         halving_multiplier: TokenStake.current_halving_multiplier,
-        base_values_usd: BASE_VALUES_USD,
-        examples: {
-          feature_standard: calculate(contribution_type: :feature, complexity: 3),
-          feature_exceptional: calculate(contribution_type: :feature, complexity: 5),
-          bug_fix_simple: calculate(contribution_type: :bug_fix, complexity: 2),
-          sale_100: calculate_sales_reward(sale_amount: 100),
-          sale_1000_enterprise: calculate_sales_reward(sale_amount: 1000, is_enterprise: true)
-        }
+        success_band: current_success_band,
+        success_multiplier: success_multiplier,
+        token_price_reference: current_token_price,
+        base_points: BASE_POINTS,
+        examples: example_calculations
       }
     end
 
     private
 
-    def get_base_usd_value(contribution_type, value)
-      base = BASE_VALUES_USD[contribution_type.to_sym]
-
-      if base.nil?
-        Rails.logger.warn "[REWARD_CALC] Unknown contribution type: #{contribution_type}"
-        return 50  # Default $50
-      end
-
-      # For percentage-based rewards (sales), use provided value
-      if base < 1 && value
-        value  # The 'value' should already be the calculated amount
-      else
-        base
-      end
+    def example_calculations
+      {
+        feature_standard: calculate(contribution_type: :feature, complexity: 3),
+        feature_exceptional: calculate(contribution_type: :feature, complexity: 5),
+        bug_fix_simple: calculate(contribution_type: :bug_fix, complexity: 2),
+        affiliate_sale: calculate(contribution_type: :affiliate_sale, complexity: 3),
+        enterprise_deal: calculate(contribution_type: :enterprise_deal, complexity: 4)
+      }
     end
   end
 end
