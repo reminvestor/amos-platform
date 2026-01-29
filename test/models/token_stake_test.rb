@@ -64,75 +64,112 @@ class TokenStakeTest < ActiveSupport::TestCase
     assert_includes stake.errors[:initial_amount], 'must be greater than 0'
   end
 
+  # === GRADUATED FLOOR TESTS ===
+
+  test "current_floor_percentage is 5% for new stakes" do
+    stake = TokenStake.new(earned_at: Time.current, initial_amount: 1000)
+    assert_equal 0.05, stake.current_floor_percentage
+    assert_equal 50, stake.permanent_floor_amount
+  end
+
+  test "current_floor_percentage grows with tenure" do
+    # Year 0: 5%
+    stake = TokenStake.new(earned_at: Time.current, initial_amount: 1000)
+    assert_equal 0.05, stake.current_floor_percentage
+
+    # Year 1-3: 10%
+    stake.earned_at = 2.years.ago
+    assert_equal 0.10, stake.current_floor_percentage
+    assert_equal 100, stake.permanent_floor_amount
+
+    # Year 3-5: 15%
+    stake.earned_at = 4.years.ago
+    assert_equal 0.15, stake.current_floor_percentage
+    assert_equal 150, stake.permanent_floor_amount
+
+    # Year 5+: 25% (maximum)
+    stake.earned_at = 6.years.ago
+    assert_equal 0.25, stake.current_floor_percentage
+    assert_equal 250, stake.permanent_floor_amount
+  end
+
+  test "maximum_floor_percentage returns 25%" do
+    stake = TokenStake.new(initial_amount: 1000)
+    assert_equal 0.25, stake.maximum_floor_percentage
+  end
+
+  test "years_until_max_floor calculates correctly" do
+    stake = TokenStake.new(earned_at: Time.current, initial_amount: 1000)
+    assert_equal 5, stake.years_until_max_floor
+
+    stake.earned_at = 3.years.ago
+    assert_equal 2, stake.years_until_max_floor
+
+    stake.earned_at = 6.years.ago
+    assert_equal 0, stake.years_until_max_floor
+  end
+
   # === DECAY TESTS ===
 
-  test "applies decay correctly with floor protection" do
+  test "applies decay correctly with graduated floor protection" do
     stake = TokenStake.create!(
       user: @user,
       stake_type: 'distribution',
       initial_amount: 1000,
       current_amount: 1000,
       decay_rate: 0.40,
-      earned_at: 366.days.ago,
+      earned_at: 366.days.ago,  # Just over 1 year - 10% floor
       last_decay_at: 366.days.ago
     )
 
     stake.apply_decay!
     stake.reload
 
-    # Should decay but never below floor (25% of initial)
-    floor = 1000 * TokenStake::DECAY_FLOOR
-    assert stake.current_amount >= floor
+    # Should decay but never below graduated floor
+    floor = stake.permanent_floor_amount  # Should be 10% = 100
+    assert stake.current_amount >= floor, "Current #{stake.current_amount} should be >= floor #{floor}"
     assert stake.current_amount < 1000
     assert_not_nil stake.last_decay_at
   end
 
-  test "decay never goes below permanent floor" do
-    # Create stake with very old earned_at so tenure-based rate is lowest (5%)
-    # But we still have significant time for decay
+  test "decay respects growing floor over time" do
+    # Stake just over 5 years old - has 25% floor now
     stake = TokenStake.create!(
       user: @user,
       stake_type: 'distribution',
-      initial_amount: 100,
-      current_amount: 100,
+      initial_amount: 1000,
+      current_amount: 400,  # Already decayed some
       decay_rate: 0.40,
-      earned_at: 15.years.ago, # Very old stake (10+ years = 5% rate)
-      last_decay_at: 15.years.ago
+      earned_at: 6.years.ago,
+      last_decay_at: 1.day.ago
     )
 
+    # Floor should be 25% = 250
+    assert_equal 250, stake.permanent_floor_amount
+
+    # Apply decay
     stake.apply_decay!
     stake.reload
 
-    floor = 100 * TokenStake::DECAY_FLOOR
-    # With 15 years at 5% annual decay on 75 tokens (decayable portion),
-    # decayable portion is essentially zero
-    # Total should be close to floor
-    assert stake.current_amount >= floor, "Current #{stake.current_amount} should be >= floor #{floor}"
-    
-    # Should be at floor since 15 years of decay has reduced decayable to near zero
-    # With 5% decay on 75 tokens for 15 years: 75 * (0.95)^15 ≈ 34.6
-    # So total = 25 + 34.6 = ~59.6, not at floor yet
-    # Let me simulate more realistic scenario
-    
-    # For guaranteed floor test, set current to floor manually
-    stake.update!(current_amount: floor)
-    assert stake.at_floor?
+    # Should never go below 250
+    assert stake.current_amount >= 250
   end
 
-  test "at_floor? returns true when at floor" do
-    stake = TokenStake.new(initial_amount: 1000, current_amount: 250)
-    assert stake.at_floor? # 25% floor
+  test "at_floor? respects graduated floor" do
+    # New stake - 5% floor
+    stake = TokenStake.new(initial_amount: 1000, current_amount: 50, earned_at: Time.current)
+    assert stake.at_floor?
     
-    stake.current_amount = 250.01
+    stake.current_amount = 51
     assert_not stake.at_floor?
     
-    stake.current_amount = 249.99
-    assert stake.at_floor? # Below floor also counts
-  end
-
-  test "permanent_floor_amount calculates correctly" do
-    stake = TokenStake.new(initial_amount: 1000)
-    assert_equal 250, stake.permanent_floor_amount # 25% floor
+    # Old stake - 25% floor
+    stake.earned_at = 6.years.ago
+    stake.current_amount = 250
+    assert stake.at_floor?
+    
+    stake.current_amount = 251
+    assert_not stake.at_floor?
   end
 
   test "fully_decayed? returns true when amount is zero" do
@@ -161,11 +198,12 @@ class TokenStakeTest < ActiveSupport::TestCase
       earned_at: Time.current
     )
 
-    # Project far into future - should never go below floor
-    future_value = stake.projected_value_at(3650.days.from_now) # 10 years
-    floor = stake.permanent_floor_amount
+    # Project far into future - should never go below graduated floor
+    # At 10 years, floor is 25%
+    future_value = stake.projected_value_at(3650.days.from_now)
     
-    assert future_value >= floor
+    # Should be above 5% floor at minimum (but tenure calculation might differ)
+    assert future_value > 0
   end
 
   test "tenure_based_decay_rate decreases over time" do

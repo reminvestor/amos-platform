@@ -45,15 +45,25 @@ The more you contribute, the more you own. And your ownership is **real** - you 
 
 ## How Do I Earn AMOS?
 
+### The Daily Reward Pool
+
+Every day, a pool of AMOS tokens is available for contributors. Your share depends on how much you contribute compared to everyone else:
+
+```
+Your Tokens = (Your Contribution Points / Total Points) × Daily Pool
+```
+
+**Simple version:** More contribution = bigger slice of the pie.
+
 ### 1. Build (For Developers)
 
 If you contribute code to the platform:
 
 | Contribution | Typical Reward |
 |--------------|----------------|
-| New feature | ~$500 worth of AMOS |
-| Bug fix | ~$100 worth of AMOS |
-| Documentation | ~$50 worth of AMOS |
+| New feature | ~500 tokens |
+| Bug fix | ~100 tokens |
+| Documentation | ~50 tokens |
 
 ### 2. Sell (For Affiliates & Partners)
 
@@ -61,8 +71,8 @@ If you bring customers to the platform:
 
 | Action | Reward |
 |--------|--------|
-| Customer signs up & pays | 10% of their payment in AMOS |
-| Enterprise deal | 15% of deal value in AMOS |
+| Customer signs up & pays | ~200 tokens |
+| Enterprise deal | ~500 tokens |
 
 ### 3. Support (For Community)
 
@@ -70,9 +80,9 @@ If you help grow the community:
 
 | Action | Typical Reward |
 |--------|----------------|
-| Answer user questions | ~$10 worth of AMOS |
-| Create tutorial | ~$75 worth of AMOS |
-| Translate content | ~$100 worth of AMOS |
+| Answer user questions | ~25 tokens |
+| Create tutorial | ~150 tokens |
+| Translate content | ~100 tokens |
 
 ---
 
@@ -88,11 +98,17 @@ If the platform makes $1 million/month:
 
 ### 2. Vote on Decisions 🗳️
 
-Token holders vote on how to spend the R&D budget (20% of revenue):
+Token holders vote on important decisions:
 
-- Which features to build next
-- Which partnerships to pursue
-- Major company decisions
+| What You Can Vote On | How It Works |
+|---------------------|--------------|
+| Feature priorities | Simple majority |
+| R&D budget (20% of revenue) | Simple majority |
+| Strategic partnerships | Simple majority |
+| Rule changes (decay rates, etc.) | **2/3 supermajority** |
+| Core changes | **2/3 supermajority** |
+
+Big changes require bigger agreement - that's how we protect the system from bad actors.
 
 ### 3. Trade on Exchanges 📈
 
@@ -125,21 +141,34 @@ We don't want people who bought tokens years ago and never contributed to contro
 ### How It Works
 
 - Your tokens decrease by about 40% per year initially
-- BUT you **always keep at least 25%** of your original stake (forever)
+- BUT you always keep a **growing floor** (see below)
 - AND if you've been holding for 10+ years, decay drops to only 5%/year
+
+### Your Safety Net Grows Over Time
+
+The longer you hold, the more you're guaranteed to keep:
+
+| How Long You've Held | Minimum You Keep Forever |
+|----------------------|--------------------------|
+| 0-1 year | 5% of original |
+| 1-3 years | 10% of original |
+| 3-5 years | 15% of original |
+| 5+ years | **25% of original** |
+
+This means you earn your security - you can't just buy in and lock up ownership forever.
 
 ### Example
 
 You earn 10,000 AMOS tokens:
 
-| Year | Your Tokens | What Happened |
-|------|-------------|---------------|
-| 0 | 10,000 | Just earned |
-| 1 | 6,000 | 40% decay |
-| 2 | 3,600 | 40% decay |
-| 5 | 2,700 | Rate dropped to 25% |
-| 10 | 2,500 | Hit permanent floor |
-| 20 | 2,500 | Still have 25% forever |
+| Year | Your Tokens | Your Floor | What Happened |
+|------|-------------|------------|---------------|
+| 0 | 10,000 | 500 (5%) | Just earned |
+| 1 | 6,000 | 1,000 (10%) | 40% decay, floor grew |
+| 2 | 3,600 | 1,000 (10%) | 40% decay |
+| 3 | 2,700 | 1,500 (15%) | 25% decay, floor grew |
+| 5 | 2,500 | 2,500 (25%) | Hit permanent floor |
+| 20 | 2,500 | 2,500 (25%) | Still have it forever |
 
 ### Beat Decay by Contributing
 
@@ -148,6 +177,23 @@ The decay only affects inactive holders. If you keep contributing:
 - New contributions → New tokens
 - New tokens → Replace decayed ones
 - Active contributors → Growing stake
+
+---
+
+## When We Succeed, You Succeed
+
+Here's something unique about AMOS:
+
+**When the token price goes up, contributors get rewarded MORE, not less.**
+
+| Platform Status | Your Bonus |
+|-----------------|------------|
+| Building (early days) | 1.0x (baseline) |
+| Growing | 1.25x rewards |
+| Thriving | 1.5x rewards |
+| Soaring | 2.0x rewards |
+
+Most tokens punish contributors when prices rise. We share the success with you.
 
 ---
 
@@ -253,6 +299,7 @@ Decay rate decreases the longer you hold:
 | Fixed supply, hold forever | Decay encourages activity |
 | No real utility | Revenue share + governance |
 | Team dumps on retail | Same rules for everyone |
+| Early buyers locked in | Floor grows with tenure |
 
 ---
 
@@ -314,8 +361,9 @@ Watch your balance grow as you contribute
 | Revenue share? | 40% of platform revenue to holders |
 | Can I sell it? | Yes, anytime on crypto exchanges |
 | Does it expire? | No, but it decays if you're not active |
-| Minimum I keep? | 25% of original stake (forever) |
+| Minimum I keep? | 5-25% depending on how long you've held |
 | Pass to family? | Yes |
+| Vote on decisions? | Yes, including big rule changes (with supermajority) |
 
 ---
 

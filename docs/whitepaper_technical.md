@@ -1,12 +1,12 @@
 # AMOS Token: Technical Whitepaper
 
-**Version 1.0 | January 2026**
+**Version 2.0 | January 2026**
 
 ---
 
 ## Abstract
 
-AMOS (Autonomous Marketing Operating System) Token is a Solana-based SPL token designed to align incentives between platform contributors, distributors, and users. Unlike traditional equity or utility tokens, AMOS implements a novel **decay-based ownership model** that rewards sustained participation while preventing passive accumulation. This paper describes the technical architecture, economic mechanisms, and smart contract specifications.
+AMOS (Autonomous Marketing Operating System) Token is a Solana-based SPL token designed to align incentives between platform contributors, distributors, and users. Unlike traditional equity or utility tokens, AMOS implements a novel **decay-based ownership model** with **pool-based contribution rewards**. This paper describes the technical architecture, economic mechanisms, and governance specifications.
 
 ---
 
@@ -35,6 +35,7 @@ Traditional platform economics suffer from misaligned incentives:
 - **Early contributors** are compensated in cash, missing long-term upside
 - **Passive holders** accumulate without contributing
 - **Late participants** face insurmountable barriers to meaningful ownership
+- **USD-denominated rewards** create regulatory complexity and external dependencies
 
 ### 1.2 Solution
 
@@ -42,8 +43,9 @@ AMOS Token introduces:
 
 1. **Contribution-based ownership** - Tokens earned, not bought
 2. **Decay function** - Continuous participation required for maximum stake
-3. **Transparent distribution** - All ownership publicly verifiable on-chain
-4. **Revenue sharing** - Token holders receive portion of platform revenue
+3. **Pool-based rewards** - No external price dependencies
+4. **Transparent distribution** - All ownership publicly verifiable on-chain
+5. **Revenue sharing** - Token holders receive portion of platform revenue
 
 ### 1.3 Design Principles
 
@@ -51,6 +53,7 @@ AMOS Token introduces:
 - **Transparency**: All allocations on-chain and auditable
 - **Sustainability**: Self-balancing economic mechanisms
 - **Accessibility**: Low barriers to participation
+- **Independence**: No USD denomination or external price dependencies
 
 ---
 
@@ -96,7 +99,7 @@ Total Supply: 100,000,000 AMOS
 ### 3.1 Token Utility
 
 1. **Revenue Share**: 40% of platform revenue distributed to holders
-2. **Governance**: Voting rights on R&D allocation (20% of revenue)
+2. **Governance**: Voting rights on multiple proposal categories
 3. **Platform Benefits**: Premium features for staked tokens
 4. **Trading**: Freely tradeable on Solana DEXs (Jupiter, Raydium)
 
@@ -142,10 +145,10 @@ Daily Decay = C × (r / 365)
 New Amount = C - Daily Decay
 ```
 
-But amount never falls below the **decay floor**:
+But amount never falls below the **graduated decay floor**:
 
 ```
-Floor = I × 0.25
+Floor = I × floor_percentage(tenure_years)
 C_new = max(C - Daily Decay, Floor)
 ```
 
@@ -164,7 +167,8 @@ Decay rate decreases with holding duration:
 
 ```
 Initial stake: 10,000 AMOS
-Decay floor: 2,500 AMOS (25%)
+Year 0 floor: 500 AMOS (5%)
+Year 5 floor: 2,500 AMOS (25%)
 
 Year 0: 10,000 tokens
 Year 1: 6,000 tokens (40% decay)
@@ -185,13 +189,22 @@ Decayed tokens are split:
 
 ## 5. Wealth Preservation
 
-### 5.1 Decay Floor
+### 5.1 Graduated Decay Floor
 
-25% of initial stake is **permanent**. This enables:
+Floor percentage **grows with tenure** to prevent early adopters from locking in permanent advantages while still rewarding long-term commitment:
 
-- Generational wealth transfer
+| Tenure | Floor % | Rationale |
+|--------|---------|-----------|
+| 0-1 year | 5% | Earn your security |
+| 1-3 years | 10% | Building commitment |
+| 3-5 years | 15% | Established contributor |
+| 5+ years | 25% | Maximum security |
+
+This enables:
+
+- Generational wealth transfer (after tenure buildup)
 - Long-term planning
-- Minimum inheritance guarantee
+- Fair treatment of late joiners
 
 ### 5.2 Staking Vaults
 
@@ -216,28 +229,33 @@ Stakes can be transferred to designated beneficiaries:
 
 ## 6. Reward Calculation
 
-### 6.1 USD-Denominated Rewards
+### 6.1 Pool-Based Relative Scoring
 
-Contributions valued in USD, converted to tokens at current price:
+**No USD denomination.** Contributions are measured in internal points, and rewards come from a daily emission pool:
 
-```ruby
-tokens = usd_value / current_token_price
+```
+Your Tokens = (Your Points / Total Period Points) × Daily Emission Pool
 ```
 
-This ensures fair compensation regardless of token price fluctuations.
+This ensures:
+- No dependency on external prices
+- Collaborative distribution
+- Self-balancing economics
+- Simple to understand
 
-### 6.2 Base Contribution Values
+### 6.2 Base Contribution Points
 
-| Contribution Type | USD Value |
-|-------------------|-----------|
-| Feature (code) | $500 |
-| Bug Fix | $100 |
-| Security Fix | $300 |
-| Documentation | $50 |
-| Affiliate Sale | 10% of sale |
-| Enterprise Deal | 15% of deal |
-| Support Ticket | $10 |
-| Content Creation | $25 |
+| Contribution Type | Base Points |
+|-------------------|-------------|
+| Feature (code) | 500 |
+| Bug Fix | 100 |
+| Security Fix | 300 |
+| Documentation | 50 |
+| Affiliate Sale | 200 |
+| Enterprise Deal | 500 |
+| Support Ticket | 25 |
+| Content Creation | 50 |
+| Tutorial | 150 |
 
 ### 6.3 Complexity Multipliers
 
@@ -251,32 +269,33 @@ This ensures fair compensation regardless of token price fluctuations.
 
 ### 6.4 Halving Schedule
 
-New token rewards decrease over time:
+Daily emission pool decreases over time:
 
-| Year | Multiplier |
-|------|------------|
-| 0-2 | 1.0x |
-| 2-4 | 0.5x |
-| 4-6 | 0.25x |
-| 6-8 | 0.125x |
-| 8+ | 0.0625x |
+| Year | Multiplier | Daily Emission |
+|------|------------|----------------|
+| 0-2 | 1.0x | ~16,000 AMOS |
+| 2-4 | 0.5x | ~8,000 AMOS |
+| 4-6 | 0.25x | ~4,000 AMOS |
+| 6-8 | 0.125x | ~2,000 AMOS |
+| 8+ | 0.0625x | ~1,000 AMOS |
 
-### 6.5 Price Band Adjustment
+### 6.5 Success Multipliers (Rewarding Growth)
 
-Dynamic multiplier based on token price:
+When the platform succeeds (token price rises), contributors are **rewarded more**, not less:
 
-| Price Range | Multiplier | Rationale |
-|-------------|------------|-----------|
-| <$0.01 | 2.0x | Boost building incentives |
-| $0.01-$0.05 | 1.5x | Moderate boost |
-| $0.05-$0.20 | 1.0x | Target range |
-| $0.20-$0.50 | 0.75x | Increase scarcity |
-| >$0.50 | 0.5x | Maximum scarcity |
+| Success Band | Price Range | Multiplier | Rationale |
+|--------------|-------------|------------|-----------|
+| Struggling | <$0.01 | 1.0x | Baseline protection |
+| Building | $0.01-$0.05 | 1.1x | Slight boost |
+| Growing | $0.05-$0.20 | 1.25x | Success bonus |
+| Thriving | $0.20-$0.50 | 1.5x | Share the success! |
+| Soaring | >$0.50 | 2.0x | Big success = big rewards |
 
 ### 6.6 Complete Reward Formula
 
 ```ruby
-tokens = (base_usd × complexity_mult × halving_mult × price_band_mult) / token_price
+points = base_points × complexity_mult × halving_mult × success_mult
+tokens = points × point_to_token_ratio
 
 # With bounds
 tokens = clamp(tokens, MIN_TOKENS, MAX_TOKENS)
@@ -360,22 +379,38 @@ Voting power proportional to current stake (post-decay):
 Voting Power = Current Stake / Total Active Stakes
 ```
 
-### 8.2 Governance Scope
+### 8.2 Governance Scope (Expanded)
 
-Token holders vote on:
+Token holders vote on multiple categories with different requirements:
 
-- R&D budget allocation (20% of revenue)
-- Major platform decisions
-- Parameter changes (decay rates, etc.)
-- Treasury usage
+| Category | Description | Min Stake | Quorum | Threshold |
+|----------|-------------|-----------|--------|-----------|
+| **R&D Allocation** | 20% revenue budget | 1,000 | 30% | 50% (majority) |
+| **Treasury Usage** | Fund usage proposals | 5,000 | 40% | 50% (majority) |
+| **Feature Priority** | Feature prioritization | 500 | 20% | 50% (majority) |
+| **Partnership** | Strategic partnerships | 2,500 | 35% | 50% (majority) |
+| **Parameter Change** | Decay/halving adjustments | 10,000 | 50% | 66.7% (supermajority) |
+| **Constitutional** | Core mechanic changes | 25,000 | 60% | 66.7% (supermajority) |
 
 ### 8.3 Proposal Process
 
-1. Stake 1,000+ AMOS to submit proposal
-2. 7-day discussion period
-3. 7-day voting period
-4. 50% quorum required
-5. Simple majority to pass
+1. Stake minimum AMOS to submit proposal (varies by type)
+2. Discussion period (5-21 days depending on type)
+3. Voting period (5-21 days depending on type)
+4. Quorum must be met
+5. Threshold must be passed
+6. Failed proposals burn 10% of staked amount (anti-spam)
+
+### 8.4 Supermajority Requirements
+
+**Parameter** and **Constitutional** changes require:
+
+- 2/3 (66.7%) approval to pass
+- Higher quorum (50-60%)
+- Longer discussion/voting periods
+- Higher stake to propose
+
+This protects core mechanics from minority capture while allowing evolution.
 
 ---
 
@@ -397,10 +432,10 @@ Token holders vote on:
 
 ### 9.3 Economic Security
 
-- Price manipulation resistant (USD-denominated rewards)
 - Sybil resistant (KYC for large claims)
 - Whale resistant (decay mechanism)
 - Rug-proof (no admin keys on token)
+- Governance capture resistant (supermajority for critical changes)
 
 ---
 
@@ -416,7 +451,11 @@ class TokenStake
   # Amounts
   :initial_amount    # Original stake
   :current_amount    # After decay
-  :permanent_floor   # Never decays below this
+  
+  # Graduated floor (grows with tenure)
+  def current_floor_percentage
+    # 5% → 10% → 15% → 25% based on years held
+  end
   
   # Decay
   :decay_rate        # Annual rate
@@ -427,15 +466,17 @@ class TokenStake
   :locked_until      # Lock expiration
 end
 
-# TokenClaim - Withdrawal request
-class TokenClaim
-  belongs_to :user
+# GovernanceProposal - Voting proposals
+class GovernanceProposal
+  belongs_to :proposer
+  has_many :governance_votes
   
-  :amount
-  :wallet_address
-  :status              # pending/processing/completed/failed
-  :transaction_signature
-  :disbursement_currency  # amos/usdc/sol
+  :proposal_type  # r_and_d, treasury, feature, partnership, parameter, constitutional
+  :status         # draft, discussion, voting, passed, failed, cancelled, executed
+  
+  def requires_supermajority?
+    [:parameter, :constitutional].include?(proposal_type.to_sym)
+  end
 end
 
 # Contribution - Work record
@@ -444,8 +485,9 @@ class Contribution
   
   :contribution_type
   :complexity
-  :token_value
-  :status  # pending/approved/rejected
+  :points          # Base points earned
+  :token_value     # Tokens awarded from pool
+  :status          # pending/approved/rejected
 end
 ```
 
@@ -455,7 +497,7 @@ end
 # Token decay (runs daily)
 TokenDecayJob.perform_later
 
-# Reward calculation
+# Pool-based reward calculation
 ContributionRewardCalculator.calculate(
   contribution_type: :feature,
   complexity: 3
@@ -483,6 +525,12 @@ GET  /api/v1/wallet/balance
 POST /api/v1/wallet/claim
 POST /api/v1/wallet/deposit
 
+# Governance
+GET  /api/v1/governance/proposals
+POST /api/v1/governance/proposals
+POST /api/v1/governance/proposals/:id/vote
+GET  /api/v1/governance/proposals/:id
+
 # Swaps
 GET  /api/v1/swap/quote
 GET  /api/v1/swap/price
@@ -496,12 +544,14 @@ POST /api/v1/swap/prepare
 | Term | Definition |
 |------|------------|
 | Decay | Gradual reduction of stake over time |
-| Decay Floor | Minimum stake that never decays (25%) |
+| Graduated Floor | Minimum stake % that grows with tenure (5%→25%) |
 | Tenure | Time since stake was earned |
-| Halving | Reduction of new token rewards over time |
+| Halving | Reduction of daily emission pool over time |
 | Claim | Withdraw internal tokens to Solana wallet |
 | Deposit | Return on-chain tokens to platform |
 | Staking Vault | Time-lock for reduced decay |
+| Supermajority | 2/3 (66.7%) approval required |
+| Quorum | Minimum participation required for valid vote |
 
 ---
 
@@ -520,6 +570,7 @@ POST /api/v1/swap/prepare
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.0 | Jan 2026 | Pool-based rewards, graduated floor, success multipliers, expanded governance |
 | 1.0 | Jan 2026 | Initial release |
 
 ---

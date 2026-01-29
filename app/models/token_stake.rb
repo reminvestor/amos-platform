@@ -17,7 +17,16 @@ class TokenStake < ApplicationRecord
 
   # Fixed supply constants
   TOTAL_SUPPLY = 100_000_000  # 100M tokens ever
-  DECAY_FLOOR = 0.25  # 25% of initial stake is permanent (never decays)
+  
+  # GRADUATED DECAY FLOOR - builds over time
+  # Prevents early adopters from locking in permanent advantages
+  # while still rewarding long-term commitment
+  GRADUATED_DECAY_FLOOR = {
+    0 => 0.05,   # Year 0-1: 5% floor (earn your security)
+    1 => 0.10,   # Year 1-3: 10% floor
+    3 => 0.15,   # Year 3-5: 15% floor  
+    5 => 0.25    # Year 5+: 25% floor (maximum security)
+  }.freeze
   
   # Halving schedule - rewards decrease over time
   HALVING_SCHEDULE = {
@@ -103,19 +112,45 @@ class TokenStake < ApplicationRecord
 
   # Instance methods
   
+  # Calculate the current decay floor percentage based on tenure
+  # Floor grows over time: 5% → 10% → 15% → 25%
+  def current_floor_percentage
+    years = tenure_years
+    
+    applicable_floor = GRADUATED_DECAY_FLOOR[0]
+    GRADUATED_DECAY_FLOOR.each do |threshold, floor|
+      applicable_floor = floor if years >= threshold
+    end
+    
+    applicable_floor
+  end
+
   # Calculate the permanent floor amount (never decays)
+  # This grows with tenure - early stakes have smaller floors
   def permanent_floor_amount
-    initial_amount * DECAY_FLOOR
+    initial_amount * current_floor_percentage
   end
 
   # Calculate the decayable portion
   def decayable_amount
-    initial_amount * (1 - DECAY_FLOOR)
+    initial_amount * (1 - current_floor_percentage)
   end
 
   # Get tenure in years
   def tenure_years
+    return 0 unless earned_at
     ((Time.current - earned_at) / 1.year).floor
+  end
+  
+  # Get the maximum floor this stake will eventually have
+  def maximum_floor_percentage
+    GRADUATED_DECAY_FLOOR.values.max
+  end
+  
+  # Years until stake reaches maximum floor
+  def years_until_max_floor
+    max_tenure = GRADUATED_DECAY_FLOOR.keys.max
+    [max_tenure - tenure_years, 0].max
   end
 
   # Get effective decay rate based on tenure and staking
