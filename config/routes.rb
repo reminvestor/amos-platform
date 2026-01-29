@@ -228,6 +228,17 @@ Rails.application.routes.draw do
       resources :jobs, only: [ :show ]
       post "crawler_contacts", to: "crawler_contacts#create"
 
+      # Token Economy API - Transparency Dashboard
+      scope :token_economy, controller: 'token_economy' do
+        get 'stats', action: :stats
+        get 'distribution', action: :distribution
+        get 'leaderboard', action: :leaderboard
+        get 'my_profile', action: :my_profile
+        get 'my_stakes', action: :my_stakes
+        get 'my_contributions', action: :my_contributions
+        post 'contributions', action: :create_contribution
+      end
+
       # Crawler Job Logging
       post "crawler_jobs/:id/logs", to: "crawler_job_logs#create"
 
