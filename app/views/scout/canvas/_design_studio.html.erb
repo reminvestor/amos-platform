@@ -6592,6 +6592,7 @@ function buildSectionCard(section, idx, pageIndex) {
       
       zone.addEventListener('drop', function(e) {
         e.preventDefault();
+        e.stopPropagation(); // Prevent bubbling to parent canvas drop handler
         this.classList.remove('drag-over');
         
         // Only handle component drops (application/json), ignore section reorders
@@ -6920,6 +6921,7 @@ function buildSectionCard(section, idx, pageIndex) {
     gridArea.addEventListener('drop', function(e) {
       if (!window._draggingGridComponent) return;
       e.preventDefault();
+      e.stopPropagation(); // Prevent bubbling to parent drop handlers
       
       var component = window._draggingGridComponent;
       var rect = gridArea.getBoundingClientRect();
