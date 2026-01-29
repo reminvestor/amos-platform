@@ -119,6 +119,79 @@ module Api
       end
     end
 
+    # POST /api/mfa/trust_device
+    # Create a trusted device token after successful MFA verification
+    # This allows bypassing MFA on this device using Face ID/biometrics
+    def trust_device
+      device_name = params[:device_name] || "Mobile Device"
+      device_identifier = params[:device_identifier]
+      platform = params[:platform] || "unknown"
+
+      trusted_device = TrustedDevice.create_for_user!(
+        @current_user,
+        device_name: device_name,
+        device_identifier: device_identifier,
+        platform: platform
+      )
+
+      render json: {
+        success: true,
+        device_token: trusted_device.token,
+        expires_at: trusted_device.expires_at,
+        message: "Device trusted successfully. You can now use biometrics to sign in."
+      }
+    rescue => e
+      Rails.logger.error("Failed to create trusted device: #{e.message}")
+      render json: {
+        success: false,
+        message: "Failed to trust device"
+      }, status: :unprocessable_entity
+    end
+
+    # GET /api/mfa/trusted_devices
+    # List all trusted devices for the current user
+    def trusted_devices
+      devices = @current_user.trusted_devices.active.order(last_used_at: :desc).map do |device|
+        {
+          id: device.id,
+          device_name: device.device_name,
+          platform: device.platform,
+          last_used_at: device.last_used_at,
+          expires_at: device.expires_at,
+          created_at: device.created_at
+        }
+      end
+
+      render json: { trusted_devices: devices }
+    end
+
+    # DELETE /api/mfa/trusted_devices/:id
+    # Revoke a specific trusted device
+    def revoke_trusted_device
+      device = @current_user.trusted_devices.find_by(id: params[:id])
+
+      unless device
+        render json: { message: "Device not found" }, status: :not_found
+        return
+      end
+
+      device.destroy
+      render json: {
+        success: true,
+        message: "Device trust has been revoked"
+      }
+    end
+
+    # DELETE /api/mfa/trusted_devices
+    # Revoke all trusted devices (useful if phone is lost)
+    def revoke_all_trusted_devices
+      count = @current_user.trusted_devices.destroy_all.count
+      render json: {
+        success: true,
+        message: "#{count} trusted device(s) have been revoked"
+      }
+    end
+
     private
 
     def authenticate_api_user!

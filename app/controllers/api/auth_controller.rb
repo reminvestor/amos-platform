@@ -2,7 +2,7 @@
 
 module Api
   class AuthController < ApplicationController
-    skip_before_action :authenticate_user!, only: [:login, :register, :verify_mfa]
+    skip_before_action :authenticate_user!, only: [:login, :register, :verify_mfa, :login_with_device_token]
     skip_before_action :verify_authenticity_token
 
     before_action :authenticate_api_user!, only: [:me, :refresh_token, :logout, :regenerate_api_key]
@@ -94,6 +94,18 @@ module Api
       if user&.valid_password?(params[:password])
         # Check if MFA is required (skip in development for easier testing)
         if user.mfa_enabled? && !Rails.env.development?
+          # Check for trusted device token (Face ID/biometric bypass)
+          device_token = params[:device_token]
+          if device_token.present?
+            trusted_device = user.trusted_devices.active.find_by(token: device_token)
+            if trusted_device
+              # Valid trusted device - bypass MFA
+              trusted_device.touch_last_used!
+              return render_login_success(user, trusted_device: true)
+            end
+            # Invalid/expired device token - fall through to require MFA
+          end
+
           # Generate a temporary MFA session token (stored in cache)
           mfa_session_token = SecureRandom.hex(32)
           Rails.cache.write("mfa_session:#{mfa_session_token}", user.id, expires_in: 10.minutes)
@@ -106,29 +118,61 @@ module Api
           return
         end
 
-        # Generate API key if not present
-        if user.api_key.blank?
-          user.update(api_key: SecureRandom.hex(32))
-        end
-
-        render json: {
-          user: {
-            id: user.id,
-            email: user.email,
-            first_name: user.first_name,
-            last_name: user.last_name,
-            name: "#{user.first_name} #{user.last_name}".strip,
-            entity_id: user.entity_id,
-            entity_name: user.entity&.name || 'My Business',
-            role: user.role,
-            mfa_enabled: user.otp_required_for_login
-          },
-          api_key: user.api_key,
-          token: user.api_key
-        }, status: :ok
+        render_login_success(user)
       else
         render json: { message: "Invalid email or password" }, status: :unauthorized
       end
+    end
+
+    # POST /api/auth/login-device
+    # Login using a trusted device token (Face ID/biometric bypass)
+    # This allows users to sign in without password if they have a trusted device
+    def login_with_device_token
+      email = params[:email]&.downcase
+      device_token = params[:device_token]
+
+      unless email.present? && device_token.present?
+        render json: { message: "Email and device token are required" }, status: :unprocessable_entity
+        return
+      end
+
+      user = User.find_by(email: email)
+      unless user
+        render json: { message: "Invalid credentials" }, status: :unauthorized
+        return
+      end
+
+      # Find and validate the trusted device token
+      trusted_device = user.trusted_devices.active.find_by(token: device_token)
+      unless trusted_device
+        render json: { message: "Device not trusted or trust expired" }, status: :unauthorized
+        return
+      end
+
+      # Device token is valid - grant access without password/MFA
+      trusted_device.touch_last_used!
+
+      # Generate API key if not present
+      if user.api_key.blank?
+        user.update(api_key: SecureRandom.hex(32))
+      end
+
+      render json: {
+        user: {
+          id: user.id,
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          name: "#{user.first_name} #{user.last_name}".strip,
+          entity_id: user.entity_id,
+          entity_name: user.entity&.name || 'My Business',
+          role: user.role,
+          mfa_enabled: user.otp_required_for_login
+        },
+        api_key: user.api_key,
+        token: user.api_key,
+        trusted_device_used: true
+      }, status: :ok
     end
 
     def verify_mfa
@@ -250,6 +294,30 @@ module Api
         render json: { message: "Invalid token" }, status: :unauthorized
         return
       end
+    end
+
+    def render_login_success(user, trusted_device: false)
+      # Generate API key if not present
+      if user.api_key.blank?
+        user.update(api_key: SecureRandom.hex(32))
+      end
+
+      render json: {
+        user: {
+          id: user.id,
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          name: "#{user.first_name} #{user.last_name}".strip,
+          entity_id: user.entity_id,
+          entity_name: user.entity&.name || 'My Business',
+          role: user.role,
+          mfa_enabled: user.otp_required_for_login
+        },
+        api_key: user.api_key,
+        token: user.api_key,
+        trusted_device_used: trusted_device
+      }, status: :ok
     end
 
     def create_entity_for_registration(business_name)
