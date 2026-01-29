@@ -163,4 +163,7 @@ class DeviceToken < ApplicationRecord
 
   def register_with_sns_after_save
     # Schedule registration after commit
-    after_commit -> { register_with_sns }, on: :update
+    # Note: after_commit must be defined at class level, so we just call register directly
+    register_with_sns
+  end
+end
