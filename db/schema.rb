@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_29_050001) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_29_060000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -4302,6 +4302,41 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_050001) do
     t.index ["status"], name: "index_referrals_on_status"
   end
 
+  create_table "revenue_distributions", force: :cascade do |t|
+    t.string "period", null: false
+    t.decimal "gross_revenue", precision: 15, scale: 2, null: false
+    t.decimal "holder_pool", precision: 15, scale: 2, null: false
+    t.decimal "usdc_distributed", precision: 15, scale: 2, default: "0.0"
+    t.decimal "buyback_burned", precision: 20, scale: 4, default: "0.0"
+    t.integer "recipients_count", default: 0
+    t.datetime "distributed_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["distributed_at"], name: "index_revenue_distributions_on_distributed_at"
+    t.index ["period"], name: "index_revenue_distributions_on_period", unique: true
+  end
+
+  create_table "revenue_payments", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "revenue_distribution_id"
+    t.decimal "amount", precision: 15, scale: 2, null: false
+    t.string "currency", default: "USDC", null: false
+    t.string "period", null: false
+    t.string "status", default: "pending", null: false
+    t.string "payment_method"
+    t.string "transaction_signature"
+    t.datetime "paid_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["period"], name: "index_revenue_payments_on_period"
+    t.index ["revenue_distribution_id"], name: "index_revenue_payments_on_revenue_distribution_id"
+    t.index ["status"], name: "index_revenue_payments_on_status"
+    t.index ["user_id", "period"], name: "index_revenue_payments_on_user_id_and_period", unique: true
+    t.index ["user_id"], name: "index_revenue_payments_on_user_id"
+  end
+
   create_table "rich_text_sections", force: :cascade do |t|
     t.string "title"
     t.string "section_type"
@@ -5126,6 +5161,23 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_050001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["entity_id"], name: "index_tenant_quotas_on_entity_id"
+  end
+
+  create_table "token_buybacks", force: :cascade do |t|
+    t.string "period", null: false
+    t.decimal "usdc_amount", precision: 15, scale: 2, null: false
+    t.decimal "estimated_tokens", precision: 20, scale: 4
+    t.decimal "actual_tokens_bought", precision: 20, scale: 4
+    t.decimal "token_price_at_buyback", precision: 15, scale: 6
+    t.string "status", default: "pending", null: false
+    t.string "swap_transaction_signature"
+    t.string "burn_transaction_signature"
+    t.datetime "executed_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["period"], name: "index_token_buybacks_on_period"
+    t.index ["status"], name: "index_token_buybacks_on_status"
   end
 
   create_table "token_claims", force: :cascade do |t|
@@ -6425,6 +6477,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_29_050001) do
   add_foreign_key "referrals", "affiliates"
   add_foreign_key "referrals", "entities", column: "referred_entity_id"
   add_foreign_key "referrals", "users", column: "referred_user_id"
+  add_foreign_key "revenue_payments", "revenue_distributions"
+  add_foreign_key "revenue_payments", "users"
   add_foreign_key "rich_text_sections", "landing_pages"
   add_foreign_key "saved_searches", "entities"
   add_foreign_key "saved_searches", "users"
