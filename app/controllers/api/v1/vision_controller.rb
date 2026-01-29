@@ -2,7 +2,7 @@
 
 module Api
   module V1
-    class VisionController < Api::BaseController
+    class VisionController < BaseController
       before_action :authenticate_api_user!
 
       # POST /api/v1/vision/scan_business_card
