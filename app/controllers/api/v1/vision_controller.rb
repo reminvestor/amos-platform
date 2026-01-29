@@ -4,6 +4,7 @@ module Api
   module V1
     class VisionController < BaseController
       before_action :authenticate_api_user!
+      skip_before_action :require_entity!, only: [:scan, :scan_business_card]
 
       # POST /api/v1/vision/scan_business_card
       # Scans a business card image and extracts contact information
