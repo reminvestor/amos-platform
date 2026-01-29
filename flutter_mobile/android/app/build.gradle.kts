@@ -31,7 +31,7 @@ android {
 
     defaultConfig {
         applicationId = "com.amoslabs.mobile"
-        minSdk = flutter.minSdkVersion
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

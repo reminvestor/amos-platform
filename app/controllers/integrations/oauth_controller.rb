@@ -195,18 +195,35 @@ class Integrations::OauthController < ApplicationController
       # Clean up session to avoid CookieOverflow on redirect
       cleanup_session_for_redirect!
 
-      # Redirect back to chat with canvas load parameter
-      if test_result[:success]
-        redirect_to "#{chat_mode_path}?canvas=integrations_manager&notice=#{CGI.escape("Successfully connected to #{@integration.name}!")}"
+      # Check if this OAuth was initiated from mobile
+      if oauth_data[:from_mobile]
+        # For mobile, show a success page that instructs user to return to app
+        # or redirect to custom URL scheme
+        if test_result[:success]
+          render_mobile_oauth_success(@integration.name)
+        else
+          render_mobile_oauth_error("Connected but test failed: #{test_result[:error]}")
+        end
       else
-        redirect_to "#{chat_mode_path}?canvas=integrations_manager&alert=#{CGI.escape("Connected but test failed: #{test_result[:error]}")}"
+        # Redirect back to chat with canvas load parameter (web flow)
+        if test_result[:success]
+          redirect_to "#{chat_mode_path}?canvas=integrations_manager&notice=#{CGI.escape("Successfully connected to #{@integration.name}!")}"
+        else
+          redirect_to "#{chat_mode_path}?canvas=integrations_manager&alert=#{CGI.escape("Connected but test failed: #{test_result[:error]}")}"
+        end
       end
 
     rescue => e
       Rails.logger.error "OAuth callback error: #{e.message}"
       Rails.logger.error e.backtrace.first(10).join("\n")
       cleanup_session_for_redirect!
-      redirect_to "#{chat_mode_path}?canvas=integrations_manager&alert=#{CGI.escape("Failed to complete authorization: #{e.message}")}"
+
+      # Check if from mobile
+      if oauth_data&.dig(:from_mobile)
+        render_mobile_oauth_error("Failed to complete authorization: #{e.message}")
+      else
+        redirect_to "#{chat_mode_path}?canvas=integrations_manager&alert=#{CGI.escape("Failed to complete authorization: #{e.message}")}"
+      end
     end
   end
 
@@ -268,6 +285,104 @@ class Integrations::OauthController < ApplicationController
       user_return_to
     ]
     oauth_keys.each { |key| session.delete(key) }
+  end
+
+  # Render success page for mobile OAuth
+  def render_mobile_oauth_success(integration_name)
+    render html: <<~HTML.html_safe, layout: false
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Connected Successfully</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+          }
+          .icon { font-size: 64px; margin-bottom: 20px; }
+          h1 { margin: 0 0 10px 0; font-size: 24px; }
+          p { margin: 0; opacity: 0.9; font-size: 16px; }
+          .return-btn {
+            margin-top: 30px;
+            padding: 15px 30px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="icon">✓</div>
+        <h1>#{integration_name} Connected!</h1>
+        <p>You can now close this window and return to the AMOS app.</p>
+        <button class="return-btn" onclick="window.close()">Close Window</button>
+      </body>
+      </html>
+    HTML
+  end
+
+  # Render error page for mobile OAuth
+  def render_mobile_oauth_error(error_message)
+    render html: <<~HTML.html_safe, layout: false
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Connection Failed</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            text-align: center;
+          }
+          .icon { font-size: 64px; margin-bottom: 20px; }
+          h1 { margin: 0 0 10px 0; font-size: 24px; }
+          p { margin: 0; opacity: 0.9; font-size: 14px; max-width: 300px; }
+          .return-btn {
+            margin-top: 30px;
+            padding: 15px 30px;
+            background: white;
+            color: #e74c3c;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="icon">✗</div>
+        <h1>Connection Failed</h1>
+        <p>#{ERB::Util.html_escape(error_message)}</p>
+        <button class="return-btn" onclick="window.close()">Close Window</button>
+      </body>
+      </html>
+    HTML
   end
 
   def exchange_code_for_token(code, oauth_data = {})

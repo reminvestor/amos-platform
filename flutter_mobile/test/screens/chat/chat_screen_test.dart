@@ -65,15 +65,7 @@ void main() {
       expect(find.byType(Image), findsWidgets);
     });
 
-    testWidgets('displays space switcher bar', (tester) async {
-      await tester.pumpWidget(createTestWidget());
-      await tester.pump(const Duration(milliseconds: 100));
-
-      // Should show space icons (user, briefcase, users for personal, work, team)
-      expect(find.byIcon(LucideIcons.user), findsOneWidget);
-      expect(find.byIcon(LucideIcons.briefcase), findsOneWidget);
-      expect(find.byIcon(LucideIcons.users), findsOneWidget);
-    });
+    // Note: Space switcher was removed from chat screen in UI simplification
 
     testWidgets('displays new chat button', (tester) async {
       await tester.pumpWidget(createTestWidget());
@@ -110,12 +102,12 @@ void main() {
       expect(find.text('Analyze my contacts'), findsOneWidget);
     });
 
-    testWidgets('displays message icon in empty state', (tester) async {
+    testWidgets('displays bot icon in empty state', (tester) async {
       await tester.pumpWidget(createTestWidget());
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Should show message square icon in empty state
-      expect(find.byIcon(LucideIcons.messageSquare), findsWidgets);
+      // Should show bot icon in empty state
+      expect(find.byIcon(LucideIcons.bot), findsWidgets);
     });
 
     testWidgets('displays input area', (tester) async {
@@ -265,29 +257,7 @@ void main() {
       expect(find.byType(Badge), findsWidgets);
     });
 
-    testWidgets('uses correct space icon for personal space', (tester) async {
-      await tester.pumpWidget(createTestWidget(currentSpace: Space.personal));
-      await tester.pump(const Duration(milliseconds: 100));
-
-      // User icon should be visible for personal space
-      expect(find.byIcon(LucideIcons.user), findsOneWidget);
-    });
-
-    testWidgets('uses correct space icon for work space', (tester) async {
-      await tester.pumpWidget(createTestWidget(currentSpace: Space.work));
-      await tester.pump(const Duration(milliseconds: 100));
-
-      // Briefcase icon should be visible for work space
-      expect(find.byIcon(LucideIcons.briefcase), findsOneWidget);
-    });
-
-    testWidgets('uses correct space icon for team space', (tester) async {
-      await tester.pumpWidget(createTestWidget(currentSpace: Space.team));
-      await tester.pump(const Duration(milliseconds: 100));
-
-      // Users icon should be visible for team space
-      expect(find.byIcon(LucideIcons.users), findsOneWidget);
-    });
+    // Note: Space switcher tests removed - UI simplified to not show space icons in chat
 
     testWidgets('shows messages in reverse order (newest at bottom)', (tester) async {
       final messages = [

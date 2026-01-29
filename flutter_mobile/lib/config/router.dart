@@ -34,6 +34,14 @@ import 'package:amos_mobile/screens/more/more_screen.dart';
 // Messages/DM screens
 import 'package:amos_mobile/screens/messages/dm_list_screen.dart';
 import 'package:amos_mobile/screens/messages/dm_chat_screen.dart';
+// Help screens
+import 'package:amos_mobile/screens/help/help_center_screen.dart';
+// Contacts screens
+import 'package:amos_mobile/screens/contacts/contact_list_screen.dart';
+// Email screens
+import 'package:amos_mobile/screens/email/email_inbox_screen.dart';
+// Scanner screens
+import 'package:amos_mobile/screens/scanner/scanner_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -44,37 +52,28 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authStateProvider);
       final isLoggedIn = authState.isAuthenticated;
       final mfaRequired = authState.mfaRequired;
-      final user = authState.user;
-      final mfaEnabled = user?.mfaEnabled ?? false;
 
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup' ||
           state.matchedLocation == '/forgot-password' ||
           state.matchedLocation == '/mfa-verification';
-      final isMfaSetupRoute = state.matchedLocation == '/mfa-setup';
 
-      // Allow MFA verification screen when MFA is required (during login)
-      if (mfaRequired && state.matchedLocation != '/mfa-verification') {
+      // Check if we're in development mode (localhost API)
+      const apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+      final isDevMode = apiBaseUrl.contains('localhost') || apiBaseUrl.contains('10.0.2.2');
+
+      // Skip MFA verification in development mode - go straight to chat
+      if (mfaRequired && !isDevMode && state.matchedLocation != '/mfa-verification') {
         return '/mfa-verification';
       }
 
-      // Force MFA setup if logged in but MFA not enabled
-      // Skip in development mode (when using localhost API)
-      const apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
-      final skipMfaInDev = apiBaseUrl.contains('localhost');
-      if (isLoggedIn && !mfaEnabled && !isMfaSetupRoute && !skipMfaInDev) {
-        return '/mfa-setup';
-      }
-
-      // Don't allow leaving MFA setup until it's enabled (skip in dev)
-      if (isLoggedIn && !mfaEnabled && isMfaSetupRoute && !skipMfaInDev) {
-        return null; // Stay on MFA setup
-      }
+      // MFA setup is NOT enforced globally - only required when adding integrations
+      // (matching web behavior where require_two_factor! is only on oauth_controller)
 
       if (!isLoggedIn && !isAuthRoute && !mfaRequired) {
         return '/login';
       }
-      if (isLoggedIn && mfaEnabled && isAuthRoute) {
+      if (isLoggedIn && isAuthRoute) {
         return '/chat';  // Chat-first architecture
       }
       return null;
@@ -223,6 +222,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'more',
             builder: (context, state) => const MoreScreen(),
           ),
+          GoRoute(
+            path: '/help',
+            name: 'help',
+            builder: (context, state) => const HelpCenterScreen(),
+          ),
 
           // Personal Space routes
           GoRoute(
@@ -230,12 +234,27 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'personal-notes',
             builder: (context, state) => const PersonalNotesScreen(),
           ),
+          GoRoute(
+            path: '/email-inbox',
+            name: 'email-inbox',
+            builder: (context, state) => const EmailInboxScreen(),
+          ),
 
           // Messages/DM routes
           GoRoute(
             path: '/messages',
             name: 'messages',
             builder: (context, state) => const DmListScreen(),
+          ),
+          GoRoute(
+            path: '/contacts',
+            name: 'contacts',
+            builder: (context, state) => const ContactListScreen(),
+          ),
+          GoRoute(
+            path: '/scanner',
+            name: 'scanner',
+            builder: (context, state) => const ScannerScreen(),
           ),
           GoRoute(
             path: '/dm/:threadId',

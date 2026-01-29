@@ -13,7 +13,7 @@ class HubController < ApplicationController
 
   before_action :authenticate_user_or_api!
   before_action :set_entity
-  before_action :set_thread, only: [:show_thread, :send_message, :mark_read, :fresh_start]
+  before_action :set_thread, only: [:show_thread, :send_message, :mark_read, :fresh_start, :archive_thread, :unarchive_thread]
 
   # GET /hub
   # Main Hub view - shows channels, DMs, and activity
@@ -108,17 +108,17 @@ class HubController < ApplicationController
   # Works like Amos's fresh_start - updates context_access_from so old messages aren't shown
   def fresh_start
     participant = @thread.hub_participants.find_by(participant: current_user)
-    
+
     unless participant
       return render json: { success: false, error: 'Not a participant' }, status: :forbidden
     end
-    
+
     # Update context_access_from to now - messages before this won't be shown
     fresh_start_time = Time.current
     participant.update!(context_access_from: fresh_start_time)
-    
+
     Rails.logger.info "🔄 [Hub] Fresh start for thread #{@thread.id}, user #{current_user.id} at #{fresh_start_time}"
-    
+
     # Clear any running agent executions for this thread
     if @thread.thread_type == 'dm'
       agent_participant = @thread.hub_participants.where(participant_type: 'AgentPlugin').first
@@ -134,15 +134,69 @@ class HubController < ApplicationController
         end
       end
     end
-    
+
     respond_to do |format|
-      format.json { 
-        render json: { 
-          success: true, 
+      format.json {
+        render json: {
+          success: true,
           fresh_start_at: fresh_start_time.iso8601,
           message: "Fresh start! Memory preserved, context cleared."
-        } 
+        }
       }
+    end
+  end
+
+  # POST /hub/thread/:id/archive
+  # Archives a thread (hides from active list but preserves messages)
+  def archive_thread
+    participant = @thread.hub_participants.find_by(participant: current_user)
+
+    unless participant
+      return render json: { success: false, error: 'Not a participant' }, status: :forbidden
+    end
+
+    @thread.archive!
+    Rails.logger.info "📦 [Hub] Archived thread #{@thread.id} by user #{current_user.id}"
+
+    respond_to do |format|
+      format.json {
+        render json: {
+          success: true,
+          status: 'archived',
+          message: "Conversation archived"
+        }
+      }
+    end
+  rescue => e
+    respond_to do |format|
+      format.json { render json: { success: false, error: e.message }, status: :unprocessable_entity }
+    end
+  end
+
+  # POST /hub/thread/:id/unarchive
+  # Restores an archived thread to active status
+  def unarchive_thread
+    participant = @thread.hub_participants.find_by(participant: current_user)
+
+    unless participant
+      return render json: { success: false, error: 'Not a participant' }, status: :forbidden
+    end
+
+    @thread.update!(status: 'active')
+    Rails.logger.info "📤 [Hub] Unarchived thread #{@thread.id} by user #{current_user.id}"
+
+    respond_to do |format|
+      format.json {
+        render json: {
+          success: true,
+          status: 'active',
+          message: "Conversation restored"
+        }
+      }
+    end
+  rescue => e
+    respond_to do |format|
+      format.json { render json: { success: false, error: e.message }, status: :unprocessable_entity }
     end
   end
 
@@ -253,7 +307,8 @@ class HubController < ApplicationController
     # Broadcast to channel subscribers
     HubChannel.broadcast_to_thread(@thread.id, {
       type: 'new_message',
-      message: message_json(message)
+      thread_id: @thread.id,
+      message: message.as_broadcast_json
     })
     
     respond_to do |format|
@@ -271,8 +326,13 @@ class HubController < ApplicationController
                               .where(entity: @entity, thread_type: HubThread::DM)
                               .active
                               .recent
-                              .includes(:hub_participants)
-    
+                              .includes(:hub_participants, :hub_messages)
+
+    # Filter out empty threads (no messages) unless show_empty param is passed
+    unless params[:show_empty] == 'true'
+      @dm_threads = @dm_threads.joins(:hub_messages).distinct
+    end
+
     respond_to do |format|
       format.json { render json: @dm_threads.map { |t| dm_json(t) } }
     end
@@ -723,6 +783,14 @@ class HubController < ApplicationController
                          other_participant.name
                        end
 
+    # Get last message for preview
+    last_msg = thread.hub_messages.order(created_at: :desc).first
+    last_message_preview = if last_msg
+                             # Truncate long messages for preview
+                             content = last_msg.content.to_s.gsub(/\n+/, ' ').strip
+                             content.length > 100 ? "#{content[0..97]}..." : content
+                           end
+
     {
       id: thread.id,
       display_name: thread.display_name(for_participant: current_user),
@@ -733,7 +801,9 @@ class HubController < ApplicationController
         is_agent: other_participant.is_a?(AgentPlugin)
       },
       unread_count: thread.hub_participants.find_by(participant: current_user)&.unread_count || 0,
-      last_activity_at: thread.last_activity_at&.iso8601
+      last_activity_at: thread.last_activity_at&.iso8601,
+      last_message: last_message_preview,
+      message_count: thread.hub_messages.count
     }
   end
 

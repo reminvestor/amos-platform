@@ -248,7 +248,8 @@ class HubMessage < ApplicationRecord
 
   def notify_participants
     # Handled by HubThread#add_message for unread counts
-    # Additional notifications (push, email) can be added here
+    # Push notifications are handled in background
+    SendHubMessagePushNotificationsJob.perform_later(id)
   end
 
   def create_agent_input_request_if_needed

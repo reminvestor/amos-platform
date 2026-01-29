@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,17 +7,14 @@ import 'package:intl/intl.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/models/chat.dart';
 import 'package:amos_mobile/models/agent_question.dart';
-import 'package:amos_mobile/models/space.dart';
 import 'package:amos_mobile/providers/app_providers.dart';
-import 'package:amos_mobile/providers/space_provider.dart';
-import 'package:amos_mobile/providers/realtime_provider.dart';
 import 'package:amos_mobile/services/chat_service.dart';
 import 'package:amos_mobile/services/file_upload_service.dart';
-import 'package:amos_mobile/widgets/model_selector.dart';
+import 'package:amos_mobile/services/dictation_service.dart';
 import 'package:amos_mobile/widgets/file_attachment_chip.dart';
-import 'package:amos_mobile/widgets/voice_input_button.dart';
 import 'package:amos_mobile/widgets/question_queue.dart';
 import 'package:amos_mobile/widgets/thinking_indicator.dart';
+import 'package:amos_mobile/widgets/canvas/canvas_overlay.dart';
 import 'package:amos_mobile/utils/logger.dart';
 import 'package:amos_mobile/genui/genui_renderer.dart';
 
@@ -29,7 +27,8 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> {
+class _ChatScreenState extends ConsumerState<ChatScreen>
+    with SingleTickerProviderStateMixin {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   final _focusNode = FocusNode();
@@ -46,10 +45,54 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   List<String> _toolSteps = [];
   bool _isThinking = false;
 
+  // Dictation support
+  DictationService? _dictationService;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  StreamSubscription<DictationState>? _dictationStateSubscription;
+  StreamSubscription<String>? _interimSubscription;
+  DictationState _dictationState = DictationState.idle;
+  String _interimText = '';
+
   @override
   void initState() {
     super.initState();
     _initSession();
+    _initDictation();
+  }
+
+  void _initDictation() {
+    _dictationService = DictationService(textController: _textController);
+
+    // Setup pulse animation for listening state
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // Listen to dictation state changes
+    _dictationStateSubscription =
+        _dictationService!.stateStream.listen((state) {
+      if (mounted) {
+        setState(() => _dictationState = state);
+        if (state == DictationState.listening) {
+          _pulseController.repeat(reverse: true);
+        } else {
+          _pulseController.stop();
+          _pulseController.reset();
+        }
+      }
+    });
+
+    // Listen to interim text changes
+    _interimSubscription = _dictationService!.interimTextStream.listen((text) {
+      if (mounted) {
+        setState(() => _interimText = text);
+      }
+    });
   }
 
   Future<void> _initSession() async {
@@ -76,6 +119,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _textController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
+    // Clean up dictation
+    _pulseController.dispose();
+    _dictationStateSubscription?.cancel();
+    _interimSubscription?.cancel();
+    _dictationService?.dispose();
     super.dispose();
   }
 
@@ -95,6 +143,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         duration: Duration(seconds: 2),
       ),
     );
+  }
+
+  Future<void> _toggleDictation() async {
+    try {
+      await _dictationService?.toggle();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Dictation error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _pickAndUploadFiles() async {
@@ -236,6 +299,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           case ChatStreamEventType.canvas:
             // Handle canvas events (landing page editor, etc.)
             AppLogger.info('Canvas event: ${event.canvasType}');
+            _showCanvas(event.canvasType ?? 'unknown', event.data);
             break;
 
           case ChatStreamEventType.question:
@@ -329,41 +393,61 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  /// Show a canvas overlay when receiving a canvas event from Amos
+  void _showCanvas(String canvasType, dynamic canvasData) {
+    // Update canvas state
+    ref.read(currentCanvasProvider.notifier).showCanvas(canvasType, canvasData);
+    ref.read(canvasVisibleProvider.notifier).show();
+
+    AppLogger.info('Showing canvas: $canvasType');
+  }
+
+  /// Close the current canvas overlay
+  void _closeCanvas() {
+    ref.read(canvasVisibleProvider.notifier).hide();
+    ref.read(currentCanvasProvider.notifier).closeCanvas();
+    ref.read(canvasHistoryProvider.notifier).clear();
+  }
+
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(chatMessagesProvider);
     final isLoading = ref.watch(chatLoadingProvider);
     final status = ref.watch(chatStatusProvider);
     final attachedFiles = ref.watch(attachedFilesProvider);
+    final isCanvasVisible = ref.watch(canvasVisibleProvider);
 
     final sessionId = ref.watch(chatSessionProvider) ?? '';
 
-    final currentSpace = ref.watch(currentSpaceProvider);
-    final unreadCount = ref.watch(unreadTeamMessagesProvider);
+    // Show canvas overlay when active
+    if (isCanvasVisible) {
+      return const CanvasOverlay();
+    }
 
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 12,
+        centerTitle: true,
         title: Image.asset(
           'assets/images/logo-header.png',
           height: 28,
           fit: BoxFit.contain,
         ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(44),
-          child: Padding(
-            padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
-            child: _SpaceSwitcherBar(
-              currentSpace: currentSpace,
-              unreadTeamCount: unreadCount,
-              onSpaceSelected: (space) {
-                ref.read(spaceProvider.notifier).switchSpace(space);
-              },
-              onNewChat: _startNewChat,
-              onSettings: () => context.goNamed('settings'),
-            ),
+        actions: [
+          // New chat button
+          _ActionButton(
+            icon: LucideIcons.circlePlus,
+            onTap: _startNewChat,
+            tooltip: 'New Chat',
           ),
-        ),
+          const SizedBox(width: 4),
+          // Settings button
+          _ActionButton(
+            icon: LucideIcons.settings,
+            onTap: () => context.goNamed('settings'),
+            tooltip: 'Settings',
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Stack(
         children: [
@@ -455,19 +539,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
-                LucideIcons.messageSquare,
+                LucideIcons.bot,
                 size: 48,
                 color: context.primaryColor,
               ),
             ),
             const SizedBox(height: 24),
             Text(
-              'Start a conversation',
+              'How can I help?',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text(
-              'Ask Amos to help you with marketing tasks, content creation, and more.',
+              'Ask me anything or try one of the suggestions below.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: context.textSecondary,
@@ -480,25 +564,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               alignment: WrapAlignment.center,
               children: [
                 _SuggestionChip(
-                  label: 'Create a campaign',
+                  label: 'Deep research',
                   onTap: () {
-                    _textController.text = 'Help me create an email campaign';
+                    _textController.text = 'Do deep research on ';
+                    _textController.selection = TextSelection.fromPosition(
+                      TextPosition(offset: _textController.text.length),
+                    );
+                    _focusNode.requestFocus();
+                  },
+                ),
+                _SuggestionChip(
+                  label: 'What needs attention?',
+                  onTap: () {
+                    _textController.text = 'What needs my attention today?';
                     _sendMessage();
                   },
                 ),
                 _SuggestionChip(
-                  label: 'Build a landing page',
+                  label: 'Check status',
                   onTap: () {
-                    _textController.text =
-                        'Help me build a landing page for my product';
+                    _textController.text = 'Show me the status of my campaigns and tasks';
                     _sendMessage();
                   },
                 ),
                 _SuggestionChip(
-                  label: 'Analyze my contacts',
+                  label: 'Quick question',
                   onTap: () {
-                    _textController.text =
-                        'Analyze my contact list and suggest improvements';
+                    _textController.text = '';
+                    _focusNode.requestFocus();
+                  },
+                ),
+                _SuggestionChip(
+                  label: "What's happening today?",
+                  onTap: () {
+                    _textController.text = "What's happening today?";
                     _sendMessage();
                   },
                 ),
@@ -547,6 +646,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Use viewPadding.bottom (not padding.bottom) to get safe area without keyboard inset
     // This prevents double-padding when keyboard opens since Scaffold handles keyboard avoidance
     final bottomSafeArea = MediaQuery.of(context).viewPadding.bottom;
+    final isListening = _dictationState == DictationState.listening;
+    final isInitializing = _dictationState == DictationState.initializing;
+
     return Container(
       padding: EdgeInsets.only(
         left: 12,
@@ -560,83 +662,148 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           top: BorderSide(color: context.borderColor),
         ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Model selector (brain icon)
-          const ModelSelector(),
-
-          // File attachment button - compact
-          SizedBox(
-            width: 36,
-            height: 40,
-            child: IconButton(
-              onPressed: _isUploading ? null : _pickAndUploadFiles,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: _isUploading
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: context.primaryColor,
-                      ),
-                    )
-                  : Icon(LucideIcons.paperclip, size: 20, color: context.textSecondary),
-              tooltip: 'Attach files',
-            ),
-          ),
-
-          // Voice input button - compact
-          SizedBox(
-            width: 36,
-            height: 40,
-            child: VoiceInputButton(
-              onTranscript: (transcript) {
-                _sendMessage(voiceText: transcript);
-              },
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Text input - takes remaining space
-          Expanded(
-            child: Builder(
-              builder: (context) {
-                final isLoading = ref.watch(chatLoadingProvider);
-                return TextField(
-                  controller: _textController,
-                  focusNode: _focusNode,
-                  maxLines: null,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _sendMessage(),
-                  decoration: InputDecoration(
-                    hintText: isLoading
-                        ? 'Type to add context...'
-                        : 'Type a message...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: context.backgroundColor,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    isDense: true,
+          // Show interim text when dictating
+          if (isListening && _interimText.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4, left: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.mic,
+                    size: 12,
+                    color: Colors.red.withValues(alpha: 0.7),
                   ),
-                );
-              },
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      _interimText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: context.textSecondary.withValues(alpha: 0.7),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // File attachment button
+              SizedBox(
+                width: 36,
+                height: 40,
+                child: IconButton(
+                  onPressed: _isUploading ? null : _pickAndUploadFiles,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: _isUploading
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: context.primaryColor,
+                          ),
+                        )
+                      : Icon(LucideIcons.paperclip,
+                          size: 18, color: context.textSecondary),
+                  tooltip: 'Attach files',
+                ),
+              ),
+
+              const SizedBox(width: 4),
+
+              // Text input with mic button inside
+              Expanded(
+                child: Builder(
+                  builder: (context) {
+                    final isLoading = ref.watch(chatLoadingProvider);
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        border: isListening
+                            ? Border.all(
+                                color: Colors.red.withValues(alpha: 0.5),
+                                width: 2)
+                            : null,
+                      ),
+                      child: TextField(
+                        controller: _textController,
+                        focusNode: _focusNode,
+                        maxLines: null,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _sendMessage(),
+                        decoration: InputDecoration(
+                          hintText: isLoading
+                              ? 'Type to add context...'
+                              : 'Type or speak...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: context.backgroundColor,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          isDense: true,
+                          // Mic button inside text field
+                          suffixIcon: AnimatedBuilder(
+                            animation: _pulseAnimation,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: isListening ? _pulseAnimation.value : 1.0,
+                                child: IconButton(
+                                  onPressed:
+                                      isInitializing ? null : _toggleDictation,
+                                  padding: const EdgeInsets.all(8),
+                                  constraints: const BoxConstraints(),
+                                  icon: isInitializing
+                                      ? SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: context.primaryColor,
+                                          ),
+                                        )
+                                      : Icon(
+                                          isListening
+                                              ? LucideIcons.micOff
+                                              : LucideIcons.mic,
+                                          size: 18,
+                                          color: isListening
+                                              ? Colors.red
+                                              : context.textSecondary,
+                                        ),
+                                  tooltip: isListening
+                                      ? 'Stop dictation'
+                                      : 'Start dictation',
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              // Send/Stop button - compact
+              _buildSendOrStopButton(),
+            ],
           ),
-
-          const SizedBox(width: 8),
-
-          // Send/Stop button - compact
-          _buildSendOrStopButton(),
         ],
       ),
     );
@@ -873,104 +1040,7 @@ class _TypingDotState extends State<_TypingDot>
   }
 }
 
-/// Horizontal space switcher bar with action buttons
-class _SpaceSwitcherBar extends StatelessWidget {
-  final Space currentSpace;
-  final int unreadTeamCount;
-  final ValueChanged<Space> onSpaceSelected;
-  final VoidCallback onNewChat;
-  final VoidCallback onSettings;
-
-  const _SpaceSwitcherBar({
-    required this.currentSpace,
-    required this.unreadTeamCount,
-    required this.onSpaceSelected,
-    required this.onNewChat,
-    required this.onSettings,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Row(
-      children: [
-        // New chat button on the left
-        _ActionButton(
-          icon: LucideIcons.circlePlus,
-          onTap: onNewChat,
-          tooltip: 'New Chat',
-        ),
-
-        // Spacer to push space icons to center
-        const Spacer(),
-
-        // Mode switcher icons in the center (Personal/Operations/Design)
-        ...Space.all.map((space) {
-          final isSelected = space.slug == currentSpace.slug;
-          // Badge not used for 2-mode architecture (no unread messages concept)
-          const showBadge = false;
-
-          IconData icon;
-          Color color;
-          if (space.isPersonal) {
-            icon = LucideIcons.user;
-            color = Colors.blue;
-          } else if (space.isOperations) {
-            icon = LucideIcons.settings;
-            color = Colors.purple;
-          } else {
-            icon = LucideIcons.circle;
-            color = Colors.grey;
-          }
-
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Material(
-              color: isSelected
-                  ? color.withOpacity(0.15)
-                  : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(8),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => onSpaceSelected(space),
-                child: Container(
-                  width: 44,
-                  height: 36,
-                  alignment: Alignment.center,
-                  child: Badge(
-                    isLabelVisible: showBadge,
-                    label: Text(
-                      unreadTeamCount > 9 ? '9+' : '$unreadTeamCount',
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                    child: Icon(
-                      icon,
-                      size: 20,
-                      color: isSelected ? color : theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-
-        // Spacer to balance the layout
-        const Spacer(),
-
-        // Settings button on the right
-        _ActionButton(
-          icon: LucideIcons.settings,
-          onTap: onSettings,
-          tooltip: 'Settings',
-        ),
-      ],
-    );
-  }
-}
-
-/// Small action button for the space switcher bar
+/// Small action button for the app bar
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;

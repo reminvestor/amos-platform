@@ -1,25 +1,39 @@
-# Customise this file, documentation can be found here:
-# https://docs.fastlane.tools/actions
-# All available actions: https://docs.fastlane.tools/actions
+# iOS Fastlane Configuration for AMOS Mobile
+# https://docs.fastlane.tools
 
 default_platform(:ios)
 
 platform :ios do
-  desc "Load App Store Connect API key"
-  lane :load_asc_api_key do
-    app_store_connect_api_key(
-      key_id: ENV["ASC_KEY_ID"],
-      issuer_id: ENV["ASC_ISSUER_ID"],
-      key_content: ENV["ASC_KEY_CONTENT"],
-      is_key_content_base64: true,
-      in_house: false
+  # ============================================
+  # SETUP & CERTIFICATES
+  # ============================================
+
+  desc "Sync certificates and profiles from git repo"
+  lane :sync_certificates do
+    match(type: "appstore", readonly: true)
+  end
+
+  desc "Generate new certificates (run once for new team members)"
+  lane :certificates_new do
+    match(type: "development")
+    match(type: "appstore")
+  end
+
+  # ============================================
+  # BUILD
+  # ============================================
+
+  desc "Install CocoaPods dependencies"
+  lane :install_pods do
+    cocoapods(
+      clean_install: true,
+      podfile: "Podfile"
     )
   end
 
   desc "Bump build number based on latest TestFlight build"
   lane :bump_build_number do
     app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
-    api_key = lane_context[SharedValues::APP_STORE_CONNECT_API_KEY]
 
     current_version = get_version_number(
       xcodeproj: "Runner.xcodeproj",
@@ -27,7 +41,6 @@ platform :ios do
     )
 
     latest_build_number = latest_testflight_build_number(
-      api_key: api_key,
       version: current_version,
       app_identifier: app_identifier
     )
@@ -38,17 +51,21 @@ platform :ios do
     )
   end
 
-  desc "Install CocoaPods dependencies"
-  lane :install_pods do
-    cocoapods(
-      clean_install: true,
-      podfile: "Podfile"
-    )
-  end
-
   desc "Build iOS app for TestFlight"
   lane :build_ios do
     install_pods
+
+    # Ensure we have certificates
+    match(type: "appstore", readonly: true)
+
+    # Update Xcode project to use manual signing with Match
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "Runner.xcodeproj",
+      team_id: ENV["TEAM_ID"] || "65M4R87855",
+      profile_name: "match AppStore com.amoslabs.mobile",
+      code_sign_identity: "Apple Distribution"
+    )
 
     build_app(
       workspace: "Runner.xcworkspace",
@@ -56,29 +73,44 @@ platform :ios do
       export_method: "app-store",
       output_directory: "./build",
       output_name: "amos_mobile.ipa",
-      clean: true
+      clean: true,
+      export_options: {
+        provisioningProfiles: {
+          "com.amoslabs.mobile" => "match AppStore com.amoslabs.mobile"
+        }
+      }
     )
   end
 
+  # ============================================
+  # BETA (TestFlight)
+  # ============================================
+
   desc "Upload to TestFlight"
   lane :upload_testflight do
+    changelog = ENV["TESTFLIGHT_CHANGELOG"] || "Bug fixes and improvements"
+
     upload_to_testflight(
       skip_waiting_for_build_processing: true,
-      apple_id: ENV["APPLE_APP_ID"]
+      changelog: changelog,
+      distribute_external: true,
+      notify_external_testers: false
     )
   end
 
   desc "Deploy to TestFlight (full pipeline)"
   lane :deploy_testflight do
-    load_asc_api_key
     bump_build_number
     build_ios
     upload_testflight
   end
 
+  # ============================================
+  # RELEASE (App Store)
+  # ============================================
+
   desc "Deploy to App Store (production)"
   lane :deploy_production do
-    load_asc_api_key
     bump_build_number
     build_ios
 
@@ -91,16 +123,12 @@ platform :ios do
     )
   end
 
-  desc "Sync code signing certificates and profiles"
-  lane :sync_certificates do
-    match(
-      type: "appstore",
-      readonly: is_ci
-    )
-  end
+  # ============================================
+  # UTILITIES
+  # ============================================
 
-  desc "Register new device"
-  lane :register_device do |options|
+  desc "Add new device and refresh provisioning profiles"
+  lane :add_device do |options|
     device_name = options[:name] || prompt(text: "Enter device name: ")
     device_udid = options[:udid] || prompt(text: "Enter device UDID: ")
 
@@ -110,18 +138,87 @@ platform :ios do
       }
     )
 
+    # Regenerate profiles
     match(
       type: "development",
       force_for_new_devices: true
     )
   end
 
-  desc "Take screenshots for App Store"
-  lane :screenshots do
+  desc "Take screenshots for App Store (native Xcode UI tests)"
+  lane :screenshots_native do
     capture_screenshots(
       workspace: "Runner.xcworkspace",
       scheme: "Runner"
     )
+  end
+
+  # ============================================
+  # FLUTTER SCREENSHOTS
+  # ============================================
+
+  desc "Take screenshots using Flutter integration tests"
+  lane :screenshots do
+    # Devices for App Store (run sequentially for stability)
+    devices = [
+      "iPhone 16 Pro Max",    # 6.9" - Required
+      "iPhone 16 Pro",        # 6.3" - Required
+      "iPad Pro 13-inch (M4)" # Required for iPad
+    ]
+
+    devices.each do |device|
+      UI.message("Capturing screenshots on #{device}...")
+
+      # Run Flutter screenshot tests on this device
+      Dir.chdir("..") do
+        sh("flutter drive " \
+           "--driver=test_driver/integration_test.dart " \
+           "--target=integration_test/screenshot_test.dart " \
+           "-d '#{device}' " \
+           "|| true")  # Continue even if one device fails
+      end
+    end
+
+    UI.success("Screenshots captured! Check flutter_mobile/screenshots/")
+  end
+
+  desc "Take screenshots on a single device"
+  lane :screenshot_device do |options|
+    device = options[:device] || "iPhone 16 Pro Max"
+
+    Dir.chdir("..") do
+      sh("flutter drive " \
+         "--driver=test_driver/integration_test.dart " \
+         "--target=integration_test/screenshot_test.dart " \
+         "-d '#{device}'")
+    end
+  end
+
+  desc "Add device frames to screenshots"
+  lane :frame_screenshots do
+    frameit(
+      path: "./screenshots",
+      white: false,
+      use_platform: "IOS"
+    )
+  end
+
+  desc "Upload screenshots to App Store Connect"
+  lane :upload_screenshots do
+    deliver(
+      skip_binary_upload: true,
+      skip_metadata: true,
+      skip_screenshots: false,
+      screenshots_path: "./screenshots",
+      overwrite_screenshots: true
+    )
+  end
+
+  desc "Full screenshot pipeline: capture, frame, and upload"
+  lane :screenshots_full do
+    screenshots
+    frame_screenshots
+    upload_screenshots
   end
 
   desc "Create app on App Store Connect"

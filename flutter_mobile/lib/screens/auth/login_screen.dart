@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,9 +18,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
   final _formKey = GlobalKey<FormState>();
-  // HARDCODED CREDENTIALS - matches db/seeds/demo_users.rb
-  final _emailController = TextEditingController(text: 'admin@demo.com');
-  final _passwordController = TextEditingController(text: 'password123');
+  // Pre-fill demo credentials only in debug mode (not in production builds)
+  final _emailController = TextEditingController(text: kDebugMode ? 'admin@demo.com' : '');
+  final _passwordController = TextEditingController(text: kDebugMode ? 'password123' : '');
   bool _obscurePassword = true;
 
   final BiometricService _biometricService = BiometricService();
@@ -90,19 +91,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
           context.pushNamed('mfa-verification');
         } else if (state.isAuthenticated) {
           AppLogger.info('Login successful');
-          // Check if MFA setup is required
-          final mfaEnabled = state.user?.mfaEnabled ?? false;
-          if (!mfaEnabled) {
-            AppLogger.info('MFA not enabled, redirecting to setup');
-            context.go('/mfa-setup');
-          } else {
-            showSuccess(context, 'Welcome back!');
-            // Enable biometric for future logins
-            if (_biometricAvailable && !_biometricEnabled) {
-              _offerBiometricSetup();
-            }
-            context.go('/chat');
+          showSuccess(context, 'Welcome back!');
+          // MFA setup is NOT enforced here - only required when adding integrations
+          // (matching web behavior where require_two_factor! is only on oauth_controller)
+          // Enable biometric for future logins
+          if (_biometricAvailable && !_biometricEnabled) {
+            _offerBiometricSetup();
           }
+          context.go('/chat');
         }
       }
     } catch (e, stackTrace) {
@@ -140,15 +136,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
           context.pushNamed('mfa-verification');
         } else if (state.isAuthenticated) {
           AppLogger.info('Biometric login successful');
-          // Check if MFA setup is required
-          final mfaEnabled = state.user?.mfaEnabled ?? false;
-          if (!mfaEnabled) {
-            AppLogger.info('MFA not enabled, redirecting to setup');
-            context.go('/mfa-setup');
-          } else {
-            showSuccess(context, 'Welcome back!');
-            context.go('/chat');
-          }
+          // MFA setup is NOT enforced here - only required when adding integrations
+          showSuccess(context, 'Welcome back!');
+          context.go('/chat');
         }
       }
     } catch (e, stackTrace) {
