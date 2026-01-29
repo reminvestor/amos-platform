@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -215,31 +216,53 @@ class VoiceService {
 
   /// Connect to Eleven Labs WebSocket
   Future<void> _connectToElevenLabs(ElevenLabsCredentials creds) async {
-    final uri = Uri.parse(creds.effectiveWebsocketUrl);
-    _elevenLabsChannel = WebSocketChannel.connect(uri);
+    // Build WebSocket URL with query parameters (new API format)
+    final baseUrl = creds.effectiveWebsocketUrl;
+    final uri = Uri.parse(baseUrl).replace(queryParameters: {
+      'xi-api-key': creds.apiKey,
+      'model_id': 'scribe_v1',
+      'audio_format': 'pcm_16000',
+      'language_code': 'en',
+      'commit_strategy': 'vad',  // Use VAD for automatic speech detection
+      'enable_logging': 'false',
+    });
 
-    // Send configuration
-    _elevenLabsChannel!.sink.add(jsonEncode({
-      'type': 'config',
-      'api_key': creds.apiKey,
-      'encoding': 'pcm_16000',
-      'sample_rate': 16000,
-      'channels': 1,
-      'model': 'scribe-v3-realtime',
-      'language': 'en',
-      'punctuate': true,
-      'include_partial_results': true,
-      'latency_optimized': true,
-    }));
+    AppLogger.info('Connecting to Eleven Labs WebSocket...');
+    _elevenLabsChannel = WebSocketChannel.connect(uri);
 
     // Listen for responses
     _elevenLabsChannel!.stream.listen(
       (data) {
         try {
           final json = jsonDecode(data as String);
-          if (json['transcript'] != null) {
-            final result = TranscriptResult.fromElevenLabs(json);
-            _transcriptController.add(result);
+          final messageType = json['message_type'] ?? json['type'];
+
+          AppLogger.info('Eleven Labs message: $messageType');
+
+          // Handle different message types from new API
+          if (messageType == 'partial_transcript') {
+            final text = json['text'] ?? '';
+            if (text.isNotEmpty) {
+              _transcriptController.add(TranscriptResult(
+                text: text,
+                isFinal: false,
+              ));
+            }
+          } else if (messageType == 'committed_transcript' ||
+                     messageType == 'committed_transcript_with_timestamps') {
+            final text = json['text'] ?? '';
+            if (text.isNotEmpty) {
+              _transcriptController.add(TranscriptResult(
+                text: text,
+                isFinal: true,
+                confidence: json['confidence']?.toDouble(),
+              ));
+            }
+          } else if (messageType == 'error') {
+            AppLogger.error('Eleven Labs error: ${json['error'] ?? json['message']}');
+            _setState(VoiceState.error);
+          } else if (messageType == 'session_started') {
+            AppLogger.info('Eleven Labs session started');
           }
         } catch (e) {
           AppLogger.warning('Error parsing Eleven Labs response: $e');
@@ -251,6 +274,9 @@ class VoiceService {
       },
       onDone: () {
         AppLogger.info('Eleven Labs WebSocket closed');
+        if (_state == VoiceState.listening) {
+          _setState(VoiceState.idle);
+        }
       },
     );
   }
@@ -291,29 +317,80 @@ class VoiceService {
     );
   }
 
+  /// Check if running on iOS Simulator
+  bool get _isIOSSimulator {
+    if (!Platform.isIOS) return false;
+    // Check for simulator environment variable
+    final isSimulator = Platform.environment['SIMULATOR_DEVICE_NAME'] != null;
+    return isSimulator;
+  }
+
   /// Start audio recording and stream to STT
   Future<void> _startRecording() async {
-    // Configure for 16kHz mono PCM
-    final stream = await _recorder.startStream(
-      const RecordConfig(
+    try {
+      // iOS Simulator doesn't support real microphone - provide clear error
+      if (Platform.isIOS) {
+        // Check if microphone is actually available (will be false on simulator)
+        final isAvailable = await _recorder.isEncoderSupported(AudioEncoder.pcm16bits);
+        if (!isAvailable) {
+          throw Exception(
+            'Voice recording is not available on iOS Simulator. '
+            'Please test on a physical device.'
+          );
+        }
+      }
+
+      // Check if we can record
+      final hasPermission = await _recorder.hasPermission();
+      if (!hasPermission) {
+        throw Exception('Microphone permission not granted');
+      }
+
+      // Configure for 16kHz mono PCM audio
+      // Eleven Labs and Deepgram both expect linear16/pcm16 format
+      final config = RecordConfig(
         encoder: AudioEncoder.pcm16bits,
         sampleRate: 16000,
         numChannels: 1,
-      ),
-    );
+        autoGain: true,
+        echoCancel: true,
+        noiseSuppress: true,
+      );
 
-    // Stream audio to appropriate service
-    stream.listen((data) {
-      _sendAudioChunk(Uint8List.fromList(data));
-    });
+      AppLogger.info('Starting audio recording with PCM16 encoder');
+
+      // Start the stream
+      final stream = await _recorder.startStream(config);
+
+      // Stream audio to appropriate service
+      stream.listen(
+        (data) {
+          _sendAudioChunk(Uint8List.fromList(data));
+        },
+        onError: (error) {
+          AppLogger.error('Audio stream error', error: error);
+          _setState(VoiceState.error);
+        },
+      );
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to start recording', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
   }
 
   /// Send audio chunk to active STT service
   void _sendAudioChunk(Uint8List audioData) {
     if (_useDeepgramFallback) {
+      // Deepgram accepts raw binary audio
       _deepgramChannel?.sink.add(audioData);
     } else {
-      _elevenLabsChannel?.sink.add(audioData);
+      // Eleven Labs requires base64-encoded JSON messages
+      final base64Audio = base64Encode(audioData);
+      final message = jsonEncode({
+        'message_type': 'input_audio_chunk',
+        'audio_base_64': base64Audio,
+      });
+      _elevenLabsChannel?.sink.add(message);
     }
   }
 

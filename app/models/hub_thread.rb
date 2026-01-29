@@ -260,9 +260,9 @@ class HubThread < ApplicationRecord
   # ============================================
 
   def self.find_or_create_dm(entity:, participants:)
-    # Sort participant IDs for consistent lookup
-    participant_key = participants.map { |p| "#{p.class.name}:#{p.id}" }.sort
-    
+    # Sort participant IDs for consistent lookup (uniq handles self-DM case)
+    participant_key = participants.map { |p| "#{p.class.name}:#{p.id}" }.uniq.sort
+
     Rails.logger.info "[Hub] Looking for DM with participants: #{participant_key.join(', ')}"
 
     # Check for existing DM with same participants

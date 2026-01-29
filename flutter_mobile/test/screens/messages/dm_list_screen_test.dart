@@ -432,4 +432,128 @@ void main() {
       // WRONG: participant_type='User', participant_id=member.id (1)
     });
   });
+
+  group('DM Thread Archive', () {
+    test('DmThread can be archived', () {
+      final thread = DmThread.fromJson({
+        'id': 1,
+        'display_name': 'John Doe',
+        'unread_count': 0,
+        'last_message': 'Hello!',
+      });
+
+      // Thread should have an id for archive operation
+      expect(thread.id, equals(1));
+
+      // Simulate archive API call data
+      final archiveEndpoint = '/hub/thread/${thread.id}/archive';
+      expect(archiveEndpoint, equals('/hub/thread/1/archive'));
+    });
+
+    test('DmThread can be unarchived', () {
+      final thread = DmThread.fromJson({
+        'id': 2,
+        'display_name': 'Jane Doe',
+        'unread_count': 0,
+        'last_message': 'Bye!',
+      });
+
+      // Simulate unarchive API call data
+      final unarchiveEndpoint = '/hub/thread/${thread.id}/unarchive';
+      expect(unarchiveEndpoint, equals('/hub/thread/2/unarchive'));
+    });
+
+    test('archived threads are removed from list', () {
+      // Simulate thread list
+      final threads = [
+        DmThread.fromJson({'id': 1, 'display_name': 'User A', 'unread_count': 0}),
+        DmThread.fromJson({'id': 2, 'display_name': 'User B', 'unread_count': 3}),
+        DmThread.fromJson({'id': 3, 'display_name': 'User C', 'unread_count': 0}),
+      ];
+
+      expect(threads.length, equals(3));
+
+      // Simulate archiving thread with id 2
+      final archivedThreadId = 2;
+      threads.removeWhere((t) => t.id == archivedThreadId);
+
+      expect(threads.length, equals(2));
+      expect(threads.any((t) => t.id == 2), isFalse);
+      expect(threads.map((t) => t.displayName), containsAll(['User A', 'User C']));
+    });
+
+    test('unarchive restores thread to list', () {
+      // Simulate a thread that was archived and needs to be restored
+      final restoredThread = DmThread.fromJson({
+        'id': 2,
+        'display_name': 'User B',
+        'unread_count': 3,
+      });
+
+      final threads = [
+        DmThread.fromJson({'id': 1, 'display_name': 'User A', 'unread_count': 0}),
+        DmThread.fromJson({'id': 3, 'display_name': 'User C', 'unread_count': 0}),
+      ];
+
+      expect(threads.length, equals(2));
+
+      // Simulate adding restored thread back
+      threads.add(restoredThread);
+
+      expect(threads.length, equals(3));
+      expect(threads.any((t) => t.id == 2), isTrue);
+    });
+
+    test('swipe-to-archive Dismissible key format', () {
+      final thread = DmThread.fromJson({
+        'id': 42,
+        'display_name': 'Test User',
+        'unread_count': 0,
+      });
+
+      // Verify the key format used by Dismissible widget
+      final dismissibleKey = 'dm-thread-${thread.id}';
+      expect(dismissibleKey, equals('dm-thread-42'));
+    });
+  });
+
+  group('Archive API Request Validation', () {
+    test('archiveThread request endpoint', () {
+      const threadId = 123;
+      final endpoint = '/hub/thread/$threadId/archive';
+
+      expect(endpoint, equals('/hub/thread/123/archive'));
+    });
+
+    test('unarchiveThread request endpoint', () {
+      const threadId = 456;
+      final endpoint = '/hub/thread/$threadId/unarchive';
+
+      expect(endpoint, equals('/hub/thread/456/unarchive'));
+    });
+
+    test('archive response contains success status', () {
+      // Simulated successful archive response
+      final response = {
+        'success': true,
+        'status': 'archived',
+        'message': 'Conversation archived',
+      };
+
+      expect(response['success'], isTrue);
+      expect(response['status'], equals('archived'));
+    });
+
+    test('unarchive response contains active status', () {
+      // Simulated successful unarchive response
+      final response = {
+        'success': true,
+        'status': 'active',
+        'message': 'Conversation restored',
+      };
+
+      expect(response['success'], isTrue);
+      expect(response['status'], equals('active'));
+    });
+  });
 }

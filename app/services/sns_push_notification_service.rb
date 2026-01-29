@@ -385,4 +385,3 @@ class SnsPushNotificationService
       { success: false, error: "Token may already be registered with another endpoint" }
     end
   end
-end

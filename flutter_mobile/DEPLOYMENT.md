@@ -17,283 +17,367 @@ cd flutter_mobile
 # Install Flutter dependencies
 flutter pub get
 
-# Install Fastlane dependencies
-bundle install
+# Install Fastlane dependencies (iOS)
+cd ios && bundle install && cd ..
 
-# Run code generation (if needed)
-flutter pub run build_runner build
+# Install Fastlane dependencies (Android)
+cd android && bundle install && cd ..
 ```
 
-## Environment Configuration
-
-The app uses `--dart-define` flags for environment configuration:
-
-```bash
-# Development
-flutter run \
-  --dart-define=ENVIRONMENT=development \
-  --dart-define=API_BASE_URL=http://192.168.x.x:3000
-
-# Production
-flutter build ios --release \
-  --dart-define=ENVIRONMENT=production \
-  --dart-define=API_BASE_URL=https://api.amoslabs.com
-```
-
-### Available Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `ENVIRONMENT` | `development`, `staging`, `production` | Auto-detected |
-| `API_BASE_URL` | Backend API URL | Environment-based |
-| `DEBUG_MODE` | Enable debug logging | `false` in production |
-| `ANALYTICS_ENABLED` | Enable analytics | `true` in production |
-| `PRIVACY_POLICY_URL` | Privacy policy URL | `https://amoslabs.com/privacy` |
-| `TERMS_OF_SERVICE_URL` | Terms URL | `https://amoslabs.com/terms` |
-| `SUPPORT_EMAIL` | Support email | `support@amoslabs.com` |
+---
 
 ## iOS Deployment
 
 ### First-Time Setup
 
-1. **Create App Store Connect API Key:**
-   - Go to App Store Connect → Users and Access → Keys
-   - Create a new key with "App Manager" role
-   - Download the `.p8` file
+#### 1. Create App Store Connect API Key
 
-2. **Configure Fastlane Match (Code Signing):**
-   ```bash
-   cd ios
-   fastlane match init
-   fastlane match appstore
-   ```
+1. Go to [App Store Connect → Users and Access → Keys](https://appstoreconnect.apple.com/access/api)
+2. Click **+** to create a new key
+3. Name it (e.g., "Fastlane CI") and select **Admin** role
+4. Download the `.p8` file - **you can only download this once!**
+5. Note the **Key ID** and **Issuer ID**
 
-3. **Set Environment Variables:**
-   ```bash
-   export ASC_KEY_ID="your_key_id"
-   export ASC_ISSUER_ID="your_issuer_id"
-   export ASC_KEY_CONTENT="base64_encoded_p8_content"
-   export APPLE_APP_ID="your_app_id"
-   ```
+#### 2. Configure Environment Variables
 
-### Deploy to TestFlight
+Create `ios/fastlane/.env.local`:
+
+```bash
+# From App Store Connect API Keys page
+ASC_KEY_ID=ABC123DEF4
+ASC_ISSUER_ID=12345678-1234-1234-1234-123456789012
+ASC_KEY_CONTENT=LS0tLS1CRUdJTi...  # Base64 encoded .p8 file
+
+# From Apple Developer account
+TEAM_ID=ABCD1234EF
+APPLE_APP_ID=123456789
+
+# Production API
+API_BASE_URL=https://api.amoslabs.com
+```
+
+To encode the .p8 file:
+```bash
+base64 -i AuthKey_ABC123DEF4.p8 | tr -d '\n'
+```
+
+#### 3. Set Up Code Signing (Fastlane Match)
 
 ```bash
 cd ios
-fastlane deploy_testflight
+fastlane match init       # First time only
+fastlane match appstore   # Download/create certificates
 ```
 
-This will:
-1. Load App Store Connect API key
-2. Auto-increment build number
-3. Install CocoaPods
-4. Build the IPA
-5. Upload to TestFlight
+### Deploy iOS
 
-### Deploy to App Store
+**Using the deploy script (recommended):**
+
+```bash
+# Deploy to TestFlight
+./deploy-ios.sh --testflight --notes "Bug fixes and improvements"
+
+# Deploy to App Store (production)
+./deploy-ios.sh --production
+
+# With screenshots (auto-uploads for production)
+./deploy-ios.sh --screenshots --production
+```
+
+**Using Fastlane directly:**
 
 ```bash
 cd ios
-fastlane deploy_production
+bundle exec fastlane deploy_testflight
+bundle exec fastlane deploy_production
 ```
 
-### Available iOS Lanes
+### iOS Deploy Script Options
 
-| Lane | Description |
-|------|-------------|
-| `deploy_testflight` | Full TestFlight deployment |
-| `deploy_production` | Full App Store deployment |
-| `build_ios` | Build IPA only |
-| `sync_certificates` | Sync code signing |
-| `register_device` | Add new test device |
-| `screenshots` | Capture app screenshots |
+```
+./deploy-ios.sh [OPTIONS]
+
+Options:
+  --testflight           Deploy to TestFlight (default)
+  --production           Deploy to App Store
+  --screenshots          Capture App Store screenshots before deploy
+  --screenshots-only     Only capture screenshots (no deploy)
+  --screenshot-device    Capture on specific device
+  --skip-flutter-build   Skip Flutter build
+  --notes "message"      TestFlight notes
+  --help                 Show help
+```
+
+---
 
 ## Android Deployment
 
 ### First-Time Setup
 
-1. **Create Upload Keystore:**
-   ```bash
-   keytool -genkey -v \
-     -keystore upload-keystore.jks \
-     -keyalg RSA \
-     -keysize 2048 \
-     -validity 10000 \
-     -alias upload
+#### 1. Create Google Play Console Account
 
-   mv upload-keystore.jks android/
-   ```
+1. Go to [Google Play Console](https://play.google.com/console)
+2. Pay the $25 one-time registration fee
+3. Create your app listing
 
-2. **Configure key.properties:**
-   ```bash
-   cp android/key.properties.example android/key.properties
-   # Edit android/key.properties with your keystore info
-   ```
+#### 2. Generate Upload Keystore
 
-3. **Create Google Play Service Account:**
-   - Go to Google Play Console → Setup → API access
-   - Create or link a service account
-   - Download the JSON key file
-   - Grant "Release manager" permissions
+**This is critical - keep this file safe! You cannot recover it.**
 
-4. **Set Environment Variables:**
-   ```bash
-   export GOOGLE_PLAY_JSON_KEY_PATH="/path/to/play-store-key.json"
-   ```
+```bash
+cd flutter_mobile
 
-### Deploy to Internal Testing
+# Generate keystore
+keytool -genkey -v \
+  -keystore android/upload-keystore.jks \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000 \
+  -alias upload
+
+# When prompted, enter:
+# - Keystore password (save this!)
+# - Key password (can be same as keystore password)
+# - Your name/organization info
+```
+
+#### 3. Configure key.properties
+
+Create `android/key.properties`:
+
+```properties
+storePassword=your_keystore_password
+keyPassword=your_key_password
+keyAlias=upload
+storeFile=../upload-keystore.jks
+```
+
+**⚠️ Never commit this file to git!**
+
+#### 4. Create Google Play Service Account
+
+1. Go to **Google Play Console → Setup → API access**
+2. Click **Create new service account**
+3. In Google Cloud Console:
+   - Create a new service account
+   - Name it (e.g., "fastlane-deploy")
+   - Grant role: **Service Account User**
+4. Create a JSON key and download it
+5. Back in Play Console, grant the service account **Release Manager** permissions
+
+#### 5. Configure Environment Variables
+
+Create `.env.production` in `flutter_mobile/`:
+
+```bash
+# Production API
+API_BASE_URL=https://api.amoslabs.com
+
+# Path to service account JSON key
+GOOGLE_PLAY_JSON_KEY_PATH=/path/to/play-store-service-account.json
+```
+
+Or create `android/fastlane/.env`:
+
+```bash
+GOOGLE_PLAY_JSON_KEY_PATH=/path/to/play-store-service-account.json
+```
+
+### Deploy Android
+
+**Using the deploy script (recommended):**
+
+```bash
+# Deploy to Internal Testing
+./deploy-android.sh --internal
+
+# Deploy to Beta
+./deploy-android.sh --beta
+
+# Deploy to Production
+./deploy-android.sh --production
+
+# With screenshots (auto-uploads for production)
+./deploy-android.sh --screenshots --production
+```
+
+**Using Fastlane directly:**
 
 ```bash
 cd android
-fastlane deploy_internal
+bundle exec fastlane deploy_internal
+bundle exec fastlane deploy_beta
+bundle exec fastlane deploy_production
 ```
 
-### Deploy to Beta
+### Android Deploy Script Options
+
+```
+./deploy-android.sh [OPTIONS]
+
+Options:
+  --internal             Deploy to Internal Testing (default)
+  --alpha                Deploy to Alpha track
+  --beta                 Deploy to Beta track
+  --production           Deploy to Production
+  --screenshots          Capture Play Store screenshots before deploy
+  --screenshots-only     Only capture screenshots (no deploy)
+  --screenshot-device    Capture on specific device
+  --skip-flutter-build   Skip Flutter build
+  --help                 Show help
+```
+
+### Android Release Tracks
+
+| Track | Audience | Purpose |
+|-------|----------|---------|
+| Internal | Up to 100 testers | Quick testing, no review |
+| Alpha | Unlimited testers | Closed testing |
+| Beta | Unlimited testers | Open beta |
+| Production | Everyone | Live app |
+
+### Promoting Between Tracks
 
 ```bash
 cd android
-fastlane deploy_beta
+
+# Promote internal to beta
+bundle exec fastlane promote_internal_to_beta
+
+# Promote beta to production (10% rollout)
+bundle exec fastlane promote_beta_to_production
 ```
 
-### Deploy to Production
+---
+
+## Screenshots
+
+Both deploy scripts support automated screenshot capture for App Store/Play Store.
+
+### Capture Screenshots Only
 
 ```bash
-cd android
-fastlane deploy_production
+# iOS - all required devices
+./deploy-ios.sh --screenshots-only
+
+# iOS - single device
+./deploy-ios.sh --screenshot-device "iPhone 16 Pro Max" --screenshots-only
+
+# Android
+./deploy-android.sh --screenshots-only
 ```
 
-### Available Android Lanes
+### Screenshots with Deploy
 
-| Lane | Description |
-|------|-------------|
-| `build_android` | Build AAB |
-| `build_apk` | Build APK |
-| `deploy_internal` | Deploy to internal testing |
-| `deploy_alpha` | Deploy to alpha track |
-| `deploy_beta` | Deploy to beta track |
-| `deploy_production` | Deploy to production |
-| `promote_internal_to_beta` | Promote build |
-| `increment_version_code` | Bump version |
+```bash
+# Capture + deploy to production (auto-uploads screenshots)
+./deploy-ios.sh --screenshots --production
+./deploy-android.sh --screenshots --production
+```
+
+### Required Screenshot Sizes
+
+**iOS (App Store):**
+- iPhone 6.9": iPhone 16 Pro Max
+- iPhone 6.3": iPhone 16 Pro
+- iPad 12.9": iPad Pro 13-inch (M4)
+
+**Android (Play Store):**
+- Phone: Pixel 8 Pro (or similar)
+- Tablet: Pixel Tablet (10")
+
+### What Gets Captured
+
+The screenshot test (`integration_test/screenshot_test.dart`) captures:
+
+1. Login screen
+2. Amos Chat (AI assistant)
+3. Personal Notes
+4. Messages
+5. Inbox
+6. Settings
+
+---
+
+## Play Store Requirements Checklist
+
+Before your first Android release, you'll need:
+
+- [ ] **App icon** (512x512 PNG)
+- [ ] **Feature graphic** (1024x500 PNG)
+- [ ] **Screenshots** (phone + tablet, 2-8 per device)
+- [ ] **Short description** (80 characters max)
+- [ ] **Full description** (4000 characters max)
+- [ ] **Privacy policy URL** (required)
+- [ ] **App category** selected
+- [ ] **Content rating** questionnaire completed
+- [ ] **Target audience** declaration
+- [ ] **Data safety** form completed
+
+---
 
 ## Version Management
 
 ### Automatic Version Bumping
 
-Fastlane automatically increments build numbers based on the latest version in TestFlight/Play Store.
+Both deploy scripts auto-increment the build number based on the latest version in TestFlight/Play Store.
 
 ### Manual Version Update
 
 Edit `pubspec.yaml`:
+
 ```yaml
-version: 1.0.1+2  # version+buildNumber
+version: 1.0.1+2  # format: version+buildNumber
 ```
 
-Or use Fastlane:
-```bash
-# Bump major version (1.0.0 → 2.0.0)
-bundle exec fastlane bump type:major
-
-# Bump minor version (1.0.0 → 1.1.0)
-bundle exec fastlane bump type:minor
-
-# Bump patch version (1.0.0 → 1.0.1)
-bundle exec fastlane bump type:patch
-```
-
-## App Store Metadata
-
-Metadata files are stored in `fastlane/metadata/`:
-
-```
-fastlane/metadata/
-├── android/
-│   └── en-US/
-│       ├── title.txt
-│       ├── short_description.txt
-│       ├── full_description.txt
-│       └── changelogs/
-│           └── 1.txt
-└── ios/
-    └── en-US/
-        ├── name.txt
-        ├── subtitle.txt
-        ├── description.txt
-        ├── keywords.txt
-        ├── promotional_text.txt
-        ├── release_notes.txt
-        ├── privacy_url.txt
-        ├── support_url.txt
-        └── marketing_url.txt
-```
+---
 
 ## Troubleshooting
 
 ### iOS Build Fails
 
 ```bash
-# Clean build
 flutter clean
-cd ios && rm -rf Pods Podfile.lock && pod install --repo-update
-flutter build ios --release
+cd ios && rm -rf Pods Podfile.lock
+pod install --repo-update
+cd .. && flutter build ios --release
 ```
 
 ### Android Build Fails
 
 ```bash
-# Clean build
 flutter clean
 cd android && ./gradlew clean
-flutter build appbundle --release
+cd .. && flutter build appbundle --release
 ```
 
 ### Code Signing Issues (iOS)
 
 ```bash
-# Reset certificates
 cd ios
-fastlane match nuke appstore
-fastlane match appstore
+fastlane match nuke appstore  # Reset certificates
+fastlane match appstore       # Regenerate
 ```
 
 ### Keystore Issues (Android)
 
-1. Verify `key.properties` exists and has correct paths
+1. Verify `key.properties` exists with correct paths
 2. Ensure keystore file exists at specified location
 3. Check passwords are correct
 
-## CI/CD Integration
+### Service Account Issues (Android)
 
-### GitHub Actions Example
-
-```yaml
-name: Deploy iOS
-on:
-  push:
-    tags:
-      - 'v*'
-
-jobs:
-  deploy:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-      - run: flutter pub get
-      - run: |
-          cd ios
-          bundle install
-          bundle exec fastlane deploy_testflight
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
-          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+```bash
+cd android
+bundle exec fastlane validate_bundle
 ```
+
+---
 
 ## Security Notes
 
-- Never commit `key.properties` or keystore files
+- **Never commit** `key.properties`, `*.jks`, or service account JSON files
 - Store API keys in CI/CD secrets
 - Use Fastlane Match for iOS code signing
-- Rotate credentials regularly
+- Keep keystores backed up securely (you cannot recover them!)
 - HTTPS is enforced for production builds

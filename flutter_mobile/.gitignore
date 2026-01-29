@@ -44,11 +44,19 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Environment files (contain secrets)
+.env.production
+.env.local
+.env
+
 # Fastlane
+fastlane/.env
 fastlane/.env.local
 fastlane/.env.secret
+ios/fastlane/.env
 ios/fastlane/.env.local
 ios/fastlane/.env.secret
+android/fastlane/.env
 android/fastlane/.env.local
 android/fastlane/.env.secret
 fastlane/report.xml
