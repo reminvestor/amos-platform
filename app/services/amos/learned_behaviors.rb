@@ -33,11 +33,12 @@ module Amos
       domain_knowledge
     ].freeze
 
-    attr_reader :user, :entity
+    attr_reader :user, :entity, :key_prefix
 
-    def initialize(user:, entity:)
+    def initialize(user:, entity:, key_prefix: nil)
       @user = user
       @entity = entity
+      @key_prefix = key_prefix  # Optional prefix for testing isolation
     end
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -249,7 +250,8 @@ module Amos
     private
 
     def behavior_key(type)
-      "#{REDIS_PREFIX}:#{@user.id}:#{@entity.id}:#{type}"
+      prefix = @key_prefix || REDIS_PREFIX
+      "#{prefix}:#{@user.id}:#{@entity.id}:#{type}"
     end
 
     def save_behaviors(type, behaviors)

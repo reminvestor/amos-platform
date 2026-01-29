@@ -650,8 +650,68 @@
       
       <!-- Canvas -->
       <div class="studio-canvas-wrapper">
-        <div class="studio-canvas" id="studio-canvas">
-          <% if sections.any? %>
+        <div class="studio-canvas <%= is_app_or_canvas ? 'full-width-mode' : '' %>" id="studio-canvas">
+          <% if sections.any? && is_app_or_canvas %>
+            <!-- App/Canvas Dashboard View - Render saved components -->
+            <div class="blank-canvas-workspace" data-type="<%= plan_design_type %>">
+              <div class="canvas-toolbar-mini">
+                <span class="workspace-type-label">
+                  <i data-lucide="<%= plan_design_type == 'app' ? 'layers' : 'frame' %>"></i>
+                  <%= plan_design_type.humanize %>
+                </span>
+                <button class="btn-add-data-source" id="add-data-source-btn" title="Connect data source">
+                  <i data-lucide="database" style="width: 14px; height: 14px;"></i> Add Data Source
+                </button>
+              </div>
+              <div class="canvas-freeform-area" id="freeform-drop-zone">
+                <% sections.each_with_index do |section, idx| %>
+                  <% section = section.with_indifferent_access if section.is_a?(Hash) %>
+                  <% comp_type = section[:type] || 'component' %>
+                  <% comp_label = section[:label] || section[:name] || comp_type.humanize %>
+                  <% 
+                    # Icon mapping for component types
+                    icon_map = {
+                      'kpi' => 'hash', 'metric' => 'trending-up', 'chart' => 'bar-chart-3', 
+                      'line_chart' => 'line-chart', 'bar_chart' => 'bar-chart-2', 'pie_chart' => 'pie-chart',
+                      'table' => 'table-2', 'data_table' => 'table', 'form' => 'file-input',
+                      'app_header' => 'panel-top', 'app_sidebar' => 'panel-left', 
+                      'container' => 'square', 'row' => 'rows', 'column' => 'columns',
+                      'grid' => 'grid-3x3', 'tabs' => 'folder', 'accordion' => 'list',
+                      'modal_trigger' => 'square-plus', 'app_card' => 'credit-card'
+                    }
+                    comp_icon = icon_map[comp_type.to_s] || 'component'
+                  %>
+                  <div class="dashboard-component component-<%= comp_type %>" 
+                       data-component-type="<%= comp_type %>"
+                       data-component-idx="<%= idx %>"
+                       data-title="<%= section[:title] || comp_label %>"
+                       data-value="<%= section[:value] %>">
+                    <div class="component-header">
+                      <i data-lucide="<%= comp_icon %>" style="width: 14px; height: 14px;"></i>
+                      <span class="component-label"><%= section[:title] || comp_label %></span>
+                    </div>
+                    <div class="component-body">
+                      <div class="component-placeholder">
+                        <% if section[:value].present? %>
+                          <span class="component-value"><%= section[:value] %></span>
+                        <% else %>
+                          <span class="component-config-hint">Click to configure</span>
+                        <% end %>
+                      </div>
+                    </div>
+                    <div class="component-actions">
+                      <button class="component-action-btn" data-action="configure" title="Configure">
+                        <i data-lucide="settings" style="width: 12px;"></i>
+                      </button>
+                      <button class="component-action-btn" data-action="remove" title="Remove">
+                        <i data-lucide="trash-2" style="width: 12px;"></i>
+                      </button>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% elsif sections.any? %>
             <%
               # Merge plan colors with BusinessProfile defaults
               color_scheme = plan[:color_scheme] || {}
@@ -665,7 +725,7 @@
               body_font = typography[:body] || bp_typography[:body] || 'Inter'
               style = plan[:style] || bp_style || 'modern'
             %>
-            <!-- Plan Visualization with Rich Preview -->
+            <!-- Plan Visualization with Rich Preview (Landing Pages/Websites) -->
             <div class="plan-visualization-enhanced" 
                  data-plan-id="<%= plan_id %>">
               
@@ -2119,6 +2179,107 @@
     border-color: #6366f1;
     color: #818cf8;
   }
+  
+  /* Component editing mode */
+  .dashboard-component.editing {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  }
+  
+  .component-config-form {
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  
+  .config-field {
+    margin-bottom: 10px;
+  }
+  
+  .config-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #8f8faa;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .config-field input,
+  .config-field select {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 13px;
+    background: #1e1e2e;
+    border: 1px solid #3d3d5c;
+    border-radius: 6px;
+    color: #e2e8f0;
+  }
+  
+  .config-field input:focus,
+  .config-field select:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  }
+  
+  .config-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  
+  .config-save-btn,
+  .config-cancel-btn {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .config-save-btn {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    color: white;
+  }
+  
+  .config-save-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  }
+  
+  .config-cancel-btn {
+    background: transparent;
+    border: 1px solid #3d3d5c;
+    color: #8f8faa;
+  }
+  
+  .config-cancel-btn:hover {
+    border-color: #6b7280;
+    color: #a5b4fc;
+  }
+  
+  .component-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #e2e8f0;
+  }
+  
+  /* Light mode config form */
+  [data-theme="light"] .component-config-form { background: rgba(0, 0, 0, 0.05); }
+  [data-theme="light"] .config-field input,
+  [data-theme="light"] .config-field select { 
+    background: white; 
+    border-color: #d1d5db; 
+    color: #1f2937; 
+  }
+  [data-theme="light"] .config-cancel-btn { border-color: #d1d5db; color: #6b7280; }
+  [data-theme="light"] .component-value { color: #1f2937; }
   
   /* KPI Component */
   .dashboard-component.component-kpi .component-body,
@@ -5296,6 +5457,10 @@ function buildSectionCard(section, idx, pageIndex) {
       if (data.success && data.plan_id) {
         console.log('✅ New plan created:', data.plan_id);
         container.dataset.planId = data.plan_id;
+        
+        // Persist to localStorage for refresh survival
+        persistPlanToStorage(data.plan_id, container.dataset.designType || 'canvas');
+        
         showSaveIndicator('saved');
       } else {
         console.error('❌ Plan creation failed:', data.error);
@@ -5303,6 +5468,51 @@ function buildSectionCard(section, idx, pageIndex) {
     }).catch(function(err) {
       console.error('❌ Plan creation error:', err);
     });
+  }
+  
+  // Persist plan info to localStorage for refresh survival
+  function persistPlanToStorage(planId, designType) {
+    try {
+      var key = 'amos_current_plan';
+      var data = {
+        plan_id: planId,
+        design_type: designType,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(key, JSON.stringify(data));
+      console.log('💾 Plan persisted to storage:', data);
+    } catch(e) {
+      console.warn('Could not persist plan to storage:', e);
+    }
+  }
+  
+  // Check for saved plan on load
+  function checkSavedPlan() {
+    if (container.dataset.planId) {
+      console.log('📌 Plan already loaded from server:', container.dataset.planId);
+      return;
+    }
+    
+    try {
+      var saved = localStorage.getItem('amos_current_plan');
+      if (saved) {
+        var data = JSON.parse(saved);
+        // Only restore if recent (within 24 hours)
+        var maxAge = 24 * 60 * 60 * 1000;
+        if (Date.now() - data.timestamp < maxAge) {
+          console.log('🔄 Restoring plan from storage:', data);
+          // Reload the canvas with the saved plan
+          if (window.loadCanvasViaAjax) {
+            window.loadCanvasViaAjax('design_studio', { plan_id: data.plan_id });
+          }
+        } else {
+          // Clear old data
+          localStorage.removeItem('amos_current_plan');
+        }
+      }
+    } catch(e) {
+      console.warn('Could not check saved plan:', e);
+    }
   }
   
   // Collect components from the canvas
@@ -5375,6 +5585,15 @@ function buildSectionCard(section, idx, pageIndex) {
     card.addEventListener('click', function() {
       var type = this.dataset.type;
       console.log('🎨 Creation type selected:', type);
+      
+      // Clear any saved plan - starting fresh
+      try {
+        localStorage.removeItem('amos_current_plan');
+        console.log('🗑️ Cleared saved plan - starting fresh');
+      } catch(e) {}
+      
+      // Clear existing plan_id to start fresh
+      delete container.dataset.planId;
       
       // Store selection
       container.dataset.createType = type;
@@ -6183,7 +6402,7 @@ function buildSectionCard(section, idx, pageIndex) {
     });
   }
   
-  // Section actions
+  // Section actions (landing page mode)
   container.querySelectorAll('.section-action-btn').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
@@ -6193,12 +6412,182 @@ function buildSectionCard(section, idx, pageIndex) {
       
       if (action === 'remove' && section) {
         section.remove();
+        scheduleAutoSave();
       } else if (action === 'edit' && sectionName) {
         var planId = container.dataset.planId;
         sendToAmos('Edit the ' + sectionName + ' section in the design plan');
       }
     });
   });
+  
+  // Component actions (app/canvas dashboard mode) - use event delegation
+  container.addEventListener('click', function(e) {
+    var btn = e.target.closest('.component-action-btn');
+    if (!btn) return;
+    
+    e.stopPropagation();
+    var action = btn.dataset.action;
+    var component = btn.closest('.dashboard-component');
+    var componentType = component ? component.dataset.componentType : null;
+    
+    console.log('🔧 Component action:', action, componentType);
+    
+    if (action === 'remove' && component) {
+      component.remove();
+      showSaveIndicator('saving');
+      scheduleAutoSave();
+    } else if (action === 'configure' && component) {
+      // Open configuration modal or ask Amos
+      var label = component.querySelector('.component-label')?.textContent || componentType;
+      configureComponent(component, componentType, label);
+    }
+  });
+  
+  // Configure component - open inline editor or modal
+  function configureComponent(component, type, label) {
+    console.log('⚙️ Configure component:', type, label);
+    
+    // For now, open an inline editor
+    var body = component.querySelector('.component-body');
+    if (!body) return;
+    
+    // Check if already in edit mode
+    if (component.classList.contains('editing')) {
+      component.classList.remove('editing');
+      return;
+    }
+    
+    component.classList.add('editing');
+    
+    // Create inline config form based on component type
+    var configHtml = getConfigFormHtml(type, component.dataset);
+    var existingForm = body.querySelector('.component-config-form');
+    if (existingForm) {
+      existingForm.remove();
+    }
+    
+    var formDiv = document.createElement('div');
+    formDiv.className = 'component-config-form';
+    formDiv.innerHTML = configHtml;
+    body.insertBefore(formDiv, body.firstChild);
+    
+    // Handle form save
+    formDiv.querySelector('.config-save-btn')?.addEventListener('click', function() {
+      saveComponentConfig(component, formDiv);
+    });
+    
+    // Handle form cancel
+    formDiv.querySelector('.config-cancel-btn')?.addEventListener('click', function() {
+      component.classList.remove('editing');
+      formDiv.remove();
+    });
+  }
+  
+  // Get config form HTML based on component type
+  function getConfigFormHtml(type, currentData) {
+    var title = currentData.title || '';
+    var value = currentData.value || '';
+    
+    switch(type) {
+      case 'kpi':
+      case 'metric':
+        return '<div class="config-field">' +
+          '<label>Title</label>' +
+          '<input type="text" name="title" value="' + title + '" placeholder="e.g., Total Revenue" />' +
+        '</div>' +
+        '<div class="config-field">' +
+          '<label>Data Source</label>' +
+          '<select name="data_source">' +
+            '<option value="">Select data source...</option>' +
+            '<option value="static">Static Value</option>' +
+            '<option value="api">API Endpoint</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="config-field">' +
+          '<label>Static Value (if no data source)</label>' +
+          '<input type="text" name="value" value="' + value + '" placeholder="e.g., $45,000" />' +
+        '</div>' +
+        '<div class="config-actions">' +
+          '<button class="config-save-btn">Save</button>' +
+          '<button class="config-cancel-btn">Cancel</button>' +
+        '</div>';
+      
+      case 'chart':
+      case 'line_chart':
+      case 'bar_chart':
+      case 'pie_chart':
+        return '<div class="config-field">' +
+          '<label>Chart Title</label>' +
+          '<input type="text" name="title" value="' + title + '" placeholder="e.g., Monthly Sales" />' +
+        '</div>' +
+        '<div class="config-field">' +
+          '<label>Chart Type</label>' +
+          '<select name="chart_type">' +
+            '<option value="line">Line Chart</option>' +
+            '<option value="bar">Bar Chart</option>' +
+            '<option value="pie">Pie Chart</option>' +
+            '<option value="area">Area Chart</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="config-actions">' +
+          '<button class="config-save-btn">Save</button>' +
+          '<button class="config-cancel-btn">Cancel</button>' +
+        '</div>';
+      
+      case 'table':
+      case 'data_table':
+        return '<div class="config-field">' +
+          '<label>Table Title</label>' +
+          '<input type="text" name="title" value="' + title + '" placeholder="e.g., Recent Orders" />' +
+        '</div>' +
+        '<div class="config-field">' +
+          '<label>Columns (comma-separated)</label>' +
+          '<input type="text" name="columns" placeholder="e.g., Name, Email, Status" />' +
+        '</div>' +
+        '<div class="config-actions">' +
+          '<button class="config-save-btn">Save</button>' +
+          '<button class="config-cancel-btn">Cancel</button>' +
+        '</div>';
+      
+      default:
+        return '<div class="config-field">' +
+          '<label>Label</label>' +
+          '<input type="text" name="title" value="' + title + '" placeholder="Component label" />' +
+        '</div>' +
+        '<div class="config-actions">' +
+          '<button class="config-save-btn">Save</button>' +
+          '<button class="config-cancel-btn">Cancel</button>' +
+        '</div>';
+    }
+  }
+  
+  // Save component configuration
+  function saveComponentConfig(component, form) {
+    var inputs = form.querySelectorAll('input, select');
+    inputs.forEach(function(input) {
+      component.dataset[input.name] = input.value;
+    });
+    
+    // Update display
+    var titleInput = form.querySelector('input[name="title"]');
+    if (titleInput && titleInput.value) {
+      var label = component.querySelector('.component-label');
+      if (label) label.textContent = titleInput.value;
+    }
+    
+    var valueInput = form.querySelector('input[name="value"]');
+    if (valueInput && valueInput.value) {
+      var placeholder = component.querySelector('.component-placeholder');
+      if (placeholder) {
+        placeholder.innerHTML = '<span class="component-value">' + valueInput.value + '</span>';
+      }
+    }
+    
+    component.classList.remove('editing');
+    form.remove();
+    scheduleAutoSave();
+    console.log('💾 Component config saved');
+  }
   
   // Viewport controls
   container.querySelectorAll('.viewport-btn').forEach(function(btn) {

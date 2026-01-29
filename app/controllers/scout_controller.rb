@@ -1447,15 +1447,19 @@ class ScoutController < ApplicationController
         # If plan_id is provided, load the plan data
         if canvas_data[:plan_id].present?
           design_plan = DesignPlan.find_by(id: canvas_data[:plan_id], entity_id: current_entity.id, user_id: current_user.id)
+          Rails.logger.info "[DesignStudio] 📂 Loading plan #{canvas_data[:plan_id]}: found=#{design_plan.present?}"
           if design_plan
             # Merge plan data and include design_type at both levels for ERB compatibility
             plan_data_with_type = (design_plan.plan_data || {}).merge('design_type' => design_plan.design_type)
+            Rails.logger.info "[DesignStudio] 📊 Plan #{design_plan.id}: design_type=#{design_plan.design_type}, sections=#{(design_plan.plan_data || {})['sections']&.length || 0}"
             canvas_data = canvas_data.merge(
               plan: plan_data_with_type,
               plan_id: design_plan.id,
               status: design_plan.status,
               design_type: design_plan.design_type  # Also at top level
             ).with_indifferent_access
+          else
+            Rails.logger.warn "[DesignStudio] ⚠️ Plan #{canvas_data[:plan_id]} not found for user #{current_user.id} entity #{current_entity.id}"
           end
         end
         
