@@ -284,8 +284,19 @@ class User < ApplicationRecord
       last_name = 'User' if last_name.blank?
       
       # Create entity for the user
+      entity_name = "#{first_name}'s Organization"
+      base_subdomain = entity_name.parameterize.presence || SecureRandom.hex(6)
+      subdomain = base_subdomain
+      counter = 1
+      while Entity.where(subdomain: subdomain).exists?
+        subdomain = "#{base_subdomain}-#{counter}"
+        counter += 1
+      end
+      
       entity = Entity.create!(
-        name: "#{first_name}'s Organization"
+        name: entity_name,
+        subdomain: subdomain,
+        status: 'active'
       )
       
       user = create!(
