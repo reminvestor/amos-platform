@@ -118,6 +118,16 @@ production:
     schedule: every 5 minutes
 
   # ========================================
+  # Token Economy Jobs
+  # ========================================
+  
+  # Daily token decay - apply decay to all stakes
+  token_daily_decay:
+    class: TokenDecayJob
+    queue: billing
+    schedule: at 1am every day
+
+  # ========================================
   # Tool Embeddings Jobs
   # ========================================
   
