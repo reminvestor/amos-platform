@@ -1,0 +1,688 @@
+<%# Email Sequence Manager Canvas - Visual UI for managing email sequences %>
+<%
+  # Get sequences data from locals or fetch
+  sequences ||= current_user.entity.email_sequences.includes(:sequence_steps, :contact_group).order(created_at: :desc)
+  
+  # Group by status
+  draft_sequences = sequences.select { |s| s.status == 'draft' }
+  active_sequences = sequences.select { |s| s.status == 'active' }
+  paused_sequences = sequences.select { |s| s.status == 'paused' }
+  completed_sequences = sequences.select { |s| s.status == 'completed' }
+  
+  # Calculate totals
+  total_enrolled = sequences.sum(&:enrolled_count)
+  total_active = sequences.sum(&:active_count)
+  total_completed = sequences.sum(&:completed_count)
+%>
+
+<div class="scout-canvas canvas-container sequence-manager">
+  <!-- Header -->
+  <div class="canvas-header-row">
+    <div class="canvas-header-left">
+      <h1 class="canvas-page-title">
+        <i data-lucide="mail" class="me-2"></i>
+        Email Sequences
+      </h1>
+      <p class="canvas-page-subtitle">Automated email campaigns with timed delivery</p>
+    </div>
+    <div class="canvas-header-actions">
+      <button onclick="sequenceRefresh()" class="canvas-btn secondary">
+        <i data-lucide="refresh-cw"></i>
+        Refresh
+      </button>
+      <button onclick="sequenceCreate()" class="canvas-btn primary">
+        <i data-lucide="plus"></i>
+        New Sequence
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="sequence-stats-row">
+    <div class="sequence-stat-card">
+      <div class="sequence-stat-icon draft">
+        <i data-lucide="file-edit"></i>
+      </div>
+      <div class="sequence-stat-content">
+        <div class="sequence-stat-value"><%= draft_sequences.count %></div>
+        <div class="sequence-stat-label">Draft</div>
+      </div>
+    </div>
+    <div class="sequence-stat-card">
+      <div class="sequence-stat-icon active">
+        <i data-lucide="play-circle"></i>
+      </div>
+      <div class="sequence-stat-content">
+        <div class="sequence-stat-value"><%= active_sequences.count %></div>
+        <div class="sequence-stat-label">Active</div>
+      </div>
+    </div>
+    <div class="sequence-stat-card">
+      <div class="sequence-stat-icon paused">
+        <i data-lucide="pause-circle"></i>
+      </div>
+      <div class="sequence-stat-content">
+        <div class="sequence-stat-value"><%= paused_sequences.count %></div>
+        <div class="sequence-stat-label">Paused</div>
+      </div>
+    </div>
+    <div class="sequence-stat-card">
+      <div class="sequence-stat-icon enrolled">
+        <i data-lucide="users"></i>
+      </div>
+      <div class="sequence-stat-content">
+        <div class="sequence-stat-value"><%= total_enrolled %></div>
+        <div class="sequence-stat-label">Total Enrolled</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sequence Tabs -->
+  <div class="sequence-tabs">
+    <button class="sequence-tab active" onclick="sequenceShowTab('all')">
+      All (<%= sequences.count %>)
+    </button>
+    <button class="sequence-tab" onclick="sequenceShowTab('active')">
+      Active (<%= active_sequences.count %>)
+    </button>
+    <button class="sequence-tab" onclick="sequenceShowTab('draft')">
+      Drafts (<%= draft_sequences.count %>)
+    </button>
+    <button class="sequence-tab" onclick="sequenceShowTab('paused')">
+      Paused (<%= paused_sequences.count %>)
+    </button>
+    <button class="sequence-tab" onclick="sequenceShowTab('completed')">
+      Completed (<%= completed_sequences.count %>)
+    </button>
+  </div>
+
+  <!-- Sequences Grid -->
+  <div class="sequence-grid" id="sequence-grid">
+    <% if sequences.empty? %>
+      <div class="sequence-empty-state">
+        <i data-lucide="mail-plus"></i>
+        <h3>No Email Sequences Yet</h3>
+        <p>Create your first automated email sequence to nurture your contacts.</p>
+        <button onclick="sequenceCreate()" class="canvas-btn primary">
+          <i data-lucide="plus"></i>
+          Create First Sequence
+        </button>
+      </div>
+    <% else %>
+      <% sequences.each do |sequence| %>
+        <div class="sequence-card" data-status="<%= sequence.status %>" data-sequence-id="<%= sequence.id %>">
+          <div class="sequence-card-header">
+            <div class="sequence-status-badge <%= sequence.status %>">
+              <% case sequence.status %>
+              <% when 'draft' %>
+                <i data-lucide="file-edit"></i>
+              <% when 'active' %>
+                <i data-lucide="play-circle"></i>
+              <% when 'paused' %>
+                <i data-lucide="pause-circle"></i>
+              <% when 'completed' %>
+                <i data-lucide="check-circle"></i>
+              <% end %>
+              <%= sequence.status.capitalize %>
+            </div>
+            <div class="sequence-card-actions">
+              <button onclick="sequenceMenu(event, <%= sequence.id %>)" class="sequence-menu-btn">
+                <i data-lucide="more-vertical"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="sequence-card-body">
+            <h3 class="sequence-card-title" onclick="sequenceView(<%= sequence.id %>)">
+              <%= sequence.name %>
+            </h3>
+            <% if sequence.goal.present? %>
+              <p class="sequence-card-goal"><%= truncate(sequence.goal, length: 80) %></p>
+            <% end %>
+            
+            <!-- Steps Timeline -->
+            <div class="sequence-steps-mini">
+              <% sequence.sequence_steps.ordered.first(5).each_with_index do |step, idx| %>
+                <div class="sequence-step-dot" title="Step <%= step.step_number %>: <%= step.effective_subject %>">
+                  <%= step.step_number %>
+                </div>
+                <% if idx < [sequence.step_count, 5].min - 1 %>
+                  <div class="sequence-step-line"></div>
+                <% end %>
+              <% end %>
+              <% if sequence.step_count > 5 %>
+                <span class="sequence-more-steps">+<%= sequence.step_count - 5 %></span>
+              <% end %>
+            </div>
+            
+            <!-- Metrics -->
+            <div class="sequence-metrics">
+              <div class="sequence-metric">
+                <span class="sequence-metric-value"><%= sequence.step_count %></span>
+                <span class="sequence-metric-label">Steps</span>
+              </div>
+              <div class="sequence-metric">
+                <span class="sequence-metric-value"><%= sequence.enrolled_count %></span>
+                <span class="sequence-metric-label">Enrolled</span>
+              </div>
+              <div class="sequence-metric">
+                <span class="sequence-metric-value"><%= sequence.open_rate %>%</span>
+                <span class="sequence-metric-label">Open Rate</span>
+              </div>
+              <div class="sequence-metric">
+                <span class="sequence-metric-value"><%= sequence.click_rate %>%</span>
+                <span class="sequence-metric-label">Click Rate</span>
+              </div>
+            </div>
+            
+            <!-- Contact Group -->
+            <div class="sequence-contact-group">
+              <i data-lucide="users"></i>
+              <%= sequence.contact_group&.name || 'No group assigned' %>
+            </div>
+          </div>
+          
+          <div class="sequence-card-footer">
+            <% if sequence.status == 'draft' %>
+              <button onclick="sequenceActivate(<%= sequence.id %>)" class="canvas-btn primary sm">
+                <i data-lucide="play"></i> Activate
+              </button>
+            <% elsif sequence.status == 'active' %>
+              <button onclick="sequencePause(<%= sequence.id %>)" class="canvas-btn secondary sm">
+                <i data-lucide="pause"></i> Pause
+              </button>
+            <% elsif sequence.status == 'paused' %>
+              <button onclick="sequenceResume(<%= sequence.id %>)" class="canvas-btn primary sm">
+                <i data-lucide="play"></i> Resume
+              </button>
+            <% end %>
+            <button onclick="sequenceView(<%= sequence.id %>)" class="canvas-btn outline sm">
+              <i data-lucide="eye"></i> View
+            </button>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<style>
+/* Sequence Manager Styles */
+.sequence-manager {
+  --seq-draft: #6B7280;
+  --seq-active: #10B981;
+  --seq-paused: #F59E0B;
+  --seq-completed: #3B82F6;
+  --seq-enrolled: #8B5CF6;
+}
+
+/* Light mode overrides */
+[data-theme="light"] .sequence-manager,
+@media (prefers-color-scheme: light) {
+  .sequence-manager {
+    --canvas-bg: #F8FAFC;
+    --canvas-card-bg: #FFFFFF;
+    --canvas-text: #1E293B;
+    --canvas-text-muted: #64748B;
+    --canvas-border: #E2E8F0;
+  }
+}
+
+.sequence-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.sequence-stat-card {
+  background: var(--canvas-card-bg, #1E293B);
+  border: 1px solid var(--canvas-border, #334155);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sequence-stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sequence-stat-icon.draft { background: rgba(107, 114, 128, 0.2); color: #6B7280; }
+.sequence-stat-icon.active { background: rgba(16, 185, 129, 0.2); color: #10B981; }
+.sequence-stat-icon.paused { background: rgba(245, 158, 11, 0.2); color: #F59E0B; }
+.sequence-stat-icon.enrolled { background: rgba(139, 92, 246, 0.2); color: #8B5CF6; }
+
+.sequence-stat-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.sequence-stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--canvas-text, #F1F5F9);
+  line-height: 1;
+}
+
+.sequence-stat-label {
+  font-size: 0.75rem;
+  color: var(--canvas-text-muted, #94A3B8);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.25rem;
+}
+
+/* Tabs */
+.sequence-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--canvas-border, #334155);
+  padding-bottom: 0.5rem;
+}
+
+.sequence-tab {
+  background: none;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: var(--canvas-text-muted, #94A3B8);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.sequence-tab:hover {
+  background: var(--canvas-border, #334155);
+  color: var(--canvas-text, #F1F5F9);
+}
+
+.sequence-tab.active {
+  background: #3B82F6;
+  color: white;
+}
+
+/* Grid */
+.sequence-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.sequence-empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 4rem 2rem;
+  background: var(--canvas-card-bg, #1E293B);
+  border: 2px dashed var(--canvas-border, #334155);
+  border-radius: 16px;
+}
+
+.sequence-empty-state svg {
+  width: 64px;
+  height: 64px;
+  color: var(--canvas-text-muted, #94A3B8);
+  margin-bottom: 1rem;
+}
+
+.sequence-empty-state h3 {
+  color: var(--canvas-text, #F1F5F9);
+  margin-bottom: 0.5rem;
+}
+
+.sequence-empty-state p {
+  color: var(--canvas-text-muted, #94A3B8);
+  margin-bottom: 1.5rem;
+}
+
+/* Card */
+.sequence-card {
+  background: var(--canvas-card-bg, #1E293B);
+  border: 1px solid var(--canvas-border, #334155);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.sequence-card:hover {
+  border-color: #3B82F6;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.sequence-card-header {
+  padding: 1rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--canvas-border, #334155);
+}
+
+.sequence-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sequence-status-badge svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sequence-status-badge.draft { background: rgba(107, 114, 128, 0.2); color: #9CA3AF; }
+.sequence-status-badge.active { background: rgba(16, 185, 129, 0.2); color: #10B981; }
+.sequence-status-badge.paused { background: rgba(245, 158, 11, 0.2); color: #F59E0B; }
+.sequence-status-badge.completed { background: rgba(59, 130, 246, 0.2); color: #3B82F6; }
+
+.sequence-menu-btn {
+  background: none;
+  border: none;
+  padding: 0.375rem;
+  color: var(--canvas-text-muted, #94A3B8);
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.sequence-menu-btn:hover {
+  background: var(--canvas-border, #334155);
+  color: var(--canvas-text, #F1F5F9);
+}
+
+.sequence-card-body {
+  padding: 1.25rem;
+}
+
+.sequence-card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--canvas-text, #F1F5F9);
+  margin: 0 0 0.5rem 0;
+  cursor: pointer;
+}
+
+.sequence-card-title:hover {
+  color: #3B82F6;
+}
+
+.sequence-card-goal {
+  font-size: 0.875rem;
+  color: var(--canvas-text-muted, #94A3B8);
+  margin: 0 0 1rem 0;
+  line-height: 1.5;
+}
+
+/* Steps Timeline */
+.sequence-steps-mini {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: var(--canvas-border, #334155);
+  border-radius: 8px;
+}
+
+.sequence-step-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #3B82F6;
+  color: white;
+  font-size: 0.625rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sequence-step-line {
+  flex: 1;
+  height: 2px;
+  background: var(--canvas-text-muted, #64748B);
+  min-width: 16px;
+}
+
+.sequence-more-steps {
+  font-size: 0.75rem;
+  color: var(--canvas-text-muted, #94A3B8);
+  margin-left: 0.5rem;
+}
+
+/* Metrics */
+.sequence-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.sequence-metric {
+  text-align: center;
+}
+
+.sequence-metric-value {
+  display: block;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--canvas-text, #F1F5F9);
+}
+
+.sequence-metric-label {
+  font-size: 0.625rem;
+  color: var(--canvas-text-muted, #94A3B8);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Contact Group */
+.sequence-contact-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--canvas-text-muted, #94A3B8);
+}
+
+.sequence-contact-group svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Card Footer */
+.sequence-card-footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--canvas-border, #334155);
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sequence-card-footer .canvas-btn {
+  flex: 1;
+}
+</style>
+
+<script>
+// Sequence Manager JavaScript
+function sequenceRefresh() {
+  if (window.scoutSendMessage) {
+    window.scoutSendMessage('Show me my email sequences');
+  } else {
+    window.location.reload();
+  }
+}
+
+function sequenceCreate() {
+  if (window.scoutSendMessage) {
+    window.scoutSendMessage('I want to create a new email sequence');
+  }
+}
+
+function sequenceView(id) {
+  if (window.scoutSendMessage) {
+    window.scoutSendMessage(`Show me details for email sequence ${id}`);
+  }
+}
+
+async function sequenceActivate(id) {
+  if (!confirm('Activate this sequence? Enrolled contacts will start receiving emails.')) return;
+  
+  try {
+    const response = await fetch(`/api/v1/email_sequences/${id}/activate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      }
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      showSequenceNotification('Sequence activated! Emails will start sending.', 'success');
+      sequenceRefresh();
+    } else {
+      showSequenceNotification(data.message || 'Failed to activate', 'error');
+    }
+  } catch (error) {
+    console.error('Activate error:', error);
+    showSequenceNotification('Failed to activate sequence', 'error');
+  }
+}
+
+async function sequencePause(id) {
+  try {
+    const response = await fetch(`/api/v1/email_sequences/${id}/pause`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      }
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      showSequenceNotification('Sequence paused', 'success');
+      sequenceRefresh();
+    } else {
+      showSequenceNotification(data.message || 'Failed to pause', 'error');
+    }
+  } catch (error) {
+    showSequenceNotification('Failed to pause sequence', 'error');
+  }
+}
+
+async function sequenceResume(id) {
+  try {
+    const response = await fetch(`/api/v1/email_sequences/${id}/resume`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      }
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      showSequenceNotification('Sequence resumed!', 'success');
+      sequenceRefresh();
+    } else {
+      showSequenceNotification(data.message || 'Failed to resume', 'error');
+    }
+  } catch (error) {
+    showSequenceNotification('Failed to resume sequence', 'error');
+  }
+}
+
+function sequenceMenu(event, id) {
+  event.stopPropagation();
+  // Could implement dropdown menu here
+  if (window.scoutSendMessage) {
+    window.scoutSendMessage(`Show me options for email sequence ${id}`);
+  }
+}
+
+function sequenceShowTab(tab) {
+  // Update tab buttons
+  document.querySelectorAll('.sequence-tab').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.classList.add('active');
+  
+  // Filter cards
+  document.querySelectorAll('.sequence-card').forEach(card => {
+    const status = card.dataset.status;
+    if (tab === 'all' || status === tab) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+function showSequenceNotification(message, type) {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `sequence-notification ${type}`;
+  notification.innerHTML = `
+    <span>${message}</span>
+    <button onclick="this.parentElement.remove()">&times;</button>
+  `;
+  
+  // Add styles if not present
+  if (!document.getElementById('sequence-notification-styles')) {
+    const style = document.createElement('style');
+    style.id = 'sequence-notification-styles';
+    style.textContent = `
+      .sequence-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        z-index: 9999;
+        animation: slideIn 0.3s ease;
+      }
+      .sequence-notification.success { background: #10B981; color: white; }
+      .sequence-notification.error { background: #EF4444; color: white; }
+      .sequence-notification button {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        line-height: 1;
+      }
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  document.body.appendChild(notification);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => notification.remove(), 5000);
+}
+
+// Initialize icons
+if (typeof lucide !== 'undefined') {
+  lucide.createIcons();
+}
+</script>
