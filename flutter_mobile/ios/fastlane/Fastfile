@@ -195,9 +195,9 @@ platform :ios do
   end
 
   desc "Add device frames to screenshots"
-  lane :frame_screenshots do
+  lane :frame_app_screenshots do
     frameit(
-      path: "./screenshots",
+      path: "../screenshots",
       white: false,
       use_platform: "IOS"
     )
@@ -209,7 +209,7 @@ platform :ios do
       skip_binary_upload: true,
       skip_metadata: true,
       skip_screenshots: false,
-      screenshots_path: "./screenshots",
+      screenshots_path: "../screenshots",
       overwrite_screenshots: true
     )
   end
@@ -217,7 +217,7 @@ platform :ios do
   desc "Full screenshot pipeline: capture, frame, and upload"
   lane :screenshots_full do
     screenshots
-    frame_screenshots
+    frame_app_screenshots
     upload_screenshots
   end
 
