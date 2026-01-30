@@ -4,21 +4,19 @@ module Tools
       {
         name: "generate_ai_landing_page",
         description: <<~DESC.strip,
-          🚨 **STOP! Use plan_design first!** - DO NOT call this directly for new pages.
+          ⚠️ **INTERNAL TOOL - Use `build_design` instead!**
           
-          This tool BUILDS the HTML from a plan. The correct flow is:
-          1. Call `plan_design` first → shows visual blueprint in canvas
+          This is the internal HTML generator called by `build_design`.
+          DO NOT call this tool directly. Use the proper flow:
+          
+          1. User wants a landing page → Call `plan_design` → shows visual plan
           2. User reviews and refines the plan
-          3. User says "build it" → THEN call plan_design(action: 'build')
+          3. User approves → Call `build_design` with plan_id
           
-          **ONLY call this tool directly if:**
-          - User explicitly said "skip the plan" or "just build it now"
-          - There's an existing approved DesignPlan
+          `build_design` will internally use this tool with all the plan data,
+          including advanced options (visual_description, content_guidance, etc.)
           
-          Features when building:
-          - Auto-generated AI images (hero, features, backgrounds)
-          - Uses business profile for personalization
-          - Opens the landing page editor on completion
+          **NEVER call generate_ai_landing_page directly** - always use build_design.
         DESC
         category: "landing_page",
         input_schema: {
@@ -639,12 +637,22 @@ module Tools
           section_name = s[:name] || s["name"]
           section_type = s[:type] || s["type"]
           background = s[:background] || s["background"] || "default"
+          layout_hint = s[:layout_hint] || s["layout_hint"]
+          
+          # Advanced options from user
+          visual_description = s[:visual_description] || s["visual_description"]
+          content_guidance = s[:content_guidance] || s["content_guidance"]
+          image_style = s[:image_style] || s["image_style"]
           
           section_block = <<~SECTION_ITEM
             
             ▸ SECTION: #{section_name.to_s.titleize} (type: #{section_type})
               Background Style: #{background.upcase}
+              #{layout_hint.present? ? "Layout: #{layout_hint}" : ""}
           #{content_lines.join("\n")}
+          #{visual_description.present? ? "\n    🎨 VISUAL STYLE (user-specified): #{visual_description}" : ""}
+          #{content_guidance.present? ? "\n    📝 CONTENT GUIDANCE (user-specified): #{content_guidance}" : ""}
+          #{image_style.present? && image_style != 'none' ? "\n    🖼️ IMAGE STYLE: #{image_style}" : ""}
           SECTION_ITEM
           
           section_block

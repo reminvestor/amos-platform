@@ -207,8 +207,14 @@ module Tools
         raise "Expression contains disallowed characters"
       end
 
+      # Convert integer division to float division to preserve decimals
+      # e.g., "10 / 3" becomes "10.0 / 3" to return 3.333... instead of 3
+      float_expr = expr.gsub(/(\d+)\s*\/\s*(\d+)/) do |match|
+        "#{$1}.0 / #{$2}"
+      end
+
       # Evaluate in a restricted context
-      binding.eval(expr)
+      binding.eval(float_expr)
     end
 
     def parse_number(str)

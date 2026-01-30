@@ -47,6 +47,9 @@ module Amos
         Rails.logger.info "[Amos] Canvas metadata passed to context: #{metadata[:canvas].inspect}"
       end
       
+      # Analyze for corrections/learned behaviors (if previous response exists)
+      analyze_for_learned_behaviors(content)
+      
       # ═══════════════════════════════════════════════════════════════════════
       # INTENT-BASED MODE DETECTION & ROUTING
       # ═══════════════════════════════════════════════════════════════════════
@@ -60,7 +63,7 @@ module Amos
       # NO delegation to agents. Amos handles EVERYTHING directly with tools.
       #
       
-      intent = analyze_intent(content)
+      intent = analyze_intent(content, metadata)
       
       # ARCHITECTURE: Amos handles EVERYTHING directly with tools
       # No more delegation to agents - dynamic guidance provides expertise
@@ -462,7 +465,28 @@ module Amos
       end
     end
     
-    def analyze_intent(content)
+    # Analyze user message for corrections or explicit preferences
+    # This feeds into the LearnedBehaviors system
+    def analyze_for_learned_behaviors(content)
+      return unless @user && @entity
+      
+      begin
+        # Get the last assistant message for context
+        recent = @context.recent_messages(3)
+        last_amos_response = recent.find { |m| m[:role] == :assistant || m[:role] == 'assistant' }
+        amos_content = last_amos_response&.dig(:content) || ""
+        
+        behaviors = Amos::LearnedBehaviors.new(user: @user, entity: @entity)
+        behaviors.analyze_for_corrections(
+          user_message: content,
+          amos_response: amos_content
+        )
+      rescue => e
+        Rails.logger.debug "[Amos] Could not analyze for learned behaviors: #{e.message}"
+      end
+    end
+
+    def analyze_intent(content, metadata = {})
       # ═══════════════════════════════════════════════════════════════════════
       # INTENT-BASED MODE DETECTION (Phases 1-3 of seamless mode adaptation)
       # ═══════════════════════════════════════════════════════════════════════
@@ -475,6 +499,10 @@ module Amos
       #
       # Transitions are SEAMLESS - no announcements, no mode switching prompts.
       #
+      # PERFORMANCE: If precomputed_mode is in metadata (from controller's quick_classify_mode),
+      # use it directly to avoid duplicate LLM calls. The preprocessor's canvas routing
+      # also classifies mode now, so we consolidate all classification into ONE LLM call.
+      #
       
       intent = {
         raw_content: content,
@@ -484,20 +512,36 @@ module Amos
         mode: :operate         # Default mode
       }
       
-      # Use IntentClassifierService for mode detection (fast regex + LLM fallback)
-      begin
-        classifier = IntentClassifierService.new(entity: @entity)
-        mode_result = classifier.classify_mode(message: content)
+      # FAST PATH: Use precomputed mode if available (from controller's quick regex classification)
+      if metadata[:precomputed_mode].present?
+        intent[:mode] = metadata[:precomputed_mode].to_sym
+        intent[:mode_confidence] = metadata[:precomputed_mode_confidence] || :medium
+        Rails.logger.info "[Amos] Using precomputed mode: #{intent[:mode]} (confidence: #{intent[:mode_confidence]}) - no LLM call needed"
+      else
+        # Get recent conversation history for context-aware classification
+        # This helps the classifier detect topic changes vs returning to topics
+        conversation_history = @context.recent_messages(6).map do |msg|
+          { role: msg[:role], content: msg[:content] }
+        end
         
-        intent[:mode] = mode_result[:mode]
-        intent[:mode_confidence] = mode_result[:confidence]
-        intent[:create_target] = mode_result[:create_target] if mode_result[:create_target]
-        
-        Rails.logger.info "[Amos] Mode detected: #{intent[:mode]} (confidence: #{intent[:mode_confidence]})"
-      rescue => e
-        Rails.logger.warn "[Amos] Mode classification failed: #{e.message}"
-        intent[:mode] = :operate
-        intent[:mode_confidence] = :low
+        # Use IntentClassifierService for mode detection (fast regex + LLM fallback)
+        begin
+          classifier = IntentClassifierService.new(entity: @entity)
+          mode_result = classifier.classify_mode(
+            message: content,
+            conversation_history: conversation_history
+          )
+          
+          intent[:mode] = mode_result[:mode]
+          intent[:mode_confidence] = mode_result[:confidence]
+          intent[:create_target] = mode_result[:create_target] if mode_result[:create_target]
+          
+          Rails.logger.info "[Amos] Mode detected: #{intent[:mode]} (confidence: #{intent[:mode_confidence]})"
+        rescue => e
+          Rails.logger.warn "[Amos] Mode classification failed: #{e.message}"
+          intent[:mode] = :operate
+          intent[:mode_confidence] = :low
+        end
       end
       
       # Route based on detected mode
@@ -578,11 +622,16 @@ module Amos
     def classify_design_intent_via_llm(content)
       return nil unless @entity.present?
       
+      # Get recent conversation history for context-aware classification
+      conversation_history = @context.recent_messages(6).map do |msg|
+        { role: msg[:role], content: msg[:content] }
+      end
+      
       begin
         classifier = IntentClassifierService.new(entity: @entity)
         result = classifier.classify(
           message: content,
-          conversation_history: [],  # Could add history for better context
+          conversation_history: conversation_history,
           needs: [:design_intent]    # Only need design intent - minimal call
         )
         result[:design_intent]
@@ -1076,9 +1125,23 @@ module Amos
     end
     
     def broadcast_to_user(content, metadata = {})
+      # Process response to detect and extract HTML to canvas
+      # Only do this for complete (non-streaming) messages without existing canvas suggestion
+      processed = if !metadata[:streaming] && !metadata[:canvas_suggestion] && content.present?
+        Amos::ResponseHtmlProcessor.process(content, metadata)
+      else
+        { content: content, canvas_suggestion: nil }
+      end
+      
+      # Merge any extracted canvas suggestion into metadata
+      if processed[:canvas_suggestion]
+        metadata = metadata.merge(processed[:canvas_suggestion])
+        Rails.logger.info "[Amos] HTML auto-extracted to canvas: #{processed[:canvas_suggestion][:canvas_data][:title]}"
+      end
+      
       data = {
         type: 'amos_response',
-        content: content,
+        content: processed[:content],
         metadata: metadata,
         timestamp: Time.current.iso8601
       }

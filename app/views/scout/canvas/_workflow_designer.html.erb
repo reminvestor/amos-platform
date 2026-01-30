@@ -1,10 +1,16 @@
 <%# Workflow Designer Canvas - Visual builder for automations and integrations %>
-<% data = canvas_data || {} %>
+<% data = (canvas_data || {}).with_indifferent_access %>
 
+<% app_id = data[:app_id] || data[:plan_id] %>
+<% is_app_workflow = app_id.present? %>
 <div class="workflow-designer-canvas" 
      id="workflow-designer-<%= SecureRandom.hex(4) %>"
      data-workflow-id="<%= data[:workflow_id] %>"
-     data-workflow-name="<%= data[:workflow_name] %>">
+     data-workflow-name="<%= data[:workflow_name] %>"
+     data-template-name="<%= data[:template_name] %>"
+     data-template-id="<%= data[:template_id] %>"
+     data-app-id="<%= app_id %>"
+     data-is-app-workflow="<%= is_app_workflow %>">
   <div class="workflow-designer-layout">
     <!-- Component Sidebar -->
     <div class="workflow-component-panel">
@@ -194,6 +200,34 @@
     
     <!-- Main Content Area -->
     <div class="workflow-main-content">
+      <% if is_app_workflow %>
+      <!-- App Context Navigation Bar -->
+      <div class="app-context-nav">
+        <button class="app-nav-back" id="back-to-app-btn" title="Back to App Designer">
+          <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+          <span>Back to App</span>
+        </button>
+        <div class="app-nav-tabs">
+          <button class="app-nav-tab" data-mode="pages">
+            <i data-lucide="layout-template" style="width: 14px; height: 14px;"></i>
+            Pages
+          </button>
+          <button class="app-nav-tab" data-mode="canvases">
+            <i data-lucide="layout-dashboard" style="width: 14px; height: 14px;"></i>
+            Canvases
+          </button>
+          <button class="app-nav-tab" data-mode="data">
+            <i data-lucide="database" style="width: 14px; height: 14px;"></i>
+            Data
+          </button>
+          <button class="app-nav-tab active" data-mode="workflows">
+            <i data-lucide="git-branch" style="width: 14px; height: 14px;"></i>
+            Workflows
+          </button>
+        </div>
+      </div>
+      <% end %>
+      
       <!-- Header -->
       <div class="designer-header">
     <div class="designer-header-left">
@@ -232,6 +266,14 @@
       <button type="button" class="designer-btn-build" id="build-workflow-btn" title="Build this workflow into an executable automation">
         <i data-lucide="hammer"></i>
         Build
+      </button>
+      <button type="button" class="designer-btn-test" id="test-workflow-btn" title="Test run this workflow" disabled>
+        <i data-lucide="play-circle"></i>
+        Test
+      </button>
+      <button type="button" class="designer-btn-activate" id="activate-workflow-btn" title="Activate this workflow for production use" disabled>
+        <i data-lucide="rocket"></i>
+        Activate
       </button>
     </div>
   </div>
@@ -528,6 +570,77 @@
     animation: spin 1s linear infinite;
   }
   
+  /* App Context Navigation (when workflow is part of an app) */
+  .app-context-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16162a 100%);
+    border-bottom: 1px solid #2d2d44;
+  }
+  
+  .app-nav-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid #3d3d5c;
+    border-radius: 6px;
+    color: #a5a5c0;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .app-nav-back:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: #6366f1;
+    color: #818cf8;
+  }
+  
+  .app-nav-tabs {
+    display: flex;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px;
+    border-radius: 10px;
+  }
+  
+  .app-nav-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: #6b6b8a;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .app-nav-tab:hover {
+    color: #a5a5c0;
+    background: rgba(99, 102, 241, 0.1);
+  }
+  
+  .app-nav-tab.active {
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+  
+  [data-theme="light"] .app-context-nav { background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); border-color: #e5e7eb; }
+  [data-theme="light"] .app-nav-back { border-color: #d1d5db; color: #6b7280; }
+  [data-theme="light"] .app-nav-back:hover { background: rgba(99, 102, 241, 0.08); border-color: #6366f1; color: #6366f1; }
+  [data-theme="light"] .app-nav-tabs { background: rgba(0, 0, 0, 0.05); }
+  [data-theme="light"] .app-nav-tab { color: #6b7280; }
+  [data-theme="light"] .app-nav-tab:hover { color: #4b5563; background: rgba(99, 102, 241, 0.08); }
+  
   .designer-header {
     display: flex;
     justify-content: space-between;
@@ -587,6 +700,34 @@
     display: flex;
     align-items: center;
     gap: 0.375rem;
+    flex-shrink: 0;
+    overflow-x: auto;
+    max-width: calc(100% - 250px);
+  }
+  
+  .designer-header-right::-webkit-scrollbar {
+    height: 0;
+  }
+  
+  /* Group buttons for better responsive layout */
+  .designer-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  @media (max-width: 900px) {
+    .designer-header-right .zoom-level,
+    .designer-header-right #zoom-in-btn,
+    .designer-header-right #zoom-out-btn {
+      display: none;
+    }
+  }
+  
+  @media (max-width: 700px) {
+    .designer-btn span {
+      display: none;
+    }
   }
   
   .designer-btn {
@@ -709,6 +850,72 @@
   
   .designer-btn-build.built {
     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  }
+  
+  .designer-btn-test {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .designer-btn-test:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  }
+  
+  .designer-btn-test:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .designer-btn-test i {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .designer-btn-test.running {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  }
+  
+  .designer-btn-activate {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .designer-btn-activate:hover:not(:disabled) {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  }
+  
+  .designer-btn-activate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .designer-btn-activate i {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .designer-btn-activate.active {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   }
   
   .designer-btn-primary i,
@@ -1620,6 +1827,57 @@
         break;
     }
     if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+  
+  // ========== App Context Navigation ==========
+  const appId = container.dataset.appId;
+  const isAppWorkflow = container.dataset.isAppWorkflow === 'true';
+  
+  if (isAppWorkflow) {
+    console.log('🔗 Workflow is part of app:', appId);
+    
+    // Back to App button
+    const backBtn = container.querySelector('#back-to-app-btn');
+    if (backBtn) {
+      backBtn.addEventListener('click', function() {
+        loadDesignStudioWithApp(appId);
+      });
+    }
+    
+    // App nav tabs
+    container.querySelectorAll('.app-nav-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        const mode = this.dataset.mode;
+        if (mode === 'workflows') return; // Already on workflows
+        
+        // Load design studio with the app and switch to the appropriate mode
+        loadDesignStudioWithApp(appId, mode);
+      });
+    });
+  }
+  
+  function loadDesignStudioWithApp(appId, mode) {
+    mode = mode || 'pages';
+    console.log('🔄 Loading design studio for app:', appId, 'mode:', mode);
+    
+    const scoutController = window.Stimulus?.getControllerForElementAndIdentifier(
+      document.getElementById('workspace'), 'scout'
+    );
+    
+    if (scoutController && typeof scoutController.loadScoutCanvas === 'function') {
+      scoutController.loadScoutCanvas('design_studio', { 
+        plan_id: appId, 
+        create_type: 'app',
+        app_mode: mode 
+      });
+    } else {
+      window.dispatchEvent(new CustomEvent('load-canvas', {
+        detail: { 
+          canvas: 'design_studio', 
+          data: { plan_id: appId, create_type: 'app', app_mode: mode } 
+        }
+      }));
+    }
   }
   
   // Add save status indicator to header
@@ -3471,6 +3729,9 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
         buildBtn.classList.add('built');
         buildBtn.innerHTML = '<i data-lucide="check"></i> Built';
         
+        // Enable test button after successful build
+        enableTestButton();
+        
         // Show warnings if any
         if (result.warnings && result.warnings.length > 0) {
           statusBanner.className = 'build-status-banner warning';
@@ -3508,6 +3769,148 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
   container.querySelector('#close-build-status')?.addEventListener('click', () => {
     container.querySelector('#build-status-banner').style.display = 'none';
   });
+  
+  // ========== Test Workflow ==========
+  const testBtn = container.querySelector('#test-workflow-btn');
+  testBtn?.addEventListener('click', testWorkflow);
+  
+  async function testWorkflow() {
+    if (!currentWorkflowId) {
+      alert('Please save and build the workflow first');
+      return;
+    }
+    
+    const statusBanner = container.querySelector('#build-status-banner');
+    const statusText = statusBanner.querySelector('.build-status-text');
+    const statusDetails = statusBanner.querySelector('.build-status-details');
+    const statusIcon = statusBanner.querySelector('.build-status-icon');
+    
+    testBtn.disabled = true;
+    testBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Testing...';
+    testBtn.classList.add('running');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    try {
+      const response = await fetch('/scout/test_workflow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({ 
+          workflow_id: currentWorkflowId,
+          context: { test: true, timestamp: new Date().toISOString() }
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        statusBanner.className = 'build-status-banner';
+        statusBanner.style.display = 'flex';
+        statusIcon.innerHTML = '<i data-lucide="check-circle"></i>';
+        statusText.textContent = 'Test passed!';
+        statusDetails.textContent = `Duration: ${result.duration_ms || 0}ms`;
+        
+        testBtn.innerHTML = '<i data-lucide="check"></i> Passed';
+        
+        // Enable activate button after successful test
+        const activateBtn = container.querySelector('#activate-workflow-btn');
+        if (activateBtn) activateBtn.disabled = false;
+      } else {
+        statusBanner.className = 'build-status-banner error';
+        statusBanner.style.display = 'flex';
+        statusIcon.innerHTML = '<i data-lucide="x-circle"></i>';
+        statusText.textContent = 'Test failed';
+        statusDetails.textContent = result.error || 'Unknown error';
+        
+        testBtn.innerHTML = '<i data-lucide="x"></i> Failed';
+      }
+    } catch (error) {
+      console.error('Test error:', error);
+      statusBanner.className = 'build-status-banner error';
+      statusBanner.style.display = 'flex';
+      statusIcon.innerHTML = '<i data-lucide="alert-circle"></i>';
+      statusText.textContent = 'Test error';
+      statusDetails.textContent = error.message;
+      
+      testBtn.innerHTML = '<i data-lucide="play-circle"></i> Test';
+    } finally {
+      testBtn.disabled = false;
+      testBtn.classList.remove('running');
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  }
+  
+  // ========== Activate Workflow ==========
+  const activateBtn = container.querySelector('#activate-workflow-btn');
+  activateBtn?.addEventListener('click', activateWorkflow);
+  
+  async function activateWorkflow() {
+    if (!currentWorkflowId) {
+      alert('Please save and build the workflow first');
+      return;
+    }
+    
+    const statusBanner = container.querySelector('#build-status-banner');
+    const statusText = statusBanner.querySelector('.build-status-text');
+    const statusDetails = statusBanner.querySelector('.build-status-details');
+    const statusIcon = statusBanner.querySelector('.build-status-icon');
+    
+    activateBtn.disabled = true;
+    activateBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Activating...';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    try {
+      const response = await fetch('/scout/activate_workflow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({ workflow_id: currentWorkflowId })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        statusBanner.className = 'build-status-banner';
+        statusBanner.style.display = 'flex';
+        statusIcon.innerHTML = '<i data-lucide="rocket"></i>';
+        statusText.textContent = 'Workflow activated!';
+        statusDetails.textContent = 'Now running in production';
+        
+        activateBtn.innerHTML = '<i data-lucide="check"></i> Active';
+        activateBtn.classList.add('active');
+      } else {
+        statusBanner.className = 'build-status-banner error';
+        statusBanner.style.display = 'flex';
+        statusIcon.innerHTML = '<i data-lucide="x-circle"></i>';
+        statusText.textContent = 'Activation failed';
+        statusDetails.textContent = result.error || 'Unknown error';
+        
+        activateBtn.innerHTML = '<i data-lucide="rocket"></i> Activate';
+      }
+    } catch (error) {
+      console.error('Activation error:', error);
+      statusBanner.className = 'build-status-banner error';
+      statusBanner.style.display = 'flex';
+      statusIcon.innerHTML = '<i data-lucide="alert-circle"></i>';
+      statusText.textContent = 'Activation error';
+      statusDetails.textContent = error.message;
+      
+      activateBtn.innerHTML = '<i data-lucide="rocket"></i> Activate';
+    } finally {
+      activateBtn.disabled = false;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  }
+  
+  // Enable test button after successful build
+  function enableTestButton() {
+    const testBtn = container.querySelector('#test-workflow-btn');
+    if (testBtn) testBtn.disabled = false;
+  }
   
   // ========== Init Lucide Icons ==========
   if (typeof lucide !== 'undefined') lucide.createIcons();

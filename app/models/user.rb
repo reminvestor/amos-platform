@@ -285,8 +285,19 @@ class User < ApplicationRecord
       last_name = 'User' if last_name.blank?
       
       # Create entity for the user
+      entity_name = "#{first_name}'s Organization"
+      base_subdomain = entity_name.parameterize.presence || SecureRandom.hex(6)
+      subdomain = base_subdomain
+      counter = 1
+      while Entity.where(subdomain: subdomain).exists?
+        subdomain = "#{base_subdomain}-#{counter}"
+        counter += 1
+      end
+      
       entity = Entity.create!(
-        name: "#{first_name}'s Organization"
+        name: entity_name,
+        subdomain: subdomain,
+        status: 'active'
       )
       
       user = create!(
@@ -302,8 +313,8 @@ class User < ApplicationRecord
         role: 'admin'
       )
       
-      # Make user admin of their entity
-      EntityUser.create!(entity: entity, user: user, role: 'admin')
+      # Note: EntityUser is automatically created by the after_save :ensure_entity_membership callback
+      # which runs when entity_id is set. The first user of an entity is made 'owner'.
       
       user
     end

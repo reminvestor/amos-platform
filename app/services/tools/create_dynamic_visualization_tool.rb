@@ -1,10 +1,15 @@
 module Tools
   # DEPRECATED: Use create_freeform_canvas instead for ALL visualizations.
-  # This tool is kept for backwards compatibility but redirects to freeform.
+  # This tool is kept for backwards compatibility but should NOT be used.
   #
   # The freeform canvas gives you full HTML/CSS/JS freedom - you can create
   # anything including dashboards, reports, tables, charts, and more.
   class CreateDynamicVisualizationTool < BaseTool
+    # Mark as unavailable so it's not registered in the catalog
+    def self.available?
+      false
+    end
+    
     def self.metadata
       {
         name: "create_dynamic_visualization",

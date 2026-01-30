@@ -745,6 +745,9 @@ export default class extends Controller {
                   )
                   
                   if (!isShortStatusMessage && data.message && data.message.trim()) {
+                    // Hide thinking indicator - actual content is starting
+                    this.hideThinkingIndicator()
+                    
                     // This is actual content from Amos - stream it
                     console.log('📝 Amos content received via update:', data.message)
                     
@@ -979,20 +982,34 @@ export default class extends Controller {
                       console.log("📝 Already streaming, not resetting")
                     }
                   }
+                } else if (data.type === 'thinking') {
+                  // Show immediate "thinking" indicator with animated dots
+                  console.log('🤔 Thinking indicator received')
+                  this.showThinkingIndicator(data.message || 'Thinking')
+                } else if (data.type === 'working') {
+                  // Show "working" indicator during tool execution
+                  console.log('⚙️ Working indicator:', data.message)
+                  this.showThinkingIndicator(data.message || 'Working')
                 } else if (data.type === 'add_tool_message' || data.type === 'tool_detected') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('🔧 Tool detected:', data.tool_name || data.name)
                   
-                  // Always show tool usage in thinking UI - user should know something is happening
+                  // Show "Working..." indicator with tool name
                   const toolName = data.tool_name || data.name
                   const friendlyName = this.formatToolName(toolName)
+                  this.showThinkingIndicator(friendlyName)
+                  
+                  // Also show in thinking UI for detailed view
                   this.addToolThinkingStep(friendlyName)
                 } else if (data.type === 'tool_start') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('🔧 Tool started:', data.name)
                   
-                  // Always show tool usage in thinking UI - user should know something is happening
+                  // Show "Working..." indicator with tool name
                   const friendlyName = this.formatToolName(data.name)
+                  this.showThinkingIndicator(friendlyName)
+                  
+                  // Also show in thinking UI for detailed view
                   this.addToolThinkingStep(friendlyName)
                 } else if (data.type === 'tool_result' || data.type === 'tool_end') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
@@ -1182,7 +1199,8 @@ export default class extends Controller {
                   console.log("📦 Full finalResponseData keys:", Object.keys(finalResponseData || {}))
                   console.log("📋 Full finalResponseData object:", finalResponseData)
 
-                  // Hide streaming window first
+                  // Hide thinking indicator immediately (final response = done) and streaming window
+                  this.hideThinkingIndicator(true) // Force immediate hide for final response
                   this.hideStreamingWindow()
                 }
               } catch (e) {
@@ -3751,6 +3769,169 @@ export default class extends Controller {
       this.isShowingToolThinking = false
       this.toolThinkingSteps = []
     }, delay)
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Thinking Indicator - Simple animated dots for immediate feedback
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  showThinkingIndicator(message = 'Thinking') {
+    // Cancel any pending hide
+    if (this.thinkingIndicatorHideTimeout) {
+      clearTimeout(this.thinkingIndicatorHideTimeout)
+      this.thinkingIndicatorHideTimeout = null
+    }
+    
+    // If indicator is already showing with different message, just update it
+    const existingIndicator = document.getElementById('thinking-indicator')
+    if (existingIndicator) {
+      const textSpan = existingIndicator.querySelector('.thinking-text')
+      if (textSpan) {
+        textSpan.textContent = message
+      }
+      // Update the show time so minimum display restarts
+      this.thinkingIndicatorShownAt = Date.now()
+      console.log('🤔 Updated thinking indicator to:', message)
+      return
+    }
+    
+    const chatMessages = document.getElementById('chat-messages')
+    if (!chatMessages) {
+      console.warn('🤔 Cannot show thinking indicator - chat-messages not found')
+      return
+    }
+    
+    // Track when indicator was shown for minimum display time
+    this.thinkingIndicatorShownAt = Date.now()
+    
+    console.log('🤔 Showing thinking indicator:', message)
+    
+    // Inject styles if not already present
+    if (!document.querySelector('#thinking-indicator-styles')) {
+      const styles = document.createElement('style')
+      styles.id = 'thinking-indicator-styles'
+      styles.textContent = `
+        .thinking-indicator-message .message-bubble {
+          background: transparent !important;
+          padding: 0.5rem 0 !important;
+          box-shadow: none !important;
+        }
+        .thinking-indicator-message .thinking-content {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: var(--text-secondary, #6b7280);
+          font-style: italic;
+        }
+        .thinking-indicator-message .thinking-text {
+          font-size: 0.95rem;
+        }
+        .thinking-indicator-message .thinking-dots {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .thinking-indicator-message .thinking-dots .dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background-color: var(--scout-primary, #7c3aed);
+          animation: thinking-bounce 1.4s infinite ease-in-out both;
+        }
+        .thinking-indicator-message .thinking-dots .dot:nth-child(1) {
+          animation-delay: -0.32s;
+        }
+        .thinking-indicator-message .thinking-dots .dot:nth-child(2) {
+          animation-delay: -0.16s;
+        }
+        .thinking-indicator-message .thinking-dots .dot:nth-child(3) {
+          animation-delay: 0s;
+        }
+        @keyframes thinking-bounce {
+          0%, 80%, 100% {
+            transform: translateY(0);
+            opacity: 0.4;
+          }
+          40% {
+            transform: translateY(-6px);
+            opacity: 1;
+          }
+        }
+      `
+      document.head.appendChild(styles)
+    }
+    
+    const indicator = document.createElement('div')
+    indicator.className = 'message ai-message thinking-indicator-message'
+    indicator.id = 'thinking-indicator'
+    indicator.innerHTML = `
+      <div class="message-avatar">
+        <div class="avatar-circle assistant-avatar">
+          <i data-lucide="bot" class="avatar-icon"></i>
+        </div>
+      </div>
+      <div class="message-bubble">
+        <div class="message-content thinking-content">
+          <span class="thinking-text">${message}</span>
+          <span class="thinking-dots">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </span>
+        </div>
+      </div>
+    `
+    
+    chatMessages.appendChild(indicator)
+    this.thinkingIndicatorElement = indicator
+    
+    // Initialize Lucide icons if available
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons()
+    }
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight
+  }
+  
+  hideThinkingIndicator(forceImmediate = false) {
+    // Minimum display time in ms - ensures user sees the indicator
+    const MIN_DISPLAY_TIME = 1500 // 1.5 seconds
+    
+    // Cancel any pending hide timeout
+    if (this.thinkingIndicatorHideTimeout) {
+      clearTimeout(this.thinkingIndicatorHideTimeout)
+      this.thinkingIndicatorHideTimeout = null
+    }
+    
+    // Check if we should delay the hide to respect minimum display time
+    if (!forceImmediate && this.thinkingIndicatorShownAt) {
+      const elapsed = Date.now() - this.thinkingIndicatorShownAt
+      const remainingTime = MIN_DISPLAY_TIME - elapsed
+      
+      if (remainingTime > 0) {
+        console.log(`🤔 Delaying indicator hide by ${remainingTime}ms to meet minimum display time`)
+        this.thinkingIndicatorHideTimeout = setTimeout(() => {
+          this.hideThinkingIndicator(true) // Force immediate when timeout fires
+        }, remainingTime)
+        return
+      }
+    }
+    
+    // Reset the show time
+    this.thinkingIndicatorShownAt = null
+    
+    // Remove tracked element
+    if (this.thinkingIndicatorElement) {
+      this.thinkingIndicatorElement.remove()
+      this.thinkingIndicatorElement = null
+    }
+    
+    // Also remove any orphaned indicators by ID
+    const indicator = document.getElementById('thinking-indicator')
+    if (indicator) {
+      indicator.remove()
+    }
   }
 
   // Update tool progress with percentage for long-running operations

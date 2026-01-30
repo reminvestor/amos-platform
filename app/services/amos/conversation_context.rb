@@ -48,7 +48,7 @@ module Amos
         session_id: @session_id,
         user_id: @user.id,
         entity_id: @entity.id,
-        recent_messages: recent_messages(10),
+        recent_messages: recent_messages(12),  # Full 12 message context window
         active_jobs: @job_results.keys,
         entity_context: entity_snapshot,
         timestamp: Time.current
@@ -92,14 +92,20 @@ module Amos
     end
     
     def entity_snapshot
-      {
-        name: @entity.name,
-        subdomain: @entity.subdomain,
-        settings: @entity.settings,
-        has_stripe: @entity.connections.joins(:integration).exists?(integrations: { slug: 'stripe' }),
-        landing_pages_count: @entity.landing_pages.count,
-        contacts_count: @entity.contacts.count
-      }
+      # Cache entity context for 2 minutes to avoid repeated DB queries
+      # This data rarely changes and doesn't need to be real-time
+      cache_key = "entity_snapshot:#{@entity.id}"
+      
+      Rails.cache.fetch(cache_key, expires_in: 2.minutes) do
+        {
+          name: @entity.name,
+          subdomain: @entity.subdomain,
+          settings: @entity.settings,
+          has_stripe: @entity.connections.joins(:integration).exists?(integrations: { slug: 'stripe' }),
+          landing_pages_count: @entity.landing_pages.count,
+          contacts_count: @entity.contacts.count
+        }
+      end
     end
     
     private

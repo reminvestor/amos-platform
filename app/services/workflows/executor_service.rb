@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+# Ensure executors are loaded
+require_relative 'executors/base_executor'
+
 module Workflows
   # ExecutorService runs compiled workflow steps deterministically.
   #

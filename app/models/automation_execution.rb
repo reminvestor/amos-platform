@@ -27,6 +27,11 @@ class AutomationExecution < ApplicationRecord
   validates :status, presence: true, inclusion: { in: STATUSES }
   validates :trigger_source, inclusion: { in: TRIGGER_SOURCES }, allow_nil: true
 
+  # Alias input_data to trigger_data for compatibility with ExecutorService
+  alias_attribute :input_data, :trigger_data
+  alias_attribute :output_data, :execution_result
+  alias_attribute :step_logs, :step_executions
+
   # ============================================
   # CALLBACKS
   # ============================================
