@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:amos_mobile/services/api_client.dart';
 import 'package:amos_mobile/screens/scanner/scanner_screen.dart';
 
@@ -23,21 +24,19 @@ class ScannerService {
         },
       );
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data['success'] == true) {
-          return ScanResult.success(
-            mode: mode,
-            extractedFields: Map<String, dynamic>.from(data['data'] ?? {}),
-          );
-        } else {
-          return ScanResult.error(data['error'] ?? 'Scan failed');
-        }
-      } else {
-        return ScanResult.error(
-          _extractErrorMessage(response.data, response.statusCode),
+      final data = response.data;
+      if (data is Map && data['success'] == true) {
+        return ScanResult.success(
+          mode: mode,
+          extractedFields: Map<String, dynamic>.from(data['data'] ?? {}),
         );
+      } else if (data is Map) {
+        return ScanResult.error(_extractErrorMessage(data, response.statusCode));
+      } else {
+        return ScanResult.error('Unexpected response format');
       }
+    } on DioException catch (e) {
+      return ScanResult.error(_extractDioError(e));
     } catch (e) {
       return ScanResult.error('Failed to scan: $e');
     }
@@ -58,6 +57,36 @@ class ScannerService {
       }
     }
     return 'Server error: ${statusCode ?? 'unknown'}';
+  }
+
+  /// Extract error message from DioException
+  String _extractDioError(DioException e) {
+    // Try to get error from response data first
+    final responseData = e.response?.data;
+    if (responseData is Map) {
+      final message = responseData['message'] as String?;
+      final error = responseData['error'] as String?;
+      if (message != null && message.isNotEmpty) {
+        return message;
+      }
+      if (error != null && error.isNotEmpty && error != 'no_entity') {
+        return error;
+      }
+    }
+
+    // Fall back to status code or message
+    final statusCode = e.response?.statusCode;
+    if (statusCode == 401) {
+      return 'Please log in again';
+    } else if (statusCode == 403) {
+      return 'Access denied';
+    } else if (statusCode == 404) {
+      return 'Service not found';
+    } else if (statusCode != null && statusCode >= 500) {
+      return 'Server error. Please try again.';
+    }
+
+    return e.message ?? 'Network error';
   }
 
   /// Save the scan result based on mode
@@ -81,25 +110,21 @@ class ScannerService {
         },
       );
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data['success'] == true) {
-          return ScanResult.success(
-            mode: mode,
-            extractedFields: scanResult.extractedFields,
-            savedId: data['id'],
-            message: data['message'] ?? 'Saved successfully!',
-          );
-        } else {
-          return ScanResult.error(
-            _extractErrorMessage(data, response.statusCode),
-          );
-        }
-      } else {
-        return ScanResult.error(
-          _extractErrorMessage(response.data, response.statusCode),
+      final data = response.data;
+      if (data is Map && data['success'] == true) {
+        return ScanResult.success(
+          mode: mode,
+          extractedFields: scanResult.extractedFields,
+          savedId: data['id'],
+          message: data['message'] ?? 'Saved successfully!',
         );
+      } else if (data is Map) {
+        return ScanResult.error(_extractErrorMessage(data, response.statusCode));
+      } else {
+        return ScanResult.error('Unexpected response format');
       }
+    } on DioException catch (e) {
+      return ScanResult.error(_extractDioError(e));
     } catch (e) {
       return ScanResult.error('Failed to save: $e');
     }
