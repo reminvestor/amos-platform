@@ -6,13 +6,24 @@ module Api
       setup do
         @entity = entities(:default)
         @user = users(:one)
+        # Ensure user has an API key for token auth
+        @user.update!(api_key: SecureRandom.hex(32)) unless @user.api_key.present?
         @contact_group = contact_groups(:default_group)
         @sequence = email_sequences(:welcome_sequence)
         
         # Ensure sequence belongs to the user's entity
         @sequence.update!(entity: @entity)
         
-        sign_in @user
+        # Clean up any conflicting sequence steps
+        @sequence.sequence_steps.destroy_all
+      end
+      
+      def api_auth_headers
+        {
+          'Authorization' => "Bearer #{@user.api_key}",
+          'Content-Type' => 'application/json',
+          'Accept' => 'application/json'
+        }
       end
 
       # ============================================
@@ -20,7 +31,7 @@ module Api
       # ============================================
 
       test "index returns list of sequences" do
-        get api_v1_email_sequences_url, as: :json
+        get api_v1_email_sequences_url, headers: api_auth_headers
         
         assert_response :success
         json = JSON.parse(response.body)
@@ -31,7 +42,7 @@ module Api
       end
 
       test "index includes sequence details" do
-        get api_v1_email_sequences_url, as: :json
+        get api_v1_email_sequences_url, headers: api_auth_headers
         
         json = JSON.parse(response.body)
         sequence = json['sequences'].find { |s| s['id'] == @sequence.id }
@@ -48,7 +59,7 @@ module Api
       # ============================================
 
       test "dashboard returns aggregate stats" do
-        get dashboard_api_v1_email_sequences_url, as: :json
+        get dashboard_api_v1_email_sequences_url, headers: api_auth_headers
         
         assert_response :success
         json = JSON.parse(response.body)
@@ -67,7 +78,7 @@ module Api
       # ============================================
 
       test "show returns sequence details" do
-        get api_v1_email_sequence_url(@sequence), as: :json
+        get api_v1_email_sequence_url(@sequence), headers: api_auth_headers
         
         assert_response :success
         json = JSON.parse(response.body)
@@ -80,7 +91,7 @@ module Api
       test "show includes steps when requested" do
         @sequence.sequence_steps.create!(step_number: 1, delay_hours: 0, subject: "Test", body: "Body")
         
-        get api_v1_email_sequence_url(@sequence), as: :json
+        get api_v1_email_sequence_url(@sequence), headers: api_auth_headers
         
         json = JSON.parse(response.body)
         
@@ -89,7 +100,7 @@ module Api
       end
 
       test "show returns 404 for unknown sequence" do
-        get api_v1_email_sequence_url(id: 999999), as: :json
+        get api_v1_email_sequence_url(id: 999999), headers: api_auth_headers
         
         assert_response :not_found
         json = JSON.parse(response.body)
@@ -109,8 +120,8 @@ module Api
                 goal: "Test creation",
                 contact_group_id: @contact_group.id
               }
-            },
-            as: :json
+            }.to_json,
+            headers: api_auth_headers
         end
         
         assert_response :created
@@ -127,8 +138,8 @@ module Api
               email_sequence: { 
                 name: "" # Invalid - name required
               }
-            },
-            as: :json
+            }.to_json,
+            headers: api_auth_headers
         end
         
         assert_response :unprocessable_entity
@@ -144,8 +155,8 @@ module Api
 
       test "update modifies sequence" do
         patch api_v1_email_sequence_url(@sequence),
-          params: { email_sequence: { name: "Updated Name" } },
-          as: :json
+          params: { email_sequence: { name: "Updated Name" } }.to_json,
+          headers: api_auth_headers
         
         assert_response :success
         json = JSON.parse(response.body)
@@ -162,8 +173,11 @@ module Api
       # ============================================
 
       test "destroy deletes sequence" do
+        # Clean up any dependent records first
+        @sequence.sequence_enrollments.destroy_all
+        
         assert_difference 'EmailSequence.count', -1 do
-          delete api_v1_email_sequence_url(@sequence), as: :json
+          delete api_v1_email_sequence_url(@sequence), headers: api_auth_headers
         end
         
         assert_response :success
@@ -179,7 +193,7 @@ module Api
         @sequence.update!(status: 'draft')
         @sequence.sequence_steps.create!(step_number: 1, delay_hours: 0, subject: "Test", body: "Body")
         
-        post activate_api_v1_email_sequence_url(@sequence), as: :json
+        post activate_api_v1_email_sequence_url(@sequence), headers: api_auth_headers
         
         assert_response :success
         json = JSON.parse(response.body)
@@ -190,9 +204,8 @@ module Api
 
       test "activate fails for sequence without steps" do
         @sequence.update!(status: 'draft')
-        @sequence.sequence_steps.destroy_all
         
-        post activate_api_v1_email_sequence_url(@sequence), as: :json
+        post activate_api_v1_email_sequence_url(@sequence), headers: api_auth_headers
         
         assert_response :unprocessable_entity
         json = JSON.parse(response.body)
@@ -204,7 +217,7 @@ module Api
         @sequence.update!(status: 'active')
         @sequence.sequence_steps.create!(step_number: 1, delay_hours: 0, subject: "Test", body: "Body")
         
-        post activate_api_v1_email_sequence_url(@sequence), as: :json
+        post activate_api_v1_email_sequence_url(@sequence), headers: api_auth_headers
         
         assert_response :unprocessable_entity
       end
@@ -216,7 +229,7 @@ module Api
       test "pause pauses active sequence" do
         @sequence.update!(status: 'active')
         
-        post pause_api_v1_email_sequence_url(@sequence), as: :json
+        post pause_api_v1_email_sequence_url(@sequence), headers: api_auth_headers
         
         assert_response :success
         json = JSON.parse(response.body)
@@ -228,7 +241,7 @@ module Api
       test "pause fails for draft sequence" do
         @sequence.update!(status: 'draft')
         
-        post pause_api_v1_email_sequence_url(@sequence), as: :json
+        post pause_api_v1_email_sequence_url(@sequence), headers: api_auth_headers
         
         assert_response :unprocessable_entity
       end
@@ -240,7 +253,7 @@ module Api
       test "resume resumes paused sequence" do
         @sequence.update!(status: 'paused')
         
-        post resume_api_v1_email_sequence_url(@sequence), as: :json
+        post resume_api_v1_email_sequence_url(@sequence), headers: api_auth_headers
         
         assert_response :success
         json = JSON.parse(response.body)
@@ -252,7 +265,7 @@ module Api
       test "resume fails for draft sequence" do
         @sequence.update!(status: 'draft')
         
-        post resume_api_v1_email_sequence_url(@sequence), as: :json
+        post resume_api_v1_email_sequence_url(@sequence), headers: api_auth_headers
         
         assert_response :unprocessable_entity
       end
@@ -264,7 +277,7 @@ module Api
       test "stats returns sequence statistics" do
         @sequence.sequence_steps.create!(step_number: 1, delay_hours: 0, subject: "Test", body: "Body")
         
-        get stats_api_v1_email_sequence_url(@sequence), as: :json
+        get stats_api_v1_email_sequence_url(@sequence), headers: api_auth_headers
         
         assert_response :success
         json = JSON.parse(response.body)
@@ -294,7 +307,7 @@ module Api
           status: 'draft'
         )
         
-        get api_v1_email_sequence_url(other_sequence), as: :json
+        get api_v1_email_sequence_url(other_sequence), headers: api_auth_headers
         
         assert_response :not_found
       end
