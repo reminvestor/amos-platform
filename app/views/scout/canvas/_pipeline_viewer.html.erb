@@ -121,6 +121,62 @@
   </div>
 </div>
 
+<!-- New Opportunity Modal -->
+<div id="new-opportunity-modal" class="pipeline-modal-overlay" style="display: none;" onclick="if(event.target === this) closeOpportunityModal()">
+  <div class="pipeline-modal">
+    <div class="pipeline-modal-header">
+      <h2 class="pipeline-modal-title">New Opportunity</h2>
+      <button class="pipeline-modal-close" onclick="closeOpportunityModal()">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <form id="new-opportunity-form" onsubmit="submitOpportunity(event)">
+      <div class="pipeline-modal-body">
+        <div class="pipeline-form-group">
+          <label class="pipeline-form-label">Opportunity Name *</label>
+          <input type="text" name="name" class="pipeline-form-input" placeholder="e.g., Enterprise Deal - Acme Corp" required>
+        </div>
+        
+        <div class="pipeline-form-row">
+          <div class="pipeline-form-group">
+            <label class="pipeline-form-label">Value ($)</label>
+            <input type="number" name="value" class="pipeline-form-input" placeholder="10000" min="0" step="0.01">
+          </div>
+          <div class="pipeline-form-group">
+            <label class="pipeline-form-label">Probability (%)</label>
+            <input type="number" name="probability" class="pipeline-form-input" placeholder="20" min="0" max="100" value="20">
+          </div>
+        </div>
+        
+        <div class="pipeline-form-group">
+          <label class="pipeline-form-label">Stage</label>
+          <select name="stage" class="pipeline-form-select">
+            <option value="lead">Lead</option>
+            <option value="qualified">Qualified</option>
+            <option value="proposal">Proposal</option>
+            <option value="negotiation">Negotiation</option>
+            <option value="closed_won">Closed Won</option>
+          </select>
+        </div>
+        
+        <div class="pipeline-form-group">
+          <label class="pipeline-form-label">Expected Close Date</label>
+          <input type="date" name="expected_close_date" class="pipeline-form-input">
+        </div>
+        
+        <div class="pipeline-form-group">
+          <label class="pipeline-form-label">Description</label>
+          <textarea name="description" class="pipeline-form-textarea" placeholder="Additional details about this opportunity..."></textarea>
+        </div>
+      </div>
+      <div class="pipeline-modal-footer">
+        <button type="button" class="pipeline-btn pipeline-btn-secondary" onclick="closeOpportunityModal()">Cancel</button>
+        <button type="submit" class="pipeline-btn pipeline-btn-primary" id="submit-opportunity-btn">Create Opportunity</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <style>
 .pipeline-kanban {
   display: flex;
@@ -132,11 +188,12 @@
 
 .pipeline-column {
   flex: 0 0 280px;
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--canvas-card-bg, rgba(15, 23, 42, 0.6));
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 350px);
+  border: 1px solid var(--canvas-border, rgba(148, 163, 184, 0.1));
 }
 
 .pipeline-column-closed {
@@ -145,8 +202,8 @@
 
 .pipeline-column-header {
   padding: 1rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-  background: rgba(30, 41, 59, 0.5);
+  border-bottom: 1px solid var(--canvas-border, rgba(148, 163, 184, 0.1));
+  background: var(--canvas-header-bg, rgba(30, 41, 59, 0.5));
   border-radius: 12px 12px 0 0;
 }
 
@@ -159,13 +216,13 @@
 
 .pipeline-column-name {
   font-weight: 600;
-  color: #F8FAFC;
+  color: var(--canvas-text, #F8FAFC);
   font-size: 0.875rem;
 }
 
 .pipeline-column-count {
-  background: rgba(148, 163, 184, 0.2);
-  color: #94A3B8;
+  background: var(--canvas-badge-bg, rgba(148, 163, 184, 0.2));
+  color: var(--canvas-text-muted, #94A3B8);
   padding: 0.125rem 0.5rem;
   border-radius: 9999px;
   font-size: 0.75rem;
@@ -195,8 +252,8 @@
 }
 
 .pipeline-card {
-  background: rgba(30, 41, 59, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  background: var(--canvas-card-inner-bg, rgba(30, 41, 59, 0.8));
+  border: 1px solid var(--canvas-border, rgba(148, 163, 184, 0.1));
   border-radius: 8px;
   padding: 0.875rem;
   cursor: grab;
@@ -206,7 +263,7 @@
 .pipeline-card:hover {
   border-color: rgba(59, 130, 246, 0.3);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px var(--canvas-shadow, rgba(0, 0, 0, 0.3));
 }
 
 .pipeline-card.dragging {
@@ -223,7 +280,7 @@
 
 .pipeline-card-name {
   font-weight: 600;
-  color: #F8FAFC;
+  color: var(--canvas-text, #F8FAFC);
   font-size: 0.875rem;
   flex: 1;
   margin-right: 0.5rem;
@@ -237,7 +294,7 @@
 }
 
 .pipeline-card-contact {
-  color: #94A3B8;
+  color: var(--canvas-text-muted, #94A3B8);
   font-size: 0.75rem;
   margin-bottom: 0.5rem;
   display: flex;
@@ -256,7 +313,7 @@
   align-items: center;
   margin-top: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  border-top: 1px solid var(--canvas-border, rgba(148, 163, 184, 0.1));
 }
 
 .pipeline-card-assignee {
@@ -264,7 +321,7 @@
   align-items: center;
   gap: 0.375rem;
   font-size: 0.75rem;
-  color: #94A3B8;
+  color: var(--canvas-text-muted, #94A3B8);
 }
 
 .pipeline-card-assignee-avatar {
@@ -286,7 +343,7 @@
 
 .pipeline-card-days {
   font-size: 0.75rem;
-  color: #94A3B8;
+  color: var(--canvas-text-muted, #94A3B8);
 }
 
 .pipeline-card-days.stale {
@@ -304,11 +361,11 @@
 }
 
 .pipeline-card-action-btn {
-  background: rgba(148, 163, 184, 0.1);
+  background: var(--canvas-badge-bg, rgba(148, 163, 184, 0.1));
   border: none;
   border-radius: 4px;
   padding: 0.25rem 0.5rem;
-  color: #94A3B8;
+  color: var(--canvas-text-muted, #94A3B8);
   font-size: 0.75rem;
   cursor: pointer;
   display: flex;
@@ -344,7 +401,7 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  color: #64748B;
+  color: var(--canvas-text-muted, #64748B);
   text-align: center;
 }
 
@@ -363,21 +420,191 @@
 .pipeline-toggle-btn {
   background: none;
   border: none;
-  color: #94A3B8;
+  color: var(--canvas-text-muted, #94A3B8);
   cursor: pointer;
   padding: 0.25rem;
 }
 
 .pipeline-toggle-btn:hover {
-  color: #F8FAFC;
+  color: var(--canvas-text, #F8FAFC);
 }
 
 .pipeline-probability {
   font-size: 0.625rem;
-  color: #64748B;
-  background: rgba(148, 163, 184, 0.1);
+  color: var(--canvas-text-muted, #64748B);
+  background: var(--canvas-badge-bg, rgba(148, 163, 184, 0.1));
   padding: 0.125rem 0.375rem;
   border-radius: 4px;
+}
+
+/* Light mode overrides */
+[data-theme="light"] .pipeline-column,
+.light-mode .pipeline-column,
+:root:not([data-theme="dark"]) .pipeline-column {
+  --canvas-card-bg: #F8FAFC;
+  --canvas-header-bg: #F1F5F9;
+  --canvas-border: #E2E8F0;
+  --canvas-text: #1E293B;
+  --canvas-text-muted: #64748B;
+  --canvas-badge-bg: #E2E8F0;
+  --canvas-card-inner-bg: #FFFFFF;
+  --canvas-shadow: rgba(0, 0, 0, 0.1);
+}
+
+/* Detect system preference for light mode */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .pipeline-column {
+    --canvas-card-bg: #F8FAFC;
+    --canvas-header-bg: #F1F5F9;
+    --canvas-border: #E2E8F0;
+    --canvas-text: #1E293B;
+    --canvas-text-muted: #64748B;
+    --canvas-badge-bg: #E2E8F0;
+    --canvas-card-inner-bg: #FFFFFF;
+    --canvas-shadow: rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* New Opportunity Modal */
+.pipeline-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.pipeline-modal {
+  background: var(--canvas-card-bg, #FFFFFF);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.pipeline-modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--canvas-border, #E2E8F0);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pipeline-modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--canvas-text, #1E293B);
+  margin: 0;
+}
+
+.pipeline-modal-close {
+  background: none;
+  border: none;
+  color: var(--canvas-text-muted, #64748B);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.pipeline-modal-close:hover {
+  background: var(--canvas-badge-bg, #F1F5F9);
+  color: var(--canvas-text, #1E293B);
+}
+
+.pipeline-modal-body {
+  padding: 1.5rem;
+}
+
+.pipeline-form-group {
+  margin-bottom: 1.25rem;
+}
+
+.pipeline-form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--canvas-text, #1E293B);
+  margin-bottom: 0.5rem;
+}
+
+.pipeline-form-input,
+.pipeline-form-select,
+.pipeline-form-textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--canvas-border, #E2E8F0);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--canvas-text, #1E293B);
+  background: var(--canvas-card-inner-bg, #FFFFFF);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.pipeline-form-input:focus,
+.pipeline-form-select:focus,
+.pipeline-form-textarea:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.pipeline-form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.pipeline-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.pipeline-modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--canvas-border, #E2E8F0);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.pipeline-btn {
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pipeline-btn-secondary {
+  background: transparent;
+  border: 1px solid var(--canvas-border, #E2E8F0);
+  color: var(--canvas-text, #1E293B);
+}
+
+.pipeline-btn-secondary:hover {
+  background: var(--canvas-badge-bg, #F1F5F9);
+}
+
+.pipeline-btn-primary {
+  background: #3B82F6;
+  border: none;
+  color: white;
+}
+
+.pipeline-btn-primary:hover {
+  background: #2563EB;
+}
+
+.pipeline-btn-primary:disabled {
+  background: #94A3B8;
+  cursor: not-allowed;
 }
 </style>
 
@@ -459,8 +686,72 @@ function pipelineRefresh() {
 }
 
 function pipelineCreateOpportunity() {
-  if (window.scoutSendMessage) {
-    window.scoutSendMessage('I want to create a new opportunity');
+  // Open the modal instead of sending a chat message
+  const modal = document.getElementById('new-opportunity-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    // Reset form
+    document.getElementById('new-opportunity-form').reset();
+    // Focus first input
+    setTimeout(() => {
+      modal.querySelector('input[name="name"]')?.focus();
+    }, 100);
+    // Initialize icons
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+}
+
+function closeOpportunityModal() {
+  const modal = document.getElementById('new-opportunity-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+async function submitOpportunity(event) {
+  event.preventDefault();
+  const form = event.target;
+  const submitBtn = document.getElementById('submit-opportunity-btn');
+  
+  // Disable button while submitting
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Creating...';
+  
+  const formData = new FormData(form);
+  const data = {
+    name: formData.get('name'),
+    value: parseFloat(formData.get('value')) || 0,
+    probability: parseInt(formData.get('probability')) || 20,
+    stage: formData.get('stage') || 'lead',
+    expected_close_date: formData.get('expected_close_date') || null,
+    description: formData.get('description') || ''
+  };
+  
+  try {
+    const response = await fetch('/api/v1/opportunities', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      },
+      body: JSON.stringify({ opportunity: data })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success || response.ok) {
+      showPipelineNotification('Opportunity created successfully!', 'success');
+      closeOpportunityModal();
+      pipelineRefresh();
+    } else {
+      showPipelineNotification(result.message || result.error || 'Failed to create opportunity', 'error');
+    }
+  } catch (error) {
+    console.error('Create opportunity error:', error);
+    showPipelineNotification('Failed to create opportunity', 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Create Opportunity';
   }
 }
 

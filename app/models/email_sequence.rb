@@ -5,6 +5,7 @@ class EmailSequence < ApplicationRecord
   # Associations
   has_many :sequence_steps, dependent: :destroy
   has_many :sequence_enrollments, dependent: :destroy
+  has_many :sequence_email_deliveries, dependent: :destroy
   has_many :contacts, through: :sequence_enrollments
 
   # JSONB metadata handling - Rails 8.0 compatible
@@ -37,15 +38,11 @@ class EmailSequence < ApplicationRecord
 
     transaction do
       update!(status: 'active')
-
-      # Set next_send_at for all pending enrollments
-      sequence_enrollments.pending.each do |enrollment|
-        enrollment.update!(
-          next_send_at: Time.current,
-          started_at: Time.current
-        )
-      end
     end
+
+    # Queue background job to process enrollments
+    # This handles setting next_send_at and starting email delivery
+    ProcessSequenceEnrollmentsJob.perform_later(id)
 
     true
   end

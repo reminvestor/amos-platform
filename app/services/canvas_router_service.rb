@@ -152,9 +152,13 @@ class CanvasRouterService
     %w[web app website module] => 'design_preview',
     # Planning context
     %w[plan blueprint application build] => 'application_plan_preview',
-    # Data context
-    %w[campaign email sequence] => 'campaign_viewer',
+    # Email context
+    %w[email sequence drip nurture autoresponder] => 'sequence_manager',
+    %w[campaign newsletter blast] => 'campaign_viewer',
+    # CRM context
     %w[contact lead subscriber] => 'contact_viewer',
+    %w[pipeline opportunity deal sales] => 'pipeline_viewer',
+    # Analytics context
     %w[analytics performance report] => 'analytics',
     %w[dashboard overview summary] => 'dashboard'
   }.freeze
