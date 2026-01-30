@@ -102,7 +102,7 @@ module Tools
       
       return { success: false, error: "Unknown archetype: #{key}" } unless data
       
-      {
+      result = {
         success: true,
         archetype: {
           key: key,
@@ -116,6 +116,14 @@ module Tools
         },
         message: "Full details for #{data[:name]} archetype"
       }
+      
+      # Include native platform capabilities if available
+      if data[:native_capabilities].present?
+        result[:archetype][:native_capabilities] = data[:native_capabilities]
+        result[:message] += ". Note: AMOS has built-in capabilities for this archetype that you can use directly."
+      end
+      
+      result
     end
     
     def get_integrations
