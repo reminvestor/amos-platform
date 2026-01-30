@@ -2,6 +2,11 @@
 
 # Solana Configuration for AMOS Token
 #
+# Configuration sources (in priority order):
+# 1. Environment variables (SOLANA_*)
+# 2. config/solana_token.yml
+# 3. Defaults
+#
 # Environment Variables:
 # - SOLANA_RPC_URL: RPC endpoint (mainnet/devnet)
 # - SOLANA_TREASURY_ADDRESS: Treasury wallet public key
@@ -9,16 +14,26 @@
 # - SOLANA_TOKEN_MINT: SPL token mint address
 # - SOLANA_NETWORK: 'mainnet' or 'devnet' (for UI display)
 
+# Load YAML config if available
+yaml_config = {}
+yaml_path = Rails.root.join('config', 'solana_token.yml')
+if File.exist?(yaml_path)
+  all_config = YAML.load_file(yaml_path, permitted_classes: [Symbol])
+  network = ENV.fetch('SOLANA_NETWORK', 'devnet')
+  yaml_config = all_config[network] || {}
+end
+
 Rails.application.config.solana = {
   # Network configuration
-  rpc_url: ENV.fetch('SOLANA_RPC_URL', 'https://api.devnet.solana.com'),
+  rpc_url: ENV.fetch('SOLANA_RPC_URL', yaml_config['network_url'] || 'https://api.devnet.solana.com'),
   network: ENV.fetch('SOLANA_NETWORK', 'devnet'),
   
   # Treasury wallet (holds tokens for distribution)
-  treasury_address: ENV.fetch('SOLANA_TREASURY_ADDRESS', nil),
+  treasury_address: ENV.fetch('SOLANA_TREASURY_ADDRESS', yaml_config['treasury_address']),
+  treasury_token_account: yaml_config['treasury_token_account'],
   
   # Token mint address
-  token_mint: ENV.fetch('SOLANA_TOKEN_MINT', nil),
+  token_mint: ENV.fetch('SOLANA_TOKEN_MINT', yaml_config['token_mint']),
   
   # Token metadata
   token_name: 'Amos Platform Token',
