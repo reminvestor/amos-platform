@@ -28,8 +28,23 @@ class Admin::UsersController < Admin::BaseController
   end
 
   def destroy
-    @user.destroy
-    redirect_to admin_users_path, notice: "User deleted successfully."
+    # Get user info before deletion for logging
+    user_email = @user.email
+    user_id = @user.id
+    
+    if @user.destroy
+      Rails.logger.info "🗑️ Admin deleted user #{user_id} (#{user_email})"
+      redirect_to admin_users_path, notice: "User #{user_email} deleted successfully."
+    else
+      Rails.logger.error "❌ Failed to delete user #{user_id}: #{@user.errors.full_messages.join(', ')}"
+      redirect_to admin_user_path(@user), alert: "Failed to delete user: #{@user.errors.full_messages.join(', ')}"
+    end
+  rescue ActiveRecord::InvalidForeignKey => e
+    Rails.logger.error "❌ Foreign key constraint prevented deletion of user #{user_id}: #{e.message}"
+    redirect_to admin_user_path(@user), alert: "Cannot delete user - they have associated records that must be removed first."
+  rescue StandardError => e
+    Rails.logger.error "❌ Error deleting user #{user_id}: #{e.message}"
+    redirect_to admin_user_path(@user), alert: "Error deleting user: #{e.message}"
   end
 
   def make_admin
