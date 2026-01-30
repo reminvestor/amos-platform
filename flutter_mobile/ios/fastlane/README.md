@@ -111,10 +111,10 @@ Take screenshots using Flutter integration tests
 
 Take screenshots on a single device
 
-### ios frame_screenshots
+### ios frame_app_screenshots
 
 ```sh
-[bundle exec] fastlane ios frame_screenshots
+[bundle exec] fastlane ios frame_app_screenshots
 ```
 
 Add device frames to screenshots

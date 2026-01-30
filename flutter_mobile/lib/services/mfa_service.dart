@@ -58,6 +58,61 @@ class MfaService {
       rethrow;
     }
   }
+
+  // ============ Trusted Device Methods ============
+
+  /// Trust this device for Face ID/biometric MFA bypass
+  Future<TrustDeviceResponse> trustDevice({
+    required String deviceName,
+    required String deviceIdentifier,
+    required String platform,
+  }) async {
+    try {
+      final response = await _api.post('/api/mfa/trust_device', data: {
+        'device_name': deviceName,
+        'device_identifier': deviceIdentifier,
+        'platform': platform,
+      });
+      return TrustDeviceResponse.fromJson(response);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to trust device', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Get list of trusted devices
+  Future<List<TrustedDevice>> getTrustedDevices() async {
+    try {
+      final response = await _api.get('/api/mfa/trusted_devices');
+      final devices = (response['trusted_devices'] as List<dynamic>?) ?? [];
+      return devices.map((d) => TrustedDevice.fromJson(d)).toList();
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to get trusted devices', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Revoke a specific trusted device
+  Future<MfaResponse> revokeTrustedDevice(int deviceId) async {
+    try {
+      final response = await _api.delete('/api/mfa/trusted_devices/$deviceId');
+      return MfaResponse.fromJson(response);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to revoke trusted device', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Revoke all trusted devices
+  Future<MfaResponse> revokeAllTrustedDevices() async {
+    try {
+      final response = await _api.delete('/api/mfa/trusted_devices');
+      return MfaResponse.fromJson(response);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to revoke all trusted devices', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
 }
 
 class MfaStatus {
@@ -135,6 +190,64 @@ class MfaResponse {
     return MfaResponse(
       success: json['success'] ?? false,
       message: json['message'] ?? '',
+    );
+  }
+}
+
+class TrustDeviceResponse {
+  final bool success;
+  final String deviceToken;
+  final DateTime? expiresAt;
+  final String message;
+
+  TrustDeviceResponse({
+    required this.success,
+    required this.deviceToken,
+    this.expiresAt,
+    required this.message,
+  });
+
+  factory TrustDeviceResponse.fromJson(Map<String, dynamic> json) {
+    return TrustDeviceResponse(
+      success: json['success'] ?? false,
+      deviceToken: json['device_token'] ?? '',
+      expiresAt: json['expires_at'] != null
+          ? DateTime.parse(json['expires_at'])
+          : null,
+      message: json['message'] ?? '',
+    );
+  }
+}
+
+class TrustedDevice {
+  final int id;
+  final String deviceName;
+  final String platform;
+  final DateTime? lastUsedAt;
+  final DateTime? expiresAt;
+  final DateTime createdAt;
+
+  TrustedDevice({
+    required this.id,
+    required this.deviceName,
+    required this.platform,
+    this.lastUsedAt,
+    this.expiresAt,
+    required this.createdAt,
+  });
+
+  factory TrustedDevice.fromJson(Map<String, dynamic> json) {
+    return TrustedDevice(
+      id: json['id'] ?? 0,
+      deviceName: json['device_name'] ?? 'Unknown Device',
+      platform: json['platform'] ?? 'unknown',
+      lastUsedAt: json['last_used_at'] != null
+          ? DateTime.parse(json['last_used_at'])
+          : null,
+      expiresAt: json['expires_at'] != null
+          ? DateTime.parse(json['expires_at'])
+          : null,
+      createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
     );
   }
 }
