@@ -22,6 +22,8 @@ class ScoutSchemaService
       landing_page
       email_template
       business_profile
+      opportunity
+      activity
     ]
 
     available_models.map do |model_name|
@@ -67,6 +69,10 @@ class ScoutSchemaService
       EmailTemplate
     when "business_profile"
       BusinessProfile
+    when "opportunity", "opportunities"
+      Opportunity
+    when "activity", "activities"
+      Activity
     else
       nil
     end

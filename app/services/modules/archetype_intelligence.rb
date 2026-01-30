@@ -102,6 +102,33 @@ module Modules
         triggers: %w[crm sales leads pipeline deals opportunities customers contacts],
         name: 'CRM / Sales Pipeline',
         description: 'Track leads, deals, and customer relationships',
+        native_capabilities: {
+          note: 'AMOS has built-in CRM capabilities that can be used directly without building a custom app:',
+          models: [
+            {
+              name: 'Opportunity',
+              description: 'Sales deals with stage tracking (lead → qualified → proposal → negotiation → closed)',
+              key_features: ['Pipeline stages with probabilities', 'Value and expected close date', 'Linked to contacts', 'Activity timeline']
+            },
+            {
+              name: 'Activity',
+              description: 'CRM activities linked to contacts and opportunities',
+              types: %w[note email call meeting task form_submission ai_action stage_change]
+            },
+            {
+              name: 'Contact',
+              description: 'Customers and leads with engagement tracking',
+              key_features: ['Lead scoring', 'Lifecycle stages', 'Email engagement history', 'Custom fields']
+            }
+          ],
+          canvases: ['pipeline_viewer (Kanban sales pipeline)', 'contact_viewer (Contact list)', 'activities_viewer (Activity timeline)'],
+          automation_hooks: [
+            'Opportunities can trigger workflows on stage changes',
+            'Activities auto-log from email sends, form submissions, calls',
+            'Stale deal detection for follow-up reminders',
+            'Lead scoring updates from engagement'
+          ]
+        },
         suggested_integrations: [
           { name: 'hubspot', type: 'oauth', description: 'Sync with HubSpot CRM' },
           { name: 'salesforce', type: 'oauth', description: 'Sync with Salesforce' },
