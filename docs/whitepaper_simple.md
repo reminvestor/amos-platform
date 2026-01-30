@@ -39,7 +39,7 @@ With AMOS, if you contribute to the platform, you earn ownership:
 | Help users | AMOS tokens |
 | Find bugs | AMOS tokens |
 
-The more you contribute, the more you own. And your ownership is **real** - you can trade it, hold it, or pass it to your kids.
+The more you contribute, the more you own. And your ownership is **real** - you can trade it or hold it for the long term.
 
 ---
 
@@ -117,14 +117,6 @@ Your tokens are tradeable on crypto exchanges (like Coinbase, Jupiter, Raydium):
 - Sell for cash anytime
 - Trade for Bitcoin, stablecoins, etc.
 - Hold for long-term growth
-
-### 4. Pass to Family 👨‍👩‍👧‍👦
-
-Unlike stock options that expire, AMOS tokens can be:
-
-- Transferred to family members
-- Inherited by your children
-- Held for generations
 
 ---
 
@@ -376,7 +368,6 @@ Watch your balance grow as you contribute
 | Can I sell it? | Yes, anytime on crypto exchanges |
 | Does it expire? | No, but it decays if you're not active |
 | Minimum I keep? | 5-25% depending on how long you've held |
-| Pass to family? | Yes |
 | Vote on decisions? | Yes, including big rule changes (with supermajority) |
 
 ---

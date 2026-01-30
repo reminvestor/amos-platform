@@ -14,7 +14,6 @@
 # - Graduated decay floor: 5% (Y0-1), 10% (Y1-3), 15% (Y3-5), 25% (Y5+)
 # - Tenure-based decay: Rate decreases the longer you hold
 # - Staking vaults: Lock tokens for reduced/zero decay
-# - Inheritance: Stakes can transfer to family/estate
 #
 # SECURITY: Distribution stakes (affiliate/referral) have a 90-day clawback period.
 # If the referred customer churns within 90 days, the stake is clawed back.
@@ -22,7 +21,6 @@ class TokenStake < ApplicationRecord
   belongs_to :user
   belongs_to :entity, optional: true
   belongs_to :source, polymorphic: true, optional: true # Contribution, Referral, etc.
-  belongs_to :beneficiary, class_name: 'User', optional: true # For inheritance
 
   # Fixed supply constants
   TOTAL_SUPPLY = 100_000_000  # 100M tokens ever
@@ -86,7 +84,6 @@ class TokenStake < ApplicationRecord
     founding
     investor
     bonus
-    inherited
   ].freeze
 
   # Stake categories for distribution type
@@ -397,39 +394,6 @@ class TokenStake < ApplicationRecord
     true
   end
 
-  # Transfer stake to beneficiary (inheritance)
-  def transfer_to_beneficiary!(new_owner)
-    raise "Cannot transfer locked stake" if locked?
-    raise "No beneficiary designated" unless new_owner
-    
-    # Create new stake for beneficiary with inherited type
-    inherited_stake = TokenStake.create!(
-      user: new_owner,
-      entity: new_owner.entity,
-      stake_type: 'inherited',
-      category: "inherited_from_#{stake_type}",
-      initial_amount: current_amount,
-      current_amount: current_amount,
-      decay_rate: 0.10, # Reduced decay for inherited stakes
-      earned_at: Time.current,
-      source: self,
-      metadata: {
-        inherited_from_user_id: user_id,
-        original_stake_id: id,
-        original_earned_at: earned_at
-      }
-    )
-    
-    # Zero out original stake
-    update!(
-      current_amount: 0,
-      transferred_at: Time.current,
-      transferred_to_id: new_owner.id
-    )
-    
-    inherited_stake
-  end
-
   # Class methods
   class << self
     def total_supply
@@ -511,15 +475,14 @@ class TokenStake < ApplicationRecord
 
     def default_decay_rate_for(stake_type)
       # NOTE: These are INITIAL rates - they reduce over time via TENURE_DECAY_RATES
-      # All stake types now start at same rate for fairness (except inherited)
+      # All stake types start at same rate for fairness
       case stake_type
-      when 'distribution' then 0.40    # Same as others
-      when 'contribution' then 0.40    # Same as others
-      when 'community' then 0.40       # Same as others
-      when 'founding' then 0.40        # NOW SAME - founders earn via timing, not special rules
-      when 'investor' then 0.40        # Same as others
-      when 'inherited' then 0.10       # Reduced decay for inherited stakes
-      when 'bonus' then 0.40           # Same as others
+      when 'distribution' then 0.40
+      when 'contribution' then 0.40
+      when 'community' then 0.40
+      when 'founding' then 0.40  # Same as others - founders earn via timing, not special rules
+      when 'investor' then 0.40
+      when 'bonus' then 0.40
       else 0.40
       end
     end

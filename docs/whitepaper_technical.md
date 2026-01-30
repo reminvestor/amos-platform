@@ -232,9 +232,9 @@ Floor percentage **grows with tenure** to prevent early adopters from locking in
 
 This enables:
 
-- Generational wealth transfer (after tenure buildup)
-- Long-term planning
+- Long-term planning and security
 - Fair treatment of late joiners
+- Rewards for sustained commitment
 
 ### 5.3 Staking Vaults
 
@@ -246,14 +246,6 @@ Lock tokens to reduce decay:
 | Silver | 3 years | 50% |
 | Gold | 5 years | 75% |
 | Permanent | 10 years | 100% (no decay) |
-
-### 5.4 Inheritance
-
-Stakes can be transferred to designated beneficiaries:
-
-- Inherited stakes receive reduced decay (10% annual)
-- Transfer requires KYC verification
-- 2% burn on transfer (anti-abuse)
 
 ---
 
