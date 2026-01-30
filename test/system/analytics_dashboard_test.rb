@@ -67,7 +67,7 @@ class AnalyticsDashboardTest < ApplicationSystemTestCase
       user: @user,
       user: @user,
       name: "Analytics Test Campaign",
-      status: "sent"
+      status: "completed"
     )
 
     sign_in(@user)
