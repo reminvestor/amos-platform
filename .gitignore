@@ -110,3 +110,4 @@ security_report*.txt
 
 # Invoice config (contains secrets)
 .claude/invoice-config.local.json
+config/solana_token.yml
