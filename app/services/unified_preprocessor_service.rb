@@ -100,6 +100,11 @@ class UnifiedPreprocessorService
       suggested_thinking_depth: final_thinking_depth,
       llm_thinking_depth_hint: llm_thinking_depth,  # Pass LLM hint for ThinkingDepthService
       
+      # Mode classification: ALL in ONE LLM call with canvas routing
+      # :personal, :ideate, :operate, :create - eliminates separate mode LLM call
+      mode: results[:canvas][:mode],
+      mode_confidence: results[:canvas][:mode_confidence],
+      
       # Design intent: Does user want to CREATE something? (LLM-classified)
       # Values: :module, :app, :landing_page, :email, :workflow, :integration, :agent, or nil
       design_intent: results[:canvas][:design_intent],
@@ -150,8 +155,11 @@ class UnifiedPreprocessorService
     
     msg = message.strip.downcase
     
+    # Action words that indicate the user wants Amos to DO something
+    action_pattern = /\b(show|create|build|get|list|search|find|open|view|pull|fetch|tell|weather|check|send|email|schedule|make|design|update|delete|run|execute|analyze|generate|summarize)\b/
+    
     # Very short messages (greetings, acknowledgments)
-    return true if msg.length < 20 && !msg.match?(/\b(show|create|build|get|list|search|find|open|view)\b/)
+    return true if msg.length < 20 && !msg.match?(action_pattern)
     
     # Common greetings and acknowledgments
     return true if msg.match?(/\A(hi|hello|hey|thanks?|thank you|ok|okay|sure|yes|no|nope|got it|cool|great)\b/i)
@@ -164,7 +172,7 @@ class UnifiedPreprocessorService
        classification[:mentioned_integrations].empty? && 
        classification[:mentioned_modules].empty? &&
        classification[:mentioned_objects].empty?
-      return true if msg.length < 50 && !msg.match?(/\b(show|create|build|open|website|page|browser)\b/)
+      return true if msg.length < 50 && !msg.match?(action_pattern)
     end
     
     false
@@ -174,6 +182,14 @@ class UnifiedPreprocessorService
   def build_fast_path_result(quick_classification, start_time)
     latency_ms = ((Time.current - start_time) * 1000).round
     
+    # ESSENTIAL_TOOLS that Amos always needs - prevents fallback to random 25
+    essential_tools = %w[
+      ask_user get_data get_schema load_canvas web_search view_web_page
+      create_object update_object discover_tools create_tool list_tools
+      create_scheduled_task list_scheduled_tasks generate_ai_landing_page
+      create_freeform_canvas
+    ]
+    
     {
       canvas: :keep_current,
       canvas_delegate: false,
@@ -181,7 +197,7 @@ class UnifiedPreprocessorService
       suggested_thinking_depth: :standard, # Simple messages don't need deep thinking
       llm_thinking_depth_hint: nil,
       design_intent: nil,
-      tools: [], # Will use core tools from build_tools_from_preloaded fallback
+      tools: essential_tools, # Always include essential tools to prevent fallback
       tool_categories: [:general],
       suggested_agents: [],
       delegate_first: false,

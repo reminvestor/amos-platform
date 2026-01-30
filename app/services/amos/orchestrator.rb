@@ -63,7 +63,7 @@ module Amos
       # NO delegation to agents. Amos handles EVERYTHING directly with tools.
       #
       
-      intent = analyze_intent(content)
+      intent = analyze_intent(content, metadata)
       
       # ARCHITECTURE: Amos handles EVERYTHING directly with tools
       # No more delegation to agents - dynamic guidance provides expertise
@@ -486,7 +486,7 @@ module Amos
       end
     end
 
-    def analyze_intent(content)
+    def analyze_intent(content, metadata = {})
       # ═══════════════════════════════════════════════════════════════════════
       # INTENT-BASED MODE DETECTION (Phases 1-3 of seamless mode adaptation)
       # ═══════════════════════════════════════════════════════════════════════
@@ -499,6 +499,10 @@ module Amos
       #
       # Transitions are SEAMLESS - no announcements, no mode switching prompts.
       #
+      # PERFORMANCE: If precomputed_mode is in metadata (from controller's quick_classify_mode),
+      # use it directly to avoid duplicate LLM calls. The preprocessor's canvas routing
+      # also classifies mode now, so we consolidate all classification into ONE LLM call.
+      #
       
       intent = {
         raw_content: content,
@@ -508,29 +512,36 @@ module Amos
         mode: :operate         # Default mode
       }
       
-      # Get recent conversation history for context-aware classification
-      # This helps the classifier detect topic changes vs returning to topics
-      conversation_history = @context.recent_messages(6).map do |msg|
-        { role: msg[:role], content: msg[:content] }
-      end
-      
-      # Use IntentClassifierService for mode detection (fast regex + LLM fallback)
-      begin
-        classifier = IntentClassifierService.new(entity: @entity)
-        mode_result = classifier.classify_mode(
-          message: content,
-          conversation_history: conversation_history
-        )
+      # FAST PATH: Use precomputed mode if available (from controller's quick regex classification)
+      if metadata[:precomputed_mode].present?
+        intent[:mode] = metadata[:precomputed_mode].to_sym
+        intent[:mode_confidence] = metadata[:precomputed_mode_confidence] || :medium
+        Rails.logger.info "[Amos] Using precomputed mode: #{intent[:mode]} (confidence: #{intent[:mode_confidence]}) - no LLM call needed"
+      else
+        # Get recent conversation history for context-aware classification
+        # This helps the classifier detect topic changes vs returning to topics
+        conversation_history = @context.recent_messages(6).map do |msg|
+          { role: msg[:role], content: msg[:content] }
+        end
         
-        intent[:mode] = mode_result[:mode]
-        intent[:mode_confidence] = mode_result[:confidence]
-        intent[:create_target] = mode_result[:create_target] if mode_result[:create_target]
-        
-        Rails.logger.info "[Amos] Mode detected: #{intent[:mode]} (confidence: #{intent[:mode_confidence]})"
-      rescue => e
-        Rails.logger.warn "[Amos] Mode classification failed: #{e.message}"
-        intent[:mode] = :operate
-        intent[:mode_confidence] = :low
+        # Use IntentClassifierService for mode detection (fast regex + LLM fallback)
+        begin
+          classifier = IntentClassifierService.new(entity: @entity)
+          mode_result = classifier.classify_mode(
+            message: content,
+            conversation_history: conversation_history
+          )
+          
+          intent[:mode] = mode_result[:mode]
+          intent[:mode_confidence] = mode_result[:confidence]
+          intent[:create_target] = mode_result[:create_target] if mode_result[:create_target]
+          
+          Rails.logger.info "[Amos] Mode detected: #{intent[:mode]} (confidence: #{intent[:mode_confidence]})"
+        rescue => e
+          Rails.logger.warn "[Amos] Mode classification failed: #{e.message}"
+          intent[:mode] = :operate
+          intent[:mode_confidence] = :low
+        end
       end
       
       # Route based on detected mode

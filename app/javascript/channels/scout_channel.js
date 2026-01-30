@@ -353,6 +353,17 @@ function initializeScoutChannel() {
           showMemoryHintIndicator(data)
         }
         break
+      
+      case 'working':
+      case 'thinking':
+        // Show working/thinking indicator during tool execution
+        console.log("⚙️ ScoutChannel: Working indicator:", data.message)
+        if (window.scoutController && typeof window.scoutController.showThinkingIndicator === 'function') {
+          window.scoutController.showThinkingIndicator(data.message || 'Working')
+        } else {
+          console.log("⚙️ ScoutChannel: No scout controller available for working indicator")
+        }
+        break
         
       default:
         console.log("ScoutChannel: Unknown message type:", data.type)

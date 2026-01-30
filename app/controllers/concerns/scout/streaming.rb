@@ -108,6 +108,56 @@ module Scout
       Rails.logger.error "Stream transient update error: #{e.message}"
     end
 
+    # Stream immediate "thinking" indicator - shows animated dots while processing starts
+    # This provides instant feedback before any actual work begins
+    def stream_thinking_indicator
+      return if @client_disconnected
+
+      Rails.logger.info "🤔 [Scout SSE] Sending thinking indicator..."
+      
+      data = JSON.generate({
+        type: "thinking",
+        message: "Thinking",
+        timestamp: Time.current.to_f
+      })
+      chunk = "data: #{data}\n\n"
+
+      response.stream.write(chunk)
+      response.stream.flush if response.stream.respond_to?(:flush)
+      
+      Rails.logger.info "🤔 [Scout SSE] Thinking indicator sent successfully"
+    rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
+      Rails.logger.info "🔌 Client disconnected during thinking indicator: #{e.message}"
+      mark_client_disconnected!
+    rescue => e
+      Rails.logger.error "Stream thinking indicator error: #{e.message}"
+      Rails.logger.error e.backtrace.first(5).join("\n")
+    end
+
+    # Stream "working" indicator - shows during tool execution with animated dots
+    # Provides feedback during longer operations like creating landing pages
+    def stream_working_indicator(tool_name = nil)
+      return if @client_disconnected
+
+      friendly_name = tool_name ? get_friendly_tool_name(tool_name) : "Working"
+      
+      data = JSON.generate({
+        type: "working",
+        message: friendly_name,
+        tool_name: tool_name,
+        timestamp: Time.current.to_f
+      })
+      chunk = "data: #{data}\n\n"
+
+      response.stream.write(chunk)
+      response.stream.flush if response.stream.respond_to?(:flush)
+    rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
+      Rails.logger.info "🔌 Client disconnected during working indicator: #{e.message}"
+      mark_client_disconnected!
+    rescue => e
+      Rails.logger.error "Stream working indicator error: #{e.message}"
+    end
+
     # Stream final response
     def stream_final_response(response_data)
       # Don't try to send if client already disconnected
