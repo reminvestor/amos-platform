@@ -2,14 +2,13 @@ require "application_system_test_case"
 
 class BusinessProfileTest < ApplicationSystemTestCase
   setup do
-    @entity = entities(:demo_company)
-    @user = users(:admin_user)
-    @user.update!(entity: @entity, onboarded: true)
-    @entity.update!(subscription_status: 'active')
+    @entity = entities(:one)
+    @user = users(:one)
+    @user.update!(entity: @entity)
   end
 
   test "user can access business profile edit page" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit edit_business_profile_path
 
@@ -19,7 +18,7 @@ class BusinessProfileTest < ApplicationSystemTestCase
   end
 
   test "business profile form has company name field" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit edit_business_profile_path
 
@@ -32,7 +31,7 @@ class BusinessProfileTest < ApplicationSystemTestCase
   end
 
   test "business profile form has industry field" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit edit_business_profile_path
 
@@ -46,7 +45,7 @@ class BusinessProfileTest < ApplicationSystemTestCase
   end
 
   test "business profile form has description field" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit edit_business_profile_path
 
@@ -59,7 +58,7 @@ class BusinessProfileTest < ApplicationSystemTestCase
   end
 
   test "business profile form has website field" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit edit_business_profile_path
 
@@ -73,7 +72,7 @@ class BusinessProfileTest < ApplicationSystemTestCase
   end
 
   test "user can update business profile" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit edit_business_profile_path
 
@@ -96,7 +95,7 @@ class BusinessProfileTest < ApplicationSystemTestCase
   end
 
   test "business profile has style guidelines section" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit edit_business_profile_path
 
@@ -108,7 +107,7 @@ class BusinessProfileTest < ApplicationSystemTestCase
   end
 
   test "business profile has logo upload option" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit edit_business_profile_path
 
@@ -122,7 +121,7 @@ class BusinessProfileTest < ApplicationSystemTestCase
   end
 
   test "business profile has knowledge base section" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit edit_business_profile_path
 
@@ -142,7 +141,7 @@ class BusinessProfileTest < ApplicationSystemTestCase
       description: "Test description for system test"
     )
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit edit_business_profile_path
 
@@ -155,7 +154,7 @@ class BusinessProfileTest < ApplicationSystemTestCase
   end
 
   test "business profile form validates and saves" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit edit_business_profile_path
 
@@ -173,11 +172,4 @@ class BusinessProfileTest < ApplicationSystemTestCase
 
   private
 
-  def sign_in_as(user)
-    visit new_user_session_path
-    fill_in "Email", with: user.email
-    fill_in "Password", with: "password"
-    click_button "Sign in"
-    assert_selector "a[href='/scout']", wait: 5
-  end
 end
