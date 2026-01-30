@@ -2,9 +2,13 @@
 
 # RevenueShareService handles the distribution of platform revenue to token holders
 # 
-# HYBRID MODEL:
-# - 60% of holder share → Direct USDC payment
-# - 40% of holder share → Buyback & Burn (market purchase, then burn)
+# REVENUE MODEL:
+# Platform charges 20% markup on compute - this IS the revenue
+# 50% of that revenue goes to token holders
+#
+# HYBRID DISTRIBUTION:
+# - 50% of holder share → Direct USDC payment
+# - 50% of holder share → Buyback & Burn (market purchase, then burn)
 #
 # This gives holders:
 # 1. Real cash flow (USDC payments)
@@ -16,10 +20,10 @@
 # - Minimum threshold to receive payout (avoid dust)
 # - SECURITY: 30-day minimum stake duration (prevents just-in-time staking attack)
 class RevenueShareService
-  # How to split the holder pool
+  # How to split the holder pool (50/50 USDC and buyback)
   DISTRIBUTION_METHOD = {
-    usdc_direct: 0.60,      # 60% paid directly in USDC
-    buyback_burn: 0.40      # 40% used to buy AMOS & burn
+    usdc_direct: 0.50,      # 50% paid directly in USDC
+    buyback_burn: 0.50      # 50% used to buy AMOS & burn
   }.freeze
 
   # Minimum payout threshold (avoid tiny transactions)
@@ -41,7 +45,7 @@ class RevenueShareService
     def distribute!(gross_revenue:, period:)
       return { error: 'No revenue to distribute' } if gross_revenue <= 0
 
-      # Calculate the token holder pool (40% of revenue)
+      # Calculate the token holder pool (50% of revenue from 20% compute markup)
       holder_pool = gross_revenue * TokenEconomyService::REVENUE_ALLOCATION[:token_holders]
       
       # Split into USDC and buyback portions

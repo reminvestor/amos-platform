@@ -29,11 +29,11 @@ class TokenEconomyService
     reserve: 0.05       # 5M  - Emergency/unforeseen
   }.freeze
 
-  # Revenue allocation percentages
+  # Revenue allocation percentages (from 20% compute markup)
   REVENUE_ALLOCATION = {
-    token_holders: 0.40,    # 40% to token stake holders
-    operations: 0.30,       # 30% to operations
-    r_and_d: 0.20,          # 20% to R&D (voted by token holders)
+    token_holders: 0.50,    # 50% to token stake holders
+    r_and_d: 0.30,          # 30% to R&D (voted by token holders)
+    operations: 0.10,       # 10% to operations (third-party tools only)
     treasury: 0.10          # 10% to treasury/reserves
   }.freeze
 
