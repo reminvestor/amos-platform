@@ -98,6 +98,16 @@ production:
     schedule: every 15 minutes
 
   # ========================================
+  # Email Sequence Jobs
+  # ========================================
+  
+  # Process sequence emails every 5 minutes
+  send_sequence_emails:
+    class: SendSequenceEmailsJob
+    queue: email_sequences
+    schedule: every 5 minutes
+
+  # ========================================
   # Workflow Automation Jobs
   # ========================================
   
