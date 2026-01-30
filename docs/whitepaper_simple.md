@@ -4,6 +4,23 @@
 
 ---
 
+## The Big Picture: Who Should Own AI?
+
+Right now, a handful of companies are building the most powerful technology in history. The people who work there get salaries. Everyone else gets... nothing.
+
+We think that's backwards.
+
+**AMOS is an open-source AI automation platform where the people who build it, own it.**
+
+- Developers who write code → **Owners**
+- Salespeople who bring customers → **Owners**
+- Community members who help others → **Owners**
+- Everyone following the same rules → **Fair**
+
+As AI gets more powerful, we all benefit. Not just a few shareholders.
+
+---
+
 ## What is AMOS?
 
 AMOS is a digital token that represents **ownership in the Amos platform**. Unlike points or rewards that companies can change at any time, AMOS tokens are:
@@ -26,6 +43,22 @@ When you use most platforms, only the company owners benefit:
 - You build their community → **They** get rich
 
 Even employees often miss out. When a company goes public or gets acquired, the founders and investors get the big payouts, not the people who actually built the product.
+
+### Why Open Source?
+
+AMOS is fully open source (Apache 2.0 license). Anyone can view, modify, and even copy the code.
+
+*"But won't someone just steal it?"*
+
+They could copy the code. But they can't copy:
+- The contributor community
+- The token economy
+- The customer network
+- The momentum
+
+**The network is the value, not the code.** 
+
+And why would you compete when you can just contribute and earn ownership?
 
 ### Our Solution: Everyone Owns What They Build
 

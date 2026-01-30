@@ -13,19 +13,34 @@ The purpose of AMOS is to create a fair, transparent, and sustainable platform w
 
 ---
 
-## Article I: Mission
+## Article I: Mission & Vision
 
-### 1.1 Core Mission
+### 1.1 Vision: Distributed Ownership of AI
 
-To build an AI-powered marketing platform that is collectively owned by its contributors, where value flows to those who create it, not just those who invest in it.
+The most powerful technology in human history is being built by a handful of companies. The people who build it receive salaries. Everyone else receives nothing.
 
-### 1.2 Guiding Principles
+AMOS represents a different path: **an open-source AI automation platform where contributors are owners**. As AI becomes more capable, the value flows to everyone who built it—not just a small group of investors.
+
+### 1.2 Core Mission
+
+To build an AI-powered marketing automation platform that is collectively owned by its contributors, where value flows to those who create it, not just those who invest in it.
+
+### 1.3 Open Source Commitment
+
+AMOS is released under the Apache 2.0 license. The code is open for anyone to view, modify, and contribute to. We believe:
+
+- **The network is the moat, not the code**: Forking the code without the community, token economy, and contributors creates an empty shell
+- **Transparency builds trust**: Anyone can audit what we're building
+- **Contribution over competition**: It's easier to join and earn than to rebuild from scratch
+
+### 1.4 Guiding Principles
 
 1. **Contribution Over Capital**: Ownership is earned through work, not purchased
-2. **Transparency**: All token allocations and governance decisions are public
+2. **Transparency**: All token allocations, code, and governance decisions are public
 3. **Fairness**: Same rules apply to founders, early contributors, and late joiners
 4. **Sustainability**: Economic mechanisms that balance growth with stability
 5. **Decentralization Over Time**: Power transitions from founders to community
+6. **Open Source**: The code belongs to the community
 
 ---
 

@@ -8,6 +8,22 @@
 
 AMOS (Autonomous Marketing Operating System) Token is a Solana-based SPL token designed to align incentives between platform contributors, distributors, and users. Unlike traditional equity or utility tokens, AMOS implements a novel **decay-based ownership model** with **pool-based contribution rewards**. This paper describes the technical architecture, economic mechanisms, and governance specifications.
 
+## Vision: Distributed Ownership of AI
+
+The most powerful technology in human history—artificial intelligence—is currently being developed by a handful of companies. The employees who build it, the users who improve it, and the communities who support it receive wages or nothing, while shareholders capture the value.
+
+AMOS represents a different path: **an open-source AI automation platform where contributors are owners**.
+
+```
+TRADITIONAL AI COMPANY:          AMOS MODEL:
+Employees → Wages                Builders → Ownership
+Users → Nothing                  Sellers → Ownership
+Community → Nothing              Community → Ownership
+Shareholders → Everything        Everyone → Proportional Share
+```
+
+As AI becomes more capable—and it will—the value should flow to everyone who built it. Not just to a small group of investors. This is distributed ownership of the AI future.
+
 ---
 
 ## Table of Contents
