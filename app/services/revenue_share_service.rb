@@ -14,6 +14,7 @@
 # - Only INTERNAL platform holdings count (not on-chain tokens)
 # - Based on current_amount (post-decay)
 # - Minimum threshold to receive payout (avoid dust)
+# - SECURITY: 30-day minimum stake duration (prevents just-in-time staking attack)
 class RevenueShareService
   # How to split the holder pool
   DISTRIBUTION_METHOD = {
@@ -26,6 +27,11 @@ class RevenueShareService
 
   # Minimum stake to be eligible for revenue share
   MINIMUM_STAKE_FOR_REVENUE = 100
+
+  # SECURITY: Minimum days a stake must be held before earning revenue share
+  # Prevents "just-in-time" staking attack where someone deposits right before
+  # distribution and claims right after
+  MINIMUM_STAKE_DAYS_FOR_REVENUE = 30
 
   class << self
     # Execute monthly revenue distribution
@@ -86,6 +92,12 @@ class RevenueShareService
 
       distributions = calculate_distributions(usdc_pool)
       
+      cutoff_date = MINIMUM_STAKE_DAYS_FOR_REVENUE.days.ago
+      eligible_stakes = TokenStake.active
+        .where('current_amount >= ?', MINIMUM_STAKE_FOR_REVENUE)
+        .where('earned_at <= ?', cutoff_date)
+      total_eligible = eligible_stakes.sum(:current_amount)
+      
       {
         gross_revenue: gross_revenue,
         holder_pool: holder_pool,
@@ -93,16 +105,19 @@ class RevenueShareService
         buyback_pool: buyback_pool,
         eligible_holders: distributions.count,
         total_active_stake: TokenStake.active.sum(:current_amount),
+        total_eligible_stake: total_eligible,
+        minimum_stake_days: MINIMUM_STAKE_DAYS_FOR_REVENUE,
+        ineligible_stake_note: "Stakes less than #{MINIMUM_STAKE_DAYS_FOR_REVENUE} days old are excluded",
         distribution_preview: distributions.map do |user_id, amount|
           user = User.find_by(id: user_id)
-          stake = TokenStake.active.where(user_id: user_id).sum(:current_amount)
+          stake = eligible_stakes.where(user_id: user_id).sum(:current_amount)
           {
             user_id: user_id,
             email: user&.email&.gsub(/(?<=.{2}).+(?=@)/, '***'),
-            stake: stake,
-            ownership_pct: (stake / TokenStake.active.sum(:current_amount) * 100).round(4),
+            eligible_stake: stake,
+            ownership_pct: total_eligible > 0 ? (stake / total_eligible * 100).round(4) : 0,
             usdc_payout: amount.round(2),
-            estimated_buyback_value: (buyback_pool * stake / TokenStake.active.sum(:current_amount)).round(2)
+            estimated_buyback_value: total_eligible > 0 ? (buyback_pool * stake / total_eligible).round(2) : 0
           }
         end.sort_by { |d| -d[:usdc_payout] }
       }
@@ -111,17 +126,24 @@ class RevenueShareService
     private
 
     # Calculate distribution amounts for each eligible holder
+    # SECURITY: Only includes stakes held for at least 30 days (prevents JIT attack)
     def calculate_distributions(usdc_pool)
-      total_stake = TokenStake.active
+      cutoff_date = MINIMUM_STAKE_DAYS_FOR_REVENUE.days.ago
+      
+      # Only count stakes that meet BOTH criteria:
+      # 1. Minimum amount (100 AMOS)
+      # 2. Minimum holding period (30 days)
+      eligible_stakes = TokenStake.active
         .where('current_amount >= ?', MINIMUM_STAKE_FOR_REVENUE)
-        .sum(:current_amount)
+        .where('earned_at <= ?', cutoff_date)
+      
+      total_stake = eligible_stakes.sum(:current_amount)
       
       return {} if total_stake.zero?
 
       distributions = {}
 
-      TokenStake.active
-        .where('current_amount >= ?', MINIMUM_STAKE_FOR_REVENUE)
+      eligible_stakes
         .select('user_id, SUM(current_amount) as total_stake')
         .group(:user_id)
         .each do |row|

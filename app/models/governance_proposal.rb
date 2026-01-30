@@ -13,9 +13,13 @@
 # PROPOSAL PROCESS:
 # 1. Stake minimum AMOS to submit proposal
 # 2. Discussion period (configurable)
-# 3. Voting period (configurable)
-# 4. Quorum must be met
-# 5. Threshold must be passed
+# 3. Voting period starts - SNAPSHOT taken at this moment
+# 4. Voting uses snapshot power (prevents flash stake attacks)
+# 5. Quorum must be met
+# 6. Threshold must be passed
+#
+# SECURITY: Snapshot-based voting prevents "flash stake" attacks where
+# someone borrows tokens, votes, then returns them immediately
 class GovernanceProposal < ApplicationRecord
   belongs_to :proposer, class_name: 'User'
   belongs_to :entity, optional: true
@@ -148,14 +152,23 @@ class GovernanceProposal < ApplicationRecord
   end
 
   # Start voting period (called by job)
+  # SECURITY: Takes snapshot of all token stakes at this moment
+  # All votes will use stake amounts from this snapshot, not current amounts
   def start_voting!
     return unless status == 'discussion'
     return unless Time.current >= discussion_ends_at
     
+    snapshot_time = Time.current
+    total_supply = TokenStake.active.sum(:current_amount)
+    
     update!(
       status: 'voting',
-      voting_started_at: Time.current
+      voting_started_at: snapshot_time,
+      snapshot_at: snapshot_time,
+      snapshot_total_supply: total_supply
     )
+    
+    Rails.logger.info "[GOVERNANCE] Proposal ##{id} voting started. Snapshot taken at #{snapshot_time} with #{total_supply} total supply"
   end
 
   # Finalize voting (called by job)
@@ -190,8 +203,9 @@ class GovernanceProposal < ApplicationRecord
   end
 
   # Voting calculations
+  # SECURITY: Use snapshot total if available (prevents flash stake)
   def total_voting_power
-    TokenStake.active.sum(:current_amount)
+    snapshot_total_supply || TokenStake.active.sum(:current_amount)
   end
 
   def votes_for
@@ -238,25 +252,49 @@ class GovernanceProposal < ApplicationRecord
     return false unless user
     return false if governance_votes.exists?(user: user)
     
-    user_stake(user) > 0
+    user_stake_at_snapshot(user) > 0
   end
 
-  def user_stake(user)
+  # SECURITY: Calculate user's stake AT THE SNAPSHOT TIME
+  # Only stakes that existed before the snapshot count
+  # This prevents flash stake attacks
+  def user_stake_at_snapshot(user)
+    return user_stake_current(user) unless snapshot_at.present?
+    
+    # Only count stakes that were earned BEFORE the snapshot
+    # Stakes acquired after snapshot don't count for this vote
+    user.token_stakes
+      .active
+      .where('earned_at < ?', snapshot_at)
+      .sum(:current_amount)
+  end
+
+  # Current stake (used for non-snapshot calculations)
+  def user_stake_current(user)
     user.token_stakes.active.sum(:current_amount)
+  end
+  
+  # Alias for backward compatibility
+  def user_stake(user)
+    user_stake_at_snapshot(user)
   end
 
   def vote!(user:, vote_type:)
     return { success: false, error: 'Cannot vote on this proposal' } unless can_vote?(user)
     return { success: false, error: 'Invalid vote type' } unless %w[for against abstain].include?(vote_type)
 
-    voting_power = user_stake(user)
+    # SECURITY: Use snapshot-based voting power
+    voting_power = user_stake_at_snapshot(user)
     
     governance_votes.create!(
       user: user,
       vote: vote_type,
       voting_power: voting_power,
+      stake_at_snapshot: voting_power, # Record for audit trail
       voted_at: Time.current
     )
+
+    Rails.logger.info "[GOVERNANCE] User #{user.id} voted '#{vote_type}' on proposal ##{id} with #{voting_power} power (snapshot: #{snapshot_at})"
 
     { success: true, voting_power: voting_power }
   end
