@@ -65,7 +65,6 @@ class AnalyticsDashboardTest < ApplicationSystemTestCase
     campaign = Campaign.create!(
       entity: @entity,
       user: @user,
-      user: @user,
       name: "Analytics Test Campaign",
       status: "completed"
     )
