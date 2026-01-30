@@ -114,6 +114,7 @@ class AiSettings::MenuController < ApplicationController
       { slug: 'analytics_dashboard', name: 'Analytics', icon: 'bar-chart-2', category: 'Insights', spaces: ['work'] },
       { slug: 'saved_visualizations', name: 'Saved Visualizations', icon: 'bookmark', category: 'Insights', spaces: ['work'] },
       { slug: 'pipeline_viewer', name: 'Sales Pipeline', icon: 'git-branch', category: 'Insights', spaces: ['work'] },
+      { slug: 'sequence_manager', name: 'Email Sequences', icon: 'mail', category: 'Marketing', spaces: ['work'] },
       
       # Content - Documents and media
       { slug: 'document_viewer', name: 'Documents', icon: 'folder', category: 'Content', spaces: ['work'] },

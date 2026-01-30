@@ -347,6 +347,20 @@ Rails.application.routes.draw do
         end
       end
 
+      # Email Sequences
+      resources :email_sequences do
+        member do
+          post :activate
+          post :pause
+          post :resume
+          get :stats
+        end
+        collection do
+          get :dashboard
+        end
+        resources :sequence_steps, only: [:index, :show, :create, :update, :destroy]
+      end
+
       # CRM - Activities
       resources :activities do
         member do
