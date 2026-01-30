@@ -138,7 +138,18 @@ Here's the one thing that's different from regular tokens:
 
 We don't want people who bought tokens years ago and never contributed to control the platform forever. We want active participants to have the most influence.
 
-### How It Works
+### But First: You Get a Full Year Free! 🎉
+
+**Every new stake has a 12-month grace period - NO decay at all.**
+
+This gives you:
+- A year to see how revenue share works
+- Time to understand the system
+- No stress about shrinking stakes while you're learning
+
+After 12 months, decay starts (but you still keep a growing floor - see below).
+
+### How Decay Works (After Grace Period)
 
 - Your tokens decrease by about 40% per year initially
 - BUT you always keep a **growing floor** (see below)
@@ -161,14 +172,17 @@ This means you earn your security - you can't just buy in and lock up ownership 
 
 You earn 10,000 AMOS tokens:
 
-| Year | Your Tokens | Your Floor | What Happened |
+| Time | Your Tokens | Your Floor | What Happened |
 |------|-------------|------------|---------------|
-| 0 | 10,000 | 500 (5%) | Just earned |
-| 1 | 6,000 | 1,000 (10%) | 40% decay, floor grew |
-| 2 | 3,600 | 1,000 (10%) | 40% decay |
-| 3 | 2,700 | 1,500 (15%) | 25% decay, floor grew |
-| 5 | 2,500 | 2,500 (25%) | Hit permanent floor |
-| 20 | 2,500 | 2,500 (25%) | Still have it forever |
+| Month 0 | 10,000 | 500 (5%) | Just earned |
+| Month 6 | 10,000 | 500 (5%) | **Grace period - no decay!** |
+| Month 12 | 10,000 | 500 (5%) | Grace period ends |
+| Year 2 | 6,000 | 1,000 (10%) | 40% decay for 1 year, floor grew |
+| Year 3 | 4,500 | 1,500 (15%) | 25% decay, floor grew |
+| Year 5 | 2,500 | 2,500 (25%) | Hit permanent floor |
+| Year 20 | 2,500 | 2,500 (25%) | Still have it forever |
+
+**Notice:** You keep 100% of your tokens for the first year!
 
 ### Beat Decay by Contributing
 

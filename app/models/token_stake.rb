@@ -4,8 +4,14 @@
 # Stakes are earned through contributions (code, distribution, community)
 # and decay over time to incentivize continued participation
 #
+# DECAY TIMELINE:
+# - Month 0-12: GRACE PERIOD (no decay at all)
+# - Month 12+: Decay starts at 40%/year, reducing with tenure
+# - Floor grows with tenure: 5% → 10% → 15% → 25%
+#
 # WEALTH PRESERVATION FEATURES:
-# - Decay floor: 25% of initial stake never decays (permanent base)
+# - 12-month grace period: New stakes have a full year before decay starts
+# - Graduated decay floor: 5% (Y0-1), 10% (Y1-3), 15% (Y3-5), 25% (Y5+)
 # - Tenure-based decay: Rate decreases the longer you hold
 # - Staking vaults: Lock tokens for reduced/zero decay
 # - Inheritance: Stakes can transfer to family/estate
@@ -20,6 +26,10 @@ class TokenStake < ApplicationRecord
 
   # Fixed supply constants
   TOTAL_SUPPLY = 100_000_000  # 100M tokens ever
+  
+  # GRACE PERIOD: No decay for the first 12 months
+  # Gives new contributors time to see value before decay starts
+  GRACE_PERIOD_DAYS = 365
   
   # SECURITY: Clawback period for distribution stakes (days)
   # If referred customer churns within this period, stake is clawed back
@@ -162,6 +172,23 @@ class TokenStake < ApplicationRecord
     ((Time.current - earned_at) / 1.year).floor
   end
   
+  # Get tenure in days
+  def tenure_days
+    return 0 unless earned_at
+    ((Time.current - earned_at) / 1.day).floor
+  end
+  
+  # Check if stake is within the 12-month grace period (no decay)
+  def within_grace_period?
+    tenure_days < GRACE_PERIOD_DAYS
+  end
+  
+  # Days remaining in grace period
+  def grace_period_days_remaining
+    return 0 unless within_grace_period?
+    GRACE_PERIOD_DAYS - tenure_days
+  end
+  
   # Get the maximum floor this stake will eventually have
   def maximum_floor_percentage
     GRADUATED_DECAY_FLOOR.values.max
@@ -205,8 +232,13 @@ class TokenStake < ApplicationRecord
   def apply_decay!
     return if fully_decayed?
     return if at_floor? # Already at permanent floor, no more decay
+    return if within_grace_period? # 12-month grace period - no decay
 
-    days_since_last_decay = (Time.current - (last_decay_at || earned_at)) / 1.day
+    # Calculate days since grace period ended OR last decay (whichever is later)
+    grace_period_end = earned_at + GRACE_PERIOD_DAYS.days
+    decay_start = [grace_period_end, last_decay_at].compact.max
+    
+    days_since_last_decay = (Time.current - decay_start) / 1.day
     return if days_since_last_decay < 1
 
     # Only decay the decayable portion (above the floor)
@@ -259,6 +291,21 @@ class TokenStake < ApplicationRecord
     decayable = current_amount - floor
     
     return floor if decayable <= 0
+    
+    # Account for grace period in projection
+    if within_grace_period?
+      grace_remaining = grace_period_days_remaining
+      if days_until <= grace_remaining
+        # Entire projection period is within grace period - no decay
+        return current_amount
+      else
+        # Partial grace period remaining, then decay starts
+        decay_days = days_until - grace_remaining
+        decay_factor = (1 - daily_decay_rate) ** decay_days
+        projected = floor + (decayable * decay_factor)
+        return projected.round(4)
+      end
+    end
 
     decay_factor = (1 - daily_decay_rate) ** days_until
     projected = floor + (decayable * decay_factor)
