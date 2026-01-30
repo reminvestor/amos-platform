@@ -80,7 +80,7 @@ class User < ApplicationRecord
   has_one :user_billing_account, dependent: :destroy
 
   # Integration associations
-  has_many :integration_logs
+  has_many :integration_logs, dependent: :nullify
 
   # User's own connections (user-scoped integrations like Gmail)
   has_many :connections, dependent: :nullify
@@ -88,6 +88,16 @@ class User < ApplicationRecord
   
   # Access to all entity connections (for shared resources)
   has_many :entity_connections, through: :entity, source: :connections
+
+  # Usage/Audit associations - nullify to preserve audit trail
+  has_many :ai_usage_logs, dependent: :nullify
+  has_many :work_token_transactions, dependent: :nullify
+  has_many :work_token_usage_summaries, dependent: :nullify
+  has_many :model_quality_logs, dependent: :nullify
+  has_many :tool_usage_metrics, dependent: :nullify
+  has_many :tts_usage_logs, dependent: :nullify
+  has_many :analytics_query_logs, dependent: :nullify
+  has_many :integration_action_executions, dependent: :nullify
 
   # Methods
   def admin?
