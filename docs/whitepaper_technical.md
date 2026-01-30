@@ -1045,15 +1045,113 @@ This is RATIONAL behavior, not gaming.
 
 The system is **robust to rational behavior** because all paths lead to value creation.
 
-### 11.11 Key Takeaways
+### 11.11 Token Valuation Model
+
+The fundamental value of an AMOS token is the **Net Present Value (NPV) of expected future revenue share, adjusted for decay**.
+
+#### Basic Formula
+
+```
+Token Price = Σ (Revenue Per Token × Decay Factor) / (1 + Discount Rate)^t
+
+SIMPLIFIED:
+Token Price ≈ Annual Revenue Per Token / (Discount Rate + Effective Decay)
+             ≈ Annual Revenue Per Token / 0.40
+```
+
+#### Worked Example
+
+```
+ASSUMPTIONS:
+├── Platform Revenue: $10M/year
+├── Token Holder Share (50%): $5M/year
+├── Total Staked Tokens: 50M
+├── Revenue Per Token: $0.10/year
+├── Decay Rate: 40%/year (effective ~30% with floor)
+├── Discount Rate: 10%
+
+CALCULATION:
+Year 1: $0.100 × 1.00 / 1.10¹ = $0.091
+Year 2: $0.100 × 0.60 / 1.10² = $0.050
+Year 3: $0.100 × 0.36 / 1.10³ = $0.027
+Year 4: $0.100 × 0.22 / 1.10⁴ = $0.015
+Year 5+: Floor at 25%, perpetuity value
+
+Total NPV ≈ $0.35 per token
+```
+
+#### Revenue-Based Price Estimates
+
+| Annual Revenue | 50% to Holders | Per Token | Est. Price |
+|----------------|----------------|-----------|------------|
+| $1M | $500K | $0.01 | ~$0.025 |
+| $5M | $2.5M | $0.05 | ~$0.125 |
+| $10M | $5M | $0.10 | ~$0.25 |
+| $50M | $25M | $0.50 | ~$1.25 |
+| $100M | $50M | $1.00 | ~$2.50 |
+
+#### Growth Premium: Why Fast Growth Drives Price Up
+
+Token prices aren't based on **current** revenue—they're based on **expected future** revenue. Fast growth creates a premium:
+
+```
+GROWTH FEEDBACK LOOP:
+
+Platform revenue growing 100%/year
+        ↓
+Investors expect $50M revenue in 3 years
+        ↓
+They price tokens on FUTURE $50M, not current $5M
+        ↓
+Token price jumps 10x ahead of fundamentals
+        ↓
+Success multiplier activates (1.5x-2x rewards)
+        ↓
+More contributors attracted
+        ↓
+Platform grows faster
+        ↓
+[CYCLE INTENSIFIES]
+```
+
+#### Growth Multiples
+
+Similar to how growth stocks trade at high P/E ratios:
+
+| Growth Rate | Revenue Multiple | Price Multiple |
+|-------------|------------------|----------------|
+| 0% (stable) | 1x | 1x (fundamental value) |
+| 25%/year | 2-3x | 2-3x |
+| 50%/year | 4-6x | 4-6x |
+| 100%/year | 8-15x | 8-15x |
+| 200%/year | 15-30x | 15-30x |
+
+**At high growth rates, speculative premium dominates fundamental value.**
+
+#### Comparison: With vs. Without Decay
+
+| Scenario | Token Value | Notes |
+|----------|-------------|-------|
+| No decay (standard token) | $1.00 | Full perpetuity of revenue |
+| With 40% decay (no lock) | $0.35 | ~65% discount for decay |
+| 10-year lock (no decay) | $0.61 | 10-year bond equivalent |
+| With contributions offsetting decay | $1.00+ | Active contributor premium |
+
+**Key insight:** Decay acts like a very high required return (~40%). Investors need to either:
+1. Lock (eliminate decay)
+2. Contribute (offset decay)
+3. Accept the decay discount in price
+
+### 11.12 Key Takeaways
 
 1. **Gradual distribution prevents bank runs** - No scenario where "everyone" has tokens to sell
 2. **AMM slippage protects against panic selling** - Aggressive sellers punish themselves
-3. **Revenue buyback creates sustained buy pressure** - $240k+/year at modest revenue
+3. **Revenue buyback creates sustained buy pressure** - $300k+/year at modest revenue
 4. **Holding strongly dominates selling** - 15-40x better returns from revenue share
 5. **Self-healing mechanisms** - System auto-corrects from stress events
 6. **Deflationary long-term** - Burns exceed issuance after Year 3-4
 7. **Stake vs. Exchange equilibrium** - System naturally transitions from speculation to fundamentals
+8. **Token price = NPV of future revenue share** - Growth expectations drive significant premiums
 
 ---
 
