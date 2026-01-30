@@ -2,14 +2,13 @@ require "application_system_test_case"
 
 class DocumentManagementTest < ApplicationSystemTestCase
   setup do
-    @entity = entities(:demo_company)
-    @user = users(:admin_user)
-    @user.update!(entity: @entity, onboarded: true)
-    @entity.update!(subscription_status: 'active')
+    @entity = entities(:one)
+    @user = users(:one)
+    @user.update!(entity: @entity)
   end
 
   test "user can access documents index" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit documents_path
 
@@ -19,7 +18,7 @@ class DocumentManagementTest < ApplicationSystemTestCase
   end
 
   test "documents page shows upload option" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit documents_path
 
@@ -33,7 +32,7 @@ class DocumentManagementTest < ApplicationSystemTestCase
   end
 
   test "documents page shows search functionality" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit documents_path
 
@@ -46,7 +45,7 @@ class DocumentManagementTest < ApplicationSystemTestCase
   end
 
   test "documents page shows view mode toggle" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit documents_path
 
@@ -60,7 +59,7 @@ class DocumentManagementTest < ApplicationSystemTestCase
   end
 
   test "documents page shows subjects sidebar" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit documents_path
 
@@ -74,7 +73,7 @@ class DocumentManagementTest < ApplicationSystemTestCase
   end
 
   test "documents page shows tags filter" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit documents_path
 
@@ -92,6 +91,7 @@ class DocumentManagementTest < ApplicationSystemTestCase
     rag_store = RagStore.create!(
       entity: @entity,
       user: @user,
+      user: @user,
       name: "Test Document Store"
     )
 
@@ -102,7 +102,7 @@ class DocumentManagementTest < ApplicationSystemTestCase
       status: "processed"
     )
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit documents_path
 
@@ -121,6 +121,7 @@ class DocumentManagementTest < ApplicationSystemTestCase
     rag_store = RagStore.create!(
       entity: @entity,
       user: @user,
+      user: @user,
       name: "View Test Store"
     )
 
@@ -131,7 +132,7 @@ class DocumentManagementTest < ApplicationSystemTestCase
       status: "processed"
     )
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit document_path(document)
 
@@ -140,7 +141,7 @@ class DocumentManagementTest < ApplicationSystemTestCase
   end
 
   test "documents page shows document stats" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit documents_path
 
@@ -153,7 +154,7 @@ class DocumentManagementTest < ApplicationSystemTestCase
   end
 
   test "documents page handles empty state" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit documents_path
 
@@ -167,11 +168,4 @@ class DocumentManagementTest < ApplicationSystemTestCase
 
   private
 
-  def sign_in_as(user)
-    visit new_user_session_path
-    fill_in "Email", with: user.email
-    fill_in "Password", with: "password"
-    click_button "Sign in"
-    assert_selector "a[href='/scout']", wait: 5
-  end
 end

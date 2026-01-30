@@ -2,14 +2,13 @@ require "application_system_test_case"
 
 class MfaAuthenticationTest < ApplicationSystemTestCase
   setup do
-    @entity = entities(:demo_company)
-    @user = users(:admin_user)
-    @user.update!(entity: @entity, onboarded: true)
-    @entity.update!(subscription_status: 'active')
+    @entity = entities(:one)
+    @user = users(:one)
+    @user.update!(entity: @entity)
   end
 
   test "user can access MFA settings page" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit users_two_factor_path
 
@@ -21,7 +20,7 @@ class MfaAuthenticationTest < ApplicationSystemTestCase
     # Ensure MFA is disabled
     @user.update!(otp_secret: nil, otp_required_for_login: false)
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit users_two_factor_path
 
@@ -33,7 +32,7 @@ class MfaAuthenticationTest < ApplicationSystemTestCase
     # Ensure MFA is disabled
     @user.update!(otp_secret: nil, otp_required_for_login: false)
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit users_two_factor_enable_path
 
@@ -53,7 +52,7 @@ class MfaAuthenticationTest < ApplicationSystemTestCase
     @user.update!(otp_required_for_login: false)
     @user.setup_totp!
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit users_two_factor_enable_path
 
@@ -113,15 +112,6 @@ class MfaAuthenticationTest < ApplicationSystemTestCase
 
   private
 
-  def sign_in_as(user)
-    visit new_user_session_path
-    fill_in "Email", with: user.email
-    fill_in "Password", with: "password"
-    click_button "Sign in"
-
-    # Wait for successful sign in
-    assert_selector "a[href='/scout']", wait: 5
-  end
 
   def sign_in_with_mfa(user)
     visit new_user_session_path

@@ -2,14 +2,13 @@ require "application_system_test_case"
 
 class AnalyticsDashboardTest < ApplicationSystemTestCase
   setup do
-    @entity = entities(:demo_company)
-    @user = users(:admin_user)
-    @user.update!(entity: @entity, onboarded: true)
-    @entity.update!(subscription_status: 'active')
+    @entity = entities(:one)
+    @user = users(:one)
+    @user.update!(entity: @entity)
   end
 
   test "user can access analytics dashboard" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit analytics_path
 
@@ -19,7 +18,7 @@ class AnalyticsDashboardTest < ApplicationSystemTestCase
   end
 
   test "analytics dashboard shows key metrics" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit analytics_path
 
@@ -32,7 +31,7 @@ class AnalyticsDashboardTest < ApplicationSystemTestCase
   end
 
   test "analytics dashboard shows charts or graphs" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit analytics_path
 
@@ -47,7 +46,7 @@ class AnalyticsDashboardTest < ApplicationSystemTestCase
   end
 
   test "analytics dashboard has date filter" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit analytics_path
 
@@ -66,11 +65,12 @@ class AnalyticsDashboardTest < ApplicationSystemTestCase
     campaign = Campaign.create!(
       entity: @entity,
       user: @user,
+      user: @user,
       name: "Analytics Test Campaign",
       status: "sent"
     )
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit analytics_path
 
@@ -81,7 +81,7 @@ class AnalyticsDashboardTest < ApplicationSystemTestCase
   end
 
   test "analytics dashboard shows email metrics" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit analytics_path
 
@@ -92,7 +92,7 @@ class AnalyticsDashboardTest < ApplicationSystemTestCase
   end
 
   test "analytics dashboard loads without JavaScript errors" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit analytics_path
 
@@ -104,7 +104,7 @@ class AnalyticsDashboardTest < ApplicationSystemTestCase
   end
 
   test "analytics dashboard shows activity feed" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit analytics_path
 
@@ -118,7 +118,7 @@ class AnalyticsDashboardTest < ApplicationSystemTestCase
   end
 
   test "analytics dashboard shows contact growth" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit analytics_path
 
@@ -130,7 +130,7 @@ class AnalyticsDashboardTest < ApplicationSystemTestCase
   end
 
   test "analytics dashboard is responsive" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit analytics_path
 
@@ -145,11 +145,4 @@ class AnalyticsDashboardTest < ApplicationSystemTestCase
 
   private
 
-  def sign_in_as(user)
-    visit new_user_session_path
-    fill_in "Email", with: user.email
-    fill_in "Password", with: "password"
-    click_button "Sign in"
-    assert_selector "a[href='/scout']", wait: 5
-  end
 end

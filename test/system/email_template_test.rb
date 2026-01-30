@@ -2,14 +2,13 @@ require "application_system_test_case"
 
 class EmailTemplateTest < ApplicationSystemTestCase
   setup do
-    @entity = entities(:demo_company)
-    @user = users(:admin_user)
-    @user.update!(entity: @entity, onboarded: true)
-    @entity.update!(subscription_status: 'active')
+    @entity = entities(:one)
+    @user = users(:one)
+    @user.update!(entity: @entity)
   end
 
   test "user can access email templates index" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit email_templates_path
 
@@ -19,7 +18,7 @@ class EmailTemplateTest < ApplicationSystemTestCase
   end
 
   test "templates page shows create new template button" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit email_templates_path
 
@@ -31,7 +30,7 @@ class EmailTemplateTest < ApplicationSystemTestCase
   end
 
   test "user can access new template form" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit new_email_template_path
 
@@ -47,7 +46,7 @@ class EmailTemplateTest < ApplicationSystemTestCase
   end
 
   test "user can create a new email template" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit new_email_template_path
 
@@ -74,7 +73,7 @@ class EmailTemplateTest < ApplicationSystemTestCase
   end
 
   test "template form validates required fields" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit new_email_template_path
 
@@ -93,12 +92,13 @@ class EmailTemplateTest < ApplicationSystemTestCase
   test "user can view existing template" do
     template = EmailTemplate.create!(
       entity: @entity,
+      user: @user,
       name: "View Test Template",
       subject: "View Test Subject",
       body: "<p>View test content</p>"
     )
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit email_template_path(template)
 
@@ -109,12 +109,13 @@ class EmailTemplateTest < ApplicationSystemTestCase
   test "user can edit existing template" do
     template = EmailTemplate.create!(
       entity: @entity,
+      user: @user,
       name: "Edit Test Template",
       subject: "Edit Test Subject",
       body: "<p>Edit test content</p>"
     )
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit edit_email_template_path(template)
 
@@ -129,12 +130,13 @@ class EmailTemplateTest < ApplicationSystemTestCase
   test "user can delete template" do
     template = EmailTemplate.create!(
       entity: @entity,
+      user: @user,
       name: "Delete Test Template",
       subject: "Delete Subject",
       body: "<p>Delete content</p>"
     )
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit email_template_path(template)
 
@@ -150,13 +152,14 @@ class EmailTemplateTest < ApplicationSystemTestCase
     3.times do |i|
       EmailTemplate.create!(
         entity: @entity,
+      user: @user,
         name: "List Template #{i}",
         subject: "Subject #{i}",
         body: "<p>Content #{i}</p>"
       )
     end
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit email_templates_path
 
@@ -166,7 +169,7 @@ class EmailTemplateTest < ApplicationSystemTestCase
   end
 
   test "template editor has formatting options" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit new_email_template_path
 
@@ -181,11 +184,4 @@ class EmailTemplateTest < ApplicationSystemTestCase
 
   private
 
-  def sign_in_as(user)
-    visit new_user_session_path
-    fill_in "Email", with: user.email
-    fill_in "Password", with: "password"
-    click_button "Sign in"
-    assert_selector "a[href='/scout']", wait: 5
-  end
 end

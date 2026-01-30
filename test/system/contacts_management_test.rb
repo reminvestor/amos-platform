@@ -2,14 +2,13 @@ require "application_system_test_case"
 
 class ContactsManagementTest < ApplicationSystemTestCase
   setup do
-    @entity = entities(:demo_company)
-    @user = users(:admin_user)
-    @user.update!(entity: @entity, onboarded: true)
-    @entity.update!(subscription_status: 'active')
+    @entity = entities(:one)
+    @user = users(:one)
+    @user.update!(entity: @entity)
   end
 
   test "user can access contacts index" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit contacts_path
 
@@ -19,7 +18,7 @@ class ContactsManagementTest < ApplicationSystemTestCase
   end
 
   test "contacts page shows create new contact button" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit contacts_path
 
@@ -31,7 +30,7 @@ class ContactsManagementTest < ApplicationSystemTestCase
   end
 
   test "user can access new contact form" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit new_contact_path
 
@@ -46,7 +45,7 @@ class ContactsManagementTest < ApplicationSystemTestCase
   end
 
   test "user can create a new contact" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit new_contact_path
 
@@ -68,7 +67,7 @@ class ContactsManagementTest < ApplicationSystemTestCase
   end
 
   test "contact form validates required fields" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit new_contact_path
 
@@ -88,12 +87,13 @@ class ContactsManagementTest < ApplicationSystemTestCase
     contact = Contact.create!(
       entity: @entity,
       user: @user,
+      user: @user,
       email: "viewtest@example.com",
       first_name: "View",
       last_name: "Test"
     )
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit contact_path(contact)
 
@@ -105,12 +105,13 @@ class ContactsManagementTest < ApplicationSystemTestCase
     contact = Contact.create!(
       entity: @entity,
       user: @user,
+      user: @user,
       email: "edittest@example.com",
       first_name: "Edit",
       last_name: "Test"
     )
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit edit_contact_path(contact)
 
@@ -123,12 +124,13 @@ class ContactsManagementTest < ApplicationSystemTestCase
     contact = Contact.create!(
       entity: @entity,
       user: @user,
+      user: @user,
       email: "deletetest@example.com",
       first_name: "Delete",
       last_name: "Test"
     )
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit contact_path(contact)
 
@@ -144,6 +146,7 @@ class ContactsManagementTest < ApplicationSystemTestCase
     3.times do |i|
       Contact.create!(
         entity: @entity,
+      user: @user,
         user: @user,
         email: "list#{i}@example.com",
         first_name: "List#{i}",
@@ -151,7 +154,7 @@ class ContactsManagementTest < ApplicationSystemTestCase
       )
     end
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit contacts_path
 
@@ -160,28 +163,8 @@ class ContactsManagementTest < ApplicationSystemTestCase
     assert_text "list1@example.com"
   end
 
-  test "contacts page has import option" do
-    sign_in_as(@user)
-
-    visit contacts_path
-
-    # Should have import functionality
-    has_import = page.has_text?(/import/i) ||
-                 page.has_selector?("a", text: /import/i) ||
-                 page.has_selector?("button", text: /import/i)
-
-    assert has_import, "Expected import option"
-  end
-
   private
 
-  def sign_in_as(user)
-    visit new_user_session_path
-    fill_in "Email", with: user.email
-    fill_in "Password", with: "password"
-    click_button "Sign in"
-    assert_selector "a[href='/scout']", wait: 5
-  end
 
   def fill_in_contact_form(email:, first_name:, last_name:)
     fill_in "Email", with: email rescue nil

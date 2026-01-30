@@ -5,7 +5,7 @@ one:
   email: "user1@test.com"
   first_name: "Test"
   last_name: "User1"
-  encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  encrypted_password: "$2a$04$4KcNtJFuY1ro2J6EHGK/kO7BdsfQZtR/dS02T3Chjc/BeojG9UKPK"
   onboarded: true
   role: "admin"
 
@@ -14,7 +14,7 @@ two:
   email: "user2@test.com"
   first_name: "Test"
   last_name: "User2"
-  encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  encrypted_password: "$2a$04$4KcNtJFuY1ro2J6EHGK/kO7BdsfQZtR/dS02T3Chjc/BeojG9UKPK"
   onboarded: true
   role: "marketer"
 
@@ -23,7 +23,7 @@ default:
   email: "default@test.com"
   first_name: "Default"
   last_name: "User"
-  encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  encrypted_password: "$2a$04$4KcNtJFuY1ro2J6EHGK/kO7BdsfQZtR/dS02T3Chjc/BeojG9UKPK"
   onboarded: true
   role: "admin"
 
@@ -32,7 +32,7 @@ admin_user:
   email: "admin@demo.com"
   first_name: "Admin"
   last_name: "User"
-  encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  encrypted_password: "$2a$04$4KcNtJFuY1ro2J6EHGK/kO7BdsfQZtR/dS02T3Chjc/BeojG9UKPK"
   onboarded: true
   role: "admin"
 
@@ -41,7 +41,7 @@ another_user:
   email: "another@test.com"
   first_name: "Another"
   last_name: "User"
-  encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  encrypted_password: "$2a$04$4KcNtJFuY1ro2J6EHGK/kO7BdsfQZtR/dS02T3Chjc/BeojG9UKPK"
   onboarded: true
   role: "admin"
 
@@ -50,7 +50,7 @@ admin:
   email: "admin@test.com"
   first_name: "Admin"
   last_name: "Test"
-  encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  encrypted_password: "$2a$04$4KcNtJFuY1ro2J6EHGK/kO7BdsfQZtR/dS02T3Chjc/BeojG9UKPK"
   onboarded: true
   role: "admin"
 
@@ -59,7 +59,7 @@ marketer_user:
   email: "marketer@test.com"
   first_name: "Marketer"
   last_name: "Test"
-  encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  encrypted_password: "$2a$04$4KcNtJFuY1ro2J6EHGK/kO7BdsfQZtR/dS02T3Chjc/BeojG9UKPK"
   onboarded: true
   role: "marketer"
 
@@ -69,6 +69,6 @@ user_without_affiliate:
   email: "no_affiliate@test.com"
   first_name: "No"
   last_name: "Affiliate"
-  encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  encrypted_password: "$2a$04$4KcNtJFuY1ro2J6EHGK/kO7BdsfQZtR/dS02T3Chjc/BeojG9UKPK"
   onboarded: true
   role: "marketer"

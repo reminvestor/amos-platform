@@ -2,8 +2,8 @@ require "application_system_test_case"
 
 class OnboardingFlowTest < ApplicationSystemTestCase
   setup do
-    @entity = entities(:demo_company)
-    @user = users(:admin_user)
+    @entity = entities(:one)
+    @user = users(:one)
     @user.update!(
       entity: @entity,
       onboarded: false,
@@ -11,11 +11,10 @@ class OnboardingFlowTest < ApplicationSystemTestCase
       terms_version: nil,
       privacy_version: nil
     )
-    @entity.update!(subscription_status: 'active')
   end
 
   test "new user sees legal agreement as first step" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     # Should be redirected to onboarding
     assert_current_path onboarding_path(step: 'legal'), ignore_query: true
@@ -26,7 +25,7 @@ class OnboardingFlowTest < ApplicationSystemTestCase
   end
 
   test "user must accept both terms and privacy to proceed" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     # Try to continue without accepting
     click_button "Continue" rescue find("button[type='submit']").click
@@ -36,7 +35,7 @@ class OnboardingFlowTest < ApplicationSystemTestCase
   end
 
   test "user can complete legal step by accepting terms" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     # Accept both checkboxes
     check "accept_terms"
@@ -84,7 +83,7 @@ class OnboardingFlowTest < ApplicationSystemTestCase
 
   test "user can complete full onboarding flow" do
     # Start onboarding
-    sign_in_as(@user)
+    sign_in(@user)
 
     # Legal step
     check "accept_terms"
@@ -116,16 +115,9 @@ class OnboardingFlowTest < ApplicationSystemTestCase
 
   private
 
-  def sign_in_as(user)
-    visit new_user_session_path
-    fill_in "Email", with: user.email
-    fill_in "Password", with: "password"
-    click_button "Sign in"
-    sleep 1
-  end
 
   def complete_legal_step
-    sign_in_as(@user)
+    sign_in(@user)
     check "accept_terms"
     check "accept_privacy"
     click_button "Continue" rescue find("button[type='submit']").click

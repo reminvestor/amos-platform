@@ -2,14 +2,13 @@ require "application_system_test_case"
 
 class DashboardTest < ApplicationSystemTestCase
   setup do
-    @entity = entities(:demo_company)
-    @user = users(:admin_user)
-    @user.update!(entity: @entity, onboarded: true)
-    @entity.update!(subscription_status: 'active')
+    @entity = entities(:one)
+    @user = users(:one)
+    @user.update!(entity: @entity)
   end
 
   test "user can access dashboard" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit dashboard_path
 
@@ -19,7 +18,7 @@ class DashboardTest < ApplicationSystemTestCase
   end
 
   test "dashboard shows quick stats section" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit dashboard_path
 
@@ -35,11 +34,12 @@ class DashboardTest < ApplicationSystemTestCase
     Campaign.create!(
       entity: @entity,
       user: @user,
+      user: @user,
       name: "Test Dashboard Campaign",
       status: "draft"
     )
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit dashboard_path
 
@@ -51,7 +51,7 @@ class DashboardTest < ApplicationSystemTestCase
   end
 
   test "dashboard shows connections section" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit dashboard_path
 
@@ -62,7 +62,7 @@ class DashboardTest < ApplicationSystemTestCase
   end
 
   test "dashboard shows AI usage stats" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit dashboard_path
 
@@ -73,7 +73,7 @@ class DashboardTest < ApplicationSystemTestCase
   end
 
   test "dashboard loads without JavaScript errors" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit dashboard_path
 
@@ -85,7 +85,7 @@ class DashboardTest < ApplicationSystemTestCase
   end
 
   test "dashboard navigation links work" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit dashboard_path
 
@@ -99,7 +99,7 @@ class DashboardTest < ApplicationSystemTestCase
   end
 
   test "dashboard stats update with new data" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     # Get initial campaign count
     visit dashboard_path
@@ -108,6 +108,7 @@ class DashboardTest < ApplicationSystemTestCase
     # Create new campaign
     Campaign.create!(
       entity: @entity,
+      user: @user,
       user: @user,
       name: "New Campaign for Stats",
       status: "draft"
@@ -121,7 +122,7 @@ class DashboardTest < ApplicationSystemTestCase
   end
 
   test "dashboard displays user entity name" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit dashboard_path
 
@@ -133,13 +134,4 @@ class DashboardTest < ApplicationSystemTestCase
 
   private
 
-  def sign_in_as(user)
-    visit new_user_session_path
-    fill_in "Email", with: user.email
-    fill_in "Password", with: "password"
-    click_button "Sign in"
-
-    # Wait for successful sign in
-    assert_selector "a[href='/scout']", wait: 5
-  end
 end

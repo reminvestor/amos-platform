@@ -2,10 +2,9 @@ require "application_system_test_case"
 
 class IntegrationConnectionTest < ApplicationSystemTestCase
   setup do
-    @entity = entities(:demo_company)
-    @user = users(:admin_user)
-    @user.update!(entity: @entity, onboarded: true)
-    @entity.update!(subscription_status: 'active')
+    @entity = entities(:one)
+    @user = users(:one)
+    @user.update!(entity: @entity)
 
     # Ensure integration fixtures exist
     @stripe = integrations(:stripe)
@@ -13,7 +12,7 @@ class IntegrationConnectionTest < ApplicationSystemTestCase
   end
 
   test "user can access integrations via Scout" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     # Navigate to Scout with integrations canvas
     visit "/scout?canvas=integrations_manager"
@@ -27,7 +26,7 @@ class IntegrationConnectionTest < ApplicationSystemTestCase
   end
 
   test "integrations page shows available integrations" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit "/scout?canvas=integrations_manager"
     sleep 2
@@ -41,7 +40,7 @@ class IntegrationConnectionTest < ApplicationSystemTestCase
   end
 
   test "user can initiate API key integration connection" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     # Visit the connect page for Stripe (API key based)
     visit connect_integration_path(@stripe.slug)
@@ -54,7 +53,7 @@ class IntegrationConnectionTest < ApplicationSystemTestCase
   end
 
   test "connect form shows required credential fields" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit connect_integration_path(@mailgun.slug)
 
@@ -68,7 +67,7 @@ class IntegrationConnectionTest < ApplicationSystemTestCase
   end
 
   test "connection form validates required fields" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit connect_integration_path(@mailgun.slug)
 
@@ -95,7 +94,7 @@ class IntegrationConnectionTest < ApplicationSystemTestCase
       status: :connected
     )
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit "/scout?canvas=integrations_manager"
     sleep 2
@@ -117,7 +116,7 @@ class IntegrationConnectionTest < ApplicationSystemTestCase
       status: :connected
     )
 
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit "/scout?canvas=integrations_manager"
     sleep 2
@@ -133,13 +132,4 @@ class IntegrationConnectionTest < ApplicationSystemTestCase
 
   private
 
-  def sign_in_as(user)
-    visit new_user_session_path
-    fill_in "Email", with: user.email
-    fill_in "Password", with: "password"
-    click_button "Sign in"
-
-    # Wait for successful sign in
-    assert_selector "a[href='/scout']", wait: 5
-  end
 end

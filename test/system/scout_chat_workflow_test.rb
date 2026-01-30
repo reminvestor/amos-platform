@@ -2,14 +2,13 @@ require "application_system_test_case"
 
 class ScoutChatWorkflowTest < ApplicationSystemTestCase
   setup do
-    @entity = entities(:demo_company)
-    @user = users(:admin_user)
-    @user.update!(entity: @entity, onboarded: true)
-    @entity.update!(subscription_status: 'active')
+    @entity = entities(:one)
+    @user = users(:one)
+    @user.update!(entity: @entity)
   end
 
   test "user can access Scout chat interface" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit "/scout"
 
@@ -20,7 +19,7 @@ class ScoutChatWorkflowTest < ApplicationSystemTestCase
   end
 
   test "user can send a message and see it in chat" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit "/scout"
     assert_selector ".chat-input", visible: true
@@ -34,7 +33,7 @@ class ScoutChatWorkflowTest < ApplicationSystemTestCase
   end
 
   test "chat shows streaming indicator while processing" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit "/scout"
     assert_selector ".chat-input", visible: true
@@ -54,7 +53,7 @@ class ScoutChatWorkflowTest < ApplicationSystemTestCase
   end
 
   test "new session button clears conversation" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit "/scout"
     assert_selector ".chat-input", visible: true
@@ -75,7 +74,7 @@ class ScoutChatWorkflowTest < ApplicationSystemTestCase
   end
 
   test "voice assistant button is present" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit "/scout"
     assert_selector ".chat-input", visible: true
@@ -85,7 +84,7 @@ class ScoutChatWorkflowTest < ApplicationSystemTestCase
   end
 
   test "attach button opens file picker" do
-    sign_in_as(@user)
+    sign_in(@user)
 
     visit "/scout"
     assert_selector ".chat-input", visible: true
@@ -99,13 +98,4 @@ class ScoutChatWorkflowTest < ApplicationSystemTestCase
 
   private
 
-  def sign_in_as(user)
-    visit new_user_session_path
-    fill_in "Email", with: user.email
-    fill_in "Password", with: "password"
-    click_button "Sign in"
-
-    # Wait for Scout link to appear
-    assert_selector "a[href='/scout']", wait: 5
-  end
 end
