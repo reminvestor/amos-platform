@@ -4,7 +4,19 @@ class ProcessSequenceEnrollmentsJobTest < ActiveJob::TestCase
   setup do
     @entity = entities(:default)
     @sequence = email_sequences(:welcome_sequence)
-    @contact = contacts(:one)
+    @sequence.update!(entity: @entity)
+    
+    # Create a fresh contact to avoid conflicts
+    @contact = Contact.create!(
+      entity: @entity,
+      email: "process-job-test-#{SecureRandom.hex(4)}@example.com",
+      first_name: "Process",
+      last_name: "Test"
+    )
+    
+    # Clean up existing enrollments and deliveries
+    @sequence.sequence_email_deliveries.destroy_all
+    @sequence.sequence_enrollments.destroy_all
     
     # Create a pending enrollment
     @enrollment = SequenceEnrollment.create!(

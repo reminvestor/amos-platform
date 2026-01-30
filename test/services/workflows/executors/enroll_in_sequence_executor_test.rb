@@ -5,9 +5,18 @@ class EnrollInSequenceExecutorTest < ActiveSupport::TestCase
     @entity = entities(:default)
     @user = users(:one)
     @sequence = email_sequences(:welcome_sequence)
-    @contact = contacts(:one)
+    @sequence.update!(entity: @entity)
     
-    # Remove any existing enrollments
+    # Create a fresh contact to avoid conflicts
+    @contact = Contact.create!(
+      entity: @entity,
+      email: "enroll-test-#{SecureRandom.hex(4)}@example.com",
+      first_name: "Enroll",
+      last_name: "Test"
+    )
+    
+    # Clean up any existing deliveries and enrollments (in correct order for FK constraints)
+    @sequence.sequence_email_deliveries.destroy_all
     @sequence.sequence_enrollments.destroy_all
   end
 

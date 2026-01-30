@@ -3,7 +3,7 @@
 one:
   campaign: one
   contact: one
-  status: MyString
+  status: sent
   sent_at: 2025-03-10 15:31:10
   opened_at: 2025-03-10 15:31:10
   clicked_at: 2025-03-10 15:31:10
@@ -12,8 +12,17 @@ one:
 two:
   campaign: two
   contact: two
-  status: MyString
+  status: sent
   sent_at: 2025-03-10 15:31:10
   opened_at: 2025-03-10 15:31:10
   clicked_at: 2025-03-10 15:31:10
   email_template: two
+
+# Fixture for SES event service tests
+sent_delivery:
+  campaign: one
+  contact: one
+  status: sent
+  sent_at: <%= 1.hour.ago %>
+  email_template: one
+  ses_message_id: test-ses-message-id-campaign

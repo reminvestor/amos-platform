@@ -6,16 +6,33 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
   setup do
     @entity = entities(:default)
     @user = users(:one)
+    @user.update!(api_key: SecureRandom.hex(32)) unless @user.api_key.present?
     @contact_group = contact_groups(:default_group)
     
-    # Ensure we have contacts in the group
-    @contacts = [contacts(:one), contacts(:two)]
+    # Create fresh contacts for this test to avoid enrollment conflicts
+    @contacts = []
+    2.times do |i|
+      @contacts << Contact.create!(
+        entity: @entity,
+        email: "flow-test-#{i}-#{SecureRandom.hex(4)}@example.com",
+        first_name: "Test#{i}",
+        last_name: "User#{i}"
+      )
+    end
     @contacts.each do |contact|
       contact.contact_groups << @contact_group unless contact.contact_groups.include?(@contact_group)
     end
     
-    # Sign in
+    # Sign in for web tests
     sign_in @user
+  end
+  
+  def api_auth_headers
+    {
+      'Authorization' => "Bearer #{@user.api_key}",
+      'Content-Type' => 'application/json',
+      'Accept' => 'application/json'
+    }
   end
 
   # ============================================
@@ -149,7 +166,7 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
   # ============================================
   
   test "API: list email sequences" do
-    get api_v1_email_sequences_path, headers: api_headers
+    get api_v1_email_sequences_path, headers: api_auth_headers
     
     assert_response :success
     json = JSON.parse(response.body)
@@ -166,8 +183,8 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
             goal: "Test via API",
             contact_group_id: @contact_group.id
           } 
-        },
-        headers: api_headers
+        }.to_json,
+        headers: api_auth_headers
     end
     
     assert_response :created
@@ -178,10 +195,11 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
 
   test "API: activate sequence" do
     sequence = email_sequences(:welcome_sequence)
-    # Ensure it has steps
-    sequence.sequence_steps.create!(step_number: 99, delay_hours: 0, subject: "Test", body: "Test")
+    sequence.update!(entity: @entity, status: 'draft')
+    sequence.sequence_steps.destroy_all
+    sequence.sequence_steps.create!(step_number: 1, delay_hours: 0, subject: "Test", body: "Test")
     
-    post activate_api_v1_email_sequence_path(sequence), headers: api_headers
+    post activate_api_v1_email_sequence_path(sequence), headers: api_auth_headers
     
     assert_response :success
     json = JSON.parse(response.body)
@@ -191,15 +209,16 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
 
   test "API: pause and resume sequence" do
     sequence = email_sequences(:active_sequence)
+    sequence.update!(entity: @entity, status: 'active')
     
     # Pause
-    post pause_api_v1_email_sequence_path(sequence), headers: api_headers
+    post pause_api_v1_email_sequence_path(sequence), headers: api_auth_headers
     assert_response :success
     json = JSON.parse(response.body)
     assert_equal "paused", json['sequence']['status']
     
     # Resume
-    post resume_api_v1_email_sequence_path(sequence), headers: api_headers
+    post resume_api_v1_email_sequence_path(sequence), headers: api_auth_headers
     assert_response :success
     json = JSON.parse(response.body)
     assert_equal "active", json['sequence']['status']
@@ -207,8 +226,9 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
 
   test "API: get sequence stats" do
     sequence = email_sequences(:active_sequence)
+    sequence.update!(entity: @entity)
     
-    get stats_api_v1_email_sequence_path(sequence), headers: api_headers
+    get stats_api_v1_email_sequence_path(sequence), headers: api_auth_headers
     
     assert_response :success
     json = JSON.parse(response.body)
@@ -222,10 +242,10 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
   # ============================================
   
   test "SES event: delivery updates sequence email delivery" do
-    # Create a delivery record
-    sequence = email_sequences(:active_sequence)
-    step = sequence.sequence_steps.first || sequence.sequence_steps.create!(step_number: 1, delay_hours: 0, subject: "Test", body: "Test")
-    contact = contacts(:one)
+    # Create fresh sequence and contact to avoid conflicts
+    sequence = EmailSequence.create!(name: "SES Test", entity: @entity, contact_group: @contact_group, status: 'active')
+    step = sequence.sequence_steps.create!(step_number: 1, delay_hours: 0, subject: "Test", body: "Test")
+    contact = @contacts.first
     enrollment = sequence.sequence_enrollments.create!(contact: contact, entity: @entity, status: 'active')
     
     delivery = SequenceEmailDelivery.create!(
@@ -235,7 +255,7 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
       contact: contact,
       entity: @entity,
       status: 'sent',
-      ses_message_id: 'test-message-id-123'
+      ses_message_id: "test-message-id-#{SecureRandom.hex(8)}"
     )
     
     # Simulate SES delivery event
@@ -243,7 +263,7 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
       "Message" => {
         "eventType" => "Delivery",
         "mail" => {
-          "messageId" => "test-message-id-123",
+          "messageId" => delivery.ses_message_id,
           "tags" => [
             { "name" => "type", "value" => "sequence" },
             { "name" => "delivery_id", "value" => delivery.id.to_s }
@@ -262,9 +282,9 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "SES event: open updates sequence email delivery and step metrics" do
-    sequence = email_sequences(:active_sequence)
-    step = sequence.sequence_steps.first || sequence.sequence_steps.create!(step_number: 1, delay_hours: 0, subject: "Test", body: "Test")
-    contact = contacts(:one)
+    sequence = EmailSequence.create!(name: "SES Open Test", entity: @entity, contact_group: @contact_group, status: 'active')
+    step = sequence.sequence_steps.create!(step_number: 1, delay_hours: 0, subject: "Test", body: "Test")
+    contact = @contacts.first
     enrollment = sequence.sequence_enrollments.create!(contact: contact, entity: @entity, status: 'active')
     
     initial_opened = step.opened_count
@@ -276,7 +296,7 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
       contact: contact,
       entity: @entity,
       status: 'delivered',
-      ses_message_id: 'test-message-open-123'
+      ses_message_id: "test-message-open-#{SecureRandom.hex(8)}"
     )
     
     # Simulate SES open event
@@ -284,7 +304,7 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
       "Message" => {
         "eventType" => "Open",
         "mail" => {
-          "messageId" => "test-message-open-123",
+          "messageId" => delivery.ses_message_id,
           "tags" => [
             { "name" => "type", "value" => "sequence" }
           ]
@@ -306,9 +326,9 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "SES event: bounce cancels enrollment and marks contact" do
-    sequence = email_sequences(:active_sequence)
-    step = sequence.sequence_steps.first || sequence.sequence_steps.create!(step_number: 1, delay_hours: 0, subject: "Test", body: "Test")
-    contact = contacts(:one)
+    sequence = EmailSequence.create!(name: "SES Bounce Test", entity: @entity, contact_group: @contact_group, status: 'active')
+    step = sequence.sequence_steps.create!(step_number: 1, delay_hours: 0, subject: "Test", body: "Test")
+    contact = @contacts.last
     contact.update!(opted_out: false)
     enrollment = sequence.sequence_enrollments.create!(contact: contact, entity: @entity, status: 'active')
     
@@ -319,7 +339,7 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
       contact: contact,
       entity: @entity,
       status: 'sent',
-      ses_message_id: 'test-message-bounce-123'
+      ses_message_id: "test-message-bounce-#{SecureRandom.hex(8)}"
     )
     
     # Simulate SES bounce event
@@ -327,7 +347,7 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
       "Message" => {
         "eventType" => "Bounce",
         "mail" => {
-          "messageId" => "test-message-bounce-123",
+          "messageId" => delivery.ses_message_id,
           "tags" => [
             { "name" => "type", "value" => "sequence" }
           ]
@@ -348,14 +368,5 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
     assert_equal "bounced", delivery.status
     assert_equal "cancelled", enrollment.status
     assert contact.opted_out?
-  end
-
-  private
-
-  def api_headers
-    { 
-      'Accept' => 'application/json',
-      'Content-Type' => 'application/json'
-    }
   end
 end
