@@ -69,14 +69,14 @@ module Api
       #
       def scan
         image_data, mime_type = extract_image_from_request
-        mode = params[:mode]&.to_sym || :business_card
+        mode = normalize_scan_mode(params[:mode])
 
         unless image_data.present?
           return render json: { success: false, error: "No image provided" }, status: :bad_request
         end
 
         unless %i[business_card receipt document whiteboard].include?(mode)
-          return render json: { success: false, error: "Invalid mode" }, status: :bad_request
+          return render json: { success: false, error: "Invalid mode: #{params[:mode]}" }, status: :bad_request
         end
 
         begin
@@ -112,7 +112,7 @@ module Api
       #
       def scan_and_save
         image_data, mime_type = extract_image_from_request
-        mode = params[:mode]&.to_sym || :business_card
+        mode = normalize_scan_mode(params[:mode])
 
         unless image_data.present?
           return render json: { success: false, error: "No image provided" }, status: :bad_request
@@ -235,6 +235,22 @@ module Api
       end
 
       private
+
+      # Normalize scan mode from camelCase (Flutter) to snake_case (Rails)
+      def normalize_scan_mode(mode_param)
+        return :business_card if mode_param.blank?
+
+        # Map camelCase to snake_case
+        mode_map = {
+          "businessCard" => :business_card,
+          "business_card" => :business_card,
+          "receipt" => :receipt,
+          "document" => :document,
+          "whiteboard" => :whiteboard
+        }
+
+        mode_map[mode_param.to_s] || mode_param.to_s.underscore.to_sym
+      end
 
       def save_business_card(service, image_data, mime_type)
         data = service.extract_business_card(image_data, mime_type: mime_type)
