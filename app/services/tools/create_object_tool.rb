@@ -34,7 +34,7 @@ module Tools
       end
 
       # Validate object type - check static types first, then dynamic modules
-      valid_types = [ "campaigns", "contacts", "contact_groups", "email_templates", "email_sequences", "sequence_steps", "sequence_enrollments" ]
+      valid_types = [ "campaigns", "contacts", "contact_groups", "email_templates", "email_sequences", "sequence_steps", "sequence_enrollments", "opportunities", "activities" ]
       
       # Check for dynamic module type
       if !valid_types.include?(object_type)
@@ -67,6 +67,10 @@ module Tools
           create_sequence_step(data)
         when "sequence_enrollments"
           create_sequence_enrollment(data)
+        when "opportunities"
+          create_opportunity(data)
+        when "activities"
+          create_activity(data)
         end
 
         response = {
@@ -293,6 +297,118 @@ module Tools
 
       Rails.logger.info "✅ Enrolled contact #{enrollment.contact_id} in sequence #{enrollment.email_sequence_id} (ID: #{enrollment.id})"
       enrollment
+    end
+
+    def create_opportunity(data)
+      # Symbolize keys for consistent access
+      data = data.symbolize_keys
+
+      # Ensure required fields
+      data[:stage] ||= "lead"
+      data[:probability] ||= Opportunity::STAGES.dig(data[:stage], :probability) || 10
+
+      # Verify contact exists if provided
+      if data[:contact_id].present?
+        contact = entity.contacts.find_by(id: data[:contact_id])
+        unless contact
+          # Try to find by email
+          if data[:contact_email].present?
+            contact = entity.contacts.find_by(email: data[:contact_email])
+          end
+          unless contact
+            return error_response("Contact not found with ID: #{data[:contact_id]}")
+          end
+        end
+        data[:contact_id] = contact.id
+      elsif data[:contact_email].present?
+        # Find or create contact by email
+        contact = entity.contacts.find_by(email: data[:contact_email])
+        unless contact
+          contact = entity.contacts.create!(
+            email: data[:contact_email],
+            first_name: data[:contact_first_name] || data[:contact_email].split('@').first,
+            last_name: data[:contact_last_name] || '',
+            status: 'active',
+            lead: true,
+            user: user
+          )
+          Rails.logger.info "✅ Auto-created contact: #{contact.email} (ID: #{contact.id})"
+        end
+        data[:contact_id] = contact.id
+        data.delete(:contact_email)
+        data.delete(:contact_first_name)
+        data.delete(:contact_last_name)
+      end
+
+      Rails.logger.info "📝 Creating opportunity with data: #{data.inspect}"
+
+      opportunity = Opportunity.new(data)
+      opportunity.entity = entity
+      opportunity.user = user
+      opportunity.save!
+
+      # Create initial activity
+      Activity.create!(
+        entity: entity,
+        opportunity: opportunity,
+        contact: opportunity.contact,
+        user: user,
+        activity_type: 'opportunity_created',
+        subject: "Opportunity created: #{opportunity.name}",
+        description: "New opportunity created with value #{opportunity.value || 0} in stage #{opportunity.stage}",
+        status: 'completed',
+        completed_at: Time.current
+      )
+
+      Rails.logger.info "✅ Created opportunity: #{opportunity.name} (ID: #{opportunity.id})"
+      opportunity
+    end
+
+    def create_activity(data)
+      # Symbolize keys for consistent access
+      data = data.symbolize_keys
+
+      # Ensure required fields
+      data[:activity_type] ||= "note"
+      data[:status] ||= "pending"
+      data[:priority] ||= "normal"
+
+      # Verify contact exists if provided
+      if data[:contact_id].present?
+        contact = entity.contacts.find_by(id: data[:contact_id])
+        unless contact
+          return error_response("Contact not found with ID: #{data[:contact_id]}")
+        end
+      end
+
+      # Verify opportunity exists if provided
+      if data[:opportunity_id].present?
+        opportunity = entity.opportunities.find_by(id: data[:opportunity_id])
+        unless opportunity
+          return error_response("Opportunity not found with ID: #{data[:opportunity_id]}")
+        end
+        # Auto-link to opportunity's contact if not specified
+        data[:contact_id] ||= opportunity.contact_id
+      end
+
+      # Handle due date/time
+      if data[:due_in_hours].present?
+        data[:due_at] = data[:due_in_hours].to_i.hours.from_now
+        data.delete(:due_in_hours)
+      elsif data[:due_in_days].present?
+        data[:due_at] = data[:due_in_days].to_i.days.from_now
+        data.delete(:due_in_days)
+      end
+
+      Rails.logger.info "📝 Creating activity with data: #{data.inspect}"
+
+      activity = Activity.new(data)
+      activity.entity = entity
+      activity.user = user
+      activity.save!
+
+      Rails.logger.info "✅ Created activity: #{activity.activity_type} - #{activity.subject} (ID: #{activity.id})"
+      activity
     end
 
     def create_module_record(object_type, config, data)
