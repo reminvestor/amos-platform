@@ -4,7 +4,28 @@ class SendSequenceEmailsJobTest < ActiveJob::TestCase
   setup do
     @entity = entities(:default)
     @sequence = email_sequences(:active_sequence)
-    @contact = contacts(:one)
+    @sequence.update!(entity: @entity)
+    
+    # Create a fresh contact to avoid enrollment conflicts
+    @contact = Contact.create!(
+      entity: @entity,
+      email: "send-job-test-#{SecureRandom.hex(4)}@example.com",
+      first_name: "Job",
+      last_name: "Test"
+    )
+    
+    # Clean up existing steps and enrollments for this sequence
+    @sequence.sequence_email_deliveries.destroy_all
+    @sequence.sequence_enrollments.destroy_all
+    @sequence.sequence_steps.destroy_all
+    
+    # Create a step
+    @step = @sequence.sequence_steps.create!(
+      step_number: 1,
+      delay_hours: 0,
+      subject: "Test Subject",
+      body: "<p>Test body</p>"
+    )
     
     # Create an active enrollment ready to send
     @enrollment = SequenceEnrollment.create!(
@@ -16,17 +37,6 @@ class SendSequenceEmailsJobTest < ActiveJob::TestCase
       started_at: 1.hour.ago,
       next_send_at: 1.minute.ago
     )
-    
-    # Ensure we have a step to send
-    @step = @sequence.sequence_steps.find_by(step_number: 1)
-    @step ||= @sequence.sequence_steps.create!(
-      step_number: 1,
-      delay_hours: 0,
-      subject: "Test Subject",
-      body: "<p>Test body</p>"
-    )
-    
-    @enrollment.update!(current_step_number: @step.step_number)
   end
 
   test "should process enrollments ready to send" do

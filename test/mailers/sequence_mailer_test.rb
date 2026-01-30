@@ -6,17 +6,29 @@ class SequenceMailerTest < ActionMailer::TestCase
     @entity.update!(name: "Test Company") if @entity.name.blank?
     
     @sequence = email_sequences(:active_sequence)
-    @step = @sequence.sequence_steps.first || @sequence.sequence_steps.create!(
+    @sequence.update!(entity: @entity)
+    
+    # Clean up to avoid conflicts
+    @sequence.sequence_email_deliveries.destroy_all
+    @sequence.sequence_enrollments.destroy_all
+    @sequence.sequence_steps.destroy_all
+    
+    @step = @sequence.sequence_steps.create!(
       step_number: 1,
       delay_hours: 0,
       subject: "Welcome {{first_name}}!",
       body: "<p>Hello {{first_name}} {{last_name}}, welcome to our service!</p>"
     )
-    @contact = contacts(:one)
-    @contact.update!(first_name: "John", last_name: "Doe", email: "john@example.com")
     
-    @enrollment = @sequence.sequence_enrollments.find_by(contact: @contact) ||
-                  @sequence.sequence_enrollments.create!(contact: @contact, entity: @entity, status: 'active')
+    # Create a fresh contact
+    @contact = Contact.create!(
+      entity: @entity,
+      first_name: "John",
+      last_name: "Doe",
+      email: "mailer-test-#{SecureRandom.hex(4)}@example.com"
+    )
+    
+    @enrollment = @sequence.sequence_enrollments.create!(contact: @contact, entity: @entity, status: 'active')
     
     @delivery = SequenceEmailDelivery.create!(
       email_sequence: @sequence,
@@ -116,7 +128,8 @@ class SequenceMailerTest < ActionMailer::TestCase
   end
 
   test "sequence_email handles missing first_name gracefully" do
-    @contact.update!(first_name: nil)
+    # Create a contact without first_name validation (using update_column to bypass)
+    @contact.update_column(:first_name, nil)
     @step.update!(body: "Hello {{first_name}}!")
     
     email = SequenceMailer.sequence_email(@delivery)

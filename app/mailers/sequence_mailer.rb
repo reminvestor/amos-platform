@@ -25,9 +25,12 @@ class SequenceMailer < ApplicationMailer
     @unsubscribe_url = generate_unsubscribe_url(@contact)
 
     # Determine from address (same pattern as CampaignMailer)
-    from_email = @entity.default_from_email.presence || 
+    # Entity may have from_email or default_email - check what's available
+    from_email = @entity.try(:from_email) || 
+                 @entity.try(:default_from_email) ||
                  ENV['DEFAULT_FROM_EMAIL'] || 
-                 Rails.application.config.action_mailer.default_options[:from]
+                 Rails.application.config.action_mailer.default_options[:from] ||
+                 'noreply@amoslabs.com'
     from_name = @entity.name.presence || 'AMOS'
 
     # Set SES tracking headers (same as CampaignMailer)
