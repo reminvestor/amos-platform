@@ -1199,8 +1199,8 @@ export default class extends Controller {
                   console.log("📦 Full finalResponseData keys:", Object.keys(finalResponseData || {}))
                   console.log("📋 Full finalResponseData object:", finalResponseData)
 
-                  // Hide thinking indicator and streaming window
-                  this.hideThinkingIndicator()
+                  // Hide thinking indicator immediately (final response = done) and streaming window
+                  this.hideThinkingIndicator(true) // Force immediate hide for final response
                   this.hideStreamingWindow()
                 }
               } catch (e) {
@@ -3776,14 +3776,33 @@ export default class extends Controller {
   // ═══════════════════════════════════════════════════════════════════════════
   
   showThinkingIndicator(message = 'Thinking') {
-    // Remove any existing indicator first
-    this.hideThinkingIndicator()
+    // Cancel any pending hide
+    if (this.thinkingIndicatorHideTimeout) {
+      clearTimeout(this.thinkingIndicatorHideTimeout)
+      this.thinkingIndicatorHideTimeout = null
+    }
+    
+    // If indicator is already showing with different message, just update it
+    const existingIndicator = document.getElementById('thinking-indicator')
+    if (existingIndicator) {
+      const textSpan = existingIndicator.querySelector('.thinking-text')
+      if (textSpan) {
+        textSpan.textContent = message
+      }
+      // Update the show time so minimum display restarts
+      this.thinkingIndicatorShownAt = Date.now()
+      console.log('🤔 Updated thinking indicator to:', message)
+      return
+    }
     
     const chatMessages = document.getElementById('chat-messages')
     if (!chatMessages) {
       console.warn('🤔 Cannot show thinking indicator - chat-messages not found')
       return
     }
+    
+    // Track when indicator was shown for minimum display time
+    this.thinkingIndicatorShownAt = Date.now()
     
     console.log('🤔 Showing thinking indicator:', message)
     
@@ -3875,7 +3894,33 @@ export default class extends Controller {
     chatMessages.scrollTop = chatMessages.scrollHeight
   }
   
-  hideThinkingIndicator() {
+  hideThinkingIndicator(forceImmediate = false) {
+    // Minimum display time in ms - ensures user sees the indicator
+    const MIN_DISPLAY_TIME = 1500 // 1.5 seconds
+    
+    // Cancel any pending hide timeout
+    if (this.thinkingIndicatorHideTimeout) {
+      clearTimeout(this.thinkingIndicatorHideTimeout)
+      this.thinkingIndicatorHideTimeout = null
+    }
+    
+    // Check if we should delay the hide to respect minimum display time
+    if (!forceImmediate && this.thinkingIndicatorShownAt) {
+      const elapsed = Date.now() - this.thinkingIndicatorShownAt
+      const remainingTime = MIN_DISPLAY_TIME - elapsed
+      
+      if (remainingTime > 0) {
+        console.log(`🤔 Delaying indicator hide by ${remainingTime}ms to meet minimum display time`)
+        this.thinkingIndicatorHideTimeout = setTimeout(() => {
+          this.hideThinkingIndicator(true) // Force immediate when timeout fires
+        }, remainingTime)
+        return
+      }
+    }
+    
+    // Reset the show time
+    this.thinkingIndicatorShownAt = null
+    
     // Remove tracked element
     if (this.thinkingIndicatorElement) {
       this.thinkingIndicatorElement.remove()
