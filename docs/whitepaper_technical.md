@@ -99,27 +99,41 @@ Total Supply: 100,000,000 AMOS
 
 ### 3.1 Token Utility
 
-1. **Revenue Share**: 40% of platform revenue distributed to holders
+1. **Revenue Share**: 50% of platform revenue distributed to holders
 2. **Governance**: Voting rights on multiple proposal categories
 3. **Platform Benefits**: Premium features for staked tokens
 4. **Trading**: Freely tradeable on Solana DEXs (Jupiter, Raydium)
 
-### 3.2 Revenue Allocation
+### 3.2 Business Model
+
+The platform charges a **20% markup on all compute costs**. This markup is the platform's revenue.
+
+```
+Customer Compute Usage: $1,000
+├── $1,000 → Paid to cloud providers (pass-through)
+└── $200   → Platform Revenue (20% markup)
+```
+
+### 3.3 Revenue Allocation
+
+The 20% markup is distributed as follows:
 
 ```ruby
 REVENUE_ALLOCATION = {
-  token_holders: 0.40,    # Distributed proportionally
-  operations: 0.30,       # Platform operations
-  r_and_d: 0.20,          # Voted by token holders
-  treasury: 0.10          # Future reserves
+  token_holders: 0.50,    # Distributed proportionally to stakers
+  r_and_d: 0.30,          # R&D pool (voted by token holders)
+  operations: 0.10,       # Third-party tools & services (USD)
+  treasury: 0.10          # Emergency reserves
 }
 ```
 
-### 3.3 Value Accrual
+**Note:** Contributors and team members are compensated in AMOS tokens, not USD. This keeps operations costs low (only third-party SaaS, legal, etc.) and allows 80% of revenue to flow to value creation.
+
+### 3.4 Value Accrual
 
 Token value derives from:
 
-1. **Revenue Rights**: Claim on 40% of platform revenue
+1. **Revenue Rights**: Claim on 50% of platform revenue
 2. **Scarcity**: Fixed supply with ongoing burns
 3. **Utility**: Platform access and governance
 4. **Network Effects**: Growing contributor/user base
@@ -663,26 +677,32 @@ RESULT:
 #### Revenue-Based Buyback
 
 ```
-Monthly Platform Revenue: $100,000
-Token Holder Share (40%): $40,000
-├── Direct USDC (50%): $20,000 → Paid directly to holders
-└── Buyback & Burn (50%): $20,000 → Buys AMOS from market
+Monthly Compute Usage by Customers: $500,000
+Platform Revenue (20% markup): $100,000
+
+Distribution of $100,000:
+├── Token Holders (50%): $50,000
+│   ├── Direct USDC (50%): $25,000 → Paid directly to holders
+│   └── Buyback & Burn (50%): $25,000 → Buys AMOS from market
+├── R&D Pool (30%): $30,000 → Voted allocation
+├── Operations (10%): $10,000 → Third-party tools/services
+└── Treasury (10%): $10,000 → Emergency reserves
 ```
 
 #### Monthly Buyback Impact
 
 ```
 Pre-Buyback Pool: 3,420,000 AMOS + 731 USDC (after panic sell)
-Buyback Amount: $20,000 USDC
+Buyback Amount: $25,000 USDC
 
-New USDC in pool: 731 + 20,000 = 20,731 USDC
-New AMOS (from k): 2,500,000,000 / 20,731 = 120,593 AMOS
-AMOS bought: 3,420,000 - 120,593 = 3,299,407 AMOS (BURNED)
+New USDC in pool: 731 + 25,000 = 25,731 USDC
+New AMOS (from k): 2,500,000,000 / 25,731 = 97,159 AMOS
+AMOS bought: 3,420,000 - 97,159 = 3,322,841 AMOS (BURNED)
 
-New Price: 20,731 / 120,593 = $0.172/AMOS
-Price Recovery: +80,274% from panic low
+New Price: 25,731 / 97,159 = $0.265/AMOS
+Price Recovery: +123,831% from panic low
 
-Annual Buyback: $240,000 → Sustained buy pressure
+Annual Buyback: $300,000 → Sustained buy pressure
 ```
 
 #### Buyback vs Sell Pressure Equilibrium
@@ -697,11 +717,11 @@ Sell Pressure (Worst Case):
 
 Buy Pressure:
 - Revenue @ $100k/month: $1.2M/year
-- 40% to holders: $480,000
-- 50% buyback: $240,000/year sustained buying
+- 50% to holders: $600,000
+- 50% of that as buyback: $300,000/year sustained buying
 
-EQUILIBRIUM: Buyback ($240k) > Sell Pressure ($29k)
-Result: Net buying pressure, price trends upward
+EQUILIBRIUM: Buyback ($300k) > Sell Pressure ($29k)
+Result: Strong net buying pressure, price trends upward
 ```
 
 ### 11.5 Long-Term Token Economics (10-Year Projection)
@@ -812,8 +832,8 @@ If everyone stops contributing:
 | Metric | AMOS | Typical Crypto | Traditional Equity |
 |--------|------|----------------|-------------------|
 | **Earning Method** | Work | Buy | Buy/Vest |
-| **Decay/Dilution** | Yes (40%/yr) | No | Yes (issuance) |
-| **Revenue Rights** | 40% | 0% | Dividends (2-4%) |
+| **Decay/Dilution** | Yes (40%/yr initial) | No | Yes (issuance) |
+| **Revenue Rights** | 50% | 0% | Dividends (2-4%) |
 | **Governance** | Yes | Sometimes | Shareholder votes |
 | **Tradability** | Yes | Yes | Limited (private) |
 | **Early Advantage** | Moderate | Massive | Massive |
@@ -858,14 +878,14 @@ Equilibrium: Platform Net Yield ≈ Exchange Return
 #### Phase 1: Early Stage (Year 0-2)
 
 ```
-Revenue: $500k/year
-Holder share: $200k/year
+Revenue: $500k/year (20% markup on $2.5M compute)
+Holder share (50%): $250k/year
 Staked supply: 5M tokens
-Revenue per token: $200k / 5M = $0.04/token/year
+Revenue per token: $250k / 5M = $0.05/token/year
 Token price: $0.05
-Gross yield: $0.04 / $0.05 = 80%
-Decay rate: 40%
-NET YIELD: 80% - 40% = +40%
+Gross yield: $0.05 / $0.05 = 100%
+Decay rate: 40% (but 12-month grace period first!)
+NET YIELD: 100% - 40% = +60% (after grace period)
 
 Expected price appreciation: 100-500% (high uncertainty)
 
@@ -876,32 +896,32 @@ RESULT: Speculators stay on exchange, believers stake
 #### Phase 2: Growth Stage (Year 2-5)
 
 ```
-Revenue: $5M/year
-Holder share: $2M/year
+Revenue: $5M/year (20% markup on $25M compute)
+Holder share (50%): $2.5M/year
 Staked supply: 15M tokens
-Revenue per token: $2M / 15M = $0.133/token/year
+Revenue per token: $2.5M / 15M = $0.167/token/year
 Token price: $0.30
-Gross yield: $0.133 / $0.30 = 44%
+Gross yield: $0.167 / $0.30 = 56%
 Decay rate: 25% (tenure reduction)
-NET YIELD: 44% - 25% = +19%
+NET YIELD: 56% - 25% = +31%
 
 Expected price appreciation: 20-50% (maturing)
 
-RESULT: Net yield competitive with speculation
+RESULT: Net yield clearly beats speculation
         More holders move to platform for stable returns
 ```
 
 #### Phase 3: Mature Stage (Year 5+)
 
 ```
-Revenue: $20M/year
-Holder share: $8M/year
+Revenue: $20M/year (20% markup on $100M compute)
+Holder share (50%): $10M/year
 Staked supply: 25M tokens
-Revenue per token: $8M / 25M = $0.32/token/year
+Revenue per token: $10M / 25M = $0.40/token/year
 Token price: $1.00
-Gross yield: $0.32 / $1.00 = 32%
+Gross yield: $0.40 / $1.00 = 40%
 Decay rate: 15% (long-term tenure)
-NET YIELD: 32% - 15% = +17%
+NET YIELD: 40% - 15% = +25%
 
 Expected price appreciation: 5-10% (stable)
 

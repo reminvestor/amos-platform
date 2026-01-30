@@ -90,10 +90,13 @@ If you help grow the community:
 
 ### 1. Earn Revenue Share 💰
 
-**40% of the company's revenue goes to token holders.**
+**50% of platform revenue goes to token holders.**
 
-If the platform makes $1 million/month:
-- $400,000 is distributed to all AMOS holders
+The platform charges a 20% markup on compute costs. That's our revenue, and half of it goes to you:
+
+If customers use $5 million/month in compute:
+- Platform Revenue (20% markup): $1,000,000
+- Token Holder Share (50%): $500,000
 - You get your share based on how much AMOS you hold
 
 ### 2. Vote on Decisions 🗳️
@@ -103,7 +106,7 @@ Token holders vote on important decisions:
 | What You Can Vote On | How It Works |
 |---------------------|--------------|
 | Feature priorities | Simple majority |
-| R&D budget (20% of revenue) | Simple majority |
+| R&D budget (30% of revenue) | Simple majority |
 | Strategic partnerships | Simple majority |
 | Rule changes (decay rates, etc.) | **2/3 supermajority** |
 | Core changes | **2/3 supermajority** |
@@ -326,11 +329,13 @@ Distribution:
 
 ### Revenue Distribution
 
+The platform charges a 20% markup on all compute. That markup is distributed:
+
 ```
-Platform Revenue
-├── 40% → Token holders (your share!)
-├── 30% → Operations (servers, support, etc.)
-├── 20% → R&D (you vote on this!)
+Platform Revenue (the 20% markup)
+├── 50% → Token holders (your share!)
+├── 30% → R&D (you vote on this!)
+├── 10% → Operations (third-party tools only - people paid in AMOS)
 └── 10% → Treasury reserves
 ```
 
@@ -364,7 +369,7 @@ Watch your balance grow as you contribute
 | What is AMOS? | Ownership in the Amos platform |
 | How do I get it? | Contribute (code, sales, content, support) |
 | What's it worth? | Market determined (tradeable) |
-| Revenue share? | 40% of platform revenue to holders |
+| Revenue share? | 50% of platform revenue to holders |
 | Can I sell it? | Yes, anytime on crypto exchanges |
 | Does it expire? | No, but it decays if you're not active |
 | Minimum I keep? | 5-25% depending on how long you've held |
@@ -409,14 +414,17 @@ Actual: $490 (51% less!)
 The bigger you sell, the worse your price.
 ```
 
-### 3. The Company Constantly Buys Back Tokens
+### 3. The Platform Constantly Buys Back Tokens
 
-Part of every dollar the platform makes is used to BUY tokens from the market:
+Half of what goes to token holders is used to BUY tokens from the market:
 
 ```
-Monthly Revenue: $100,000
-├── $20,000 → Paid to you directly in cash
-└── $20,000 → Used to buy AMOS & burn them
+Monthly Compute Usage: $500,000
+Platform Revenue (20% markup): $100,000
+
+Token Holder Share (50%): $50,000
+├── $25,000 → Paid to you directly in USDC
+└── $25,000 → Used to buy AMOS & burn them
                 (removes them forever)
 
 This creates constant buying pressure.
@@ -432,16 +440,16 @@ Person A: Sells immediately
 - Done forever
 
 Person B: Holds for revenue share
-- Year 1: Gets ~$8 in revenue share
-- Year 2: Gets ~$6 in revenue share
-- Year 3: Gets ~$5 in revenue share
-- Year 4: Gets ~$4 in revenue share
-- Year 5: Gets ~$3 in revenue share
+- Year 1: Gets ~$10 in revenue share
+- Year 2: Gets ~$8 in revenue share
+- Year 3: Gets ~$6 in revenue share
+- Year 4: Gets ~$5 in revenue share
+- Year 5: Gets ~$4 in revenue share
 - ...keeps going...
 
 After 5 years:
 Person A: $10 total
-Person B: $26+ and still earning
+Person B: $33+ and still earning
 ```
 
 **Most smart holders won't sell at $0.01 when they can earn $30+ by holding.**
@@ -472,7 +480,7 @@ If you're nervous about the token:
 Ways tokens typically crash:
 ❌ "Everyone sells at launch" → AMOS: Tokens earned slowly over years
 ❌ "Whales dump on retail" → AMOS: Same rules for everyone, decay prevents hoarding
-❌ "No utility, pure speculation" → AMOS: Real revenue share (40%!)
+❌ "No utility, pure speculation" → AMOS: Real revenue share (50%!)
 ❌ "Team sells all their tokens" → AMOS: Team has same decay rules
 ```
 
