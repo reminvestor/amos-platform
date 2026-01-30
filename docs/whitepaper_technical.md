@@ -137,7 +137,22 @@ Decay prevents:
 - Token hoarding and velocity reduction
 - Governance capture
 
-### 4.2 Decay Formula
+### 4.2 Grace Period
+
+**All new stakes receive a 12-month grace period with ZERO decay.**
+
+This provides:
+- Time for new contributors to understand the system
+- A "hook" period where they see revenue share working
+- Psychological safety during onboarding
+- Simple, easy-to-communicate rule
+
+```
+Month 0-12:  NO DECAY (grace period)
+Month 12+:   Decay starts at tenure-based rate
+```
+
+### 4.3 Decay Formula
 
 For a stake with initial amount `I`, current amount `C`, and annual decay rate `r`:
 
@@ -153,7 +168,7 @@ Floor = I × floor_percentage(tenure_years)
 C_new = max(C - Daily Decay, Floor)
 ```
 
-### 4.3 Tenure-Based Decay Reduction
+### 4.4 Tenure-Based Decay Reduction
 
 Decay rate decreases with holding duration:
 
@@ -164,22 +179,25 @@ Decay rate decreases with holding duration:
 | 5-10 | 15% |
 | 10+ | 5% |
 
-### 4.4 Decay Example
+### 4.5 Decay Example (with Grace Period)
 
 ```
 Initial stake: 10,000 AMOS
 Year 0 floor: 500 AMOS (5%)
 Year 5 floor: 2,500 AMOS (25%)
 
-Year 0: 10,000 tokens
-Year 1: 6,000 tokens (40% decay)
-Year 2: 3,600 tokens (40% decay)
-Year 3: 2,700 tokens (25% decay - tenure reduction)
-Year 5: 2,500 tokens (floor reached)
-Year 20: 2,500 tokens (permanent)
+Month 0:  10,000 tokens (earned)
+Month 6:  10,000 tokens (grace period - no decay!)
+Month 12: 10,000 tokens (grace period ends)
+Year 2:   6,000 tokens (40% decay for 1 year)
+Year 3:   4,500 tokens (25% decay - tenure reduction kicks in)
+Year 5:   2,500 tokens (floor reached)
+Year 20:  2,500 tokens (permanent)
 ```
 
-### 4.5 Decay Recycling
+**Key insight**: The 12-month grace period means new contributors keep 100% of their tokens for the first year, allowing them to experience revenue share without watching their stake shrink.
+
+### 4.6 Decay Recycling
 
 Decayed tokens are split:
 
@@ -190,7 +208,18 @@ Decayed tokens are split:
 
 ## 5. Wealth Preservation
 
-### 5.1 Graduated Decay Floor
+### 5.1 12-Month Grace Period
+
+All new stakes enjoy a **full year of zero decay**, providing:
+
+- Time to understand the system before stakes shrink
+- Opportunity to see revenue share working
+- Psychological safety during onboarding
+- A simple rule everyone can understand
+
+After the grace period, decay begins at the tenure-based rate.
+
+### 5.2 Graduated Decay Floor
 
 Floor percentage **grows with tenure** to prevent early adopters from locking in permanent advantages while still rewarding long-term commitment:
 
@@ -207,7 +236,7 @@ This enables:
 - Long-term planning
 - Fair treatment of late joiners
 
-### 5.2 Staking Vaults
+### 5.3 Staking Vaults
 
 Lock tokens to reduce decay:
 
@@ -218,7 +247,7 @@ Lock tokens to reduce decay:
 | Gold | 5 years | 75% |
 | Permanent | 10 years | 100% (no decay) |
 
-### 5.3 Inheritance
+### 5.4 Inheritance
 
 Stakes can be transferred to designated beneficiaries:
 
@@ -959,7 +988,8 @@ The system is **robust to rational behavior** because all paths lead to value cr
 
 | Term | Definition |
 |------|------------|
-| Decay | Gradual reduction of stake over time |
+| Grace Period | First 12 months after earning a stake - no decay during this time |
+| Decay | Gradual reduction of stake over time (starts after grace period) |
 | Graduated Floor | Minimum stake % that grows with tenure (5%→25%) |
 | Tenure | Time since stake was earned |
 | Halving | Reduction of daily emission pool over time |
