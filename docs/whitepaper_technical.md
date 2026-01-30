@@ -58,7 +58,7 @@ Traditional platform economics suffer from misaligned incentives:
 
 AMOS Token introduces:
 
-1. **Contribution-based ownership** - Tokens earned, not bought
+1. **Contribution-based ownership** - Tokens primarily earned through work; decay ensures passive buyers gradually transfer stake to active contributors
 2. **Decay function** - Continuous participation required for maximum stake
 3. **Pool-based rewards** - No external price dependencies
 4. **Transparent distribution** - All ownership publicly verifiable on-chain
