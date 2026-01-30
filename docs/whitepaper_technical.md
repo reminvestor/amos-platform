@@ -277,6 +277,51 @@ Lock tokens to reduce decay:
 | Gold | 5 years | 75% |
 | Permanent | 10 years | 100% (no decay) |
 
+### 5.4 Investment Profiles
+
+The token economy accommodates multiple participation styles:
+
+#### Profile A: Active Contributor
+```
+├── Earns tokens through work (code, sales, community)
+├── No lock required
+├── Decay offset by ongoing contributions
+├── Stake maintained or grown through activity
+└── Primary intended path
+```
+
+#### Profile B: Long-Term Investor (10-Year Lock)
+```
+├── Purchases tokens on exchange
+├── Locks in Permanent vault (10 years)
+├── ZERO decay during lock period
+├── Receives full revenue share
+├── Has full governance rights
+└── Traditional "buy and hold" - just illiquid
+```
+
+#### Profile C: Medium-Term Believer (3-5 Year Lock)
+```
+├── Purchases tokens on exchange
+├── Locks in Silver/Gold vault (3-5 years)
+├── 50-75% decay reduction
+├── Receives full revenue share
+├── Has full governance rights
+└── Balance between liquidity and preservation
+```
+
+#### Profile D: Speculator (No Lock)
+```
+├── Purchases tokens on exchange
+├── No vault lock
+├── 12-month grace period, then full decay
+├── Can sell anytime for liquidity
+├── Receives revenue share while holding
+└── Trading on price appreciation
+```
+
+**Key Insight:** All paths are valid. The system doesn't prohibit buying—it ensures that passive holders gradually transfer stake to active contributors through decay, unless they commit to long-term locks.
+
 ---
 
 ## 6. Reward Calculation

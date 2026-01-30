@@ -261,6 +261,19 @@ You can "lock" your tokens for a period of time to reduce decay:
 | 5 years | 75% less decay |
 | 10 years | **No decay at all** |
 
+### Different Ways to Participate
+
+Not everyone participates the same way, and that's fine:
+
+| Profile | How They Get Tokens | Lock? | Decay? | Best For |
+|---------|---------------------|-------|--------|----------|
+| **Active Contributor** | Earn through work | No | Offset by earnings | Builders, sellers |
+| **Long-Term Investor** | Buy on exchange | 10 years | None | VCs, true believers |
+| **Medium-Term Believer** | Buy on exchange | 3-5 years | Reduced | Investors |
+| **Speculator** | Buy on exchange | No | Full (after grace) | Traders |
+
+**All paths are valid.** You can buy tokens and stake them—you'll just need to either contribute or lock to avoid decay eating your stake.
+
 ### 3. Be Patient
 
 Decay rate decreases the longer you hold:
