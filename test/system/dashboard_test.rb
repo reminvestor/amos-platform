@@ -10,7 +10,7 @@ class DashboardTest < ApplicationSystemTestCase
   test "user can access dashboard" do
     sign_in(@user)
 
-    visit dashboard_path
+    visit advanced_mode_path
 
     # Dashboard should load
     assert_selector "body", visible: true
@@ -20,7 +20,7 @@ class DashboardTest < ApplicationSystemTestCase
   test "dashboard shows quick stats section" do
     sign_in(@user)
 
-    visit dashboard_path
+    visit advanced_mode_path
 
     # Should show stats for campaigns, contacts, landing pages, templates
     has_stats = page.has_text?(/campaign|contact|landing|template/i)
@@ -41,7 +41,7 @@ class DashboardTest < ApplicationSystemTestCase
 
     sign_in(@user)
 
-    visit dashboard_path
+    visit advanced_mode_path
 
     # Should show recent activity
     has_recent = page.has_text?(/recent|activity|latest/i)
@@ -53,7 +53,7 @@ class DashboardTest < ApplicationSystemTestCase
   test "dashboard shows connections section" do
     sign_in(@user)
 
-    visit dashboard_path
+    visit advanced_mode_path
 
     # Should show connections or integrations section
     has_connections = page.has_text?(/connection|integration|connected/i)
@@ -64,7 +64,7 @@ class DashboardTest < ApplicationSystemTestCase
   test "dashboard shows AI usage stats" do
     sign_in(@user)
 
-    visit dashboard_path
+    visit advanced_mode_path
 
     # Should show AI usage information
     has_ai_usage = page.has_text?(/ai|usage|token|credit/i)
@@ -75,7 +75,7 @@ class DashboardTest < ApplicationSystemTestCase
   test "dashboard loads without JavaScript errors" do
     sign_in(@user)
 
-    visit dashboard_path
+    visit advanced_mode_path
 
     # Check for any visible error messages
     assert_no_text "undefined"
@@ -87,7 +87,7 @@ class DashboardTest < ApplicationSystemTestCase
   test "dashboard navigation links work" do
     sign_in(@user)
 
-    visit dashboard_path
+    visit advanced_mode_path
 
     # Should have navigation links
     has_scout_link = page.has_selector?("a[href='/scout']")
@@ -102,7 +102,7 @@ class DashboardTest < ApplicationSystemTestCase
     sign_in(@user)
 
     # Get initial campaign count
-    visit dashboard_path
+    visit advanced_mode_path
     initial_page = page.html
 
     # Create new campaign
@@ -115,7 +115,7 @@ class DashboardTest < ApplicationSystemTestCase
     )
 
     # Refresh dashboard
-    visit dashboard_path
+    visit advanced_mode_path
 
     # Page should still load (we're just checking it doesn't error)
     assert_selector "body", visible: true
@@ -124,7 +124,7 @@ class DashboardTest < ApplicationSystemTestCase
   test "dashboard displays user entity name" do
     sign_in(@user)
 
-    visit dashboard_path
+    visit advanced_mode_path
 
     # Should show entity/business name somewhere
     has_entity = page.has_text?(@entity.name) || page.has_text?(/dashboard|welcome/i)
