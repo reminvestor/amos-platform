@@ -179,7 +179,7 @@ See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for full details.
 Understanding the token economy helps you understand why your contributions matter:
 
 1. **Fixed Supply**: 100M AMOS tokens, ever
-2. **Earn, Don't Buy**: Tokens earned through contribution
+2. **Earn or Buy**: Tokens can be earned OR purchased, but decay means passive buyers transfer stake to active contributors over time
 3. **Decay**: Inactive stakes shrink (but floor protects 25%)
 4. **Revenue Share**: 50% of platform revenue to holders
 5. **Governance**: Vote on platform decisions

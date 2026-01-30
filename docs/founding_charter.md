@@ -35,7 +35,7 @@ AMOS is released under the Apache 2.0 license. The code is open for anyone to vi
 
 ### 1.4 Guiding Principles
 
-1. **Contribution Over Capital**: Ownership is earned through work, not purchased
+1. **Contribution Over Capital**: Ownership is primarily earned through work; passive holders gradually transfer stake to active contributors via decay
 2. **Transparency**: All token allocations, code, and governance decisions are public
 3. **Fairness**: Same rules apply to founders, early contributors, and late joiners
 4. **Sustainability**: Economic mechanisms that balance growth with stability
