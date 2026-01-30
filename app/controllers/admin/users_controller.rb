@@ -31,10 +31,30 @@ class Admin::UsersController < Admin::BaseController
     # Get user info before deletion for logging
     user_email = @user.email
     user_id = @user.id
+    entities_deleted = []
+    
+    # Check if user is the sole owner of any entities - if so, delete those entities too
+    @user.entity_users.where(role: 'owner').each do |entity_user|
+      entity = entity_user.entity
+      next unless entity
+      
+      # If this is the only owner, we need to delete the entity
+      if entity.entity_users.where(role: 'owner').count == 1
+        Rails.logger.info "🗑️ User #{user_id} is sole owner of entity #{entity.id} (#{entity.name}) - will delete entity"
+        entities_deleted << { id: entity.id, name: entity.name }
+        
+        # Delete the entity (this will cascade delete entity_users, etc.)
+        entity.destroy!
+      end
+    end
+    
+    # Reload user to get fresh associations after entity deletions
+    @user.reload
     
     if @user.destroy
-      Rails.logger.info "🗑️ Admin deleted user #{user_id} (#{user_email})"
-      redirect_to admin_users_path, notice: "User #{user_email} deleted successfully."
+      entity_msg = entities_deleted.any? ? " (also deleted #{entities_deleted.length} orphaned entity/entities)" : ""
+      Rails.logger.info "🗑️ Admin deleted user #{user_id} (#{user_email})#{entity_msg}"
+      redirect_to admin_users_path, notice: "User #{user_email} deleted successfully#{entity_msg}."
     else
       Rails.logger.error "❌ Failed to delete user #{user_id}: #{@user.errors.full_messages.join(', ')}"
       redirect_to admin_user_path(@user), alert: "Failed to delete user: #{@user.errors.full_messages.join(', ')}"
