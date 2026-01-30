@@ -821,7 +821,129 @@ Probability of <$0.01: 4%
 Probability of $0.00: <1%
 ```
 
-### 11.10 Key Takeaways
+### 11.10 Stake vs. Exchange Equilibrium Analysis
+
+A rational holder must decide: **Stake on platform (decay + revenue) or hold on exchange (no decay, speculation)?**
+
+#### The Math
+
+```
+Platform Net Yield = Revenue Yield - Effective Decay Rate
+Exchange Return = Expected Price Appreciation
+
+Equilibrium: Platform Net Yield ≈ Exchange Return
+```
+
+#### Phase 1: Early Stage (Year 0-2)
+
+```
+Revenue: $500k/year
+Holder share: $200k/year
+Staked supply: 5M tokens
+Revenue per token: $200k / 5M = $0.04/token/year
+Token price: $0.05
+Gross yield: $0.04 / $0.05 = 80%
+Decay rate: 40%
+NET YIELD: 80% - 40% = +40%
+
+Expected price appreciation: 100-500% (high uncertainty)
+
+RESULT: Speculators stay on exchange, believers stake
+        Both strategies rational
+```
+
+#### Phase 2: Growth Stage (Year 2-5)
+
+```
+Revenue: $5M/year
+Holder share: $2M/year
+Staked supply: 15M tokens
+Revenue per token: $2M / 15M = $0.133/token/year
+Token price: $0.30
+Gross yield: $0.133 / $0.30 = 44%
+Decay rate: 25% (tenure reduction)
+NET YIELD: 44% - 25% = +19%
+
+Expected price appreciation: 20-50% (maturing)
+
+RESULT: Net yield competitive with speculation
+        More holders move to platform for stable returns
+```
+
+#### Phase 3: Mature Stage (Year 5+)
+
+```
+Revenue: $20M/year
+Holder share: $8M/year
+Staked supply: 25M tokens
+Revenue per token: $8M / 25M = $0.32/token/year
+Token price: $1.00
+Gross yield: $0.32 / $1.00 = 32%
+Decay rate: 15% (long-term tenure)
+NET YIELD: 32% - 15% = +17%
+
+Expected price appreciation: 5-10% (stable)
+
+RESULT: Staking clearly dominates
+        Only traders remain on exchange
+```
+
+#### The Equilibrium Dynamic
+
+```
+                    EARLY                GROWTH               MATURE
+                    │                    │                    │
+                    │                    │                    │
+Speculation Value   │████████████████████│█████████████       │████
+                    │                    │                    │
+Revenue Yield       │██                  │██████████          │████████████████
+                    │                    │                    │
+                    ├────────────────────┼────────────────────┤
+                    │                    │                    │
+              Speculators        Transition Point         Stakers
+              dominate           (equilibrium)            dominate
+```
+
+#### Key Insight: This Is By Design
+
+The system **naturally transitions** from speculation-driven to fundamentals-driven:
+
+| Phase | Who Dominates | Why It's OK |
+|-------|---------------|-------------|
+| Early | Speculators | Price discovery, liquidity building |
+| Growth | Mixed | Revenue becomes meaningful |
+| Mature | Stakers | Sustainable value creation |
+
+Early speculators provide **price discovery** and **liquidity**. As revenue grows, **fundamentals take over**. This is healthy market development.
+
+#### The "Early Investor" Strategy
+
+You correctly identified this strategy:
+
+```
+Year 0-2: Hold on exchange
+  - No decay
+  - Speculation upside
+  - Revenue yield too low to matter
+
+Year 3+: Deposit to platform
+  - Revenue yield now meaningful
+  - Price appreciation slowing
+  - 30-day waiting period, then earn
+
+This is RATIONAL behavior, not gaming.
+```
+
+#### Why This Doesn't Break The Model
+
+1. **Speculators provide liquidity** - Enables trading for contributors
+2. **Late staking still decays** - Deposit creates NEW stake at 40% decay
+3. **Revenue share dilutes** - More stakers = lower per-token yield
+4. **Floor builds slowly** - Even late depositors start at 5% floor
+
+The system is **robust to rational behavior** because all paths lead to value creation.
+
+### 11.11 Key Takeaways
 
 1. **Gradual distribution prevents bank runs** - No scenario where "everyone" has tokens to sell
 2. **AMM slippage protects against panic selling** - Aggressive sellers punish themselves
@@ -829,6 +951,7 @@ Probability of $0.00: <1%
 4. **Holding strongly dominates selling** - 15-40x better returns from revenue share
 5. **Self-healing mechanisms** - System auto-corrects from stress events
 6. **Deflationary long-term** - Burns exceed issuance after Year 3-4
+7. **Stake vs. Exchange equilibrium** - System naturally transitions from speculation to fundamentals
 
 ---
 
