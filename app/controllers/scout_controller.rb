@@ -709,6 +709,12 @@ class ScoutController < ApplicationController
               content: complete_message,
               role: 'assistant'
             })
+          when 'working'
+            # Stream "working" indicator with animated dots during tool execution
+            tool_name = progress_data[:tool_name]
+            friendly_name = progress_data[:message] || get_friendly_tool_name(tool_name)
+            Rails.logger.info "⚙️ [Scout] Sending working indicator: #{friendly_name}"
+            stream_working_indicator(tool_name)
           when 'tool_start'
             # Show tool start as VISIBLE message with thinking indicator
             tool_name = progress_data[:tool_name] || progress_data[:name]
@@ -720,6 +726,8 @@ class ScoutController < ApplicationController
               content: tool_message,
               role: 'assistant'
             })
+            # Also send working indicator for animated dots
+            stream_working_indicator(tool_name)
           when 'tool_complete'
             # Tool complete - just log, don't spam chat
             tool_name = progress_data[:tool_name] || progress_data[:name]
@@ -6375,6 +6383,11 @@ class ScoutController < ApplicationController
   end
   
     def process_through_amos(message, file_urls, canvas, model_preference)
+      Rails.logger.info "🚀 [Scout] process_through_amos called"
+      
+      # Stream "thinking" indicator IMMEDIATELY so user sees feedback right away
+      stream_thinking_indicator
+      
       # Build metadata for Amos - ensure canvas is a regular hash
       canvas_hash = if canvas.is_a?(ActionController::Parameters)
                       canvas.permit!.to_h
@@ -6387,15 +6400,22 @@ class ScoutController < ApplicationController
       # Get model mode from session (set by slider: auto/fast/balanced/powerful)
       current_model_mode = session[:model_mode]&.to_sym || :auto
       
+      # PERFORMANCE: Run quick mode classification here (regex-based, ~0ms)
+      # This avoids a duplicate LLM call - the preprocessor will use the same mode
+      # The preprocessor's LLM call will also include mode if regex fails
+      precomputed_mode = quick_classify_mode(message)
+      
       metadata = {
         attached_files: file_urls,
         canvas: canvas_hash,
         model_preference: model_preference, # nil when using slider mode
         model_mode: current_model_mode,     # The slider mode
-        voice_mode: params[:voice_mode] == 'true'
+        voice_mode: params[:voice_mode] == 'true',
+        precomputed_mode: precomputed_mode[:mode],           # Pre-classified mode
+        precomputed_mode_confidence: precomputed_mode[:confidence]
       }
       
-      Rails.logger.info "[Scout] Model selection - explicit: #{model_preference.inspect}, mode: #{current_model_mode}"
+      Rails.logger.info "[Scout] Model selection - explicit: #{model_preference.inspect}, mode: #{current_model_mode}, precomputed_mode: #{precomputed_mode[:mode]}"
     
     # Build enhanced message if files are attached
     enhanced_message = message
@@ -6427,6 +6447,43 @@ class ScoutController < ApplicationController
     Rails.logger.error "[Scout] Amos processing error: #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
     stream_update("❌ An error occurred while processing your request. Please try again.")
+  end
+  
+  # Quick regex-based mode classification (~0ms, no LLM call)
+  # Used to pre-classify mode before orchestrator to avoid duplicate LLM calls
+  def quick_classify_mode(message)
+    return { mode: :operate, confidence: :low } if message.blank?
+    
+    msg = message.to_s.strip.downcase
+    
+    # Personal patterns
+    personal_patterns = [
+      /\b(personal|my\s+life|not\s+work|off\s+work)\b/,
+      /\b(weather|time|date|news)\b/,
+      /\b(recipe|cooking|dinner|lunch|breakfast)\b/,
+      /\b(how\s+are\s+you|what'?s\s+up|hey\s+amos|hi\s+amos|hello)\b/
+    ]
+    return { mode: :personal, confidence: :high } if personal_patterns.any? { |p| msg.match?(p) }
+    
+    # Ideate patterns (brainstorming)
+    ideate_patterns = [
+      /\b(brainstorm|ideate|explore\s+ideas?|think\s+about)\b/,
+      /\b(what\s+do\s+you\s+think)\b/,
+      /\b(give\s+me\s+(some\s+)?ideas?)\b/,
+      /\b(help\s+me\s+(think|figure\s+out|decide|explore))\b/
+    ]
+    return { mode: :ideate, confidence: :high } if ideate_patterns.any? { |p| msg.match?(p) }
+    
+    # Create patterns
+    create_patterns = [
+      /\b(create|build|make|design|generate)\s+(me\s+)?(a|an|the|my)\s/,
+      /\b(new\s+)(landing\s*page|email|workflow|automation|app|module)/,
+      /\blet'?s\s+(build|create|make|design)\b/
+    ]
+    return { mode: :create, confidence: :high } if create_patterns.any? { |p| msg.match?(p) }
+    
+    # Default to operate
+    { mode: :operate, confidence: :medium }
   end
   
   def wait_for_amos_completion

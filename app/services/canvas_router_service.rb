@@ -336,27 +336,31 @@ class CanvasRouterService
   def classify_with_llm(message)
     # Use IntentClassifierService for unified LLM classification
     # Falls back to quick 4k token call - fast and cheap
-    # NOW INCLUDES: design_intent - does user want to CREATE something?
+    # NOW INCLUDES: mode + design_intent - ALL classification in ONE call!
     begin
       classifier = IntentClassifierService.new(entity: @entity)
       result = classifier.classify(
         message: message,
         conversation_history: @conversation_history,
-        needs: [:canvas, :thinking_depth, :context_topic, :design_intent]  # All classifications in ONE call!
+        needs: [:mode, :canvas, :thinking_depth, :context_topic, :design_intent]  # All classifications in ONE call!
       )
 
       canvas = result[:canvas]&.to_sym || :keep_current
       
       # Store classifications for use by other services
+      @llm_mode = result[:mode]  # :personal, :ideate, :operate, :create
+      @llm_mode_confidence = result[:confidence]
       @llm_thinking_depth = result[:thinking_depth]&.to_sym
       @llm_context_topic = result[:context_topic]
       @llm_design_intent = result[:design_intent]  # :module, :app, :landing_page, :email, :workflow, :integration, :agent, or nil
       
-      Rails.logger.info "[CanvasRouter] LLM classified: canvas=#{canvas}, depth=#{@llm_thinking_depth}, topic=#{@llm_context_topic}, design_intent=#{@llm_design_intent}"
+      Rails.logger.info "[CanvasRouter] LLM classified: mode=#{@llm_mode}, canvas=#{canvas}, depth=#{@llm_thinking_depth}, topic=#{@llm_context_topic}, design_intent=#{@llm_design_intent}"
       
       { 
         canvas: canvas, 
-        source: :llm, 
+        source: :llm,
+        mode: @llm_mode,
+        mode_confidence: @llm_mode_confidence,
         thinking_depth: @llm_thinking_depth, 
         context_topic: @llm_context_topic,
         design_intent: @llm_design_intent  # NEW: Design mode routing hint
@@ -382,6 +386,8 @@ class CanvasRouterService
       needs_freeform: needs_freeform,  # Signal that create_freeform_canvas will be needed
       source: source,
       context_summary: nil, # Will be filled by caller after data load
+      mode: @llm_mode,                      # LLM-classified mode (:personal, :ideate, :operate, :create)
+      mode_confidence: @llm_mode_confidence, # Confidence level
       thinking_depth: @llm_thinking_depth,  # LLM-suggested thinking depth (from fallback)
       context_topic: @llm_context_topic,    # LLM-inferred topic
       design_intent: @llm_design_intent,    # LLM-detected design intent (:module, :app, etc.)

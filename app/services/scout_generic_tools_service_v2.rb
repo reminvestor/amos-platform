@@ -633,6 +633,31 @@ class ScoutGenericToolsServiceV2
 
   private
   
+  # Get friendly display name for tool (for working indicator)
+  def get_friendly_tool_name(tool_name)
+    friendly_names = {
+      'generate_ai_landing_page' => 'Creating landing page',
+      'execute_integration' => 'Calling integration',
+      'execute_integration_action' => 'Calling integration',
+      'get_data' => 'Fetching data',
+      'create_object' => 'Creating record',
+      'update_object' => 'Updating record',
+      'create_rag_store' => 'Building knowledge base',
+      'web_search' => 'Searching the web',
+      'view_web_page' => 'Loading web page',
+      'query_rag_store' => 'Querying knowledge',
+      'query_document_content' => 'Searching documents',
+      'read_document' => 'Reading document',
+      'create_tool' => 'Creating custom tool',
+      'create_scheduled_task' => 'Setting up scheduled task',
+      'create_freeform_canvas' => 'Creating visualization',
+      'create_dynamic_visualization' => 'Creating visualization',
+      'generate_image' => 'Generating image',
+      'load_canvas' => 'Loading view'
+    }
+    friendly_names[tool_name] || "Working on #{tool_name.to_s.titleize.downcase}"
+  end
+  
   # ═══════════════════════════════════════════════════════════════
   # 🤝 DEEPSEEK-MISTRAL HANDOFF HELPERS
   # ═══════════════════════════════════════════════════════════════
@@ -1042,11 +1067,15 @@ class ScoutGenericToolsServiceV2
     load_canvas
     web_search
     view_web_page
-    delegate_to_agent
-    list_available_agents
     create_object
     update_object
     discover_tools
+    create_tool
+    list_tools
+    create_scheduled_task
+    list_scheduled_tasks
+    generate_ai_landing_page
+    create_freeform_canvas
   ].freeze
 
   # Build tools from preloaded tool names (from UnifiedPreprocessor)
@@ -1176,72 +1205,38 @@ class ScoutGenericToolsServiceV2
   end
   
   # Filter tools based on current space
+  # DEPRECATED: Spaces are no longer used - this now just does context-aware injection
   # Uses SpaceDefinition.default_tool_loadout to determine allowed tools per space
   def apply_space_tool_filtering(tools)
+    # SPACES DEPRECATED: Skip space-based filtering entirely
+    # All tools from ScoutLoadoutConfiguration are now available
+    # Only do context-aware tool injection based on current canvas
+    
     return tools unless @user.present?
     
-    active_space = @user.active_space
-    # Normalize old space slugs
-    active_space = 'operations' if active_space == 'work' || active_space == 'team'
-    return tools if active_space.blank?
-    
-    # Get space-specific tool loadout
-    space_def = SpaceDefinition.find_by(slug: active_space)
-    return tools unless space_def&.tool_loadout.present?
-    
-    allowed_tools = space_def.tool_loadout.dup
+    # Context-aware tool injection still needed
+    allowed_tools = nil  # nil means no filtering, just injection
     
     # ═══════════════════════════════════════════════════════════════
     # CONTEXT-AWARE TOOL INJECTION
-    # When user is in specific editor contexts, ALWAYS include relevant tools
-    # This prevents the model from hallucinating without the right tools
+    # When user is in specific editor contexts, log what tools would be relevant
+    # All tools are now available, but this helps with debugging
     # ═══════════════════════════════════════════════════════════════
     if @current_canvas.present?
       canvas_type = @current_canvas[:type] || @current_canvas['type']
       
       case canvas_type
       when 'landing_page_editor'
-        # ALWAYS include landing page tools when editing a landing page
-        landing_page_tools = %w[
-          update_landing_page_content
-          edit_landing_page_section
-          read_landing_page_sections
-        ]
-        allowed_tools = (allowed_tools + landing_page_tools).uniq
-        Rails.logger.info "📄 Landing page editor context: injected #{landing_page_tools.join(', ')}"
+        Rails.logger.debug "📄 Landing page editor context active"
       when 'app_designer', 'module_manager'
-        # Include app/module building tools
-        app_tools = %w[
-          start_module_design
-          propose_module_schema
-          refine_module_schema
-          approve_module_design
-          build_app
-          preview_app
-        ]
-        allowed_tools = (allowed_tools + app_tools).uniq
+        Rails.logger.debug "🏗️ App/module design context active"
       when 'workflow_designer'
-        # Include workflow tools
-        workflow_tools = %w[
-          generate_automation_code
-          create_scheduled_task
-          list_scheduled_tasks
-        ]
-        allowed_tools = (allowed_tools + workflow_tools).uniq
+        Rails.logger.debug "⚙️ Workflow designer context active"
       end
     end
     
-    before_count = tools.length
-    
-    tools = tools.select do |tool|
-      name = tool[:name] || tool["name"]
-      allowed_tools.include?(name)
-    end
-    
-    if tools.length < before_count
-      Rails.logger.info "🏠 #{active_space.titleize} space: filtered to #{tools.length}/#{before_count} tools"
-    end
-    
+    # SPACES DEPRECATED: Return all tools without filtering
+    # ScoutLoadoutConfiguration.CORE_TOOLS controls what's available
     tools
   end
 
@@ -1301,10 +1296,20 @@ class ScoutGenericToolsServiceV2
     
     # CAP TOTAL TOOLS to prevent prompt bloat (fallback protection)
     # Target: ~25 tools = ~6,000 tokens for tool definitions
+    # CRITICAL: Prioritize ESSENTIAL_TOOLS so they're always included
     max_tools = TieredDiscoveryService::MAX_TOTAL_TOOLS
     if filtered.length > max_tools
       Rails.logger.info "🔧 Fallback tool cap: #{filtered.length} → #{max_tools}"
-      filtered = filtered.first(max_tools)
+      
+      # Separate essential tools from others
+      essential = filtered.select { |t| ESSENTIAL_TOOLS.include?(t["name"] || t[:name]) }
+      non_essential = filtered.reject { |t| ESSENTIAL_TOOLS.include?(t["name"] || t[:name]) }
+      
+      # Essential tools first, then fill remaining slots with non-essential
+      remaining_slots = max_tools - essential.length
+      filtered = essential + non_essential.first([remaining_slots, 0].max)
+      
+      Rails.logger.info "🔧 Essential tools preserved: #{essential.map { |t| t['name'] || t[:name] }.join(', ')}"
     end
     
     filtered
@@ -2401,6 +2406,27 @@ class ScoutGenericToolsServiceV2
       begin
         args = parse_tool_arguments(tool_call[:arguments])
         Rails.logger.debug "Executing #{tool_call[:name]} with args: #{args.inspect}"
+        
+        # Send "working" indicator so user sees feedback during tool execution
+        friendly_name = get_friendly_tool_name(tool_call[:name])
+        Rails.logger.info "⚙️ [ScoutTools] Broadcasting working indicator: #{friendly_name}"
+        
+        # Broadcast directly via ScoutChannel (progress_callback may be nil in Amos flow)
+        if @session_id.present? && defined?(ScoutChannel)
+          ScoutChannel.broadcast_to(@session_id, {
+            type: "working",
+            message: friendly_name,
+            tool_name: tool_call[:name],
+            timestamp: Time.current.to_f
+          })
+        end
+        
+        # Also try progress_callback as fallback
+        progress_callback&.call({
+          type: "working",
+          message: friendly_name,
+          tool_name: tool_call[:name]
+        })
 
         # ═══════════════════════════════════════════════════════════════
         # INTEGRATION CONFIDENCE CHECK (Learn Before Act)

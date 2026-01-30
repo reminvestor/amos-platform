@@ -312,8 +312,8 @@ class User < ApplicationRecord
         role: 'admin'
       )
       
-      # Make user admin of their entity
-      EntityUser.create!(entity: entity, user: user, role: 'admin')
+      # Note: EntityUser is automatically created by the after_save :ensure_entity_membership callback
+      # which runs when entity_id is set. The first user of an entity is made 'owner'.
       
       user
     end
