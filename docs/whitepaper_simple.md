@@ -367,6 +367,114 @@ Watch your balance grow as you contribute
 
 ---
 
+## What Keeps The Token From Crashing?
+
+A fair question: *"What if everyone just sells their tokens and it goes to zero?"*
+
+### Short Answer: It's Really Hard For That to Happen
+
+Here's why:
+
+### 1. Tokens Are Earned Slowly, Not Dumped At Once
+
+Unlike tokens that are given out all at once (which everyone immediately sells), AMOS tokens are earned over time:
+
+```
+Year 1:  ~6 million tokens earned by all contributors
+Year 2:  ~3 million tokens earned
+Year 3:  ~1.5 million tokens earned
+...
+
+There's never a moment where "everyone" has tokens to sell.
+```
+
+### 2. Selling Punishes Sellers
+
+Crypto exchanges use math that makes large sells very painful:
+
+```
+If you try to sell 100,000 AMOS at once:
+- First 10,000: You get $0.01 each = $100
+- Next 30,000: You get $0.007 each = $210
+- Last 60,000: You get $0.003 each = $180
+
+Expected: $1,000
+Actual: $490 (51% less!)
+
+The bigger you sell, the worse your price.
+```
+
+### 3. The Company Constantly Buys Back Tokens
+
+Part of every dollar the platform makes is used to BUY tokens from the market:
+
+```
+Monthly Revenue: $100,000
+├── $20,000 → Paid to you directly in cash
+└── $20,000 → Used to buy AMOS & burn them
+                (removes them forever)
+
+This creates constant buying pressure.
+```
+
+### 4. Holding Beats Selling (By A Lot)
+
+Let's compare two people who each earned 1,000 AMOS:
+
+```
+Person A: Sells immediately
+- Gets ~$10 (at $0.01/token)
+- Done forever
+
+Person B: Holds for revenue share
+- Year 1: Gets ~$8 in revenue share
+- Year 2: Gets ~$6 in revenue share
+- Year 3: Gets ~$5 in revenue share
+- Year 4: Gets ~$4 in revenue share
+- Year 5: Gets ~$3 in revenue share
+- ...keeps going...
+
+After 5 years:
+Person A: $10 total
+Person B: $26+ and still earning
+```
+
+**Most smart holders won't sell at $0.01 when they can earn $30+ by holding.**
+
+### 5. The System Self-Heals
+
+Even in a worst-case crash:
+
+| What Happens | How The System Responds |
+|--------------|-------------------------|
+| Price drops 50% | Buyback buys 2x more tokens |
+| Everyone sells | Decay returns tokens to treasury |
+| No one contributes | Fewer tokens = survivors get more |
+| Price near zero | Cheap for believers to accumulate |
+
+### 6. You Can Choose Cash Instead
+
+If you're nervous about the token:
+- Choose "USDC payout" option
+- Get paid in dollars directly
+- Never touch the token market
+
+**This reduces selling pressure from nervous holders.**
+
+### The Bottom Line
+
+```
+Ways tokens typically crash:
+❌ "Everyone sells at launch" → AMOS: Tokens earned slowly over years
+❌ "Whales dump on retail" → AMOS: Same rules for everyone, decay prevents hoarding
+❌ "No utility, pure speculation" → AMOS: Real revenue share (40%!)
+❌ "Team sells all their tokens" → AMOS: Team has same decay rules
+```
+
+**AMOS is designed to be sustainable, not a get-rich-quick pump-and-dump.**
+
+---
+
 ## Still Have Questions?
 
 - **Discord**: [Join our community](https://discord.gg/amos)
