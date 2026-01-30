@@ -15,7 +15,7 @@ module Admin
 
     # GET /admin/experience_learning
     def index
-      @entities = Entity.where(active: true).order(:name)
+      @entities = Entity.where(status: 'active').order(:name)
 
       # Global experience stats
       @global_stats = {
@@ -150,7 +150,7 @@ module Admin
     def conflicts
       @all_conflicts = []
 
-      Entity.where(active: true).find_each do |entity|
+      Entity.where(status: 'active').find_each do |entity|
         TaskExperience::TASK_TYPES.each do |task_type|
           conflicts = TaskExperience.detect_conflicts(entity: entity, task_type: task_type)
           conflicts.each do |conflict|
@@ -248,7 +248,7 @@ module Admin
         positive: traces_7d.where(outcome: 'success').count,
         negative: traces_7d.where(outcome: 'failure').count,
         detection_methods: traces_7d
-          .where.not("outcome_details->>'detection_method'" => nil)
+          .where("outcome_details->>'detection_method' IS NOT NULL")
           .group("outcome_details->>'detection_method'")
           .count
       }
@@ -258,7 +258,7 @@ module Admin
       # Get entities with enough data for calibration
       entities_with_data = []
 
-      Entity.where(active: true).find_each do |entity|
+      Entity.where(status: 'active').find_each do |entity|
         traces = DecisionTrace.where(entity: entity)
           .where.not(confidence_score: nil)
           .where(outcome: %w[success failure])

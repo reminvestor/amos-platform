@@ -633,6 +633,31 @@ class ScoutGenericToolsServiceV2
 
   private
   
+  # Get friendly display name for tool (for working indicator)
+  def get_friendly_tool_name(tool_name)
+    friendly_names = {
+      'generate_ai_landing_page' => 'Creating landing page',
+      'execute_integration' => 'Calling integration',
+      'execute_integration_action' => 'Calling integration',
+      'get_data' => 'Fetching data',
+      'create_object' => 'Creating record',
+      'update_object' => 'Updating record',
+      'create_rag_store' => 'Building knowledge base',
+      'web_search' => 'Searching the web',
+      'view_web_page' => 'Loading web page',
+      'query_rag_store' => 'Querying knowledge',
+      'query_document_content' => 'Searching documents',
+      'read_document' => 'Reading document',
+      'create_tool' => 'Creating custom tool',
+      'create_scheduled_task' => 'Setting up scheduled task',
+      'create_freeform_canvas' => 'Creating visualization',
+      'create_dynamic_visualization' => 'Creating visualization',
+      'generate_image' => 'Generating image',
+      'load_canvas' => 'Loading view'
+    }
+    friendly_names[tool_name] || "Working on #{tool_name.to_s.titleize.downcase}"
+  end
+  
   # ═══════════════════════════════════════════════════════════════
   # 🤝 DEEPSEEK-MISTRAL HANDOFF HELPERS
   # ═══════════════════════════════════════════════════════════════
@@ -1042,11 +1067,15 @@ class ScoutGenericToolsServiceV2
     load_canvas
     web_search
     view_web_page
-    delegate_to_agent
-    list_available_agents
     create_object
     update_object
     discover_tools
+    create_tool
+    list_tools
+    create_scheduled_task
+    list_scheduled_tasks
+    generate_ai_landing_page
+    create_freeform_canvas
   ].freeze
 
   # Build tools from preloaded tool names (from UnifiedPreprocessor)
@@ -1176,72 +1205,38 @@ class ScoutGenericToolsServiceV2
   end
   
   # Filter tools based on current space
+  # DEPRECATED: Spaces are no longer used - this now just does context-aware injection
   # Uses SpaceDefinition.default_tool_loadout to determine allowed tools per space
   def apply_space_tool_filtering(tools)
+    # SPACES DEPRECATED: Skip space-based filtering entirely
+    # All tools from ScoutLoadoutConfiguration are now available
+    # Only do context-aware tool injection based on current canvas
+    
     return tools unless @user.present?
     
-    active_space = @user.active_space
-    # Normalize old space slugs
-    active_space = 'operations' if active_space == 'work' || active_space == 'team'
-    return tools if active_space.blank?
-    
-    # Get space-specific tool loadout
-    space_def = SpaceDefinition.find_by(slug: active_space)
-    return tools unless space_def&.tool_loadout.present?
-    
-    allowed_tools = space_def.tool_loadout.dup
+    # Context-aware tool injection still needed
+    allowed_tools = nil  # nil means no filtering, just injection
     
     # ═══════════════════════════════════════════════════════════════
     # CONTEXT-AWARE TOOL INJECTION
-    # When user is in specific editor contexts, ALWAYS include relevant tools
-    # This prevents the model from hallucinating without the right tools
+    # When user is in specific editor contexts, log what tools would be relevant
+    # All tools are now available, but this helps with debugging
     # ═══════════════════════════════════════════════════════════════
     if @current_canvas.present?
       canvas_type = @current_canvas[:type] || @current_canvas['type']
       
       case canvas_type
       when 'landing_page_editor'
-        # ALWAYS include landing page tools when editing a landing page
-        landing_page_tools = %w[
-          update_landing_page_content
-          edit_landing_page_section
-          read_landing_page_sections
-        ]
-        allowed_tools = (allowed_tools + landing_page_tools).uniq
-        Rails.logger.info "📄 Landing page editor context: injected #{landing_page_tools.join(', ')}"
+        Rails.logger.debug "📄 Landing page editor context active"
       when 'app_designer', 'module_manager'
-        # Include app/module building tools
-        app_tools = %w[
-          start_module_design
-          propose_module_schema
-          refine_module_schema
-          approve_module_design
-          build_app
-          preview_app
-        ]
-        allowed_tools = (allowed_tools + app_tools).uniq
+        Rails.logger.debug "🏗️ App/module design context active"
       when 'workflow_designer'
-        # Include workflow tools
-        workflow_tools = %w[
-          generate_automation_code
-          create_scheduled_task
-          list_scheduled_tasks
-        ]
-        allowed_tools = (allowed_tools + workflow_tools).uniq
+        Rails.logger.debug "⚙️ Workflow designer context active"
       end
     end
     
-    before_count = tools.length
-    
-    tools = tools.select do |tool|
-      name = tool[:name] || tool["name"]
-      allowed_tools.include?(name)
-    end
-    
-    if tools.length < before_count
-      Rails.logger.info "🏠 #{active_space.titleize} space: filtered to #{tools.length}/#{before_count} tools"
-    end
-    
+    # SPACES DEPRECATED: Return all tools without filtering
+    # ScoutLoadoutConfiguration.CORE_TOOLS controls what's available
     tools
   end
 
@@ -1301,10 +1296,20 @@ class ScoutGenericToolsServiceV2
     
     # CAP TOTAL TOOLS to prevent prompt bloat (fallback protection)
     # Target: ~25 tools = ~6,000 tokens for tool definitions
+    # CRITICAL: Prioritize ESSENTIAL_TOOLS so they're always included
     max_tools = TieredDiscoveryService::MAX_TOTAL_TOOLS
     if filtered.length > max_tools
       Rails.logger.info "🔧 Fallback tool cap: #{filtered.length} → #{max_tools}"
-      filtered = filtered.first(max_tools)
+      
+      # Separate essential tools from others
+      essential = filtered.select { |t| ESSENTIAL_TOOLS.include?(t["name"] || t[:name]) }
+      non_essential = filtered.reject { |t| ESSENTIAL_TOOLS.include?(t["name"] || t[:name]) }
+      
+      # Essential tools first, then fill remaining slots with non-essential
+      remaining_slots = max_tools - essential.length
+      filtered = essential + non_essential.first([remaining_slots, 0].max)
+      
+      Rails.logger.info "🔧 Essential tools preserved: #{essential.map { |t| t['name'] || t[:name] }.join(', ')}"
     end
     
     filtered
@@ -1381,6 +1386,8 @@ class ScoutGenericToolsServiceV2
     scout_personality = format_scout_personality_for_prompt
     scout_learnings = format_scout_learnings_for_prompt
     conversation_summaries = format_conversation_summaries_for_prompt
+    session_focus = format_session_focus_for_prompt
+    learned_behaviors = format_learned_behaviors_for_prompt
     ai_rulesets = format_ai_rulesets_for_prompt
 
     prompt = <<~PROMPT
@@ -1397,6 +1404,10 @@ class ScoutGenericToolsServiceV2
       #{scout_learnings}
       
       #{conversation_summaries}
+      
+      #{session_focus}
+      
+      #{learned_behaviors}
       
       #{format_current_canvas_for_prompt(current_canvas)}
 
@@ -2081,14 +2092,72 @@ class ScoutGenericToolsServiceV2
         # Pass fresh_start_at to filter out old messages from before "Fresh Start"
         memory = Scout::UnifiedMemory.new(user: @user, entity: @entity, fresh_start_at: @fresh_start_at)
         context = memory.build_context
-        return memory.format_for_prompt(context)
+        result = memory.format_for_prompt(context)
+        Rails.logger.info "📚 [Context] Loaded unified memory: #{result.length} chars" if result.present?
+        return result
       end
       
       # Fallback to session-based summaries
       return "" unless @session_id.present? && defined?(ConversationSummary)
-      ConversationSummary.for_prompt(session_id: @session_id, limit: 3)
+      
+      result = ConversationSummary.for_prompt(session_id: @session_id, limit: 3)
+      if result.present?
+        Rails.logger.info "📚 [Context] Loaded conversation summary: #{result.length} chars"
+      else
+        # Log if no summaries exist yet
+        count = ConversationSummary.for_session(@session_id).active.count rescue 0
+        Rails.logger.info "📚 [Context] No conversation summaries (count: #{count})"
+      end
+      result
     rescue => e
       Rails.logger.debug "Could not load conversation summaries: #{e.message}"
+      ""
+    end
+  end
+  
+  # Format session focus for the system prompt
+  # Shows what Amos is currently focused on (explicitly set, not inferred)
+  def format_session_focus_for_prompt
+    return "" unless @session_id.present?
+    
+    begin
+      focus = Amos::SessionFocus.new(
+        session_id: @session_id,
+        user: @user,
+        entity: @entity
+      )
+      
+      result = focus.format_for_prompt
+      Rails.logger.info "📌 [Context] Session focus: #{focus.get_focus&.dig(:type)} ##{focus.get_focus&.dig(:id)}" if result.present?
+      result
+    rescue => e
+      Rails.logger.debug "Could not load session focus: #{e.message}"
+      ""
+    end
+  end
+  
+  # Format learned behaviors for the system prompt
+  # These are corrections and preferences that persist across topics
+  def format_learned_behaviors_for_prompt
+    return "" unless @user.present? && @entity.present?
+    
+    begin
+      behaviors = Amos::LearnedBehaviors.new(user: @user, entity: @entity)
+      
+      # Try to load from database on first access
+      if $redis.get("amos:learned:#{@user.id}:#{@entity.id}:loaded").nil?
+        behaviors.load_from_database
+        $redis.setex("amos:learned:#{@user.id}:#{@entity.id}:loaded", 1.hour.to_i, "1")
+      end
+      
+      result = behaviors.format_for_prompt
+      if result.present?
+        count = behaviors.all_behaviors.values.flatten.count
+        Rails.logger.info "🧠 [Context] Loaded #{count} learned behaviors"
+      end
+      result
+    rescue => e
+      Rails.logger.debug "Could not load learned behaviors: #{e.message}"
       ""
     end
   end
@@ -2337,6 +2406,27 @@ class ScoutGenericToolsServiceV2
       begin
         args = parse_tool_arguments(tool_call[:arguments])
         Rails.logger.debug "Executing #{tool_call[:name]} with args: #{args.inspect}"
+        
+        # Send "working" indicator so user sees feedback during tool execution
+        friendly_name = get_friendly_tool_name(tool_call[:name])
+        Rails.logger.info "⚙️ [ScoutTools] Broadcasting working indicator: #{friendly_name}"
+        
+        # Broadcast directly via ScoutChannel (progress_callback may be nil in Amos flow)
+        if @session_id.present? && defined?(ScoutChannel)
+          ScoutChannel.broadcast_to(@session_id, {
+            type: "working",
+            message: friendly_name,
+            tool_name: tool_call[:name],
+            timestamp: Time.current.to_f
+          })
+        end
+        
+        # Also try progress_callback as fallback
+        progress_callback&.call({
+          type: "working",
+          message: friendly_name,
+          tool_name: tool_call[:name]
+        })
 
         # ═══════════════════════════════════════════════════════════════
         # INTEGRATION CONFIDENCE CHECK (Learn Before Act)
@@ -3184,16 +3274,26 @@ class ScoutGenericToolsServiceV2
   end
 
   def format_conversation_for_ai(history, current_message)
-    Rails.logger.info "🔍 format_conversation_for_ai called with #{history.length} history messages"
+    Rails.logger.info "📨 [Context] format_conversation_for_ai: received #{history.length} messages, current: #{current_message.to_s.truncate(50)}"
 
     messages = []
     
+    # TOPIC CHANGE DETECTION: Check if current message signals a new topic
+    # If so, don't inject stale working context
+    topic_changed = detect_topic_change(current_message, history)
+    if topic_changed
+      Rails.logger.info "🔄 Topic change detected - skipping stale context injection"
+      clear_working_context_from_memory
+    end
+    
     # OPTION 1: Extract important IDs/references BEFORE truncation
-    working_context = extract_working_context(history)
+    # But only if we're continuing on the same topic
+    working_context = topic_changed ? {} : extract_working_context(history)
     
     # OPTION 3: Also retrieve any previously stored context from memory
     # This helps when conversation continues after a gap
-    stored_context = retrieve_working_context_from_memory
+    # Skip if topic changed
+    stored_context = topic_changed ? {} : retrieve_working_context_from_memory
     if stored_context.any?
       # Merge stored context with current extraction
       stored_context.each do |key, values|
@@ -3211,12 +3311,15 @@ class ScoutGenericToolsServiceV2
     end
     
     # Store updated working context in memory for persistence
-    store_working_context_in_memory(working_context) if working_context.any?
+    # But only if topic hasn't changed and we have context
+    store_working_context_in_memory(working_context) if working_context.any? && !topic_changed
 
     # Add working context as first message if we have references from truncated messages
     # OR if we have stored context from a previous session
-    needs_context_injection = (working_context.any? && history.length > max_messages) || 
-                              (stored_context.any? && history.length < 4)
+    # BUT NOT if the topic has changed
+    needs_context_injection = !topic_changed && 
+                              ((working_context.any? && history.length > max_messages) || 
+                               (stored_context.any? && history.length < 4))
     
     if needs_context_injection && working_context.any?
       context_text = format_working_context(working_context)
@@ -3242,6 +3345,9 @@ class ScoutGenericToolsServiceV2
       # CRITICAL: Clean internal coordination markers from history
       # These should NEVER be seen by models as they cause confusion/repetition
       content = clean_internal_markers(content.to_s)
+      
+      # ALSO: Clean tool-heavy content that might bias the model toward "build mode"
+      content = clean_tool_mode_artifacts(content)
       
       # Skip messages that became empty after cleaning
       next if content.strip.empty?
@@ -3368,22 +3474,30 @@ class ScoutGenericToolsServiceV2
     return unless @user && @entity && @session_id
     
     begin
-      # Store in Redis with session scope for quick access
-      redis_key = "scout:working_context:#{@session_id}"
+      # SPLIT CONTEXT: Session Topic vs Learned Behaviors
+      # Session Topic: what user is working on (clears on topic change)
+      # Learned Behaviors: preferences, corrections (persists longer)
       
-      # Merge with existing context (don't overwrite)
-      existing = $redis.get(redis_key)
-      if existing
-        existing_context = JSON.parse(existing, symbolize_names: true) rescue {}
-        context.each do |key, values|
-          existing_context[key] ||= []
-          existing_context[key] = (existing_context[key] + values).uniq.first(10)
-        end
-        context = existing_context
+      session_topic_key = "scout:session_topic:#{@session_id}"
+      learned_key = "scout:learned:#{@user.id}:#{@entity.id}"
+      
+      # Session Topic: documents, landing_pages, campaigns currently in focus
+      session_topic = {
+        documents: context[:documents] || [],
+        landing_pages: context[:landing_pages] || [],
+        campaigns: context[:campaigns] || [],
+        contacts: context[:contacts] || []
+      }.reject { |_, v| v.empty? }
+      
+      # Store session topic (shorter TTL - 30 mins)
+      if session_topic.any?
+        $redis.setex(session_topic_key, 30.minutes.to_i, session_topic.to_json)
+        Rails.logger.info "📎 [Context] Stored session topic: #{session_topic.keys.join(', ')}"
       end
       
-      $redis.setex(redis_key, 1.hour.to_i, context.to_json)
-      Rails.logger.debug "📎 Stored working context in memory"
+      # Learned Behaviors would be stored separately (not implemented yet)
+      # This would include: user preferences, tool corrections, etc.
+      
     rescue => e
       Rails.logger.warn "Failed to store working context: #{e.message}"
     end
@@ -3394,15 +3508,128 @@ class ScoutGenericToolsServiceV2
     return {} unless @session_id
     
     begin
-      redis_key = "scout:working_context:#{@session_id}"
-      stored = $redis.get(redis_key)
-      return {} unless stored
+      # Retrieve Session Topic (what user is currently working on)
+      session_topic_key = "scout:session_topic:#{@session_id}"
+      stored = $redis.get(session_topic_key)
       
-      JSON.parse(stored, symbolize_names: true)
+      if stored.present?
+        context = JSON.parse(stored, symbolize_names: true)
+        Rails.logger.info "📎 [Context] Retrieved session topic: #{context.keys.join(', ')}" if context.any?
+        return context
+      end
+      
+      {}
     rescue => e
       Rails.logger.warn "Failed to retrieve working context: #{e.message}"
       {}
     end
+  end
+  
+  # Clear session topic from memory (called on topic change)
+  # Note: Learned behaviors are NOT cleared - they persist across topic changes
+  def clear_working_context_from_memory
+    return unless @session_id
+    
+    begin
+      session_topic_key = "scout:session_topic:#{@session_id}"
+      $redis.del(session_topic_key)
+      Rails.logger.info "🧹 [Context] Cleared session topic (topic change detected)"
+      # Note: learned behaviors at scout:learned:* are NOT cleared
+    rescue => e
+      Rails.logger.warn "Failed to clear working context: #{e.message}"
+    end
+  end
+  
+  # Detect if the user has switched to a completely new topic
+  # This prevents old context from polluting new conversations
+  # BUT also detects when they want to RETURN to a previous topic
+  def detect_topic_change(current_message, history)
+    return false if history.empty? || history.length < 3
+    
+    msg = current_message.to_s.downcase
+    
+    # Check for topic CHANGE signals FIRST (more specific)
+    # These take priority over "return to topic" patterns
+    topic_change_patterns = [
+      /\b(new\s+topic|different\s+question|switching\s+to|let'?s\s+talk\s+about)\b/i,
+      /\bforget\s+(about\s+)?(that|this|it)\b/i,  # "forget about that" = change topic
+      /\b(moving\s+on|on\s+another\s+note|changing\s+subjects?)\b/i,
+      /\b(actually|anyway),?\s*(what|can|could|tell\s+me|how)\b/i,  # "actually, what about..." = topic shift
+    ]
+    
+    if topic_change_patterns.any? { |p| msg.match?(p) }
+      Rails.logger.info "🔄 [Context] Topic change detected via explicit signal"
+      return true
+    end
+    
+    # THEN: Check if user wants to RETURN to a previous conversation
+    # In this case, we should KEEP the context, not clear it
+    return_to_topic_patterns = [
+      /\b(back\s+to|go\s+back|return\s+to|continue\s+(with|on)|where\s+were\s+we)\b/i,
+      /\b(regarding\s+that|on\s+that|the\s+plan|that\s+plan|the\s+landing\s*page|that\s+landing\s*page)\b/i,
+      /\b(let'?s\s+continue|pick\s+up|resume)\b/i,
+      /\b(that\s+(thing|project)|the\s+(thing|project)\s+(we|you))\b/i,
+    ]
+    
+    if return_to_topic_patterns.any? { |p| msg.match?(p) }
+      Rails.logger.info "🔙 User wants to return to previous topic - keeping context"
+      return false
+    end
+    
+    # Check for significant topic shift based on recent context
+    # If the last few messages were about building/creating something
+    # and now the user is asking a general question, clear context
+    last_messages = history.last(4).map { |m| (m["content"] || m[:content]).to_s.downcase }
+    
+    recent_was_build_mode = last_messages.any? do |content|
+      content.include?('landing page') || 
+      content.include?('plan_design') ||
+      content.include?('build_design') ||
+      content.include?("i've created") ||
+      content.include?("design plan")
+    end
+    
+    # Current message seems conversational/general (not about building)
+    # AND doesn't reference "it" or "that" (which could mean the thing we just built)
+    current_is_conversational = !msg.match?(/\b(create|build|make|design|landing\s*page|website|app)\b/i) &&
+                                !msg.match?(/\b(it|that|the\s+plan|this)\b.*\b(look|change|edit|update|modify)\b/i) &&
+                                (msg.match?(/\b(what|how|why|tell\s+me|explain|trends?|strategy|ideas?)\b/i))
+    
+    # Additional check: if the message is about a completely unrelated domain
+    # (e.g., asking about "macro trends" after discussing a landing page)
+    current_is_unrelated_domain = msg.match?(/\b(market|trends?|economy|industry|competition|strategy|analysis|research)\b/i) &&
+                                  !msg.match?(/\b(for\s+(the|my|our)|about\s+(the|my|our)|on\s+(the|my|our))\s*(landing|page|site|plan)/i)
+    
+    if recent_was_build_mode && (current_is_conversational || current_is_unrelated_domain)
+      Rails.logger.info "🔄 Detected shift from build mode to conversational/new domain"
+      return true
+    end
+    
+    false
+  end
+  
+  # Clean artifacts from tool/build mode that might bias the model
+  def clean_tool_mode_artifacts(content)
+    return content if content.blank?
+    
+    cleaned = content.dup
+    
+    # Remove plan_design/build_design tool references
+    cleaned.gsub!(/\b(plan_design|build_design)\s*\([^)]*\)/i, '[tool action]')
+    
+    # Remove "I've created a design plan" type messages that might bias toward build mode
+    cleaned.gsub!(/I'?ve\s+(created|generated|built)\s+(a\s+)?(design\s+)?plan\s+for[^.]*\./i, '')
+    
+    # Remove "Here's the plan" type references
+    cleaned.gsub!(/Here'?s\s+(the|your)\s+plan[^.]*\./i, '')
+    
+    # Remove section listings from plans
+    cleaned.gsub!(/Sections?:\s*\n(\s*-\s*[^\n]+\n?)+/i, '[plan sections]')
+    
+    # Remove JSON-like plan data that leaked into messages
+    cleaned.gsub!(/\{[^}]*"sections"[^}]*\}/m, '[plan data]')
+    
+    cleaned.strip
   end
   
   # Compress message content while preserving important IDs and references

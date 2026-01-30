@@ -289,6 +289,17 @@ Rails.application.routes.draw do
         end
       end
 
+      # Push notification device tokens for mobile app
+      resources :device_tokens, only: [:index, :create, :destroy] do
+        collection do
+          delete :logout_all
+          delete :by_token, action: :destroy_by_token
+        end
+        member do
+          patch :preferences, action: :update_preferences
+        end
+      end
+
       # Tasks for mobile app
       resources :tasks, only: [:index, :show, :create, :update, :destroy]
 
@@ -938,9 +949,12 @@ Rails.application.routes.draw do
   get "scout/load_workflow", to: "scout#load_workflow"
   post "scout/save_workflow", to: "scout#save_workflow"
   get "scout/workflow_node_registry", to: "scout#workflow_node_registry"
+  post "scout/create_design_plan", to: "scout#create_design_plan"
+  post "scout/save_design", to: "scout#save_design"
   get "scout/workflow_items", to: "scout#workflow_items"
   post "scout/compile_workflow", to: "scout#compile_workflow"
   post "scout/test_workflow", to: "scout#test_workflow"
+  post "scout/activate_workflow", to: "scout#activate_workflow"
 
   # Workflow webhooks - external services can trigger workflows
   post "webhooks/workflow/:path", to: "webhooks/workflows#receive", as: :workflow_webhook

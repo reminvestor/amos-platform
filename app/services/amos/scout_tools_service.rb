@@ -70,7 +70,7 @@ module Amos
             accumulated_response += chunk
           end
         },
-        @context.recent_messages(10),
+        @context.recent_messages(12),  # Full 12 message context window
         current_canvas  # Pass the canvas as the 4th parameter
       )
       
@@ -126,7 +126,7 @@ module Amos
       result = service.process_message_with_tools_streaming(
         query,
         ->(chunk) { yield chunk if block_given? },
-        @context.recent_messages(10),
+        @context.recent_messages(12),  # Full 12 message context window
         current_canvas  # Pass the canvas as the 4th parameter
       )
       

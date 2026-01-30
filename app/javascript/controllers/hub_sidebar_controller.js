@@ -44,6 +44,9 @@ export default class extends Controller {
     window.updatePendingTasksIndicator = this.updatePendingTask.bind(this)
     window.switchToAgentChat = this.switchToAgentChat.bind(this)
     
+    // Set up global work inbox badge handler
+    window.updateWorkInboxBadge = this.updateWorkInboxBadge.bind(this)
+    
     // Global reference for inline event handlers (answerQuestion, skipQuestion)
     window.hubSidebar = this
     window.hubSidebarController = this
@@ -714,6 +717,44 @@ export default class extends Controller {
     }
   }
   
+  // Load canvas with additional parameters from data-canvas-data attribute
+  loadCanvasWithParams(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    
+    const canvasType = event.currentTarget.dataset.canvas
+    let canvasData = {}
+    
+    // Parse canvas data from the data-canvas-data attribute
+    const canvasDataAttr = event.currentTarget.dataset.canvasData
+    if (canvasDataAttr) {
+      try {
+        canvasData = JSON.parse(canvasDataAttr)
+      } catch (e) {
+        console.warn("🌐 Failed to parse canvas data:", e)
+      }
+    }
+    
+    console.log("🌐 Loading canvas with params:", canvasType, canvasData)
+    
+    // Close user menu if open
+    const menu = document.getElementById('hub-user-menu')
+    menu?.classList.remove('open')
+    
+    // Use the scout controller to load the canvas with data
+    const scoutController = this.application?.getControllerForElementAndIdentifier(
+      document.getElementById('workspace'),
+      'scout'
+    )
+    
+    if (scoutController && typeof scoutController.loadScoutCanvas === 'function') {
+      scoutController.loadScoutCanvas(canvasType, canvasData)
+    } else {
+      // Fallback: AJAX call
+      this.loadCanvasViaAjax(canvasType, canvasData)
+    }
+  }
+  
   async loadCanvasViaAjax(canvasType, canvasData = {}) {
     try {
       console.log("🌐 Loading canvas via AJAX:", canvasType)
@@ -979,6 +1020,52 @@ export default class extends Controller {
   disconnect() {
     this.unsubscribeFromThread()
     document.removeEventListener('click', this.boundCloseUserMenu)
+  }
+  
+  // Update work inbox badge with new count
+  updateWorkInboxBadge(count, animate = true) {
+    const badge = document.getElementById('hub-work-inbox-badge')
+    if (!badge) return
+    
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : count
+      badge.style.display = 'flex'
+      
+      // Add pulse animation for new items
+      if (animate) {
+        badge.classList.remove('pulse')
+        // Force reflow to restart animation
+        void badge.offsetWidth
+        badge.classList.add('pulse')
+        
+        // Remove pulse class after animation
+        setTimeout(() => {
+          badge.classList.remove('pulse')
+        }, 500)
+      }
+      
+      console.log("📬 Work Inbox badge updated:", count)
+    } else {
+      badge.style.display = 'none'
+    }
+  }
+  
+  // Increment work inbox badge (called when new item arrives)
+  incrementWorkInboxBadge() {
+    const badge = document.getElementById('hub-work-inbox-badge')
+    if (!badge) return
+    
+    let currentCount = parseInt(badge.textContent) || 0
+    this.updateWorkInboxBadge(currentCount + 1, true)
+  }
+  
+  // Decrement work inbox badge (called when item is read)
+  decrementWorkInboxBadge() {
+    const badge = document.getElementById('hub-work-inbox-badge')
+    if (!badge) return
+    
+    let currentCount = parseInt(badge.textContent) || 0
+    this.updateWorkInboxBadge(Math.max(0, currentCount - 1), false)
   }
   
   // Subscribe to a thread for real-time updates

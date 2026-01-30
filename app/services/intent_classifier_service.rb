@@ -223,30 +223,95 @@ class IntentClassifierService
   end
   
   def build_mode_classification_prompt(message, history)
-    context = format_conversation_context(history)
+    # Only include recent conversational context, not tool/build artifacts
+    clean_history = filter_history_for_mode_classification(history)
+    context = format_conversation_context(clean_history)
+    
+    # Detect if user might be returning to a previous topic
+    is_returning = returning_to_previous_topic?(message)
+    
+    return_context = if is_returning
+      <<~RETURN
+        
+        NOTE: The user appears to be RETURNING to a previous conversation topic.
+        Look at the context to understand what they were working on before and classify accordingly.
+        "Back to the plan" after a tangent → likely CREATE (continuing to build)
+        "About that landing page" → likely CREATE or OPERATE (depending on verb)
+      RETURN
+    else
+      <<~FRESH
+        
+        IMPORTANT: Classify based on the CURRENT MESSAGE primarily. Prior conversation about building 
+        something does NOT mean the current message is also about building. Users frequently switch topics!
+        
+        TOPIC CHANGE EXAMPLES:
+        - User just built a landing page, now asks "what are macro trends?" → IDEATE (new topic)
+        - User was in CREATE mode, now asks "tell me about marketing strategies" → IDEATE (new topic)
+        - User just finished something, now asks "what else should I do?" → IDEATE (exploring)
+      FRESH
+    end
     
     <<~PROMPT
       You are classifying user intent into one of four modes. Respond with ONLY the mode name.
 
       MODES:
       - PERSONAL: Non-work topics, personal life, casual chat, jokes, recommendations, reminders about personal things
-      - IDEATE: User wants to BRAINSTORM or DISCUSS ideas. They're exploring, not ready to build yet. Key phrases: "what do you think", "give me ideas", "suggest", "explore options"
+      - IDEATE: User wants to BRAINSTORM or DISCUSS ideas. They're exploring, not ready to build yet. Key phrases: "what do you think", "give me ideas", "suggest", "explore options", "trends", "strategy", "tell me about"
       - OPERATE: User wants to DO something operational - query data, view things, manage contacts, run reports, execute tasks
-      - CREATE: User wants something BUILT - a landing page, email, workflow, app, module. They're ready to have it made.
+      - CREATE: User wants something BUILT - a landing page, email, workflow, app, module. They're ready to have it made, or CONTINUING work on something in progress.
 
       CRITICAL DISTINCTION:
       - "What do you think about building a landing page?" → IDEATE (discussing the idea)
       - "Build me a landing page" → CREATE (ready to build)
       - "Show me my landing pages" → OPERATE (viewing existing things)
       - "What should I have for dinner?" → PERSONAL (non-work)
-
-      CONVERSATION CONTEXT:
+      - "Tell me about market trends" → IDEATE (exploring ideas)
+      - "What are macro and micro trends?" → IDEATE (asking for information/ideas)
+      - "Back to the plan" → CREATE (returning to build something)
+      - "Continue with the landing page" → CREATE (returning to previous work)
+      #{return_context}
+      CONVERSATION CONTEXT (for reference only):
       #{context}
 
       CURRENT MESSAGE: "#{message.truncate(300)}"
 
       Respond with ONLY one word: PERSONAL, IDEATE, OPERATE, or CREATE
     PROMPT
+  end
+  
+  # Filter history to remove tool-heavy content that might bias classification
+  # BUT preserve context if user is referencing back to something
+  def filter_history_for_mode_classification(history)
+    return [] if history.blank?
+    
+    # Only keep last 4 messages (2 exchanges) to avoid stale context bias
+    recent = history.last(4)
+    
+    recent.map do |msg|
+      content = (msg[:content] || msg["content"]).to_s
+      
+      # Clean out tool-related content but keep the semantic meaning
+      # e.g., "I've created a design plan for your landing page" → "Working on your landing page"
+      content = content.gsub(/\b(plan_design|build_design|generate_landing_page)\s*\([^)]*\)/i, '[working on it]')
+      content = content.gsub(/I'?ve\s+(created|generated|built)\s+(a\s+)?(design\s+)?plan\s+for/i, 'Working on ')
+      content = content.gsub(/Here'?s\s+(the|your)\s+plan\s+for/i, 'Plan for ')
+      content = content.gsub(/\{[^}]*"sections"[^}]*\}/m, '[plan details]')
+      
+      { role: msg[:role] || msg["role"], content: content.strip }
+    end.reject { |m| m[:content].blank? }
+  end
+  
+  # Check if user is explicitly returning to a previous topic
+  def returning_to_previous_topic?(message)
+    msg = message.to_s.downcase
+    
+    return_patterns = [
+      /\b(back\s+to|go\s+back|return\s+to|continue\s+(with|on)|where\s+were\s+we)\b/i,
+      /\b(about\s+that|regarding\s+that|the\s+plan|that\s+plan)\b/i,
+      /\b(let'?s\s+continue|pick\s+up|resume)\b/i,
+    ]
+    
+    return_patterns.any? { |p| msg.match?(p) }
   end
   
   def parse_mode_response(response)

@@ -709,6 +709,12 @@ class ScoutController < ApplicationController
               content: complete_message,
               role: 'assistant'
             })
+          when 'working'
+            # Stream "working" indicator with animated dots during tool execution
+            tool_name = progress_data[:tool_name]
+            friendly_name = progress_data[:message] || get_friendly_tool_name(tool_name)
+            Rails.logger.info "⚙️ [Scout] Sending working indicator: #{friendly_name}"
+            stream_working_indicator(tool_name)
           when 'tool_start'
             # Show tool start as VISIBLE message with thinking indicator
             tool_name = progress_data[:tool_name] || progress_data[:name]
@@ -720,6 +726,8 @@ class ScoutController < ApplicationController
               content: tool_message,
               role: 'assistant'
             })
+            # Also send working indicator for animated dots
+            stream_working_indicator(tool_name)
           when 'tool_complete'
             # Tool complete - just log, don't spam chat
             tool_name = progress_data[:tool_name] || progress_data[:name]
@@ -1276,6 +1284,26 @@ class ScoutController < ApplicationController
         plan_data[:sections] = sections
       end
       
+      # Handle advanced section options (visual_description, content_guidance, image_style)
+      if refinements[:update_section_advanced].present?
+        advanced = refinements[:update_section_advanced].with_indifferent_access
+        section_name = advanced[:section_name]
+        section_idx = advanced[:section_idx].to_i
+        field = advanced[:field]
+        value = advanced[:value]
+        
+        sections = plan_data[:sections] || []
+        
+        # Try to find section by index first, then by name
+        if section_idx >= 0 && section_idx < sections.length
+          section = sections[section_idx].with_indifferent_access
+          section[field] = value
+          sections[section_idx] = section
+          plan_data[:sections] = sections
+          Rails.logger.info "Updated section #{section_name} advanced field: #{field} = #{value.truncate(50)}"
+        end
+      end
+      
       design_plan.update!(plan_data: plan_data)
       
       render json: { 
@@ -1427,12 +1455,19 @@ class ScoutController < ApplicationController
         # If plan_id is provided, load the plan data
         if canvas_data[:plan_id].present?
           design_plan = DesignPlan.find_by(id: canvas_data[:plan_id], entity_id: current_entity.id, user_id: current_user.id)
+          Rails.logger.info "[DesignStudio] 📂 Loading plan #{canvas_data[:plan_id]}: found=#{design_plan.present?}"
           if design_plan
+            # Merge plan data and include design_type at both levels for ERB compatibility
+            plan_data_with_type = (design_plan.plan_data || {}).merge('design_type' => design_plan.design_type)
+            Rails.logger.info "[DesignStudio] 📊 Plan #{design_plan.id}: design_type=#{design_plan.design_type}, sections=#{(design_plan.plan_data || {})['sections']&.length || 0}"
             canvas_data = canvas_data.merge(
-              plan: design_plan.plan_data,
+              plan: plan_data_with_type,
               plan_id: design_plan.id,
-              status: design_plan.status
+              status: design_plan.status,
+              design_type: design_plan.design_type  # Also at top level
             ).with_indifferent_access
+          else
+            Rails.logger.warn "[DesignStudio] ⚠️ Plan #{canvas_data[:plan_id]} not found for user #{current_user.id} entity #{current_entity.id}"
           end
         end
         
@@ -2878,6 +2913,87 @@ class ScoutController < ApplicationController
     }
   end
   
+  # Create a new design plan (for Design Studio auto-save)
+  def create_design_plan
+    design_type = params[:design_type] || 'landing_page'
+    name = params[:name] || "Untitled #{design_type.titleize}"
+    
+    # Handle sections - convert from ActionController::Parameters to plain hashes
+    raw_sections = params[:sections]
+    sections = if raw_sections.respond_to?(:to_unsafe_h)
+                 raw_sections.to_unsafe_h.values
+               elsif raw_sections.is_a?(Array)
+                 raw_sections.map { |s| s.respond_to?(:to_unsafe_h) ? s.to_unsafe_h : s.to_h rescue s }
+               else
+                 []
+               end
+    
+    plan = DesignPlan.create!(
+      entity: current_entity,
+      user: current_user,
+      name: name,
+      design_type: design_type,
+      status: 'draft',
+      plan_data: {
+        'name' => name,
+        'sections' => sections,
+        'color_scheme' => {},
+        'style' => 'modern'
+      },
+      data_sources: []
+    )
+    
+    Rails.logger.info "[DesignStudio] ✅ Created new design plan: #{plan.id} (#{design_type})"
+    
+    render json: {
+      success: true,
+      plan_id: plan.id,
+      message: "Design plan created"
+    }
+  rescue => e
+    Rails.logger.error "[DesignStudio] ❌ Failed to create design plan: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+  
+  # Save/update design plan (for Design Studio auto-save)
+  def save_design
+    plan_id = params[:plan_id]
+    
+    # Handle sections - convert from ActionController::Parameters to plain hashes
+    raw_sections = params[:sections]
+    sections = if raw_sections.respond_to?(:to_unsafe_h)
+                 raw_sections.to_unsafe_h.values
+               elsif raw_sections.is_a?(Array)
+                 raw_sections.map { |s| s.respond_to?(:to_unsafe_h) ? s.to_unsafe_h : s.to_h rescue s }
+               else
+                 []
+               end
+    
+    plan = DesignPlan.find_by(id: plan_id, entity: current_entity, user: current_user)
+    
+    unless plan
+      return render json: { success: false, error: 'Design plan not found' }, status: :not_found
+    end
+    
+    # Update the sections in plan_data
+    plan_data = plan.plan_data || {}
+    plan_data['sections'] = sections
+    
+    plan.update!(plan_data: plan_data, updated_at: Time.current)
+    
+    Rails.logger.info "[DesignStudio] 💾 Saved design plan: #{plan.id} with #{sections.length} sections"
+    
+    render json: {
+      success: true,
+      plan_id: plan.id,
+      section_count: sections.length,
+      message: "Design saved"
+    }
+  rescue => e
+    Rails.logger.error "[DesignStudio] ❌ Failed to save design: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+  
   # Compile a workflow from visual design to executable
   def compile_workflow
     workflow_id = params[:workflow_id]
@@ -2931,6 +3047,11 @@ class ScoutController < ApplicationController
     executor = Workflows::ExecutorService.new(execution)
     result = executor.execute!
 
+    # Mark as tested on success
+    if result[:success]
+      automation.update!(is_tested: true)
+    end
+
     render json: {
       success: result[:success],
       execution_id: execution.id,
@@ -2940,6 +3061,39 @@ class ScoutController < ApplicationController
     }
   rescue => e
     Rails.logger.error "Failed to test workflow: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
+  # Activate a workflow for production use
+  def activate_workflow
+    workflow_id = params[:workflow_id]
+    
+    automation = AutomationCode.find_by(id: workflow_id, entity: current_entity)
+    return render json: { success: false, error: 'Workflow not found' }, status: :not_found unless automation
+    return render json: { success: false, error: 'Workflow not compiled' }, status: :unprocessable_entity unless automation.is_compiled?
+    
+    # Check if it's been tested
+    unless automation.is_tested?
+      return render json: { 
+        success: false, 
+        error: 'Please test the workflow before activating' 
+      }, status: :unprocessable_entity
+    end
+    
+    begin
+      automation.activate!
+      
+      render json: {
+        success: true,
+        automation_id: automation.id,
+        status: automation.status,
+        message: "Workflow '#{automation.name}' is now active!"
+      }
+    rescue AutomationCode::InvalidTransition => e
+      render json: { success: false, error: e.message }, status: :unprocessable_entity
+    end
+  rescue => e
+    Rails.logger.error "Failed to activate workflow: #{e.message}"
     render json: { success: false, error: e.message }, status: :internal_server_error
   end
 
@@ -6229,6 +6383,11 @@ class ScoutController < ApplicationController
   end
   
     def process_through_amos(message, file_urls, canvas, model_preference)
+      Rails.logger.info "🚀 [Scout] process_through_amos called"
+      
+      # Stream "thinking" indicator IMMEDIATELY so user sees feedback right away
+      stream_thinking_indicator
+      
       # Build metadata for Amos - ensure canvas is a regular hash
       canvas_hash = if canvas.is_a?(ActionController::Parameters)
                       canvas.permit!.to_h
@@ -6241,15 +6400,22 @@ class ScoutController < ApplicationController
       # Get model mode from session (set by slider: auto/fast/balanced/powerful)
       current_model_mode = session[:model_mode]&.to_sym || :auto
       
+      # PERFORMANCE: Run quick mode classification here (regex-based, ~0ms)
+      # This avoids a duplicate LLM call - the preprocessor will use the same mode
+      # The preprocessor's LLM call will also include mode if regex fails
+      precomputed_mode = quick_classify_mode(message)
+      
       metadata = {
         attached_files: file_urls,
         canvas: canvas_hash,
         model_preference: model_preference, # nil when using slider mode
         model_mode: current_model_mode,     # The slider mode
-        voice_mode: params[:voice_mode] == 'true'
+        voice_mode: params[:voice_mode] == 'true',
+        precomputed_mode: precomputed_mode[:mode],           # Pre-classified mode
+        precomputed_mode_confidence: precomputed_mode[:confidence]
       }
       
-      Rails.logger.info "[Scout] Model selection - explicit: #{model_preference.inspect}, mode: #{current_model_mode}"
+      Rails.logger.info "[Scout] Model selection - explicit: #{model_preference.inspect}, mode: #{current_model_mode}, precomputed_mode: #{precomputed_mode[:mode]}"
     
     # Build enhanced message if files are attached
     enhanced_message = message
@@ -6281,6 +6447,43 @@ class ScoutController < ApplicationController
     Rails.logger.error "[Scout] Amos processing error: #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
     stream_update("❌ An error occurred while processing your request. Please try again.")
+  end
+  
+  # Quick regex-based mode classification (~0ms, no LLM call)
+  # Used to pre-classify mode before orchestrator to avoid duplicate LLM calls
+  def quick_classify_mode(message)
+    return { mode: :operate, confidence: :low } if message.blank?
+    
+    msg = message.to_s.strip.downcase
+    
+    # Personal patterns
+    personal_patterns = [
+      /\b(personal|my\s+life|not\s+work|off\s+work)\b/,
+      /\b(weather|time|date|news)\b/,
+      /\b(recipe|cooking|dinner|lunch|breakfast)\b/,
+      /\b(how\s+are\s+you|what'?s\s+up|hey\s+amos|hi\s+amos|hello)\b/
+    ]
+    return { mode: :personal, confidence: :high } if personal_patterns.any? { |p| msg.match?(p) }
+    
+    # Ideate patterns (brainstorming)
+    ideate_patterns = [
+      /\b(brainstorm|ideate|explore\s+ideas?|think\s+about)\b/,
+      /\b(what\s+do\s+you\s+think)\b/,
+      /\b(give\s+me\s+(some\s+)?ideas?)\b/,
+      /\b(help\s+me\s+(think|figure\s+out|decide|explore))\b/
+    ]
+    return { mode: :ideate, confidence: :high } if ideate_patterns.any? { |p| msg.match?(p) }
+    
+    # Create patterns
+    create_patterns = [
+      /\b(create|build|make|design|generate)\s+(me\s+)?(a|an|the|my)\s/,
+      /\b(new\s+)(landing\s*page|email|workflow|automation|app|module)/,
+      /\blet'?s\s+(build|create|make|design)\b/
+    ]
+    return { mode: :create, confidence: :high } if create_patterns.any? { |p| msg.match?(p) }
+    
+    # Default to operate
+    { mode: :operate, confidence: :medium }
   end
   
   def wait_for_amos_completion

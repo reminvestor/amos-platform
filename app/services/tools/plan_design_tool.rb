@@ -19,20 +19,27 @@ module Tools
       {
         name: 'plan_design',
         description: <<~DESC.strip,
-          Create a visual plan/blueprint for a landing page or website before building.
+          Create a visual plan/blueprint for landing pages, websites, apps, or canvases before building.
           
-          USE THIS when user wants to create a landing page or website. Shows a rich visual
+          USE THIS when user wants to create any visual interface. Shows a rich visual
           preview with sections, colors, CTA text that user can review and refine.
           
-          For LANDING PAGES: Single page with sections (hero, features, testimonials, etc.)
-          For WEBSITES: Multiple pages with navigation, each page has sections
+          Design Types:
+          - LANDING PAGE: Single page with sections (hero, features, testimonials, etc.)
+          - WEBSITE: Multiple pages with navigation, each page has sections
+          - APP: Website + data sources for dynamic content (external facing)
+          - CANVAS: Internal dashboard/tool with data sources (for Amos users)
+          
+          Apps and Canvases can bind to Data Sources (workflow outputs) for live data.
           
           Actions:
           - create: Generate new plan from description
-          - refine: Modify sections, colors, text, add/remove pages
-          - build: Generate actual HTML from plan
+          - refine: Modify sections, colors, text, add/remove pages, add data sources
+          - build: Generate actual output from plan
           - list: Show all draft design plans for the user
           - load: Load an existing plan into the design studio canvas
+          - add_data_source: Connect a workflow output to a named data source
+          - remove_data_source: Remove a data source binding
         DESC
         category: 'design',
         input_schema: {
@@ -44,12 +51,12 @@ module Tools
             },
             design_type: {
               type: 'string',
-              enum: %w[landing_page website],
-              description: 'landing_page = single page, website = multi-page with navigation'
+              enum: %w[landing_page website app canvas],
+              description: 'landing_page = single page, website = multi-page, app = website with data sources (external), canvas = internal dashboard/tool with data sources'
             },
             action: {
               type: 'string',
-              enum: %w[create refine build add_page remove_page list load],
+              enum: %w[create refine build add_page remove_page list load add_data_source remove_data_source],
               description: "Action to perform on the plan"
             },
             plan_id: {
@@ -87,8 +94,14 @@ module Tools
                       name: "cta" (or "hero", "features", etc.),
                       content: { headline: "New Headline", subheadline: "...", cta_text: "..." },
                       layout: "centered" (or "split", "3-column", "carousel"),
-                      background: "dark" (or "light", "gradient")
+                      background: "dark" (or "light", "gradient"),
+                      visual_description: "How the section should look - colors, animations, layout details",
+                      content_guidance: "What content to focus on - tone, messaging, key points",
+                      image_style: "photorealistic" | "illustration" | "abstract" | "3d-render" | "minimal" | "none"
                     }
+                    
+                    Use visual_description and content_guidance to capture user's detailed vision for each section.
+                    These guide the AI during the build phase.
                   DESC
                 }
               }
@@ -124,6 +137,22 @@ module Tools
                 offer: { type: 'string', description: 'What you are offering' },
                 price: { type: 'string' }
               }
+            },
+            # Data source configuration (for apps and canvases)
+            data_source: {
+              type: 'object',
+              description: 'Data source configuration for apps/canvases',
+              properties: {
+                name: { type: 'string', description: 'Unique name for this data source (e.g., "revenue_data")' },
+                type: { type: 'string', enum: %w[workflow integration model], description: 'Source type' },
+                source_id: { type: 'integer', description: 'ID of the workflow, integration action, or model' },
+                output_path: { type: 'string', description: 'JSONPath to data within the output (e.g., "data.results")' },
+                refresh_interval: { type: 'integer', description: 'Auto-refresh interval in seconds (0 = manual only)' }
+              }
+            },
+            data_source_name: {
+              type: 'string',
+              description: 'Name of data source to remove (for remove_data_source action)'
             }
           },
           required: ['description']
@@ -151,12 +180,32 @@ module Tools
         list_plans(args)
       when 'load'
         load_plan(args)
+      when 'add_data_source'
+        add_data_source(args)
+      when 'remove_data_source'
+        remove_data_source(args)
       else
         error_response("Unknown action: #{action}")
       end
     end
 
     private
+
+    # Set explicit session focus when working on a plan
+    def set_session_focus(design_plan)
+      return unless @context&.dig(:session_id)
+      
+      begin
+        focus = Amos::SessionFocus.new(
+          session_id: @context[:session_id],
+          user: user,
+          entity: entity
+        )
+        focus.focus_on_design_plan(design_plan)
+      rescue => e
+        Rails.logger.warn "[PlanDesignTool] Could not set session focus: #{e.message}"
+      end
+    end
 
     # ============================================
     # CREATE PLAN
@@ -211,6 +260,9 @@ module Tools
         plan_data: plan_data,
         status: 'draft'
       )
+
+      # Set explicit session focus on this plan
+      set_session_focus(design_plan)
 
       # Broadcast to canvas
       broadcast_plan_to_canvas(design_plan)
@@ -315,8 +367,15 @@ module Tools
           # Update layout if specified
           section['layout_hint'] = update_data[:layout] if update_data[:layout].present?
           section['background'] = update_data[:background] if update_data[:background].present?
+          
+          # Advanced section options - AI fills these based on user's description
+          section['visual_description'] = update_data[:visual_description] if update_data[:visual_description].present?
+          section['content_guidance'] = update_data[:content_guidance] if update_data[:content_guidance].present?
+          section['image_style'] = update_data[:image_style] if update_data[:image_style].present?
+          
           # Merge any other top-level updates
-          other_updates = update_data.except(:name, :section_name, :content, :layout, :background)
+          other_updates = update_data.except(:name, :section_name, :content, :layout, :background, 
+                                              :visual_description, :content_guidance, :image_style)
           section.merge!(other_updates.stringify_keys) if other_updates.any?
         end
       end
@@ -341,189 +400,14 @@ module Tools
     # ============================================
 
     def build_from_plan(args)
-      plan_id = get_arg(args, :plan_id)
-
-      design_plan = find_plan(plan_id)
-      return design_plan if design_plan.is_a?(Hash) # Error response
-
-      # Mark as building
-      design_plan.update!(status: 'building')
-
-      if design_plan.design_type == 'website'
-        build_website_from_plan(design_plan)
-      else
-        build_landing_page_from_plan(design_plan)
-      end
-    end
-    
-    def build_landing_page_from_plan(design_plan)
-      stream_progress("🏗️ Building landing page from your approved plan...", percentage: 10)
-      
-      # Generate the actual landing page using the existing tool
-      generate_tool = Tools::GenerateLandingPageTool.new(
+      # Delegate to the dedicated BuildDesignTool for separation of concerns
+      build_tool = Tools::BuildDesignTool.new(
         user: user,
         entity: entity,
         context: @context,
-        progress_callback: @progress_callback  # Pass progress callback to child tool
+        progress_callback: @progress_callback
       )
-
-      stream_progress("🎨 Preparing design with #{design_plan.plan_data['sections']&.length || 0} sections...", percentage: 20)
-
-      # Convert plan to generation args with actual content
-      plan_data = design_plan.plan_data
-      
-      # Get design reference URL if available
-      design_reference_url = plan_data['design_reference_url'] || plan_data['reference_image_url']
-      
-      generation_args = {
-        title: plan_data['name'],
-        description: design_plan.description,
-        design_style: plan_data['style'],
-        color_scheme: format_color_scheme(plan_data['color_scheme']),
-        # Pass section structure with actual content
-        key_details: {
-          sections: plan_data['sections']&.map { |s| s['name'] },
-          layout: plan_data['layout'],
-          section_content: plan_data['sections']&.map { |s| 
-            { 
-              name: s['name'], 
-              type: s['type'],
-              content: s['content'],  # Actual content from plan
-              background: s['background']
-            } 
-          },
-          typography: plan_data['typography'],
-          tone: plan_data['tone']
-        },
-        design_preferences: {
-          colors: plan_data['color_scheme'],
-          typography: plan_data['typography'],
-          style: plan_data['style']
-        },
-        # Include design reference screenshot if user uploaded one
-        design_reference_url: design_reference_url
-      }
-
-      result = generate_tool.execute(generation_args)
-
-      if result[:success]
-        design_plan.update!(
-          status: 'completed',
-          landing_page_id: result[:id]
-        )
-
-        success_response(
-          plan_id: design_plan.id,
-          landing_page_id: result[:id],
-          message: "🎉 Your landing page has been built! Opening editor...",
-          canvas_type: 'landing_page_editor',
-          canvas_data: { landing_page_id: result[:id] }
-        )
-      else
-        design_plan.update!(status: 'failed', error_message: result[:error])
-        error_response("Build failed: #{result[:error]}")
-      end
-    end
-    
-    def build_website_from_plan(design_plan)
-      plan_data = design_plan.plan_data
-      
-      # Create the Website
-      website = Website.create!(
-        entity: entity,
-        created_by: user,
-        name: plan_data['name'],
-        slug: plan_data['name'].to_s.parameterize,
-        description: design_plan.description,
-        theme: plan_data['style']&.parameterize || 'modern',
-        color_scheme: plan_data['color_scheme'],
-        typography: plan_data['typography'],
-        navigation: plan_data['navigation'],
-        status: 'draft'
-      )
-      
-      # Create each page
-      pages = plan_data['pages'] || []
-      pages.each_with_index do |page_plan, index|
-        # Generate HTML for this page
-        page_html = generate_website_page_html(page_plan, plan_data)
-        
-        website.website_pages.create!(
-          entity: entity,
-          name: page_plan['name'],
-          slug: page_plan['slug'] || page_plan['name'].parameterize,
-          template: determine_template(page_plan),
-          html_content: page_html,
-          sections: page_plan['sections'],
-          show_in_nav: true,
-          nav_order: index,
-          status: 'draft',
-          is_homepage: index == 0
-        )
-      end
-      
-      design_plan.update!(
-        status: 'completed',
-        website_id: website.id
-      )
-      
-      success_response(
-        plan_id: design_plan.id,
-        website_id: website.id,
-        page_count: pages.length,
-        message: "🎉 Your website with #{pages.length} pages has been built!",
-        canvas_type: 'website_editor',
-        canvas_data: { website_id: website.id }
-      )
-    rescue => e
-      Rails.logger.error "Build website failed: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
-      design_plan.update!(status: 'failed', error_message: e.message)
-      error_response("Build failed: #{e.message}")
-    end
-    
-    def generate_website_page_html(page_plan, global_plan)
-      # Use the GenerateLandingPageTool's AI to generate HTML for this page
-      ai_service = BedrockService.new
-      
-      system_prompt = <<~SYSTEM
-        Generate responsive HTML for a website page. Use Bootstrap 5 for layout.
-        The page should match this design specification and be part of a cohesive website.
-        
-        Color scheme: #{global_plan['color_scheme'].to_json}
-        Typography: #{global_plan['typography'].to_json}
-        Navigation: #{global_plan['navigation'].to_json}
-        Style: #{global_plan['style']}
-        
-        Return ONLY the HTML content (the <body> inner content), no doctype or html tags.
-        Include proper Bootstrap classes for responsiveness.
-        Use inline styles for colors matching the color scheme.
-      SYSTEM
-      
-      user_prompt = "Generate HTML for the '#{page_plan['name']}' page with these sections: #{page_plan['sections'].to_json}"
-      
-      messages = [{ role: 'user', content: user_prompt }]
-      response = ai_service.send_message(system_prompt, messages, model: 'qwen3-next-80b', max_tokens: 8000)
-      
-      # Clean response
-      html = response.to_s.strip
-      html = html.gsub(/```html\n?/, '').gsub(/```\n?/, '')
-      html
-    end
-    
-    def determine_template(page_plan)
-      sections = page_plan['sections']&.map { |s| s['type'] } || []
-      
-      if sections.include?('hero') && sections.include?('cta')
-        'landing'
-      elsif sections.include?('contact')
-        'form'
-      elsif sections.include?('gallery') || sections.include?('portfolio')
-        'list'
-      elsif page_plan['slug'] == 'index'
-        'homepage'
-      else
-        'content'
-      end
+      build_tool.execute(args)
     end
 
     # ============================================
@@ -598,7 +482,10 @@ module Tools
                 "cta_secondary": "Optional secondary button text"
               },
               "layout_hint": "centered | split | video-background",
-              "background": "gradient | dark | light | image"
+              "background": "gradient | dark | light | image",
+              "visual_description": "Optional - detailed visual style (e.g., 'dark gradient with floating particles, glassmorphism card, subtle animations')",
+              "content_guidance": "Optional - what content should convey (e.g., 'focus on ROI, use statistics, professional tone')",
+              "image_style": "photorealistic | illustration | abstract | 3d-render | minimal | none"
             },
             {
               "name": "features",
@@ -613,7 +500,10 @@ module Tools
                 ]
               },
               "layout_hint": "3-column | 2-column | icon-grid",
-              "background": "light | dark"
+              "background": "light | dark",
+              "visual_description": "Optional - detailed visual style",
+              "content_guidance": "Optional - content focus",
+              "image_style": "photorealistic | illustration | etc."
             }
           ],
           "special_elements": ["video", "testimonials-carousel", "countdown", "animation"],
@@ -621,6 +511,9 @@ module Tools
         }
         
         Include 4-6 sections typically: hero, features/benefits, social proof, pricing or CTA, contact/footer.
+        
+        IMPORTANT: When user describes specific visual effects, layouts, or content focus for sections,
+        capture that in visual_description and content_guidance fields. These guide the AI during build.
       SCHEMA
     end
     
@@ -659,7 +552,12 @@ module Tools
                     "subheadline": "Supporting text",
                     "cta_text": "Get Started",
                     "cta_link": "/contact"
-                  }
+                  },
+                  "layout_hint": "centered | split | video-background",
+                  "background": "gradient | dark | light",
+                  "visual_description": "Optional - detailed visual style",
+                  "content_guidance": "Optional - content focus",
+                  "image_style": "photorealistic | illustration | etc."
                 },
                 {
                   "name": "features",
@@ -686,6 +584,9 @@ module Tools
         }
         
         Include 3-6 pages typically: Home, About, Services/Products, Testimonials/Case Studies, Contact.
+        
+        IMPORTANT: When user describes specific visual effects or content focus for sections,
+        capture that in visual_description and content_guidance fields.
       SCHEMA
     end
     
@@ -828,6 +729,88 @@ module Tools
         remaining_pages: plan_data['pages']&.map { |p| p['name'] },
         canvas_type: 'design_studio',
         canvas_data: { plan_id: design_plan.id, plan: plan_data, status: 'draft' }
+      )
+    end
+
+    # ============================================
+    # DATA SOURCE MANAGEMENT
+    # ============================================
+
+    def add_data_source(args)
+      plan_id = get_arg(args, :plan_id)
+      data_source = get_arg(args, :data_source)
+      
+      unless plan_id
+        return error_response("plan_id is required to add a data source")
+      end
+      
+      unless data_source && data_source[:name] && data_source[:type]
+        return error_response("data_source must include at least 'name' and 'type'")
+      end
+      
+      design_plan = find_plan(plan_id)
+      return design_plan if design_plan.is_a?(Hash)
+      
+      # Validate design type supports data sources
+      unless design_plan.dynamic? || %w[app canvas].include?(design_plan.design_type)
+        return error_response("Data sources can only be added to apps and canvases. This is a #{design_plan.design_type}.")
+      end
+      
+      # Build data source config
+      source_config = {
+        name: data_source[:name],
+        type: data_source[:type],
+        source_id: data_source[:source_id],
+        output_path: data_source[:output_path] || 'data',
+        refresh_interval: data_source[:refresh_interval] || 0,
+        created_at: Time.current.iso8601
+      }
+      
+      # Check for duplicate name
+      if design_plan.find_data_source(source_config[:name])
+        return error_response("A data source named '#{source_config[:name]}' already exists. Use a different name or remove the existing one first.")
+      end
+      
+      design_plan.add_data_source!(source_config)
+      broadcast_plan_to_canvas(design_plan)
+      
+      success_response(
+        plan_id: design_plan.id,
+        message: "📊 Added data source '#{source_config[:name]}' (#{source_config[:type]})",
+        data_sources: design_plan.data_sources,
+        canvas_type: 'design_studio',
+        canvas_data: { plan_id: design_plan.id, plan: design_plan.plan_data, data_sources: design_plan.data_sources, status: 'draft' }
+      )
+    end
+
+    def remove_data_source(args)
+      plan_id = get_arg(args, :plan_id)
+      data_source_name = get_arg(args, :data_source_name)
+      
+      unless plan_id
+        return error_response("plan_id is required to remove a data source")
+      end
+      
+      unless data_source_name
+        return error_response("data_source_name is required")
+      end
+      
+      design_plan = find_plan(plan_id)
+      return design_plan if design_plan.is_a?(Hash)
+      
+      unless design_plan.find_data_source(data_source_name)
+        return error_response("Data source '#{data_source_name}' not found in this plan")
+      end
+      
+      design_plan.remove_data_source!(data_source_name)
+      broadcast_plan_to_canvas(design_plan)
+      
+      success_response(
+        plan_id: design_plan.id,
+        message: "🗑️ Removed data source '#{data_source_name}'",
+        data_sources: design_plan.data_sources,
+        canvas_type: 'design_studio',
+        canvas_data: { plan_id: design_plan.id, plan: design_plan.plan_data, data_sources: design_plan.data_sources, status: 'draft' }
       )
     end
 

@@ -147,6 +147,9 @@ SpaceDefinition.find_or_create_by!(slug: 'operations') do |space|
     analyze_dataset
     save_visualization
     list_operations
+    create_tool
+    update_tool
+    list_tools
   ]
   
   # Operations menu: Business items + collaboration

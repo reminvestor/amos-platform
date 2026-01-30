@@ -12,6 +12,10 @@
 <% landing_page = data[:landing_page] %>
 <% landing_page_id = data[:landing_page_id] %>
 <% is_website = website_id.present? || pages.any? %>
+<%# Template-based creation params %>
+<% create_type = data[:create_type] %>
+<% template_name = data[:template_name] %>
+<% template_id = data[:template_id] %>
 
 <%# Get design defaults from BusinessProfile %>
 <% 
@@ -24,16 +28,37 @@
 %>
 
 <% # Check if plan has actual content (not just empty hash) %>
-<% sections = plan[:sections] || [] %>
-<% has_plan = plan_id.present? || sections.any? %>
+<% # Website plans have sections inside pages, landing page plans have top-level sections %>
+<% plan_pages = plan[:pages] || plan['pages'] || [] %>
+<% sections = plan[:sections] || plan['sections'] || [] %>
+<% is_website_plan = plan_pages.any? %>
+<% # For websites, use first page's sections for display; for landing pages use top-level sections %>
+<% if is_website_plan && sections.empty? %>
+  <% first_page = plan_pages.first.respond_to?(:with_indifferent_access) ? plan_pages.first.with_indifferent_access : plan_pages.first %>
+  <% sections = first_page[:sections] || first_page['sections'] || [] %>
+<% end %>
+<% has_plan = plan_id.present? || sections.any? || plan_pages.any? %>
+<%# design_type priority: plan > canvas_data > create_type > default %>
+<%# design_type resolution: plan takes precedence, then explicit data keys, then create_type, finally default %>
+<% plan_design_type = plan[:design_type] || plan['design_type'] || data[:design_type] || data['design_type'] || create_type || 'landing_page' %>
+<% is_app_or_canvas = %w[app canvas].include?(plan_design_type.to_s) %>
+<% Rails.logger.info "🎨 Design Studio Canvas: plan_id=#{plan_id}, has_plan=#{has_plan}, is_website_plan=#{is_website_plan}, design_type=#{plan_design_type}, is_app_or_canvas=#{is_app_or_canvas}, create_type=#{create_type}, data_keys=#{data.keys.join(',')}" %>
 <% is_built = landing_page_id.present? || website_id.present? %>
 <div class="design-studio-canvas" id="design-studio-<%= SecureRandom.hex(4) %>"
      data-plan-id="<%= plan_id %>"
      data-website-id="<%= website_id %>"
      data-landing-page-id="<%= landing_page_id %>"
      data-is-website="<%= is_website %>"
+     data-is-website-plan="<%= is_website_plan %>"
+     data-design-type="<%= plan_design_type %>"
+     data-is-app-or-canvas="<%= is_app_or_canvas %>"
      data-has-plan="<%= has_plan %>"
-     data-is-built="<%= is_built %>">
+     data-is-built="<%= is_built %>"
+     data-create-type="<%= create_type %>"
+     data-template-name="<%= template_name %>"
+     data-template-id="<%= template_id %>"
+     data-plan-pages="<%= plan_pages.to_json.gsub('"', '&quot;') %>"
+     data-current-page-index="0">
   <div class="studio-layout">
     <%# Pages sidebar removed - now using tabs above canvas %>
     
@@ -49,8 +74,14 @@
       </div>
       
       <div class="component-categories">
-        <!-- Layout -->
-        <div class="component-category">
+        <%# 
+          COMPONENT VISIBILITY LOGIC:
+          - Landing Pages/Websites: Show Layout (Hero, Features, etc.), Typography, Elements, Navigation
+          - Apps/Canvases: Show Dashboard, Data Sources, Data Models, Forms, App Layout
+        %>
+        
+        <!-- Landing Page Layout (for landing pages/websites only) -->
+        <div class="component-category" id="landing-page-components" style="<%= is_app_or_canvas ? 'display: none;' : '' %>">
           <div class="category-header" data-toggle="collapse" data-target="layout">
             <i data-lucide="layout-grid" style="width: 14px; height: 14px;"></i>
             <span>Layout</span>
@@ -161,8 +192,8 @@
           </div>
         </div>
         
-        <!-- Typography -->
-        <div class="component-category">
+        <!-- Typography (for landing pages/websites only) -->
+        <div class="component-category" id="typography-category" style="<%= is_app_or_canvas ? 'display: none;' : '' %>">
           <div class="category-header" data-toggle="collapse" data-target="typography">
             <i data-lucide="type" style="width: 14px; height: 14px;"></i>
             <span>Typography</span>
@@ -188,8 +219,8 @@
           </div>
         </div>
         
-        <!-- Media -->
-        <div class="component-category">
+        <!-- Media (for landing pages/websites only) -->
+        <div class="component-category" id="media-category" style="<%= is_app_or_canvas ? 'display: none;' : '' %>">
           <div class="category-header" data-toggle="collapse" data-target="media">
             <i data-lucide="image" style="width: 14px; height: 14px;"></i>
             <span>Media</span>
@@ -211,9 +242,9 @@
           </div>
         </div>
         
-        <!-- Forms -->
-        <div class="component-category">
-          <div class="category-header" data-toggle="collapse" data-target="forms">
+        <!-- Landing Page Forms (for landing pages/websites only) -->
+        <div class="component-category" id="lp-forms-category" style="<%= is_app_or_canvas ? 'display: none;' : '' %>">
+          <div class="category-header" data-toggle="collapse" data-target="lpforms">
             <i data-lucide="text-cursor-input" style="width: 14px; height: 14px;"></i>
             <span>Forms</span>
             <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
@@ -238,8 +269,8 @@
           </div>
         </div>
         
-        <!-- Cards -->
-        <div class="component-category">
+        <!-- Cards (for landing pages/websites only) -->
+        <div class="component-category" id="cards-category" style="<%= is_app_or_canvas ? 'display: none;' : '' %>">
           <div class="category-header" data-toggle="collapse" data-target="cards">
             <i data-lucide="credit-card" style="width: 14px; height: 14px;"></i>
             <span>Cards</span>
@@ -265,8 +296,8 @@
           </div>
         </div>
         
-        <!-- Navigation -->
-        <div class="component-category">
+        <!-- Navigation (for landing pages/websites only) -->
+        <div class="component-category" id="navigation-category" style="<%= is_app_or_canvas ? 'display: none;' : '' %>">
           <div class="category-header" data-toggle="collapse" data-target="navigation">
             <i data-lucide="navigation" style="width: 14px; height: 14px;"></i>
             <span>Navigation</span>
@@ -280,6 +311,232 @@
             <div class="studio-component" draggable="true" data-component-type="footer" data-variant="default">
               <div class="component-preview"><i data-lucide="panel-bottom" style="width: 18px; height: 18px;"></i></div>
               <span>Footer</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- App Layout (for apps/canvases only) -->
+        <div class="component-category" id="app-layout-category" style="<%= is_app_or_canvas ? '' : 'display: none;' %>">
+          <div class="category-header" data-toggle="collapse" data-target="app-layout">
+            <i data-lucide="layout-dashboard" style="width: 14px; height: 14px;"></i>
+            <span>App Layout</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items show" id="category-app-layout">
+            <div class="component-group">
+              <div class="component-group-label">Structure</div>
+              <div class="studio-component" draggable="true" data-component-type="app_header" data-variant="default">
+                <div class="component-preview"><i data-lucide="panel-top" style="width: 18px; height: 18px;"></i></div>
+                <span>App Header</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="app_sidebar" data-variant="default">
+                <div class="component-preview"><i data-lucide="panel-left" style="width: 18px; height: 18px;"></i></div>
+                <span>Sidebar Nav</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="container" data-variant="default">
+                <div class="component-preview"><i data-lucide="square" style="width: 18px; height: 18px;"></i></div>
+                <span>Container</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="row" data-variant="default">
+                <div class="component-preview"><i data-lucide="rectangle-horizontal" style="width: 18px; height: 18px;"></i></div>
+                <span>Row</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="column" data-variant="default">
+                <div class="component-preview"><i data-lucide="rectangle-vertical" style="width: 18px; height: 18px;"></i></div>
+                <span>Column</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="grid" data-variant="default">
+                <div class="component-preview"><i data-lucide="grid-2x2" style="width: 18px; height: 18px;"></i></div>
+                <span>Grid</span>
+              </div>
+            </div>
+            <div class="component-group">
+              <div class="component-group-label">UI Elements</div>
+              <div class="studio-component" draggable="true" data-component-type="tabs" data-variant="default">
+                <div class="component-preview"><i data-lucide="layout-template" style="width: 18px; height: 18px;"></i></div>
+                <span>Tabs</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="accordion" data-variant="default">
+                <div class="component-preview"><i data-lucide="chevrons-down-up" style="width: 18px; height: 18px;"></i></div>
+                <span>Accordion</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="modal_trigger" data-variant="default">
+                <div class="component-preview"><i data-lucide="app-window" style="width: 18px; height: 18px;"></i></div>
+                <span>Modal Trigger</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="app_card" data-variant="default">
+                <div class="component-preview"><i data-lucide="credit-card" style="width: 18px; height: 18px;"></i></div>
+                <span>App Card</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Dashboard (for apps/canvases) -->
+        <div class="component-category" id="dashboard-components" style="<%= is_app_or_canvas ? '' : 'display: none;' %>">
+          <div class="category-header" data-toggle="collapse" data-target="dashboard">
+            <i data-lucide="bar-chart-3" style="width: 14px; height: 14px;"></i>
+            <span>Dashboard</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items show" id="category-dashboard">
+            <!-- KPIs & Metrics -->
+            <div class="component-group">
+              <div class="component-group-label">Metrics</div>
+              <div class="studio-component" draggable="true" data-component-type="kpi" data-variant="simple" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="hash" style="width: 18px; height: 18px;"></i></div>
+                <span>KPI Card</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="metric_card" data-variant="comparison" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="trending-up" style="width: 18px; height: 18px;"></i></div>
+                <span>Metric + Trend</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="stat_grid" data-variant="4-col" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="layout-grid" style="width: 18px; height: 18px;"></i></div>
+                <span>Stats Grid</span>
+              </div>
+            </div>
+            
+            <!-- Charts -->
+            <div class="component-group">
+              <div class="component-group-label">Charts</div>
+              <div class="studio-component" draggable="true" data-component-type="chart" data-variant="bar" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="bar-chart" style="width: 18px; height: 18px;"></i></div>
+                <span>Bar Chart</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="chart" data-variant="line" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="line-chart" style="width: 18px; height: 18px;"></i></div>
+                <span>Line Chart</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="chart" data-variant="pie" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="pie-chart" style="width: 18px; height: 18px;"></i></div>
+                <span>Pie Chart</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="chart" data-variant="area" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="area-chart" style="width: 18px; height: 18px;"></i></div>
+                <span>Area Chart</span>
+              </div>
+            </div>
+            
+            <!-- Tables -->
+            <div class="component-group">
+              <div class="component-group-label">Tables</div>
+              <div class="studio-component" draggable="true" data-component-type="table" data-variant="simple" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="table" style="width: 18px; height: 18px;"></i></div>
+                <span>Data Table</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="table" data-variant="sortable" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="arrow-up-down" style="width: 18px; height: 18px;"></i></div>
+                <span>Sortable Table</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="list_view" data-variant="cards" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="layout-list" style="width: 18px; height: 18px;"></i></div>
+                <span>List View</span>
+              </div>
+            </div>
+            
+            <!-- Dynamic Content -->
+            <div class="component-group">
+              <div class="component-group-label">Dynamic Content</div>
+              <div class="studio-component" draggable="true" data-component-type="data_loop" data-variant="default" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="repeat" style="width: 18px; height: 18px;"></i></div>
+                <span>Data Loop</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="conditional" data-variant="if" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="git-branch" style="width: 18px; height: 18px;"></i></div>
+                <span>Conditional</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="data_field" data-variant="text" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="database" style="width: 18px; height: 18px;"></i></div>
+                <span>Data Field</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Data Sources Panel (for apps/canvases) -->
+        <div class="component-category" id="data-sources-category" style="<%= is_app_or_canvas ? '' : 'display: none;' %>">
+          <div class="category-header" data-toggle="collapse" data-target="datasources">
+            <i data-lucide="database" style="width: 14px; height: 14px;"></i>
+            <span>Data Sources</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items show" id="category-datasources">
+            <div class="data-sources-list" id="bound-data-sources">
+              <div class="empty-state text-muted" style="font-size: 0.75rem; padding: 8px;">
+                No data sources connected
+              </div>
+            </div>
+            <button class="btn-add-data-source-sidebar" id="sidebar-add-data-source">
+              <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+              Connect Data Source
+            </button>
+          </div>
+        </div>
+        
+        <!-- Data Model Designer (for apps - define custom tables) -->
+        <div class="component-category" id="data-model-category" style="<%= is_app_or_canvas ? '' : 'display: none;' %>">
+          <div class="category-header" data-toggle="collapse" data-target="datamodels">
+            <i data-lucide="table-2" style="width: 14px; height: 14px;"></i>
+            <span>Data Models</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items show" id="category-datamodels">
+            <div class="data-models-list" id="app-data-models">
+              <% if defined?(current_entity) %>
+                <% app_modules = current_entity.app_modules.active.order(:name) rescue [] %>
+                <% if app_modules.any? %>
+                  <% app_modules.each do |app_mod| %>
+                    <div class="data-model-item" data-model-slug="<%= app_mod.slug %>" draggable="true">
+                      <i data-lucide="<%= app_mod.icon || 'database' %>" style="width: 14px; height: 14px;"></i>
+                      <span><%= app_mod.name %></span>
+                      <button class="btn-view-model" data-slug="<%= app_mod.slug %>" title="View fields">
+                        <i data-lucide="eye" style="width: 12px; height: 12px;"></i>
+                      </button>
+                    </div>
+                  <% end %>
+                <% else %>
+                  <div class="empty-state text-muted" style="font-size: 0.75rem; padding: 8px;">
+                    No data models yet
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+            <button class="btn-add-data-model" id="create-data-model-btn">
+              <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+              Create Data Model
+            </button>
+            <div class="data-model-hint text-muted" style="font-size: 0.7rem; padding: 4px 8px;">
+              Data models create custom database tables that your app can use
+            </div>
+          </div>
+        </div>
+        
+        <!-- Forms (for apps - CRUD forms) -->
+        <div class="component-category" id="forms-category" style="<%= is_app_or_canvas ? '' : 'display: none;' %>">
+          <div class="category-header" data-toggle="collapse" data-target="forms">
+            <i data-lucide="file-input" style="width: 14px; height: 14px;"></i>
+            <span>Forms</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items" id="category-forms">
+            <div class="component-group">
+              <div class="studio-component" draggable="true" data-component-type="form" data-variant="create" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="plus-square" style="width: 18px; height: 18px;"></i></div>
+                <span>Create Form</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="form" data-variant="edit" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="edit" style="width: 18px; height: 18px;"></i></div>
+                <span>Edit Form</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="form" data-variant="search" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="search" style="width: 18px; height: 18px;"></i></div>
+                <span>Search Form</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="form" data-variant="filter" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="filter" style="width: 18px; height: 18px;"></i></div>
+                <span>Filter Form</span>
+              </div>
             </div>
           </div>
         </div>
@@ -332,16 +589,45 @@
         </div>
       </div>
       
-      <!-- Pages Tab Bar (for multi-page sites/apps/canvases) -->
-      <div class="pages-tab-bar" id="pages-tab-bar" style="display: none;">
+      <!-- App Mode Switcher (for apps only) -->
+      <div class="app-mode-switcher" id="app-mode-switcher" style="<%= plan_design_type.to_s == 'app' ? '' : 'display: none;' %>">
+        <div class="app-mode-tabs">
+          <button class="app-mode-tab active" data-mode="pages" title="External-facing web pages">
+            <i data-lucide="layout-template" style="width: 14px; height: 14px;"></i>
+            <span>Pages</span>
+          </button>
+          <button class="app-mode-tab" data-mode="canvases" title="Internal dashboards and screens">
+            <i data-lucide="layout-dashboard" style="width: 14px; height: 14px;"></i>
+            <span>Canvases</span>
+          </button>
+          <button class="app-mode-tab" data-mode="data" title="Data models and sources">
+            <i data-lucide="database" style="width: 14px; height: 14px;"></i>
+            <span>Data</span>
+          </button>
+          <button class="app-mode-tab" data-mode="workflows" title="Automations and workflows">
+            <i data-lucide="git-branch" style="width: 14px; height: 14px;"></i>
+            <span>Workflows</span>
+          </button>
+        </div>
+        <div class="app-mode-info">
+          <span class="app-mode-hint" id="app-mode-hint">Design external-facing pages for your app</span>
+        </div>
+      </div>
+      
+      <!-- Pages Tab Bar (for multi-page websites and app pages mode) -->
+      <% display_pages = plan_pages.any? ? plan_pages : pages %>
+      <% show_tabs = is_website_plan || pages.any? %>
+      <div class="pages-tab-bar" id="pages-tab-bar" style="<%= show_tabs ? '' : 'display: none;' %>">
         <div class="pages-tabs" id="pages-tabs">
-          <% pages.each do |page| %>
-          <div class="page-tab <%= current_page&.dig('id') == page['id'] ? 'active' : '' %>" 
-               data-page-id="<%= page['id'] %>" 
-               data-page-slug="<%= page['slug'] %>">
-            <i data-lucide="<%= page['is_homepage'] ? 'home' : 'file' %>" style="width: 12px; height: 12px;"></i>
-            <span class="page-tab-name"><%= page['name'] || page['title'] %></span>
-            <button class="page-tab-close" title="Close page"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>
+          <% display_pages.each_with_index do |page, idx| %>
+          <% page = page.with_indifferent_access if page.respond_to?(:with_indifferent_access) %>
+          <% is_active = idx == 0 || current_page&.dig('slug') == page['slug'] %>
+          <div class="page-tab <%= is_active ? 'active' : '' %>" 
+               data-page-id="<%= page['id'] || idx %>" 
+               data-page-slug="<%= page['slug'] || page['name']&.parameterize %>"
+               data-page-index="<%= idx %>">
+            <i data-lucide="<%= idx == 0 ? 'home' : 'file' %>" style="width: 12px; height: 12px;"></i>
+            <span class="page-tab-name"><%= page['name'] || page['title'] || "Page #{idx + 1}" %></span>
           </div>
           <% end %>
         </div>
@@ -364,8 +650,81 @@
       
       <!-- Canvas -->
       <div class="studio-canvas-wrapper">
-        <div class="studio-canvas" id="studio-canvas">
-          <% if sections.any? %>
+        <div class="studio-canvas <%= is_app_or_canvas ? 'full-width-mode' : '' %>" id="studio-canvas">
+          <% if sections.any? && is_app_or_canvas %>
+            <!-- App/Canvas Dashboard View - Render saved components -->
+            <div class="blank-canvas-workspace" data-type="<%= plan_design_type %>">
+              <div class="canvas-toolbar-mini">
+                <span class="workspace-type-label">
+                  <i data-lucide="<%= plan_design_type == 'app' ? 'layers' : 'frame' %>"></i>
+                  <%= plan_design_type.humanize %>
+                </span>
+                <button class="btn-add-data-source" id="add-data-source-btn" title="Connect data source">
+                  <i data-lucide="database" style="width: 14px; height: 14px;"></i> Add Data Source
+                </button>
+              </div>
+              <div class="canvas-freeform-area" id="freeform-drop-zone">
+                <% sections.each_with_index do |section, idx| %>
+                  <% section = section.with_indifferent_access if section.is_a?(Hash) %>
+                  <% comp_type = section[:type] || 'component' %>
+                  <% comp_label = section[:label] || section[:name] || comp_type.humanize %>
+                  <% 
+                    # Icon mapping for component types
+                    icon_map = {
+                      'kpi' => 'hash', 'metric' => 'trending-up', 'chart' => 'bar-chart-3', 
+                      'line_chart' => 'line-chart', 'bar_chart' => 'bar-chart-2', 'pie_chart' => 'pie-chart',
+                      'table' => 'table-2', 'data_table' => 'table', 'form' => 'file-input',
+                      'app_header' => 'panel-top', 'app_sidebar' => 'panel-left', 
+                      'container' => 'square', 'row' => 'rows', 'column' => 'columns',
+                      'grid' => 'grid-3x3', 'tabs' => 'folder', 'accordion' => 'list',
+                      'modal_trigger' => 'square-plus', 'app_card' => 'credit-card'
+                    }
+                    comp_icon = icon_map[comp_type.to_s] || 'component'
+                    comp_icon = icon_map[comp_type.to_s] || 'component'
+                    # Grid positioning from saved data
+                    grid_col = section[:grid_col] || section[:gridCol]
+                    grid_row = section[:grid_row] || section[:gridRow]
+                    grid_style = [
+                      grid_col.present? ? "grid-column: #{grid_col}" : nil,
+                      grid_row.present? ? "grid-row: #{grid_row}" : nil
+                    ].compact.join('; ')
+                  %>
+                  <div class="dashboard-component grid-item component-<%= comp_type %>" 
+                       draggable="true"
+                       data-component-type="<%= comp_type %>"
+                       data-component-idx="<%= idx %>"
+                       data-title="<%= section[:title] || comp_label %>"
+                       data-value="<%= section[:value] %>"
+                       data-grid-col="<%= grid_col || 'auto' %>"
+                       data-grid-row="<%= grid_row || 'auto' %>"
+                       <%= grid_style.present? ? "style=\"#{grid_style}\"".html_safe : '' %>>
+                    <div class="component-header">
+                      <i data-lucide="<%= comp_icon %>" style="width: 14px; height: 14px;"></i>
+                      <span class="component-label"><%= section[:title] || comp_label %></span>
+                    </div>
+                    <div class="component-body">
+                      <div class="component-placeholder">
+                        <% if section[:value].present? %>
+                          <span class="component-value"><%= section[:value] %></span>
+                        <% else %>
+                          <span class="component-config-hint">Click to configure</span>
+                        <% end %>
+                      </div>
+                    </div>
+                    <div class="component-actions">
+                      <button class="component-action-btn" data-action="configure" title="Configure">
+                        <i data-lucide="settings" style="width: 12px;"></i>
+                      </button>
+                      <button class="component-action-btn" data-action="remove" title="Remove">
+                        <i data-lucide="trash-2" style="width: 12px;"></i>
+                      </button>
+                    </div>
+                    <div class="resize-handle" title="Drag to resize"></div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% elsif sections.any? %>
             <%
               # Merge plan colors with BusinessProfile defaults
               color_scheme = plan[:color_scheme] || {}
@@ -379,7 +738,7 @@
               body_font = typography[:body] || bp_typography[:body] || 'Inter'
               style = plan[:style] || bp_style || 'modern'
             %>
-            <!-- Plan Visualization with Rich Preview -->
+            <!-- Plan Visualization with Rich Preview (Landing Pages/Websites) -->
             <div class="plan-visualization-enhanced" 
                  data-plan-id="<%= plan_id %>">
               
@@ -734,6 +1093,61 @@
                           </p>
                         </div>
                       <% end %>
+                    </div>
+                    
+                    <!-- Advanced Section Details (expandable) -->
+                    <div class="section-advanced-toggle">
+                      <button class="btn-toggle-advanced" onclick="toggleAdvancedSection(<%= idx %>)" data-section-idx="<%= idx %>">
+                        <i data-lucide="sliders" style="width: 12px; height: 12px;"></i>
+                        <span>Advanced Options</span>
+                        <i data-lucide="chevron-down" class="toggle-chevron" style="width: 12px; height: 12px;"></i>
+                      </button>
+                    </div>
+                    <div class="section-advanced-options" id="advanced-<%= idx %>" style="display: none;">
+                      <div class="advanced-field">
+                        <label>
+                          <i data-lucide="palette" style="width: 12px; height: 12px;"></i>
+                          Visual Style Description
+                        </label>
+                        <textarea 
+                          class="advanced-input" 
+                          placeholder="Describe how this section should look (e.g., 'dark gradient background with floating elements, subtle animations on scroll, glassmorphism cards')"
+                          data-field="visual_description"
+                          data-section-idx="<%= idx %>"
+                          onblur="saveAdvancedField(<%= idx %>, 'visual_description', this.value)"
+                        ><%= section[:visual_description] || '' %></textarea>
+                      </div>
+                      <div class="advanced-field">
+                        <label>
+                          <i data-lucide="file-text" style="width: 12px; height: 12px;"></i>
+                          Content Guidance
+                        </label>
+                        <textarea 
+                          class="advanced-input" 
+                          placeholder="Describe what content should appear (e.g., 'Focus on ROI and time savings, use statistics and data points, professional tone')"
+                          data-field="content_guidance"
+                          data-section-idx="<%= idx %>"
+                          onblur="saveAdvancedField(<%= idx %>, 'content_guidance', this.value)"
+                        ><%= section[:content_guidance] || '' %></textarea>
+                      </div>
+                      <div class="advanced-field">
+                        <label>
+                          <i data-lucide="image" style="width: 12px; height: 12px;"></i>
+                          Image Style
+                        </label>
+                        <select class="advanced-select" 
+                                data-field="image_style"
+                                data-section-idx="<%= idx %>"
+                                onchange="saveAdvancedField(<%= idx %>, 'image_style', this.value)">
+                          <option value="" <%= section[:image_style].blank? ? 'selected' : '' %>>Auto (based on design style)</option>
+                          <option value="photorealistic" <%= section[:image_style] == 'photorealistic' ? 'selected' : '' %>>Photorealistic</option>
+                          <option value="illustration" <%= section[:image_style] == 'illustration' ? 'selected' : '' %>>Illustration</option>
+                          <option value="abstract" <%= section[:image_style] == 'abstract' ? 'selected' : '' %>>Abstract</option>
+                          <option value="3d-render" <%= section[:image_style] == '3d-render' ? 'selected' : '' %>>3D Render</option>
+                          <option value="minimal" <%= section[:image_style] == 'minimal' ? 'selected' : '' %>>Minimal/Icons</option>
+                          <option value="none" <%= section[:image_style] == 'none' ? 'selected' : '' %>>No Images</option>
+                        </select>
+                      </div>
                     </div>
                     
                     <!-- Layout Variant Selector (shown on hover/edit) -->
@@ -1154,6 +1568,130 @@
   .btn-publish.published { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); }
   
   /* Pages Tab Bar */
+  /* App Mode Switcher */
+  .app-mode-switcher {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16162a 100%);
+    border-bottom: 1px solid #2d2d44;
+  }
+  
+  .app-mode-tabs {
+    display: flex;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px;
+    border-radius: 10px;
+  }
+  
+  .app-mode-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: #6b6b8a;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .app-mode-tab:hover {
+    color: #a5a5c0;
+    background: rgba(99, 102, 241, 0.1);
+  }
+  
+  .app-mode-tab.active {
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+  
+  .app-mode-info {
+    display: flex;
+    align-items: center;
+  }
+  
+  .app-mode-hint {
+    font-size: 0.75rem;
+    color: #6b6b8a;
+    font-style: italic;
+  }
+  
+  /* Light mode - App Mode Switcher */
+  [data-theme="light"] .app-mode-switcher { background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); border-color: #e5e7eb; }
+  [data-theme="light"] .app-mode-tabs { background: rgba(0, 0, 0, 0.05); }
+  [data-theme="light"] .app-mode-tab { color: #6b7280; }
+  [data-theme="light"] .app-mode-tab:hover { color: #4b5563; background: rgba(99, 102, 241, 0.08); }
+  [data-theme="light"] .app-mode-tab.active { background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%); color: white; }
+  [data-theme="light"] .app-mode-hint { color: #9ca3af; }
+  
+  /* Mode Hint (in canvas empty state) */
+  .mode-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px;
+    text-align: center;
+    color: #6b6b8a;
+  }
+  
+  .mode-hint h4 {
+    font-size: 1.25rem;
+    color: #a5a5c0;
+    margin: 0;
+  }
+  
+  .mode-hint p {
+    font-size: 0.9rem;
+    max-width: 400px;
+    line-height: 1.5;
+    margin: 0;
+  }
+  
+  .mode-hint small {
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+  
+  .mode-hint button {
+    margin-top: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .mode-hint button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  }
+  
+  .mode-hint button + button {
+    margin-left: 8px;
+    background: transparent;
+    border: 1px solid #6366f1;
+    color: #818cf8;
+  }
+  
+  .mode-hint button + button:hover {
+    background: rgba(99, 102, 241, 0.1);
+  }
+  
+  [data-theme="light"] .mode-hint { color: #6b7280; }
+  [data-theme="light"] .mode-hint h4 { color: #1a1a2e; }
+  
   .pages-tab-bar {
     display: flex;
     align-items: center;
@@ -1268,6 +1806,296 @@
     margin: 0 auto;
     max-width: 1200px;
     overflow: hidden;
+  }
+  
+  /* For apps/canvases, fill the entire area without card styling */
+  .studio-canvas.full-width-mode {
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+  
+  .studio-canvas.full-width-mode .blank-canvas-workspace {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    margin: 0;
+  }
+  
+  .studio-canvas.full-width-mode .canvas-freeform-area {
+    background: #fff;
+    border-radius: 0 0 12px 12px;
+    min-height: calc(100vh - 300px);
+    padding: 20px;
+    
+    /* Grid-based layout */
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: minmax(80px, auto);
+    gap: 16px;
+    align-content: start;
+  }
+  
+  /* Grid cell background for visual guidance */
+  .studio-canvas.full-width-mode .canvas-freeform-area::before {
+    content: '';
+    position: absolute;
+    inset: 20px;
+    background: 
+      linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+    background-size: calc((100% - 40px) / 12) 80px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .canvas-freeform-area {
+    position: relative;
+  }
+  
+  /* Grid-positioned components */
+  .dashboard-component.grid-item {
+    position: relative;
+    z-index: 1;
+    cursor: move;
+  }
+  
+  /* Default grid spans */
+  .dashboard-component.component-kpi,
+  .dashboard-component.component-metric { grid-column: span 3; }
+  .dashboard-component.component-chart,
+  .dashboard-component.component-bar_chart,
+  .dashboard-component.component-line_chart { grid-column: span 6; grid-row: span 3; }
+  .dashboard-component.component-pie_chart { grid-column: span 4; grid-row: span 3; }
+  .dashboard-component.component-table,
+  .dashboard-component.component-data_table { grid-column: span 12; grid-row: span 4; }
+  .dashboard-component.component-app_header { grid-column: span 12; }
+  .dashboard-component.component-app_sidebar { grid-column: span 2; grid-row: span 6; }
+  .dashboard-component.component-container { grid-column: span 6; grid-row: span 2; }
+  .dashboard-component.component-row { grid-column: span 12; }
+  .dashboard-component.component-column { grid-column: span 4; grid-row: span 2; }
+  .dashboard-component.component-grid { grid-column: span 6; grid-row: span 3; }
+  .dashboard-component.component-form { grid-column: span 6; grid-row: span 4; }
+  .dashboard-component.component-tabs { grid-column: span 12; grid-row: span 2; }
+  .dashboard-component.component-accordion { grid-column: span 6; grid-row: span 3; }
+  .dashboard-component.component-modal_trigger { grid-column: span 2; }
+  .dashboard-component.component-app_card { grid-column: span 4; grid-row: span 2; }
+  
+  /* Resize handle */
+  .dashboard-component .resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .dashboard-component:hover .resize-handle {
+    opacity: 1;
+  }
+  
+  .resize-handle::before {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #6366f1;
+    border-bottom: 2px solid #6366f1;
+  }
+  
+  /* Drag placeholder */
+  .dashboard-component.dragging {
+    opacity: 0.5;
+    z-index: 1000;
+  }
+  
+  .grid-drop-indicator {
+    background: rgba(99, 102, 241, 0.1);
+    border: 2px dashed #6366f1;
+    border-radius: 8px;
+    pointer-events: none;
+  }
+  
+  .dashboard-component.resizing {
+    opacity: 0.8;
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+  }
+  
+  /* Grid item hover state */
+  .dashboard-component.grid-item:hover {
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
+    transform: translateY(-1px);
+  }
+  
+  /* Grid size indicators on resize */
+  .dashboard-component.resizing::after {
+    content: attr(data-grid-col) ' × ' attr(data-grid-row);
+    position: absolute;
+    bottom: 4px;
+    right: 24px;
+    font-size: 10px;
+    color: #6366f1;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  
+  /* Better component styling */
+  .dashboard-component.grid-item {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s, transform 0.2s;
+    min-height: 80px;
+  }
+  
+  .dashboard-component.grid-item .component-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f3f4f6;
+    margin-bottom: 12px;
+  }
+  
+  .dashboard-component.grid-item .component-label {
+    font-weight: 600;
+    font-size: 14px;
+    color: #374151;
+  }
+  
+  .dashboard-component.grid-item .component-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .dashboard-component.grid-item .component-placeholder {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 13px;
+  }
+  
+  .dashboard-component.grid-item .component-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding-top: 12px;
+    border-top: 1px solid #f3f4f6;
+    margin-top: auto;
+  }
+  
+  .dashboard-component.grid-item .component-action-btn {
+    padding: 6px 10px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .dashboard-component.grid-item .component-action-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+    border-color: #d1d5db;
+  }
+  
+  /* KPI/Metric specific styling */
+  .dashboard-component.component-kpi .component-value,
+  .dashboard-component.component-metric .component-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #111827;
+  }
+  
+  /* Chart placeholder */
+  .dashboard-component.component-chart .component-placeholder,
+  .dashboard-component.component-line_chart .component-placeholder,
+  .dashboard-component.component-bar_chart .component-placeholder,
+  .dashboard-component.component-pie_chart .component-placeholder {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border-radius: 8px;
+    width: 100%;
+    height: 100%;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Table placeholder */
+  .dashboard-component.component-table .component-placeholder,
+  .dashboard-component.component-data_table .component-placeholder {
+    background: repeating-linear-gradient(
+      0deg,
+      #f9fafb,
+      #f9fafb 32px,
+      #f3f4f6 32px,
+      #f3f4f6 33px
+    );
+    border-radius: 8px;
+    width: 100%;
+    min-height: 150px;
+  }
+  
+  /* Dark mode overrides for grid */
+  [data-theme="dark"] .dashboard-component.grid-item {
+    background: #1e1e2e;
+    border-color: #2d2d44;
+  }
+  
+  [data-theme="dark"] .dashboard-component.grid-item .component-header {
+    border-color: #2d2d44;
+  }
+  
+  [data-theme="dark"] .dashboard-component.grid-item .component-label {
+    color: #e2e8f0;
+  }
+  
+  [data-theme="dark"] .dashboard-component.grid-item .component-actions {
+    border-color: #2d2d44;
+  }
+  
+  [data-theme="dark"] .dashboard-component.grid-item .component-action-btn {
+    background: #252536;
+    border-color: #3d3d5c;
+    color: #8f8faa;
+  }
+  
+  [data-theme="dark"] .dashboard-component.grid-item:hover {
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.2);
+  }
+  
+  [data-theme="dark"] .dashboard-component.component-kpi .component-value,
+  [data-theme="dark"] .dashboard-component.component-metric .component-value {
+    color: #f3f4f6;
+  }
+  
+  .studio-canvas.full-width-mode .app-drop-hint {
+    width: 100%;
+    max-width: none;
+  }
+  
+  .studio-canvas.full-width-mode .app-placeholder-grid {
+    width: 100%;
+  }
+  
+  [data-theme="light"] .studio-canvas.full-width-mode .canvas-freeform-area {
+    background: #fff;
   }
   
   /* Empty State */
@@ -1476,6 +2304,330 @@
   .drop-hint span {
     font-size: 0.9rem;
   }
+  
+  /* App Placeholder Grid (for apps/canvases) */
+  .app-drop-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+    max-width: 800px;
+  }
+  
+  .app-placeholder-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    width: 100%;
+  }
+  
+  .app-placeholder-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px 16px;
+    border: 2px dashed rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    background: rgba(99, 102, 241, 0.02);
+    color: #6b6b8a;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .app-placeholder-item:hover {
+    border-color: rgba(99, 102, 241, 0.6);
+    background: rgba(99, 102, 241, 0.08);
+    color: #818cf8;
+  }
+  
+  .app-placeholder-item span {
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  
+  .app-placeholder-item small {
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+  
+  .app-placeholder-item.drag-over {
+    border-color: #6366f1;
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    transform: scale(1.02);
+  }
+  
+  .drop-hint-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #6b6b8a;
+    font-size: 0.85rem;
+    margin-top: 8px;
+  }
+  
+  /* Dashboard Components */
+  .dashboard-component {
+    display: flex;
+    flex-direction: column;
+    background: #1e1e38;
+    border: 1px solid #2d2d44;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+  }
+  
+  .dashboard-component:hover {
+    border-color: #6366f1;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  }
+  
+  .dashboard-component .component-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(99, 102, 241, 0.08);
+    border-bottom: 1px solid #2d2d44;
+    color: #a5a5c0;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  
+  .dashboard-component .component-body {
+    padding: 20px;
+    min-height: 60px;
+  }
+  
+  .dashboard-component .component-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    border: 2px dashed rgba(99, 102, 241, 0.2);
+    border-radius: 8px;
+    color: #6b6b8a;
+    font-size: 0.8rem;
+  }
+  
+  .dashboard-component .component-actions {
+    display: flex;
+    gap: 4px;
+    padding: 8px 14px;
+    background: rgba(0, 0, 0, 0.1);
+    border-top: 1px solid #2d2d44;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .dashboard-component:hover .component-actions {
+    opacity: 1;
+  }
+  
+  .dashboard-component .component-action-btn {
+    padding: 4px 8px;
+    background: transparent;
+    border: 1px solid #3d3d5c;
+    border-radius: 4px;
+    color: #8f8faa;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .dashboard-component .component-action-btn:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: #6366f1;
+    color: #818cf8;
+  }
+  
+  /* Component editing mode */
+  .dashboard-component.editing {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  }
+  
+  .component-config-form {
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  
+  .config-field {
+    margin-bottom: 10px;
+  }
+  
+  .config-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #8f8faa;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .config-field input,
+  .config-field select {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 13px;
+    background: #1e1e2e;
+    border: 1px solid #3d3d5c;
+    border-radius: 6px;
+    color: #e2e8f0;
+  }
+  
+  .config-field input:focus,
+  .config-field select:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  }
+  
+  .config-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  
+  .config-save-btn,
+  .config-cancel-btn {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .config-save-btn {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    color: white;
+  }
+  
+  .config-save-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  }
+  
+  .config-cancel-btn {
+    background: transparent;
+    border: 1px solid #3d3d5c;
+    color: #8f8faa;
+  }
+  
+  .config-cancel-btn:hover {
+    border-color: #6b7280;
+    color: #a5b4fc;
+  }
+  
+  .component-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #e2e8f0;
+  }
+  
+  /* Light mode config form */
+  [data-theme="light"] .component-config-form { background: rgba(0, 0, 0, 0.05); }
+  [data-theme="light"] .config-field input,
+  [data-theme="light"] .config-field select { 
+    background: white; 
+    border-color: #d1d5db; 
+    color: #1f2937; 
+  }
+  [data-theme="light"] .config-cancel-btn { border-color: #d1d5db; color: #6b7280; }
+  [data-theme="light"] .component-value { color: #1f2937; }
+  
+  /* KPI Component */
+  .dashboard-component.component-kpi .component-body,
+  .dashboard-component.component-metric .component-body {
+    text-align: center;
+  }
+  
+  /* Chart Component */
+  .dashboard-component.component-chart .component-body,
+  .dashboard-component.component-line_chart .component-body,
+  .dashboard-component.component-bar_chart .component-body,
+  .dashboard-component.component-pie_chart .component-body {
+    min-height: 120px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.02), rgba(129, 140, 248, 0.02));
+  }
+  
+  /* Table Component */
+  .dashboard-component.component-table .component-body {
+    padding: 12px;
+  }
+  
+  /* Save Indicator */
+  .save-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    color: #6b6b8a;
+    border-radius: 6px;
+    transition: opacity 0.3s;
+  }
+  
+  .save-indicator.success {
+    color: #10b981;
+  }
+  
+  .save-indicator.error {
+    color: #ef4444;
+  }
+  
+  .save-indicator.fade-out {
+    opacity: 0;
+  }
+  
+  .save-indicator .spin {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  /* Light mode - Dashboard Components */
+  [data-theme="light"] .dashboard-component { background: #fff; border-color: #e5e7eb; }
+  [data-theme="light"] .dashboard-component:hover { border-color: #6366f1; }
+  [data-theme="light"] .dashboard-component .component-header { background: rgba(99, 102, 241, 0.05); border-color: #e5e7eb; color: #4b5563; }
+  [data-theme="light"] .dashboard-component .component-body { }
+  [data-theme="light"] .dashboard-component .component-placeholder { border-color: rgba(99, 102, 241, 0.15); color: #9ca3af; }
+  [data-theme="light"] .dashboard-component .component-actions { background: #f9fafb; border-color: #e5e7eb; }
+  [data-theme="light"] .dashboard-component .component-action-btn { border-color: #d1d5db; color: #6b7280; }
+  [data-theme="light"] .save-indicator { color: #9ca3af; }
+  [data-theme="light"] .save-indicator.success { color: #059669; }
+  [data-theme="light"] .save-indicator.error { color: #dc2626; }
+  
+  /* Light mode - App Placeholders */
+  [data-theme="light"] .app-placeholder-item { 
+    border-color: rgba(99, 102, 241, 0.2); 
+    background: rgba(99, 102, 241, 0.02); 
+    color: #6b7280; 
+  }
+  [data-theme="light"] .app-placeholder-item:hover { 
+    border-color: #6366f1; 
+    background: rgba(99, 102, 241, 0.08); 
+    color: #6366f1; 
+  }
+  [data-theme="light"] .app-placeholder-item.drag-over { 
+    border-color: #6366f1; 
+    background: rgba(99, 102, 241, 0.12); 
+    color: #6366f1; 
+  }
+  [data-theme="light"] .drop-hint-text { color: #9ca3af; }
   
   #freeform-drop-zone.drag-over {
     background: rgba(99, 102, 241, 0.05);
@@ -2099,6 +3251,105 @@
   
   .section-action-btn:hover { color: var(--bs-primary); background: rgba(99, 102, 241, 0.1); }
   .section-action-btn:last-child:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+  
+  /* Advanced Section Options */
+  .section-advanced-toggle {
+    padding: 6px 12px;
+    border-top: 1px dashed var(--bs-border-color);
+    background: var(--bs-tertiary-bg);
+  }
+  
+  .btn-toggle-advanced {
+    background: none;
+    border: none;
+    color: var(--bs-secondary-color);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    width: 100%;
+    padding: 4px 0;
+    transition: color 0.2s;
+  }
+  
+  .btn-toggle-advanced:hover {
+    color: var(--bs-primary);
+  }
+  
+  .btn-toggle-advanced .toggle-chevron {
+    margin-left: auto;
+    transition: transform 0.2s;
+  }
+  
+  .btn-toggle-advanced.expanded .toggle-chevron {
+    transform: rotate(180deg);
+  }
+  
+  .section-advanced-options {
+    padding: 12px;
+    background: var(--bs-tertiary-bg);
+    border-top: 1px solid var(--bs-border-color);
+  }
+  
+  .advanced-field {
+    margin-bottom: 12px;
+  }
+  
+  .advanced-field:last-child {
+    margin-bottom: 0;
+  }
+  
+  .advanced-field label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--bs-secondary-color);
+    margin-bottom: 6px;
+  }
+  
+  .advanced-input {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 12px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    resize: vertical;
+    min-height: 60px;
+    font-family: inherit;
+  }
+  
+  .advanced-input:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+  }
+  
+  .advanced-input::placeholder {
+    color: var(--bs-secondary-color);
+    opacity: 0.7;
+  }
+  
+  .advanced-select {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 12px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    cursor: pointer;
+  }
+  
+  .advanced-select:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+  }
   
   /* Section Content Preview */
   .section-card-preview {
@@ -2751,6 +4002,155 @@
   
   /* Light mode - Add Data Source Button */
   [data-theme="light"] .btn-add-data-source { border-color: #d1d5db; background: rgba(16, 185, 129, 0.05); }
+  
+  /* Data Sources Sidebar Button */
+  .btn-add-data-source-sidebar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 8px 12px;
+    margin-top: 8px;
+    border: 1px dashed #3d3d5c;
+    border-radius: 6px;
+    background: transparent;
+    color: #10b981;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .btn-add-data-source-sidebar:hover {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: #10b981;
+  }
+  
+  [data-theme="light"] .btn-add-data-source-sidebar { border-color: #d1d5db; }
+  [data-theme="light"] .btn-add-data-source-sidebar:hover { background: rgba(16, 185, 129, 0.1); border-color: #10b981; }
+  
+  /* Data Source Item */
+  .data-source-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: #10b981;
+  }
+  
+  .data-source-item .ds-name {
+    flex: 1;
+    font-weight: 500;
+  }
+  
+  .data-source-item .ds-type {
+    font-size: 0.65rem;
+    color: #6b6b8a;
+    text-transform: uppercase;
+  }
+  
+  .data-source-item .ds-remove {
+    opacity: 0.5;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  
+  .data-source-item .ds-remove:hover {
+    opacity: 1;
+    color: #ef4444;
+  }
+  
+  /* Data Model Item */
+  .data-model-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: #8b5cf6;
+    cursor: grab;
+    transition: all 0.15s;
+  }
+  
+  .data-model-item:hover {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.4);
+  }
+  
+  .data-model-item span {
+    flex: 1;
+    font-weight: 500;
+  }
+  
+  .data-model-item .btn-view-model {
+    padding: 2px 4px;
+    background: transparent;
+    border: none;
+    color: #8b5cf6;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+  }
+  
+  .data-model-item .btn-view-model:hover {
+    opacity: 1;
+  }
+  
+  .btn-add-data-model {
+    width: 100%;
+    padding: 8px;
+    margin-top: 4px;
+    border: 1px dashed rgba(139, 92, 246, 0.3);
+    border-radius: 6px;
+    background: transparent;
+    color: #8b5cf6;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  
+  .btn-add-data-model:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.5);
+  }
+  
+  .data-model-hint {
+    font-size: 0.7rem;
+    color: #6b6b8a;
+    padding: 4px 8px;
+  }
+  
+  /* Light mode data model styling */
+  [data-theme="light"] .data-model-item { background: rgba(139, 92, 246, 0.05); border-color: rgba(139, 92, 246, 0.15); }
+  [data-theme="light"] .btn-add-data-model { border-color: rgba(139, 92, 246, 0.2); }
+
+  /* Dashboard component indicator */
+  .studio-component[data-requires-data="true"]::after {
+    content: '⚡';
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 0.6rem;
+  }
+  
+  .studio-component[data-requires-data="true"] {
+    position: relative;
+  }
 </style>
 
 <script>
@@ -2807,6 +4207,67 @@ function removeSection(sectionIdx) {
       });
     }
   }
+}
+
+// Toggle advanced options panel for a section
+function toggleAdvancedSection(sectionIdx) {
+  var advancedPanel = document.getElementById('advanced-' + sectionIdx);
+  var toggleBtn = document.querySelector('.btn-toggle-advanced[data-section-idx="' + sectionIdx + '"]');
+  
+  if (!advancedPanel) return;
+  
+  var isVisible = advancedPanel.style.display !== 'none';
+  
+  if (isVisible) {
+    advancedPanel.style.display = 'none';
+    if (toggleBtn) toggleBtn.classList.remove('expanded');
+  } else {
+    advancedPanel.style.display = 'block';
+    if (toggleBtn) toggleBtn.classList.add('expanded');
+  }
+  
+  // Re-initialize lucide icons for the newly shown content
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Save advanced field value to plan
+function saveAdvancedField(sectionIdx, fieldName, value) {
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  
+  if (!planId) {
+    console.log('No plan ID found for advanced field save');
+    return;
+  }
+  
+  // Get section name
+  var sectionCard = document.querySelector('.plan-section-card[data-section-idx="' + sectionIdx + '"]');
+  var sectionName = sectionCard ? sectionCard.dataset.sectionName : null;
+  
+  if (!sectionName) {
+    console.log('No section name found');
+    return;
+  }
+  
+  // Build the update payload
+  var refinement = {
+    update_section_advanced: {
+      section_name: sectionName,
+      section_idx: sectionIdx,
+      field: fieldName,
+      value: value
+    }
+  };
+  
+  // Visual feedback
+  var field = document.querySelector('[data-field="' + fieldName + '"][data-section-idx="' + sectionIdx + '"]');
+  if (field) {
+    field.style.borderColor = '#10b981';
+    setTimeout(function() { field.style.borderColor = ''; }, 1000);
+  }
+  
+  // Save to backend
+  updatePlanDirectly(planId, refinement);
 }
 
 function changeSectionLayout(sectionIdx, newLayout) {
@@ -3659,7 +5120,102 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   });
+  
+  // Page tab click handler for multi-page websites
+  document.querySelectorAll('.page-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var pageIndex = parseInt(this.dataset.pageIndex, 10);
+      var container = document.querySelector('.design-studio-canvas');
+      if (!container) return;
+      
+      // Update active tab
+      document.querySelectorAll('.page-tab').forEach(function(t) { t.classList.remove('active'); });
+      this.classList.add('active');
+      
+      // Get pages from data attribute
+      try {
+        var pagesJson = container.dataset.planPages;
+        if (!pagesJson) return;
+        var pages = JSON.parse(pagesJson);
+        var page = pages[pageIndex];
+        if (!page) return;
+        
+        container.dataset.currentPageIndex = pageIndex.toString();
+        
+        // Re-render sections for this page
+        renderPageSections(page, pageIndex);
+      } catch (err) {
+        console.error('Page switch error:', err);
+      }
+    });
+  });
 });
+
+// Render sections for a specific page (website plans)
+function renderPageSections(page, pageIndex) {
+  var sectionsList = document.querySelector('.plan-sections-list');
+  if (!sectionsList) return;
+  
+  var sections = page.sections || [];
+  var container = document.querySelector('.design-studio-canvas');
+  var planId = container ? container.dataset.planId : null;
+  
+  // Clear existing sections
+  sectionsList.innerHTML = '';
+  
+  // Render each section
+  sections.forEach(function(section, idx) {
+    var cardHtml = buildSectionCard(section, idx, pageIndex);
+    sectionsList.insertAdjacentHTML('beforeend', cardHtml);
+  });
+  
+  // Re-initialize lucide icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  
+  // Re-attach drag handlers
+  initSectionDragDrop();
+}
+
+// Initialize drag-drop handlers (already set up via event delegation, but called after dynamic content changes)
+function initSectionDragDrop() {
+  // Drag-drop is handled via event delegation on .design-studio-canvas, no re-init needed
+  console.log('📋 Section drag-drop ready (event delegation)');
+}
+
+// Build HTML for a section card
+function buildSectionCard(section, idx, pageIndex) {
+  var sectionType = section.type || section.name || 'unknown';
+  var sectionName = section.name || sectionType;
+  var layoutHint = section.layout_hint || 'default';
+  var background = section.background || 'light';
+  var content = section.content || {};
+  
+  var pagePrefix = pageIndex !== undefined ? ('p' + pageIndex + '_') : '';
+  var sectionId = pagePrefix + 'section_' + idx;
+  
+  var html = '<div class="plan-section-card" data-section-idx="' + idx + '" ' +
+    'data-section-type="' + sectionType + '" ' +
+    'data-section-name="' + sectionName + '" ' +
+    'data-page-index="' + (pageIndex || 0) + '" ' +
+    'data-layout="' + layoutHint + '" ' +
+    'data-background="' + background + '" draggable="true">';
+  
+  html += '<div class="section-card-header">' +
+    '<div class="section-drag-handle"><i data-lucide="grip-vertical" style="width: 14px; height: 14px;"></i></div>' +
+    '<span class="section-number">' + (idx + 1) + '</span>' +
+    '<span class="section-type-badge">' + sectionType + '</span>' +
+    '<span class="section-layout-badge"><i data-lucide="layout" style="width: 12px; height: 12px;"></i> ' + layoutHint + '</span>' +
+    '<span class="section-bg-badge ' + background + '">' + background + '</span>' +
+    '<div class="section-actions">' +
+    '<button class="btn-section-remove" onclick="removeSection(' + idx + ', \'' + sectionName + '\')" title="Remove section">' +
+    '<i data-lucide="trash-2" style="width: 12px; height: 12px;"></i></button>' +
+    '</div></div>';
+  
+  html += '<div class="section-content-body">' + getSectionContentHtml(sectionType, content, idx) + '</div>';
+  html += '</div>';
+  
+  return html;
+}
 
 (function() {
   var container = document.querySelector('.design-studio-canvas');
@@ -3960,8 +5516,19 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       this.classList.remove('drag-over');
       
+      // Only handle component drops (application/json), ignore section reorders (text/plain with index)
+      var jsonData = e.dataTransfer.getData('application/json');
+      if (!jsonData) {
+        // Not a component drop - might be section reorder or data model
+        return;
+      }
+      
       try {
-        var data = JSON.parse(e.dataTransfer.getData('application/json'));
+        var data = JSON.parse(jsonData);
+        // Ensure it's a component object with a type
+        if (!data || typeof data !== 'object' || !data.type) {
+          return;
+        }
         console.log('🎨 Drop component:', data);
         
         // Remove empty state if present
@@ -3978,20 +5545,80 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Add component to canvas
   function addComponentToCanvas(data) {
-    var wrapper = canvas.querySelector('.plan-visualization') || canvas;
     var componentHtml = getComponentHtml(data);
-    wrapper.insertAdjacentHTML('beforeend', componentHtml);
+    
+    // Try to find the appropriate container based on design type
+    var designType = container.dataset.designType || container.dataset.createType || 'landing_page';
+    var isAppOrCanvas = (designType === 'app' || designType === 'canvas');
+    
+    var targetZone;
+    if (isAppOrCanvas) {
+      // For apps/canvases, target the freeform drop zone
+      targetZone = canvas.querySelector('#freeform-drop-zone') || canvas.querySelector('.canvas-freeform-area');
+      if (targetZone) {
+        // Remove the placeholder hint if present
+        var hint = targetZone.querySelector('.app-drop-hint');
+        if (hint) hint.remove();
+      }
+    } else {
+      // For landing pages/websites, target the sections area
+      targetZone = canvas.querySelector('#sections-drop-zone') || canvas.querySelector('.page-sections-area');
+    }
+    
+    // Fallback to canvas or plan-visualization wrapper
+    if (!targetZone) {
+      targetZone = canvas.querySelector('.plan-visualization') || canvas.querySelector('.blank-canvas-workspace') || canvas;
+    }
+    
+    targetZone.insertAdjacentHTML('beforeend', componentHtml);
     if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Schedule auto-save
+    scheduleAutoSave();
   }
   
-  // Generate component HTML
+  // Generate component HTML based on design type
   function getComponentHtml(data) {
-    var type = data.type;
-    var variant = data.variant;
+    var type = data.type || '';
+    var variant = data.variant || type;
+    var label = data.label || variant;
+    var designType = container.dataset.designType || container.dataset.createType || 'landing_page';
+    var isAppOrCanvas = (designType === 'app' || designType === 'canvas');
     
-    // Simple preview sections for plan mode
-    return '<div class="preview-section section-' + variant + '" draggable="true" data-section="' + variant + '">' +
-      '<div class="section-label">' + data.label + '</div>' +
+    // Debug logging
+    console.log('🎯 getComponentHtml:', {
+      type: type,
+      designType: designType,
+      isAppOrCanvas: isAppOrCanvas,
+      datasetDesignType: container.dataset.designType,
+      datasetCreateType: container.dataset.createType
+    });
+    
+    // List of app/canvas component types (by component type, not category)
+    var appComponentTypes = [
+      // App Layout
+      'app_header', 'app_sidebar', 'sidebar_nav', 'container', 'row', 'column', 'grid', 
+      'tabs', 'accordion', 'modal_trigger', 'app_card',
+      // Dashboard
+      'kpi', 'metric', 'chart', 'line_chart', 'bar_chart', 'pie_chart', 'table', 
+      'data_loop', 'conditional', 'data_field',
+      // Forms
+      'form', 'input', 'textarea', 'select', 'checkbox', 'radio', 'button', 'date_picker',
+      // Data
+      'data_source', 'data_model', 'api_call'
+    ];
+    
+    // For app/canvas, check if this is an app component type
+    var isAppComponent = appComponentTypes.indexOf(type) !== -1;
+    console.log('🎯 Component check:', { type: type, isAppComponent: isAppComponent, willUseDashboard: isAppOrCanvas && isAppComponent });
+    
+    if (isAppOrCanvas && isAppComponent) {
+      return getDashboardComponentHtml(type, label, data);
+    }
+    
+    // Default: landing page style preview section
+    return '<div class="preview-section section-' + (variant || type) + '" draggable="true" data-section="' + (variant || type) + '">' +
+      '<div class="section-label">' + label + '</div>' +
       '<div class="section-content">' +
         '<span class="section-type-badge">' + type + '</span>' +
         '<p class="section-hint">Drag to reorder or configure this section</p>' +
@@ -4003,11 +5630,258 @@ document.addEventListener('DOMContentLoaded', function() {
     '</div>';
   }
   
+  // Generate dashboard-specific component HTML
+  function getDashboardComponentHtml(variant, label, data) {
+    var icons = {
+      'kpi': 'hash', 'metric': 'trending-up', 'chart': 'bar-chart-3', 'line_chart': 'line-chart',
+      'pie_chart': 'pie-chart', 'bar_chart': 'bar-chart-3', 'table': 'table', 'data_loop': 'repeat',
+      'conditional': 'git-branch', 'data_field': 'text-cursor', 'form': 'file-input',
+      'input': 'text-cursor-input', 'button': 'mouse-pointer-click', 'select': 'list',
+      'app_header': 'panel-top', 'app_sidebar': 'panel-left', 'container': 'square',
+      'row': 'rows', 'column': 'columns', 'grid': 'grid-3x3', 'tabs': 'folder-tree',
+      'accordion': 'chevrons-down', 'modal_trigger': 'maximize-2', 'app_card': 'credit-card'
+    };
+    var icon = icons[variant] || 'component';
+    
+    // Get grid position from data or use defaults
+    var gridCol = data.gridCol || '';
+    var gridRow = data.gridRow || '';
+    var gridStyle = '';
+    if (gridCol) gridStyle += 'grid-column: ' + gridCol + ';';
+    if (gridRow) gridStyle += 'grid-row: ' + gridRow + ';';
+    
+    return '<div class="dashboard-component grid-item component-' + variant + '" ' +
+      'draggable="true" ' +
+      'data-component-type="' + variant + '" ' +
+      'data-grid-col="' + (gridCol || 'auto') + '" ' +
+      'data-grid-row="' + (gridRow || 'auto') + '" ' +
+      (gridStyle ? 'style="' + gridStyle + '"' : '') + '>' +
+      '<div class="component-header">' +
+        '<i data-lucide="' + icon + '" style="width: 16px; height: 16px;"></i>' +
+        '<span class="component-label">' + label + '</span>' +
+      '</div>' +
+      '<div class="component-body">' +
+        '<div class="component-placeholder">' +
+          '<span class="component-config-hint">Click to configure</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="component-actions">' +
+        '<button class="component-action-btn" data-action="configure" title="Configure"><i data-lucide="settings" style="width: 12px;"></i></button>' +
+        '<button class="component-action-btn" data-action="remove" title="Remove"><i data-lucide="trash-2" style="width: 12px;"></i></button>' +
+      '</div>' +
+      '<div class="resize-handle" title="Drag to resize"></div>' +
+    '</div>';
+  }
+  
+  // Auto-save design after component changes
+  function autoSaveDesign() {
+    var planId = container.dataset.planId;
+    if (!planId) {
+      console.log('📝 No plan ID - creating new plan...');
+      createNewPlan();
+      return;
+    }
+    
+    // Collect current components
+    var components = collectCanvasComponents();
+    console.log('💾 Auto-saving design with', components.length, 'components');
+    
+    // Send to server via AJAX
+    fetch('/scout/save_design', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      },
+      body: JSON.stringify({
+        plan_id: planId,
+        sections: components
+      })
+    }).then(function(response) {
+      return response.json();
+    }).then(function(data) {
+      if (data.success) {
+        console.log('✅ Design auto-saved');
+        showSaveIndicator('saved');
+      } else {
+        console.error('❌ Save failed:', data.error);
+        showSaveIndicator('error');
+      }
+    }).catch(function(err) {
+      console.error('❌ Save error:', err);
+      showSaveIndicator('error');
+    });
+  }
+  
+  // Create a new plan when user starts designing
+  function createNewPlan() {
+    var designType = container.dataset.createType || container.dataset.designType || 'landing_page';
+    var components = collectCanvasComponents();
+    
+    fetch('/scout/create_design_plan', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      },
+      body: JSON.stringify({
+        design_type: designType,
+        name: 'New ' + (designType === 'landing_page' ? 'Landing Page' : designType.charAt(0).toUpperCase() + designType.slice(1)),
+        sections: components
+      })
+    }).then(function(response) {
+      return response.json();
+    }).then(function(data) {
+      if (data.success && data.plan_id) {
+        console.log('✅ New plan created:', data.plan_id);
+        container.dataset.planId = data.plan_id;
+        
+        // Persist to localStorage for refresh survival
+        persistPlanToStorage(data.plan_id, container.dataset.designType || 'canvas');
+        
+        showSaveIndicator('saved');
+      } else {
+        console.error('❌ Plan creation failed:', data.error);
+      }
+    }).catch(function(err) {
+      console.error('❌ Plan creation error:', err);
+    });
+  }
+  
+  // Persist plan info to localStorage for refresh survival
+  function persistPlanToStorage(planId, designType) {
+    try {
+      var key = 'amos_current_plan';
+      var data = {
+        plan_id: planId,
+        design_type: designType,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(key, JSON.stringify(data));
+      console.log('💾 Plan persisted to storage:', data);
+    } catch(e) {
+      console.warn('Could not persist plan to storage:', e);
+    }
+  }
+  
+  // Check for saved plan on load
+  function checkSavedPlan() {
+    if (container.dataset.planId) {
+      console.log('📌 Plan already loaded from server:', container.dataset.planId);
+      return;
+    }
+    
+    try {
+      var saved = localStorage.getItem('amos_current_plan');
+      if (saved) {
+        var data = JSON.parse(saved);
+        // Only restore if recent (within 24 hours)
+        var maxAge = 24 * 60 * 60 * 1000;
+        if (Date.now() - data.timestamp < maxAge) {
+          console.log('🔄 Restoring plan from storage:', data);
+          // Reload the canvas with the saved plan
+          if (window.loadCanvasViaAjax) {
+            window.loadCanvasViaAjax('design_studio', { plan_id: data.plan_id });
+          }
+        } else {
+          // Clear old data
+          localStorage.removeItem('amos_current_plan');
+        }
+      }
+    } catch(e) {
+      console.warn('Could not check saved plan:', e);
+    }
+  }
+  
+  // Collect components from the canvas
+  function collectCanvasComponents() {
+    var components = [];
+    var canvasEl = container.querySelector('#studio-canvas');
+    if (!canvasEl) return components;
+    
+    // Collect dashboard components with grid positions
+    canvasEl.querySelectorAll('.dashboard-component').forEach(function(comp, idx) {
+      components.push({
+        type: comp.dataset.componentType || comp.dataset.component || 'unknown',
+        label: comp.querySelector('.component-label')?.textContent || '',
+        title: comp.dataset.title || '',
+        value: comp.dataset.value || '',
+        gridCol: comp.dataset.gridCol || comp.style.gridColumn || '',
+        gridRow: comp.dataset.gridRow || comp.style.gridRow || '',
+        order: idx,
+        config: {
+          title: comp.dataset.title,
+          value: comp.dataset.value,
+          dataSource: comp.dataset.dataSource
+        }
+      });
+    });
+    
+    // Collect preview sections (landing page mode)
+    canvasEl.querySelectorAll('.preview-section').forEach(function(section, idx) {
+      components.push({
+        type: section.dataset.section || 'unknown',
+        name: section.querySelector('.section-label')?.textContent || '',
+        order: idx,
+        config: {}
+      });
+    });
+    
+    return components;
+  }
+  
+  // Show save indicator
+  function showSaveIndicator(status) {
+    var indicator = container.querySelector('.save-indicator');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'save-indicator';
+      var toolbar = container.querySelector('.studio-toolbar');
+      if (toolbar) toolbar.appendChild(indicator);
+    }
+    
+    if (status === 'saved') {
+      indicator.innerHTML = '<i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Saved';
+      indicator.classList.remove('error');
+      indicator.classList.add('success');
+    } else if (status === 'error') {
+      indicator.innerHTML = '<i data-lucide="alert-circle" style="width: 14px; height: 14px;"></i> Save failed';
+      indicator.classList.remove('success');
+      indicator.classList.add('error');
+    } else {
+      indicator.innerHTML = '<i data-lucide="loader" style="width: 14px; height: 14px;" class="spin"></i> Saving...';
+      indicator.classList.remove('success', 'error');
+    }
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Hide after 2 seconds
+    setTimeout(function() {
+      indicator.classList.add('fade-out');
+    }, 2000);
+  }
+  
+  // Debounce auto-save
+  var autoSaveTimeout = null;
+  function scheduleAutoSave() {
+    if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+    autoSaveTimeout = setTimeout(autoSaveDesign, 1500);
+  }
+  
   // Creation cards - What do you want to create?
   container.querySelectorAll('.creation-card').forEach(function(card) {
     card.addEventListener('click', function() {
       var type = this.dataset.type;
       console.log('🎨 Creation type selected:', type);
+      
+      // Clear any saved plan - starting fresh
+      try {
+        localStorage.removeItem('amos_current_plan');
+        console.log('🗑️ Cleared saved plan - starting fresh');
+      } catch(e) {}
+      
+      // Clear existing plan_id to start fresh
+      delete container.dataset.planId;
       
       // Store selection
       container.dataset.createType = type;
@@ -4022,31 +5896,53 @@ document.addEventListener('DOMContentLoaded', function() {
       // Show toolbar action buttons
       updateToolbarButtons(type);
       
+      // Show/hide App Mode Switcher for apps
+      var appModeSwitcher = container.querySelector('#app-mode-switcher');
+      if (appModeSwitcher) {
+        appModeSwitcher.style.display = (type === 'app') ? 'flex' : 'none';
+        // Re-setup the mode switcher
+        if (type === 'app') {
+          setupAppModeSwitcher();
+        }
+      }
+      
       // Show/create pages tab bar for websites, apps, and canvases
       var pagesTabBar = container.querySelector('#pages-tab-bar');
       
-      if (type === 'website' || type === 'app' || type === 'canvas') {
+      if (type === 'website') {
+        // Websites always show page tabs
         if (pagesTabBar) {
           pagesTabBar.style.display = 'flex';
-          
-          // Add initial Homepage tab if tabs are empty
-          var pagesTabs = container.querySelector('#pages-tabs');
-          if (pagesTabs && !pagesTabs.querySelector('.page-tab')) {
-            var homeTabHtml = '<div class="page-tab active" data-page-id="home" data-page-slug="home">' +
-              '<i data-lucide="home" style="width: 12px; height: 12px;"></i>' +
-              '<span class="page-tab-name">Homepage</span>' +
-              '<button class="page-tab-close" title="Close"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>' +
-              '</div>';
-            pagesTabs.innerHTML = homeTabHtml;
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-          }
-          
-          // Setup add page tab button
-          setupAddPageTabButton();
-          setupPageTabs();
+          setupInitialPageTab();
+        }
+      } else if (type === 'app') {
+        // Apps start in Pages mode with page tabs visible
+        if (pagesTabBar) {
+          pagesTabBar.style.display = 'flex';
+          setupInitialPageTab();
+        }
+      } else if (type === 'canvas') {
+        // Pure canvas doesn't need page tabs
+        if (pagesTabBar) {
+          pagesTabBar.style.display = 'none';
         }
       } else if (pagesTabBar) {
         pagesTabBar.style.display = 'none';
+      }
+      
+      function setupInitialPageTab() {
+        var pagesTabs = container.querySelector('#pages-tabs');
+        if (pagesTabs && !pagesTabs.querySelector('.page-tab')) {
+          var homeTabHtml = '<div class="page-tab active" data-page-id="home" data-page-slug="home">' +
+            '<i data-lucide="home" style="width: 12px; height: 12px;"></i>' +
+            '<span class="page-tab-name">Homepage</span>' +
+            '<button class="page-tab-close" title="Close"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>' +
+            '</div>';
+          pagesTabs.innerHTML = homeTabHtml;
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        setupAddPageTabButton();
+        setupPageTabs();
       }
       
       // Replace empty state with blank workspace
@@ -4062,36 +5958,57 @@ document.addEventListener('DOMContentLoaded', function() {
         // Create blank workspace based on type
         var workspaceHtml = '';
         
-        if (type === 'canvas') {
-          // Canvas gets a different template - freeform with data sources
+        if (type === 'canvas' || type === 'app') {
+          // Canvas and App get a different template - freeform with data sources and app-specific placeholders
+          var appIcon = type === 'app' ? 'layers' : 'frame';
           workspaceHtml = '<div class="blank-canvas-workspace" data-type="' + type + '">' +
             '<div class="canvas-toolbar-mini">' +
-              '<span class="workspace-type-label"><i data-lucide="frame"></i> New ' + typeNames[type] + '</span>' +
+              '<span class="workspace-type-label"><i data-lucide="' + appIcon + '"></i> New ' + typeNames[type] + '</span>' +
               '<button class="btn-add-data-source" id="add-data-source-btn" title="Connect data source">' +
                 '<i data-lucide="database" style="width: 14px; height: 14px;"></i> Add Data Source' +
               '</button>' +
             '</div>' +
             '<div class="canvas-freeform-area" id="freeform-drop-zone">' +
-              '<div class="drop-hint">' +
-                '<i data-lucide="mouse-pointer-click" style="width: 24px; height: 24px;"></i>' +
-                '<span>Drag components here or ask Amos to help</span>' +
+              '<div class="app-drop-hint">' +
+                '<div class="app-placeholder-grid">' +
+                  '<div class="app-placeholder-item" data-section="metrics">' +
+                    '<i data-lucide="hash" style="width: 24px; height: 24px;"></i>' +
+                    '<span>KPIs & Metrics</span>' +
+                    '<small>Drag dashboard components here</small>' +
+                  '</div>' +
+                  '<div class="app-placeholder-item" data-section="charts">' +
+                    '<i data-lucide="bar-chart-3" style="width: 24px; height: 24px;"></i>' +
+                    '<span>Charts & Visualizations</span>' +
+                    '<small>Drag chart components here</small>' +
+                  '</div>' +
+                  '<div class="app-placeholder-item" data-section="data">' +
+                    '<i data-lucide="table" style="width: 24px; height: 24px;"></i>' +
+                    '<span>Data Tables</span>' +
+                    '<small>Drag table or list components here</small>' +
+                  '</div>' +
+                  '<div class="app-placeholder-item" data-section="forms">' +
+                    '<i data-lucide="file-input" style="width: 24px; height: 24px;"></i>' +
+                    '<span>Forms & Actions</span>' +
+                    '<small>Drag form components here</small>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="drop-hint-text">' +
+                  '<i data-lucide="mouse-pointer-click" style="width: 18px; height: 18px;"></i>' +
+                  '<span>Drag components or ask Amos to help design your ' + type + '</span>' +
+                '</div>' +
               '</div>' +
             '</div>' +
           '</div>';
           
-          // Setup data source button for canvas
+          // Setup data source button for canvas/app
           setupDataSourceButton();
         } else {
-          // Landing page, website, app get page-based template
-          var showDataBtn = (type === 'app');
-          var iconName = type === 'landing_page' ? 'file-text' : (type === 'website' ? 'layout-template' : 'layers');
-          var dataBtnHtml = showDataBtn ? '<button class="btn-add-data-source" id="add-data-source-btn" title="Connect data source">' +
-            '<i data-lucide="database" style="width: 14px; height: 14px;"></i> Add Data Source</button>' : '';
+          // Landing page, website get page-based template
+          var iconName = type === 'landing_page' ? 'file-text' : 'layout-template';
           
           workspaceHtml = '<div class="blank-page-workspace" data-type="' + type + '">' +
             '<div class="page-toolbar-mini">' +
               '<span class="workspace-type-label"><i data-lucide="' + iconName + '"></i> New ' + typeNames[type] + '</span>' +
-              dataBtnHtml +
             '</div>' +
             '<div class="page-sections-area" id="sections-drop-zone">' +
               '<div class="page-section-placeholder" data-section="header">' +
@@ -4120,6 +6037,25 @@ document.addEventListener('DOMContentLoaded', function() {
         
         emptyState.outerHTML = workspaceHtml;
         if (typeof lucide !== 'undefined') lucide.createIcons();
+        
+        // CRITICAL: Update container data attributes for component visibility
+        container.dataset.designType = type;
+        container.dataset.isAppOrCanvas = (type === 'app' || type === 'canvas') ? 'true' : 'false';
+        container.dataset.createType = type;
+        console.log('🎨 Updated design type to:', type, 'isAppOrCanvas:', container.dataset.isAppOrCanvas);
+        
+        // Toggle full-width mode for apps/canvases (removes card styling)
+        var studioCanvas = container.querySelector('.studio-canvas');
+        if (studioCanvas) {
+          if (type === 'app' || type === 'canvas') {
+            studioCanvas.classList.add('full-width-mode');
+          } else {
+            studioCanvas.classList.remove('full-width-mode');
+          }
+        }
+        
+        // Update component visibility in sidebar
+        updateComponentVisibility();
         
         // Setup drop zones for the new workspace
         setupDropZones();
@@ -4219,7 +6155,294 @@ document.addEventListener('DOMContentLoaded', function() {
         showDataSourcesDropdown(this);
       });
     }
+    
+    // Also setup sidebar data source button
+    var sidebarBtn = container.querySelector('#sidebar-add-data-source');
+    if (sidebarBtn && !sidebarBtn.dataset.initialized) {
+      sidebarBtn.dataset.initialized = 'true';
+      sidebarBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showDataSourcesDropdown(this);
+      });
+    }
   }
+  
+  // Show/hide dashboard components based on design type
+  function updateComponentVisibility() {
+    var designType = container.dataset.designType;
+    var isAppOrCanvas = container.dataset.isAppOrCanvas === 'true' || 
+                        designType === 'canvas' || designType === 'app';
+    
+    // App/Canvas components - show only for apps/canvases
+    var appLayoutCategory = container.querySelector('#app-layout-category');
+    var dashboardCategory = container.querySelector('#dashboard-components');
+    var dataSourcesCategory = container.querySelector('#data-sources-category');
+    var dataModelCategory = container.querySelector('#data-model-category');
+    var appFormsCategory = container.querySelector('#forms-category');
+    
+    // Landing Page/Website components - hide for apps/canvases
+    var landingPageComponents = container.querySelector('#landing-page-components');
+    var typographyCategory = container.querySelector('#typography-category');
+    var mediaCategory = container.querySelector('#media-category');
+    var lpFormsCategory = container.querySelector('#lp-forms-category');
+    var cardsCategory = container.querySelector('#cards-category');
+    var navigationCategory = container.querySelector('#navigation-category');
+    
+    // App/Canvas components - show for apps/canvases
+    if (appLayoutCategory) {
+      appLayoutCategory.style.display = isAppOrCanvas ? '' : 'none';
+    }
+    if (dashboardCategory) {
+      dashboardCategory.style.display = isAppOrCanvas ? '' : 'none';
+    }
+    if (dataSourcesCategory) {
+      dataSourcesCategory.style.display = isAppOrCanvas ? '' : 'none';
+    }
+    if (dataModelCategory) {
+      dataModelCategory.style.display = isAppOrCanvas ? '' : 'none';
+    }
+    if (appFormsCategory) {
+      appFormsCategory.style.display = isAppOrCanvas ? '' : 'none';
+    }
+    
+    // Landing Page/Website components - hide for apps/canvases
+    if (landingPageComponents) {
+      landingPageComponents.style.display = isAppOrCanvas ? 'none' : '';
+    }
+    if (typographyCategory) {
+      typographyCategory.style.display = isAppOrCanvas ? 'none' : '';
+    }
+    if (mediaCategory) {
+      mediaCategory.style.display = isAppOrCanvas ? 'none' : '';
+    }
+    if (lpFormsCategory) {
+      lpFormsCategory.style.display = isAppOrCanvas ? 'none' : '';
+    }
+    if (cardsCategory) {
+      cardsCategory.style.display = isAppOrCanvas ? 'none' : '';
+    }
+    if (navigationCategory) {
+      navigationCategory.style.display = isAppOrCanvas ? 'none' : '';
+    }
+    
+    console.log('🎨 Component visibility updated:', {
+      designType: designType,
+      isAppOrCanvas: isAppOrCanvas,
+      datasetIsAppOrCanvas: container.dataset.isAppOrCanvas,
+      landingPageComponentsFound: !!landingPageComponents,
+      appLayoutCategoryFound: !!appLayoutCategory,
+      dashboardCategoryFound: !!dashboardCategory
+    });
+  }
+  
+  // Setup Data Model button handlers
+  function setupDataModelButtons() {
+    var createModelBtn = container.querySelector('#create-data-model-btn');
+    if (createModelBtn && !createModelBtn.dataset.initialized) {
+      createModelBtn.dataset.initialized = 'true';
+      createModelBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // Start the module design process via Amos
+        sendToAmos('Help me create a new data model for my app');
+      });
+    }
+    
+    // View model buttons
+    container.querySelectorAll('.btn-view-model').forEach(function(btn) {
+      if (btn.dataset.initialized) return;
+      btn.dataset.initialized = 'true';
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var slug = this.dataset.slug;
+        sendToAmos('Show me the fields for the ' + slug + ' data model');
+      });
+    });
+    
+    // Drag data models onto canvas
+    container.querySelectorAll('.data-model-item[draggable]').forEach(function(item) {
+      if (item.dataset.dragInitialized) return;
+      item.dataset.dragInitialized = 'true';
+      item.addEventListener('dragstart', function(e) {
+        e.dataTransfer.setData('application/x-data-model', this.dataset.modelSlug);
+        e.dataTransfer.effectAllowed = 'copy';
+      });
+    });
+  }
+  
+  // Render bound data sources in the sidebar
+  function renderBoundDataSources(dataSources) {
+    var listEl = container.querySelector('#bound-data-sources');
+    if (!listEl) return;
+    
+    if (!dataSources || dataSources.length === 0) {
+      listEl.innerHTML = '<div class="empty-state text-muted" style="font-size: 0.75rem; padding: 8px;">No data sources connected</div>';
+      return;
+    }
+    
+    var html = dataSources.map(function(ds, idx) {
+      var typeIcons = {
+        'workflow': 'git-branch',
+        'integration': 'plug',
+        'model': 'box'
+      };
+      var icon = typeIcons[ds.type] || 'database';
+      return '<div class="data-source-item" data-ds-index="' + idx + '">' +
+        '<i data-lucide="' + icon + '" style="width: 14px; height: 14px;"></i>' +
+        '<span class="ds-name">' + escapeHtml(ds.name) + '</span>' +
+        '<span class="ds-type">' + ds.type + '</span>' +
+        '<i data-lucide="x" class="ds-remove" style="width: 12px; height: 12px;" title="Remove"></i>' +
+      '</div>';
+    }).join('');
+    
+    listEl.innerHTML = html;
+    
+    // Reinit icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons({ scope: listEl });
+    }
+    
+    // Setup remove handlers
+    listEl.querySelectorAll('.ds-remove').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var dsIndex = this.closest('.data-source-item').dataset.dsIndex;
+        removeDataSource(parseInt(dsIndex));
+      });
+    });
+  }
+  
+  function removeDataSource(index) {
+    // Would typically update via Turbo or save to plan
+    sendToAmos('Remove data source at index ' + index + ' from the current plan');
+  }
+  
+  // Initialize component visibility on load
+  updateComponentVisibility();
+  
+  // Setup App Mode Switcher
+  setupAppModeSwitcher();
+  
+  function setupAppModeSwitcher() {
+    var modeSwitcher = container.querySelector('#app-mode-switcher');
+    if (!modeSwitcher) return;
+    
+    var modeTabs = modeSwitcher.querySelectorAll('.app-mode-tab');
+    var modeHint = modeSwitcher.querySelector('#app-mode-hint');
+    var pagesTabBar = container.querySelector('#pages-tab-bar');
+    
+    var modeHints = {
+      'pages': 'Design external-facing pages for your app',
+      'canvases': 'Build internal dashboards and data displays',
+      'data': 'Define data models and connect data sources',
+      'workflows': 'Create automations and business logic'
+    };
+    
+    modeTabs.forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        var mode = this.dataset.mode;
+        console.log('🔄 Switching app mode to:', mode);
+        
+        // Update active tab
+        modeTabs.forEach(function(t) { t.classList.remove('active'); });
+        this.classList.add('active');
+        
+        // Update hint
+        if (modeHint) {
+          modeHint.textContent = modeHints[mode] || '';
+        }
+        
+        // Update component visibility based on mode
+        if (mode === 'pages') {
+          // Pages mode: Show landing page components
+          container.dataset.appMode = 'pages';
+          container.dataset.designType = 'website';
+          container.dataset.isAppOrCanvas = 'false';
+          if (pagesTabBar) pagesTabBar.style.display = 'flex';
+        } else if (mode === 'canvases') {
+          // Canvases mode: Show dashboard components
+          container.dataset.appMode = 'canvases';
+          container.dataset.designType = 'canvas';
+          container.dataset.isAppOrCanvas = 'true';
+          if (pagesTabBar) pagesTabBar.style.display = 'flex';
+        } else if (mode === 'data') {
+          // Data mode: Show data model and source components only
+          container.dataset.appMode = 'data';
+          container.dataset.designType = 'app';
+          container.dataset.isAppOrCanvas = 'true';
+          if (pagesTabBar) pagesTabBar.style.display = 'none';
+        } else if (mode === 'workflows') {
+          // Workflows mode: Load the workflow designer canvas
+          container.dataset.appMode = 'workflows';
+          if (pagesTabBar) pagesTabBar.style.display = 'none';
+          
+          // Load workflow designer via scout controller
+          var scoutController = window.Stimulus?.getControllerForElementAndIdentifier(
+            document.getElementById('workspace'), 'scout'
+          );
+          if (scoutController && typeof scoutController.loadScoutCanvas === 'function') {
+            scoutController.loadScoutCanvas('workflow_designer', { app_id: container.dataset.planId });
+          } else {
+            // Fallback: dispatch event
+            window.dispatchEvent(new CustomEvent('load-canvas', {
+              detail: { canvas: 'workflow_designer', data: { app_id: container.dataset.planId } }
+            }));
+          }
+          return; // Don't update components for workflow mode
+        }
+        
+        // Update component sidebar visibility
+        updateComponentVisibility();
+        
+        // Update the canvas preview based on mode
+        updateCanvasForMode(mode);
+      });
+    });
+  }
+  
+  function updateCanvasForMode(mode) {
+    var canvasEl = container.querySelector('#studio-canvas');
+    if (!canvasEl) return;
+    
+    // Check if there's already content
+    var hasContent = canvasEl.querySelector('.plan-section, .blank-canvas-workspace, .blank-page-workspace');
+    if (hasContent) return; // Don't replace if user has started designing
+    
+    // Update empty state based on mode
+    var emptyState = canvasEl.querySelector('.canvas-empty-state');
+    if (!emptyState) return;
+    
+    if (mode === 'pages') {
+      emptyState.innerHTML = '<div class="mode-hint">' +
+        '<i data-lucide="layout-template" style="width: 48px; height: 48px;"></i>' +
+        '<h4>Pages Mode</h4>' +
+        '<p>Design external-facing pages with hero sections, features, testimonials, and more.</p>' +
+        '<small>Drag components from the sidebar or ask Amos to help</small>' +
+      '</div>';
+    } else if (mode === 'canvases') {
+      emptyState.innerHTML = '<div class="mode-hint">' +
+        '<i data-lucide="layout-dashboard" style="width: 48px; height: 48px;"></i>' +
+        '<h4>Canvases Mode</h4>' +
+        '<p>Build internal dashboards with KPIs, charts, tables, and data-bound components.</p>' +
+        '<small>Connect data sources and drag dashboard components</small>' +
+      '</div>';
+    } else if (mode === 'data') {
+      emptyState.innerHTML = '<div class="mode-hint">' +
+        '<i data-lucide="database" style="width: 48px; height: 48px;"></i>' +
+        '<h4>Data Mode</h4>' +
+        '<p>Define custom data models and connect external data sources.</p>' +
+        '<button class="btn-create-model" onclick="sendToAmos(\'Help me create a new data model\')">Create Data Model</button>' +
+        '<button class="btn-connect-source" onclick="sendToAmos(\'Help me connect a data source\')">Connect Data Source</button>' +
+      '</div>';
+    }
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+  
+  // Setup sidebar data source button on load
+  setupDataSourceButton();
+  
+  // Setup data model buttons on load
+  setupDataModelButtons();
   
   // Setup add page tab button
   function setupAddPageTabButton() {
@@ -4351,9 +6574,13 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Setup drop zones for drag and drop
   function setupDropZones() {
-    var dropZones = container.querySelectorAll('.page-section-placeholder, #freeform-drop-zone, #sections-drop-zone');
+    var dropZones = container.querySelectorAll('.page-section-placeholder, .app-placeholder-item, #freeform-drop-zone, #sections-drop-zone');
     
     dropZones.forEach(function(zone) {
+      // Skip if already initialized
+      if (zone.dataset.dropInitialized) return;
+      zone.dataset.dropInitialized = 'true';
+      
       zone.addEventListener('dragover', function(e) {
         e.preventDefault();
         this.classList.add('drag-over');
@@ -4365,16 +6592,39 @@ document.addEventListener('DOMContentLoaded', function() {
       
       zone.addEventListener('drop', function(e) {
         e.preventDefault();
+        e.stopPropagation(); // Prevent bubbling to parent canvas drop handler
         this.classList.remove('drag-over');
         
+        // Only handle component drops (application/json), ignore section reorders
+        var jsonData = e.dataTransfer.getData('application/json');
+        if (!jsonData) {
+          // Not a component drop - might be section reorder or data model
+          return;
+        }
+        
         try {
-          var data = JSON.parse(e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain'));
+          var data = JSON.parse(jsonData);
+          // Ensure it's a component object with a type
+          if (!data || typeof data !== 'object' || !data.type) {
+            return;
+          }
           console.log('📦 Dropped component:', data);
           
           // Add component to this zone
           var componentHtml = getComponentHtml(data);
-          if (this.classList.contains('page-section-placeholder')) {
+          
+          if (this.classList.contains('page-section-placeholder') || this.classList.contains('app-placeholder-item')) {
+            // Replace the placeholder with the component
             this.outerHTML = componentHtml;
+          } else if (this.id === 'freeform-drop-zone') {
+            // For freeform area, append and remove hints
+            this.insertAdjacentHTML('beforeend', componentHtml);
+            // Remove app-drop-hint if present
+            var appHint = this.querySelector('.app-drop-hint');
+            if (appHint) appHint.remove();
+            // Remove regular drop hint if present
+            var hint = this.querySelector('.drop-hint');
+            if (hint) hint.remove();
           } else {
             this.insertAdjacentHTML('beforeend', componentHtml);
             // Remove drop hint if present
@@ -4383,6 +6633,9 @@ document.addEventListener('DOMContentLoaded', function() {
           }
           
           if (typeof lucide !== 'undefined') lucide.createIcons();
+          
+          // Auto-save after component drop
+          scheduleAutoSave();
         } catch (err) {
           console.error('Drop error:', err);
         }
@@ -4438,7 +6691,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Section actions
+  // Section actions (landing page mode)
   container.querySelectorAll('.section-action-btn').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
@@ -4448,12 +6701,342 @@ document.addEventListener('DOMContentLoaded', function() {
       
       if (action === 'remove' && section) {
         section.remove();
+        scheduleAutoSave();
       } else if (action === 'edit' && sectionName) {
         var planId = container.dataset.planId;
         sendToAmos('Edit the ' + sectionName + ' section in the design plan');
       }
     });
   });
+  
+  // Component actions (app/canvas dashboard mode) - use event delegation
+  container.addEventListener('click', function(e) {
+    var btn = e.target.closest('.component-action-btn');
+    if (!btn) return;
+    
+    e.stopPropagation();
+    var action = btn.dataset.action;
+    var component = btn.closest('.dashboard-component');
+    var componentType = component ? component.dataset.componentType : null;
+    
+    console.log('🔧 Component action:', action, componentType);
+    
+    if (action === 'remove' && component) {
+      component.remove();
+      showSaveIndicator('saving');
+      scheduleAutoSave();
+    } else if (action === 'configure' && component) {
+      // Open configuration modal or ask Amos
+      var label = component.querySelector('.component-label')?.textContent || componentType;
+      configureComponent(component, componentType, label);
+    }
+  });
+  
+  // Configure component - open inline editor or modal
+  function configureComponent(component, type, label) {
+    console.log('⚙️ Configure component:', type, label);
+    
+    // For now, open an inline editor
+    var body = component.querySelector('.component-body');
+    if (!body) return;
+    
+    // Check if already in edit mode
+    if (component.classList.contains('editing')) {
+      component.classList.remove('editing');
+      return;
+    }
+    
+    component.classList.add('editing');
+    
+    // Create inline config form based on component type
+    var configHtml = getConfigFormHtml(type, component.dataset);
+    var existingForm = body.querySelector('.component-config-form');
+    if (existingForm) {
+      existingForm.remove();
+    }
+    
+    var formDiv = document.createElement('div');
+    formDiv.className = 'component-config-form';
+    formDiv.innerHTML = configHtml;
+    body.insertBefore(formDiv, body.firstChild);
+    
+    // Handle form save
+    formDiv.querySelector('.config-save-btn')?.addEventListener('click', function() {
+      saveComponentConfig(component, formDiv);
+    });
+    
+    // Handle form cancel
+    formDiv.querySelector('.config-cancel-btn')?.addEventListener('click', function() {
+      component.classList.remove('editing');
+      formDiv.remove();
+    });
+  }
+  
+  // Get config form HTML based on component type
+  function getConfigFormHtml(type, currentData) {
+    var title = currentData.title || '';
+    var value = currentData.value || '';
+    
+    switch(type) {
+      case 'kpi':
+      case 'metric':
+        return '<div class="config-field">' +
+          '<label>Title</label>' +
+          '<input type="text" name="title" value="' + title + '" placeholder="e.g., Total Revenue" />' +
+        '</div>' +
+        '<div class="config-field">' +
+          '<label>Data Source</label>' +
+          '<select name="data_source">' +
+            '<option value="">Select data source...</option>' +
+            '<option value="static">Static Value</option>' +
+            '<option value="api">API Endpoint</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="config-field">' +
+          '<label>Static Value (if no data source)</label>' +
+          '<input type="text" name="value" value="' + value + '" placeholder="e.g., $45,000" />' +
+        '</div>' +
+        '<div class="config-actions">' +
+          '<button class="config-save-btn">Save</button>' +
+          '<button class="config-cancel-btn">Cancel</button>' +
+        '</div>';
+      
+      case 'chart':
+      case 'line_chart':
+      case 'bar_chart':
+      case 'pie_chart':
+        return '<div class="config-field">' +
+          '<label>Chart Title</label>' +
+          '<input type="text" name="title" value="' + title + '" placeholder="e.g., Monthly Sales" />' +
+        '</div>' +
+        '<div class="config-field">' +
+          '<label>Chart Type</label>' +
+          '<select name="chart_type">' +
+            '<option value="line">Line Chart</option>' +
+            '<option value="bar">Bar Chart</option>' +
+            '<option value="pie">Pie Chart</option>' +
+            '<option value="area">Area Chart</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="config-actions">' +
+          '<button class="config-save-btn">Save</button>' +
+          '<button class="config-cancel-btn">Cancel</button>' +
+        '</div>';
+      
+      case 'table':
+      case 'data_table':
+        return '<div class="config-field">' +
+          '<label>Table Title</label>' +
+          '<input type="text" name="title" value="' + title + '" placeholder="e.g., Recent Orders" />' +
+        '</div>' +
+        '<div class="config-field">' +
+          '<label>Columns (comma-separated)</label>' +
+          '<input type="text" name="columns" placeholder="e.g., Name, Email, Status" />' +
+        '</div>' +
+        '<div class="config-actions">' +
+          '<button class="config-save-btn">Save</button>' +
+          '<button class="config-cancel-btn">Cancel</button>' +
+        '</div>';
+      
+      default:
+        return '<div class="config-field">' +
+          '<label>Label</label>' +
+          '<input type="text" name="title" value="' + title + '" placeholder="Component label" />' +
+        '</div>' +
+        '<div class="config-actions">' +
+          '<button class="config-save-btn">Save</button>' +
+          '<button class="config-cancel-btn">Cancel</button>' +
+        '</div>';
+    }
+  }
+  
+  // Save component configuration
+  function saveComponentConfig(component, form) {
+    var inputs = form.querySelectorAll('input, select');
+    inputs.forEach(function(input) {
+      component.dataset[input.name] = input.value;
+    });
+    
+    // Update display
+    var titleInput = form.querySelector('input[name="title"]');
+    if (titleInput && titleInput.value) {
+      var label = component.querySelector('.component-label');
+      if (label) label.textContent = titleInput.value;
+    }
+    
+    var valueInput = form.querySelector('input[name="value"]');
+    if (valueInput && valueInput.value) {
+      var placeholder = component.querySelector('.component-placeholder');
+      if (placeholder) {
+        placeholder.innerHTML = '<span class="component-value">' + valueInput.value + '</span>';
+      }
+    }
+    
+    component.classList.remove('editing');
+    form.remove();
+    scheduleAutoSave();
+    console.log('💾 Component config saved');
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GRID DRAG-AND-DROP & RESIZE
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // Initialize grid component interactions
+  function initGridComponents() {
+    var gridArea = container.querySelector('#freeform-drop-zone');
+    if (!gridArea) return;
+    
+    // Make grid items draggable within the grid
+    gridArea.addEventListener('dragstart', function(e) {
+      var component = e.target.closest('.dashboard-component.grid-item');
+      if (!component) return;
+      
+      component.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', 'grid-reorder');
+      e.dataTransfer.effectAllowed = 'move';
+      
+      // Store the component being dragged
+      window._draggingGridComponent = component;
+    });
+    
+    gridArea.addEventListener('dragend', function(e) {
+      var component = e.target.closest('.dashboard-component.grid-item');
+      if (component) {
+        component.classList.remove('dragging');
+      }
+      window._draggingGridComponent = null;
+      
+      // Remove any drop indicators
+      gridArea.querySelectorAll('.grid-drop-indicator').forEach(function(el) { el.remove(); });
+    });
+    
+    // Handle grid reordering
+    gridArea.addEventListener('dragover', function(e) {
+      if (!window._draggingGridComponent) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+    
+    gridArea.addEventListener('drop', function(e) {
+      if (!window._draggingGridComponent) return;
+      e.preventDefault();
+      e.stopPropagation(); // Prevent bubbling to parent drop handlers
+      
+      var component = window._draggingGridComponent;
+      var rect = gridArea.getBoundingClientRect();
+      var dropX = e.clientX - rect.left;
+      var dropY = e.clientY - rect.top;
+      
+      // Calculate grid position (12 columns)
+      var colWidth = (rect.width - 40) / 12; // Subtract padding
+      var rowHeight = 96; // 80px + 16px gap
+      
+      var col = Math.floor(dropX / colWidth) + 1;
+      var row = Math.floor(dropY / rowHeight) + 1;
+      
+      // Get the component's span
+      var style = window.getComputedStyle(component);
+      var colSpan = parseInt(style.gridColumnEnd) - parseInt(style.gridColumnStart) || 3;
+      if (isNaN(colSpan) || colSpan < 1) colSpan = 3;
+      
+      // Ensure it fits within the grid
+      col = Math.min(col, 13 - colSpan);
+      col = Math.max(col, 1);
+      
+      // Update component position
+      component.style.gridColumn = col + ' / span ' + colSpan;
+      component.style.gridRow = row;
+      component.dataset.gridCol = col + ' / span ' + colSpan;
+      component.dataset.gridRow = row.toString();
+      
+      console.log('📍 Component moved to grid position:', col, row);
+      scheduleAutoSave();
+    });
+    
+    // Initialize resize handles
+    initResizeHandles(gridArea);
+  }
+  
+  // Initialize resize functionality
+  function initResizeHandles(gridArea) {
+    var resizing = false;
+    var resizeComponent = null;
+    var startX, startY, startWidth, startHeight;
+    var colWidth, rowHeight;
+    
+    gridArea.addEventListener('mousedown', function(e) {
+      var handle = e.target.closest('.resize-handle');
+      if (!handle) return;
+      
+      e.preventDefault();
+      resizing = true;
+      resizeComponent = handle.closest('.dashboard-component');
+      
+      var rect = resizeComponent.getBoundingClientRect();
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = rect.width;
+      startHeight = rect.height;
+      
+      var gridRect = gridArea.getBoundingClientRect();
+      colWidth = (gridRect.width - 40) / 12;
+      rowHeight = 96;
+      
+      resizeComponent.classList.add('resizing');
+      document.body.style.cursor = 'nwse-resize';
+    });
+    
+    document.addEventListener('mousemove', function(e) {
+      if (!resizing || !resizeComponent) return;
+      
+      var deltaX = e.clientX - startX;
+      var deltaY = e.clientY - startY;
+      
+      // Calculate new spans
+      var newColSpan = Math.max(2, Math.round((startWidth + deltaX) / colWidth));
+      var newRowSpan = Math.max(1, Math.round((startHeight + deltaY) / rowHeight));
+      
+      // Limit to grid bounds
+      newColSpan = Math.min(newColSpan, 12);
+      newRowSpan = Math.min(newRowSpan, 8);
+      
+      // Get current column start
+      var currentStyle = window.getComputedStyle(resizeComponent);
+      var colStart = parseInt(resizeComponent.dataset.gridCol) || 1;
+      if (typeof colStart === 'string' && colStart.includes('span')) {
+        colStart = parseInt(colStart.split('/')[0]) || 1;
+      }
+      
+      // Ensure it fits
+      if (colStart + newColSpan > 13) {
+        newColSpan = 13 - colStart;
+      }
+      
+      resizeComponent.style.gridColumn = colStart + ' / span ' + newColSpan;
+      resizeComponent.style.gridRow = 'span ' + newRowSpan;
+    });
+    
+    document.addEventListener('mouseup', function(e) {
+      if (!resizing || !resizeComponent) return;
+      
+      resizing = false;
+      resizeComponent.classList.remove('resizing');
+      document.body.style.cursor = '';
+      
+      // Save the new size
+      resizeComponent.dataset.gridCol = resizeComponent.style.gridColumn;
+      resizeComponent.dataset.gridRow = resizeComponent.style.gridRow;
+      
+      console.log('📐 Component resized:', resizeComponent.dataset.gridCol, resizeComponent.dataset.gridRow);
+      scheduleAutoSave();
+      
+      resizeComponent = null;
+    });
+  }
+  
+  // Initialize grid components on load
+  initGridComponents();
   
   // Viewport controls
   container.querySelectorAll('.viewport-btn').forEach(function(btn) {
