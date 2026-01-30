@@ -217,7 +217,7 @@ if [ "$CAPTURE_SCREENSHOTS" = true ]; then
         echo ""
         echo "  Next steps:"
         echo "    1. Review screenshots"
-        echo "    2. Add frames: cd ios && fastlane frame_screenshots"
+        echo "    2. Add frames: cd ios && fastlane frame_app_screenshots"
         echo "    3. Upload: cd ios && fastlane upload_screenshots"
         echo ""
         exit 0
