@@ -9,6 +9,9 @@
 # - Tenure-based decay: Rate decreases the longer you hold
 # - Staking vaults: Lock tokens for reduced/zero decay
 # - Inheritance: Stakes can transfer to family/estate
+#
+# SECURITY: Distribution stakes (affiliate/referral) have a 90-day clawback period.
+# If the referred customer churns within 90 days, the stake is clawed back.
 class TokenStake < ApplicationRecord
   belongs_to :user
   belongs_to :entity, optional: true
@@ -17,6 +20,17 @@ class TokenStake < ApplicationRecord
 
   # Fixed supply constants
   TOTAL_SUPPLY = 100_000_000  # 100M tokens ever
+  
+  # SECURITY: Clawback period for distribution stakes (days)
+  # If referred customer churns within this period, stake is clawed back
+  CLAWBACK_PERIOD_DAYS = 90
+  
+  # Clawback statuses for distribution stakes
+  CLAWBACK_STATUSES = %w[
+    pending_clawback   # Within 90-day period, can be clawed back
+    confirmed          # Past 90 days, stake is confirmed permanent
+    clawed_back        # Customer churned, stake was revoked
+  ].freeze
   
   # GRADUATED DECAY FLOOR - builds over time
   # Prevents early adopters from locking in permanent advantages
@@ -105,6 +119,12 @@ class TokenStake < ApplicationRecord
   scope :for_entity, ->(entity) { where(entity: entity) }
   scope :earned_between, ->(start_date, end_date) { where(earned_at: start_date..end_date) }
   scope :recent, -> { order(earned_at: :desc) }
+  
+  # Clawback-related scopes
+  scope :pending_clawback, -> { distribution_stakes.where(clawback_status: 'pending_clawback') }
+  scope :eligible_for_confirmation, -> { pending_clawback.where('earned_at < ?', CLAWBACK_PERIOD_DAYS.days.ago) }
+  scope :confirmed, -> { where(clawback_status: 'confirmed') }
+  scope :clawed_back, -> { where(clawback_status: 'clawed_back') }
 
   # Callbacks
   before_validation :set_defaults, on: :create
@@ -269,6 +289,67 @@ class TokenStake < ApplicationRecord
     is_locked && locked_until.present? && locked_until > Time.current
   end
 
+  # === CLAWBACK METHODS ===
+  
+  # Check if this stake is within the clawback period
+  def within_clawback_period?
+    return false unless stake_type == 'distribution'
+    return false unless earned_at
+    earned_at > CLAWBACK_PERIOD_DAYS.days.ago
+  end
+
+  # Check if stake can be clawed back
+  def clawbackable?
+    stake_type == 'distribution' && 
+      clawback_status == 'pending_clawback' &&
+      within_clawback_period?
+  end
+
+  # Confirm the stake after clawback period passes
+  def confirm_stake!
+    return false unless stake_type == 'distribution'
+    return false if within_clawback_period?
+    return false if clawback_status == 'clawed_back'
+    
+    update!(clawback_status: 'confirmed')
+    Rails.logger.info "[TOKEN_STAKE] Stake ##{id} confirmed after #{CLAWBACK_PERIOD_DAYS}-day clawback period"
+    true
+  end
+
+  # Clawback the stake (customer churned)
+  # Returns tokens to treasury
+  def clawback!(reason: nil)
+    return false unless clawbackable?
+    
+    clawed_amount = current_amount
+    
+    update!(
+      clawback_status: 'clawed_back',
+      current_amount: 0,
+      total_decayed: initial_amount,
+      metadata: (metadata || {}).merge(
+        clawback_reason: reason,
+        clawback_at: Time.current,
+        clawed_amount: clawed_amount
+      )
+    )
+    
+    # Record the clawback transaction
+    TokenStakeTransaction.create!(
+      token_stake: self,
+      user: user,
+      transaction_type: 'clawback',
+      amount: -clawed_amount,
+      balance_before: clawed_amount,
+      balance_after: 0,
+      description: "Clawback: #{reason || 'Customer churned within 90 days'}",
+      metadata: { clawed_amount: clawed_amount }
+    )
+    
+    Rails.logger.info "[TOKEN_STAKE] Stake ##{id} clawed back: #{clawed_amount} AMOS returned to treasury"
+    true
+  end
+
   # Transfer stake to beneficiary (inheritance)
   def transfer_to_beneficiary!(new_owner)
     raise "Cannot transfer locked stake" if locked?
@@ -337,6 +418,8 @@ class TokenStake < ApplicationRecord
     end
 
     # Create stake for distribution (affiliate sale, referral, etc.)
+    # SECURITY: All distribution stakes start in pending_clawback status
+    # and are confirmed after 90 days if the customer doesn't churn
     def create_distribution_stake!(user:, amount:, category:, source: nil, metadata: {})
       create!(
         user: user,
@@ -348,8 +431,19 @@ class TokenStake < ApplicationRecord
         decay_rate: default_decay_rate_for('distribution'),
         source: source,
         earned_at: Time.current,
-        metadata: metadata
+        clawback_status: 'pending_clawback', # SECURITY: Subject to 90-day clawback
+        metadata: metadata.merge(clawback_eligible_until: (Time.current + CLAWBACK_PERIOD_DAYS.days).iso8601)
       )
+    end
+    
+    # Confirm all distribution stakes that have passed the clawback period
+    def confirm_eligible_stakes!
+      count = 0
+      eligible_for_confirmation.find_each do |stake|
+        stake.confirm_stake! && count += 1
+      end
+      Rails.logger.info "[TOKEN_STAKE] Confirmed #{count} stakes after clawback period"
+      count
     end
 
     # Create stake for code/community contribution
