@@ -20,6 +20,7 @@ namespace :test_flow do
       u.first_name = "Test"
       u.last_name = "Referrer"
       u.entity = entity
+      u.role = "marketer"
       u.password = "password123" if u.respond_to?(:password=)
     end
 
@@ -27,6 +28,7 @@ namespace :test_flow do
       u.first_name = "Test"
       u.last_name = "Builder"
       u.entity = entity
+      u.role = "marketer"
       u.password = "password123" if u.respond_to?(:password=)
     end
 
@@ -34,6 +36,7 @@ namespace :test_flow do
       u.first_name = "New"
       u.last_name = "User"
       u.entity = entity
+      u.role = "viewer"
       u.password = "password123" if u.respond_to?(:password=)
     end
 
@@ -179,17 +182,19 @@ namespace :test_flow do
     builder_points = 150  # From bounty
     referrer_points = sales_points  # From referral
 
-    daily_emission = ContributionRewardCalculator::DAILY_EMISSION
+    daily_emission = ContributionRewardCalculator.current_daily_emission
 
-    builder_tokens = ContributionRewardCalculator.calculate_reward(
+    builder_result = ContributionRewardCalculator.calculate_pool_share(
       your_points: builder_points,
       total_points_today: total_points_today
     )
+    builder_tokens = builder_result[:tokens]
 
-    referrer_tokens = ContributionRewardCalculator.calculate_reward(
+    referrer_result = ContributionRewardCalculator.calculate_pool_share(
       your_points: referrer_points,
       total_points_today: total_points_today
     )
+    referrer_tokens = referrer_result[:tokens]
 
     puts "📊 Daily Pool Distribution:"
     puts "   Daily Emission: #{daily_emission} AMOS"

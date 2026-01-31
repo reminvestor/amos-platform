@@ -41,8 +41,9 @@ class Contribution < ApplicationRecord
   scope :for_user, ->(user) { where(user: user) }
   scope :recent, -> { order(created_at: :desc) }
 
-  # Callbacks - only award stake on initial approval, not subsequent updates
+  # Callbacks - award stake when approved (via update OR create)
   after_update :award_stake_if_approved, if: -> { saved_change_to_status? && !stake_awarded? }
+  after_create :award_stake_if_approved, if: -> { approved? && !stake_awarded? }
 
   # Instance methods
   def approve!(reviewer, stake_value: nil)
