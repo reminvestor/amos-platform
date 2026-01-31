@@ -1,44 +1,59 @@
-Deploy the Flutter mobile app to iOS (TestFlight or App Store).
+---
+description: Deploy the Flutter mobile app to iOS (TestFlight or App Store)
+allowed-tools: Bash, Read, Glob, Grep
+---
 
-## Usage
+# Deploy iOS to TestFlight
 
-For TestFlight deployment:
+You are deploying the Flutter mobile app to TestFlight. Follow these steps:
+
+## Step 1: Analyze Recent Changes
+
+First, get the git log since the last TestFlight deployment to understand what changed:
+
 ```bash
-cd flutter_mobile && ./deploy-ios.sh --testflight
+cd /Volumes/ExtremeSSD/agent_marketing && git log --oneline --no-merges -20 -- flutter_mobile/
 ```
 
-For App Store deployment:
-```bash
-cd flutter_mobile && ./deploy-ios.sh --production
+Look at the commit messages to understand what features were added, bugs were fixed, or improvements made.
+
+## Step 2: Generate Release Notes
+
+Based on the git commits, generate concise "What to Test" notes for TestFlight testers. The notes should:
+- Be 2-4 bullet points
+- Focus on user-facing changes
+- Use plain language (not technical jargon)
+- Mention any new features, bug fixes, or UI changes
+
+Example format:
+```
+• Added Face ID login for trusted devices
+• Fixed scanner not saving business cards
+• Improved chat response speed
 ```
 
-With custom release notes:
+## Step 3: Run the Deployment
+
+Execute the deployment with the generated notes:
+
 ```bash
-cd flutter_mobile && ./deploy-ios.sh --testflight --notes "Fixed login bug, added new scanner feature"
+cd /Volumes/ExtremeSSD/agent_marketing/flutter_mobile && ./deploy-ios.sh --testflight --notes "YOUR_GENERATED_NOTES_HERE"
 ```
 
-## Options
+## Step 4: Report Results
 
-- `--testflight` - Deploy to TestFlight (default)
-- `--production` - Deploy to App Store
-- `--notes "message"` - What to Test notes for testers
-- `--screenshots` - Capture screenshots before deploy
-- `--screenshots-only` - Only capture screenshots, don't deploy
-- `--skip-flutter-build` - Use existing build
+After deployment completes, report:
+- The version and build number deployed
+- The release notes used
+- Any errors encountered
 
 ## Prerequisites
 
-1. Environment variables set (in `.env.production` or exported):
-   - `API_BASE_URL` - Production API URL
-   - `ASC_KEY_ID` - App Store Connect API Key ID
-   - `ASC_ISSUER_ID` - App Store Connect Issuer ID
-   - `ASC_KEY_CONTENT` - App Store Connect API Key (base64)
+The deployment script requires these environment variables (already configured in `.env.production` and `ios/.env`):
+- `API_BASE_URL` - Production API URL
+- `FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD` - App-specific password
+- `MATCH_PASSWORD` - Fastlane Match encryption password
 
-2. Ruby/Fastlane installed in `flutter_mobile/ios/`
+## Manual Override
 
-## What it does
-
-1. Loads environment from `.env.production`
-2. Runs `flutter build ios --release`
-3. Runs Fastlane to upload to TestFlight/App Store
-4. Commits version bump to git
+If the user provides specific notes with their request, use those instead of auto-generating.

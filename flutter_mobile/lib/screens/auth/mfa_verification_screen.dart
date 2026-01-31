@@ -56,13 +56,20 @@ class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
         // Clear MFA state and login with device token
         ref.read(authStateProvider.notifier).clearMFA();
 
-        // Login with trusted device token (bypasses MFA)
-        final success = await ref.read(authStateProvider.notifier).loginWithDeviceToken(
+        // SECURITY: Server rotates token on each use - we get the new token back
+        final newDeviceToken = await ref.read(authStateProvider.notifier).loginWithDeviceToken(
           deviceCreds.email,
           deviceCreds.deviceToken,
         );
 
-        if (!success && mounted) {
+        if (newDeviceToken != null && mounted) {
+          // SECURITY: Store the rotated token for next login
+          await _biometricService.storeTrustedDeviceToken(
+            token: newDeviceToken,
+            email: deviceCreds.email,
+          );
+          return;
+        } else if (mounted) {
           // Device token was invalid/expired - clear it
           await _biometricService.clearTrustedDeviceToken();
           _showError('Device trust expired. Please enter the verification code.');
@@ -366,21 +373,44 @@ class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
                   borderRadius: BorderRadius.circular(8),
                   fieldHeight: 56,
                   fieldWidth: 48,
-                  activeFillColor: Colors.white,
-                  inactiveFillColor: Colors.grey[100],
-                  selectedFillColor: Colors.white,
+                  activeFillColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[800]
+                      : Colors.white,
+                  inactiveFillColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[900]
+                      : Colors.grey[100],
+                  selectedFillColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[700]
+                      : Colors.white,
                   activeColor: Theme.of(context).primaryColor,
-                  inactiveColor: Colors.grey[300]!,
+                  inactiveColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[600]!
+                      : Colors.grey[300]!,
                   selectedColor: Theme.of(context).primaryColor,
                   errorBorderColor: Colors.red,
                 ),
+                textStyle: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black,
+                ),
                 animationDuration: const Duration(milliseconds: 200),
                 enableActiveFill: true,
+                autoDisposeControllers: false,
+                useHapticFeedback: true,
+                hapticFeedbackTypes: HapticFeedbackTypes.light,
                 onCompleted: (code) {
                   _verifyCode();
                 },
                 onChanged: (value) {
-                  // Error will be cleared on next verification attempt
+                  // Trigger rebuild to show pasted values
+                  setState(() {});
+                },
+                beforeTextPaste: (text) {
+                  // Allow paste of 6-digit codes
+                  return text != null && RegExp(r'^\d{6}$').hasMatch(text.trim());
                 },
               ),
 
