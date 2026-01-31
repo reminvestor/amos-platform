@@ -2,8 +2,8 @@
 app_identifier(ENV["APP_IDENTIFIER"] || "com.amoslabs.mobile")
 
 # Apple ID for App Store Connect
-apple_id(ENV["APPLE_ID"])
+apple_id(ENV["APPLE_ID"] || "ryan@amoslabs.com")
 
 # Team ID for your Apple Developer account
-itc_team_id(ENV["ITC_TEAM_ID"])
-team_id(ENV["TEAM_ID"])
+itc_team_id(ENV["ITC_TEAM_ID"] || "65M4R87855")
+team_id(ENV["TEAM_ID"] || "65M4R87855")

@@ -67,9 +67,14 @@ class LoginResult {
   final bool mfaRequired;
   final String? mfaSessionToken;
 
+  /// SECURITY: Rotated device token for next biometric login.
+  /// Server rotates the token on each use to prevent replay attacks.
+  final String? newDeviceToken;
+
   const LoginResult({
     this.authResult,
     this.mfaRequired = false,
     this.mfaSessionToken,
+    this.newDeviceToken,
   });
 }
