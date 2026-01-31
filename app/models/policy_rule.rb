@@ -3,7 +3,7 @@ class PolicyRule < ApplicationRecord
 
   # Validations
   validates :name, presence: true
-  validates :resource_type, inclusion: { in: %w[Connection Integration Operation Global] }
+  validates :resource_type, inclusion: { in: %w[Connection Integration Operation Global Tool] }
   validates :action, inclusion: { in: %w[read write delete execute all] }
   validates :is_active, inclusion: { in: [ true, false ] }
 
@@ -24,6 +24,8 @@ class PolicyRule < ApplicationRecord
       integration = resource.is_a?(Integration) ? resource : resource.try(:integration)
       integration && (resource_id.nil? || resource_id == integration.id.to_s)
     when "Operation"
+      resource_id.nil? || resource_id == resource.to_s
+    when "Tool"
       resource_id.nil? || resource_id == resource.to_s
     when "Global"
       true

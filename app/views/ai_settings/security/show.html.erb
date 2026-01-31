@@ -1,0 +1,192 @@
+<% content_for :title, "AI Security Settings" %>
+
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="h3 mb-0">AI Security Settings</h1>
+          <p class="text-muted mb-0">Configure prompt injection mitigation and tool confirmation policies</p>
+        </div>
+        <div>
+          <%= link_to ai_settings_security_reset_to_defaults_path, method: :post, 
+              class: "btn btn-outline-secondary", 
+              data: { confirm: "Reset all security settings to defaults?" } do %>
+            <i data-lucide="rotate-ccw" class="me-1" style="width: 16px; height: 16px;"></i>
+            Reset to Defaults
+          <% end %>
+        </div>
+      </div>
+
+      <%= form_with url: ai_settings_security_path, method: :patch, local: true, class: "security-settings-form" do |f| %>
+        
+        <!-- Q-LLM Toggle Section -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="mb-0">
+                  <i data-lucide="shield-check" class="me-2" style="width: 20px; height: 20px;"></i>
+                  Quarantined LLM (Q-LLM)
+                </h5>
+                <small class="text-muted">Advanced prompt injection protection using dual-LLM architecture</small>
+              </div>
+              <div class="form-check form-switch">
+                <%= check_box_tag :quarantine_llm_enabled, "1", @quarantine_llm_enabled,
+                    class: "form-check-input", 
+                    style: "width: 3rem; height: 1.5rem;",
+                    id: "quarantine_llm_toggle" %>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info mb-0">
+              <strong>What is Q-LLM?</strong>
+              <p class="mb-2">The Quarantined LLM (Q-LLM) is a secondary AI that processes untrusted content (emails, documents, etc.) in a sandboxed environment with no tool access. It extracts only the requested data while ignoring any embedded instructions that might be prompt injection attacks.</p>
+              <ul class="mb-0">
+                <li><strong>When OFF (default):</strong> Untrusted content is processed directly but tool confirmations still protect against unauthorized actions.</li>
+                <li><strong>When ON:</strong> Untrusted content is first processed by Q-LLM to extract clean data before being used. Adds ~200-400ms latency (runs in parallel, so often hidden).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pending Confirmations -->
+        <% if @pending_confirmations_count > 0 %>
+          <div class="alert alert-warning mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong><%= @pending_confirmations_count %> pending confirmation<%= @pending_confirmations_count > 1 ? 's' : '' %></strong>
+                <span class="text-muted">waiting for user response</span>
+              </div>
+              <%= link_to ai_settings_security_expire_pending_path, method: :post, 
+                  class: "btn btn-sm btn-outline-warning" do %>
+                Expire All
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Tool Confirmation Policies -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i data-lucide="check-circle" class="me-2" style="width: 20px; height: 20px;"></i>
+              Tool Confirmation Policies
+            </h5>
+            <small class="text-muted">Control which AI actions require your explicit approval before execution</small>
+          </div>
+          <div class="card-body">
+            <div class="accordion" id="policyAccordion">
+              <% @policy_categories.each_with_index do |(category, tools), index| %>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button <%= index > 0 ? 'collapsed' : '' %>" type="button" 
+                            data-bs-toggle="collapse" data-bs-target="#category-<%= category.parameterize %>">
+                      <span class="badge bg-secondary me-2"><%= tools.count %></span>
+                      <%= category %>
+                      <% requires_confirm_count = tools.count { |t| t[:requires_confirmation] } %>
+                      <% if requires_confirm_count > 0 %>
+                        <span class="badge bg-warning text-dark ms-2"><%= requires_confirm_count %> require confirmation</span>
+                      <% end %>
+                    </button>
+                  </h2>
+                  <div id="category-<%= category.parameterize %>" 
+                       class="accordion-collapse collapse <%= index == 0 ? 'show' : '' %>">
+                    <div class="accordion-body p-0">
+                      <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                          <tr>
+                            <th style="width: 40%;">Tool</th>
+                            <th style="width: 35%;">Action Type</th>
+                            <th style="width: 15%;">Source</th>
+                            <th style="width: 10%;" class="text-center">Confirm?</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <% tools.each do |tool| %>
+                            <tr>
+                              <td>
+                                <code><%= tool[:name] %></code>
+                              </td>
+                              <td>
+                                <% action_class = case tool[:action]
+                                   when 'read' then 'success'
+                                   when 'write' then 'warning'
+                                   when 'execute' then 'info'
+                                   else 'secondary'
+                                   end %>
+                                <span class="badge bg-<%= action_class %>"><%= tool[:action] || 'unknown' %></span>
+                                <% if tool[:trust_required] %>
+                                  <span class="badge bg-danger ms-1" title="Blocks if untrusted data is present">
+                                    <i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i>
+                                  </span>
+                                <% end %>
+                              </td>
+                              <td>
+                                <% source_class = tool[:source] == :entity_rule ? 'primary' : 'light text-dark' %>
+                                <span class="badge bg-<%= source_class %>">
+                                  <%= tool[:source] == :entity_rule ? 'Custom' : 'Default' %>
+                                </span>
+                              </td>
+                              <td class="text-center">
+                                <div class="form-check form-switch d-inline-block">
+                                  <%= check_box_tag "tool_policies[#{tool[:name]}][requires_confirmation]", 
+                                      "1", tool[:requires_confirmation],
+                                      class: "form-check-input",
+                                      id: "policy_#{tool[:name].parameterize}" %>
+                                </div>
+                              </td>
+                            </tr>
+                          <% end %>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Save Button -->
+        <div class="d-flex justify-content-end">
+          <%= submit_tag "Save Security Settings", class: "btn btn-primary btn-lg" %>
+        </div>
+      <% end %>
+
+      <!-- Documentation -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i data-lucide="book-open" class="me-2" style="width: 20px; height: 20px;"></i>
+            About CaMeL Security
+          </h5>
+        </div>
+        <div class="card-body">
+          <p>These security settings implement the <strong>CaMeL (Capabilities and Memory Layout)</strong> pattern for AI security, which protects against prompt injection attacks by:</p>
+          <ol>
+            <li><strong>Data Source Tracking:</strong> All data flowing through the system is tagged with its origin (trusted user input vs. untrusted external content).</li>
+            <li><strong>Policy-Based Execution:</strong> Sensitive actions (writes, sends, deletes) require confirmation when processing untrusted data.</li>
+            <li><strong>User Confirmation:</strong> Before executing sensitive operations, the AI pauses and asks for your explicit approval.</li>
+            <li><strong>Quarantined LLM (Optional):</strong> A secondary AI extracts data from untrusted content without tool access, preventing injected instructions from taking effect.</li>
+          </ol>
+          <p class="mb-0">
+            <a href="https://simonwillison.net/2025/Apr/11/camel/" target="_blank" class="text-decoration-none">
+              Learn more about the CaMeL paper
+              <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

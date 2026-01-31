@@ -213,6 +213,15 @@ Rails.application.routes.draw do
       # Email templates for mobile app
       resources :email_templates, only: [ :index, :show, :create, :update, :destroy ]
 
+      # Tool Confirmations (CaMeL Security)
+      resources :tool_confirmations, only: [:index, :show] do
+        collection do
+          post :confirm
+          post :deny
+          delete :expire_all
+        end
+      end
+
       # Contact groups for mobile app
       resources :contact_groups, only: [ :index, :show, :create, :update, :destroy ] do
         member do
@@ -633,6 +642,10 @@ Rails.application.routes.draw do
         post :toggle, on: :collection, as: :toggle
         post :reset, on: :collection
         post :update_platform_settings, on: :collection
+      end
+      resource :security, only: [:show, :update], controller: 'security' do
+        post :reset_to_defaults, on: :collection
+        post :expire_pending, on: :collection
       end
     end
 

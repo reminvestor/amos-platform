@@ -632,6 +632,114 @@ class ScoutGenericToolsServiceV2
   end
 
   private
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # CAMEL SECURITY METHODS
+  # Policy-based tool execution and data source tracking
+  # Based on: https://simonwillison.net/2025/Apr/11/camel/
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # Check if tool execution requires user confirmation
+  def check_tool_policy(tool_name, args)
+    # Collect data sources from arguments
+    data_sources = @current_data_sources || []
+    
+    # Check if this was recently confirmed (within session)
+    already_confirmed = ToolPolicyService.recently_confirmed?(
+      entity: @entity,
+      user: @user,
+      tool_name: tool_name,
+      args: args
+    )
+    
+    if already_confirmed
+      return { allowed: true, requires_confirmation: false, already_confirmed: true }
+    end
+    
+    # Check policy
+    ToolPolicyService.check(
+      entity: @entity,
+      user: @user,
+      tool_name: tool_name,
+      args: args,
+      data_sources: data_sources
+    )
+  end
+
+  # Store a pending tool confirmation
+  def store_pending_tool_confirmation(tool_call, args, policy_result)
+    PendingToolConfirmation.create!(
+      entity: @entity,
+      user: @user,
+      tool_name: tool_call[:name],
+      tool_args: args,
+      data_sources: policy_result[:untrusted_sources] || [],
+      action_description: policy_result[:action_description],
+      reason: policy_result[:reason],
+      session_id: @session_id,
+      expires_at: 5.minutes.from_now
+    )
+  end
+
+  # Broadcast confirmation request to user
+  def broadcast_confirmation_required(pending, policy_result, progress_callback)
+    confirmation_data = {
+      type: "confirmation_required",
+      confirmation_id: pending.confirmation_id,
+      tool_name: pending.tool_name,
+      action_description: pending.action_description,
+      reason: pending.reason,
+      args_preview: safe_args_preview(pending.tool_args),
+      untrusted_sources: policy_result[:untrusted_sources]&.map { |s| s[:source].to_s.humanize },
+      expires_at: pending.expires_at.iso8601,
+      timestamp: Time.current.to_f
+    }
+    
+    # Broadcast via ScoutChannel
+    if @session_id.present? && defined?(ScoutChannel)
+      ScoutChannel.broadcast_to(@session_id, confirmation_data)
+    end
+    
+    # Also via progress_callback
+    progress_callback&.call(confirmation_data)
+    
+    Rails.logger.info "🔒 [CaMeL] Confirmation required for #{pending.tool_name}: #{pending.action_description}"
+  end
+
+  # Create safe preview of args for display (hide sensitive data)
+  def safe_args_preview(args)
+    return {} unless args.is_a?(Hash)
+    
+    safe_args = {}
+    args.each do |key, value|
+      key_str = key.to_s.downcase
+      if key_str.include?('password') || key_str.include?('secret') || key_str.include?('token')
+        safe_args[key] = '[REDACTED]'
+      elsif value.is_a?(String) && value.length > 100
+        safe_args[key] = value.truncate(100)
+      else
+        safe_args[key] = value
+      end
+    end
+    safe_args
+  end
+
+  # Execute a confirmed pending action
+  def execute_confirmed_action(confirmation_id)
+    pending = PendingToolConfirmation.find_by(
+      confirmation_id: confirmation_id,
+      entity: @entity,
+      status: 'pending'
+    )
+    
+    return { success: false, error: 'Confirmation not found or expired' } unless pending&.pending?
+    
+    pending.execute_with(self)
+  end
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # END CAMEL SECURITY METHODS
+  # ═══════════════════════════════════════════════════════════════════════════
   
   # Get friendly display name for tool (for working indicator)
   def get_friendly_tool_name(tool_name)
@@ -2447,7 +2555,48 @@ class ScoutGenericToolsServiceV2
           end
         end
 
+        # ═══════════════════════════════════════════════════════════════
+        # CAMEL SECURITY: Policy-based tool execution check
+        # Check if this tool requires user confirmation before execution
+        # ═══════════════════════════════════════════════════════════════
+        policy_result = check_tool_policy(tool_call[:name], args)
+        
+        if policy_result[:requires_confirmation] && !policy_result[:already_confirmed]
+          # Store pending action and request user confirmation
+          pending = store_pending_tool_confirmation(tool_call, args, policy_result)
+          
+          # Broadcast confirmation request to user
+          broadcast_confirmation_required(pending, policy_result, progress_callback)
+          
+          # Return a pending result - the tool will be executed after confirmation
+          results << {
+            tool_use_id: tool_call[:tool_use_id],
+            content: {
+              pending_confirmation: true,
+              confirmation_id: pending.confirmation_id,
+              action_description: policy_result[:action_description],
+              message: "Waiting for your confirmation to proceed."
+            }.to_json
+          }
+          next # Skip to next tool call
+        end
+
         result = execute_tool_by_name(tool_call[:name], args, progress_callback)
+        
+        # ═══════════════════════════════════════════════════════════════
+        # CAMEL SECURITY: Tag tool results with data source
+        # This enables downstream policy checks on derived data
+        # ═══════════════════════════════════════════════════════════════
+        @current_data_sources ||= []
+        if DataSourceTracker.sensitive_tool?(tool_call[:name]) || 
+           DataSourceTracker::UNTRUSTED_TOOL_RESULTS.include?(tool_call[:name])
+          tagged_result = DataSourceTracker.tag_tool_result(tool_call[:name], result)
+          @current_data_sources << {
+            source: tagged_result[:source],
+            trust_level: tagged_result[:trust_level],
+            tool_name: tool_call[:name]
+          }
+        end
 
         # Special handling for delegate_to_agent - display the confirmation message
         if tool_call[:name] == "delegate_to_agent" && result[:success]
