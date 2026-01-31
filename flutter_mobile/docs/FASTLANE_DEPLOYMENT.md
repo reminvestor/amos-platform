@@ -130,7 +130,7 @@ bundle exec fastlane register_device name:"Ryan's iPhone" udid:"00001234-ABCD567
 Version is controlled in `pubspec.yaml`:
 
 ```yaml
-version: 1.0.0+1  # format: major.minor.patch+build
+version: 1.0.1+1  # format: major.minor.patch+build
 ```
 
 Fastlane auto-increments the build number based on the latest TestFlight build. To manually bump:

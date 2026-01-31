@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_28_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2086,28 +2086,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_000001) do
 
   create_table "device_tokens", force: :cascade do |t|
     t.bigint "user_id", null: false
-    t.bigint "entity_id", null: false
     t.string "token", null: false
     t.string "platform", null: false
-    t.string "platform_arn"
-    t.string "device_id"
-    t.string "device_name"
-    t.string "device_model"
-    t.string "os_version"
-    t.string "app_version"
+    t.string "endpoint_arn"
     t.boolean "active", default: true, null: false
-    t.datetime "last_used_at"
-    t.datetime "deactivated_at"
-    t.string "deactivation_reason"
-    t.jsonb "notification_preferences", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["active"], name: "index_device_tokens_on_active"
-    t.index ["device_id"], name: "index_device_tokens_on_device_id"
-    t.index ["entity_id"], name: "index_device_tokens_on_entity_id"
-    t.index ["platform_arn"], name: "index_device_tokens_on_platform_arn", unique: true, where: "(platform_arn IS NOT NULL)"
     t.index ["token"], name: "index_device_tokens_on_token", unique: true
-    t.index ["user_id", "platform", "active"], name: "index_device_tokens_on_user_id_and_platform_and_active"
+    t.index ["user_id", "active"], name: "index_device_tokens_on_user_id_and_active"
     t.index ["user_id"], name: "index_device_tokens_on_user_id"
   end
 
@@ -4494,6 +4480,32 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_000001) do
     t.index ["entity_id"], name: "index_scout_personalities_on_entity_id", unique: true
   end
 
+  create_table "sequence_email_deliveries", force: :cascade do |t|
+    t.bigint "email_sequence_id", null: false
+    t.bigint "sequence_step_id", null: false
+    t.bigint "sequence_enrollment_id", null: false
+    t.bigint "contact_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "status", default: "pending", null: false
+    t.string "ses_message_id"
+    t.datetime "sent_at"
+    t.datetime "delivered_at"
+    t.datetime "opened_at"
+    t.datetime "clicked_at"
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contact_id", "sequence_enrollment_id"], name: "idx_seq_deliveries_on_contact_and_enrollment"
+    t.index ["contact_id"], name: "index_sequence_email_deliveries_on_contact_id"
+    t.index ["email_sequence_id", "sequence_step_id"], name: "idx_seq_deliveries_on_seq_and_step"
+    t.index ["email_sequence_id"], name: "index_sequence_email_deliveries_on_email_sequence_id"
+    t.index ["entity_id"], name: "index_sequence_email_deliveries_on_entity_id"
+    t.index ["sequence_enrollment_id"], name: "index_sequence_email_deliveries_on_sequence_enrollment_id"
+    t.index ["sequence_step_id"], name: "index_sequence_email_deliveries_on_sequence_step_id"
+    t.index ["ses_message_id"], name: "index_sequence_email_deliveries_on_ses_message_id", unique: true
+    t.index ["status"], name: "index_sequence_email_deliveries_on_status"
+  end
+
   create_table "sequence_enrollments", force: :cascade do |t|
     t.bigint "email_sequence_id", null: false
     t.bigint "contact_id", null: false
@@ -5011,6 +5023,17 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_000001) do
     t.index ["user_id"], name: "index_task_sessions_on_user_id"
   end
 
+  create_table "task_trackers", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "title", null: false
+    t.date "due_date"
+    t.string "priority", default: "medium"
+    t.boolean "completed", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_task_trackers_on_entity_id"
+  end
+
   create_table "team_channels", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "name", null: false
@@ -5117,6 +5140,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_000001) do
     t.index ["tool_name"], name: "index_tool_usage_metrics_on_tool_name"
     t.index ["user_id", "tool_name"], name: "index_tool_usage_metrics_on_user_id_and_tool_name"
     t.index ["user_id"], name: "index_tool_usage_metrics_on_user_id"
+  end
+
+  create_table "trusted_devices", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "token", null: false
+    t.string "device_name"
+    t.string "device_identifier"
+    t.string "platform"
+    t.datetime "last_used_at"
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["token"], name: "index_trusted_devices_on_token", unique: true
+    t.index ["user_id", "device_identifier"], name: "index_trusted_devices_on_user_id_and_device_identifier"
+    t.index ["user_id"], name: "index_trusted_devices_on_user_id"
   end
 
   create_table "tts_usage_logs", force: :cascade do |t|
@@ -6043,7 +6081,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_000001) do
   add_foreign_key "design_plans", "module_canvases", column: "module_canvas_id"
   add_foreign_key "design_plans", "users"
   add_foreign_key "design_plans", "websites"
-  add_foreign_key "device_tokens", "entities"
   add_foreign_key "device_tokens", "users"
   add_foreign_key "document_analytics", "rag_documents"
   add_foreign_key "document_annotations", "rag_documents"
@@ -6254,6 +6291,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_000001) do
   add_foreign_key "scout_messages", "entities"
   add_foreign_key "scout_messages", "users"
   add_foreign_key "scout_personalities", "entities"
+  add_foreign_key "sequence_email_deliveries", "contacts"
+  add_foreign_key "sequence_email_deliveries", "email_sequences"
+  add_foreign_key "sequence_email_deliveries", "entities"
+  add_foreign_key "sequence_email_deliveries", "sequence_enrollments"
+  add_foreign_key "sequence_email_deliveries", "sequence_steps"
   add_foreign_key "sequence_enrollments", "contacts"
   add_foreign_key "sequence_enrollments", "email_sequences"
   add_foreign_key "sequence_enrollments", "entities"
@@ -6291,6 +6333,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_000001) do
   add_foreign_key "task_experiences", "entities"
   add_foreign_key "task_experiences", "evolution_cycles"
   add_foreign_key "task_sessions", "users"
+  add_foreign_key "task_trackers", "entities"
   add_foreign_key "team_channels", "entities"
   add_foreign_key "team_invites", "entities"
   add_foreign_key "team_invites", "users", column: "invited_by_id"
@@ -6301,6 +6344,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_28_000001) do
   add_foreign_key "tool_usage_metrics", "entities"
   add_foreign_key "tool_usage_metrics", "tool_definitions"
   add_foreign_key "tool_usage_metrics", "users"
+  add_foreign_key "trusted_devices", "users"
   add_foreign_key "tts_usage_logs", "entities"
   add_foreign_key "tts_usage_logs", "users"
   add_foreign_key "user_billing_accounts", "users"

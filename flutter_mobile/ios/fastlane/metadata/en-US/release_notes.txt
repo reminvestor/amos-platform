@@ -1,0 +1,4 @@
+What's New:
+- Improved AI chat responses with faster streaming
+- Enhanced business card scanning accuracy
+- Bug fixes and performance improvements

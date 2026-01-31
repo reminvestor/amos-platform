@@ -14,7 +14,6 @@ import 'package:amos_mobile/services/dictation_service.dart';
 import 'package:amos_mobile/widgets/file_attachment_chip.dart';
 import 'package:amos_mobile/widgets/question_queue.dart';
 import 'package:amos_mobile/widgets/thinking_indicator.dart';
-import 'package:amos_mobile/widgets/canvas/canvas_overlay.dart';
 import 'package:amos_mobile/utils/logger.dart';
 import 'package:amos_mobile/genui/genui_renderer.dart';
 
@@ -297,9 +296,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             throw Exception(event.content);
 
           case ChatStreamEventType.canvas:
-            // Handle canvas events (landing page editor, etc.)
-            AppLogger.info('Canvas event: ${event.canvasType}');
-            _showCanvas(event.canvasType ?? 'unknown', event.data);
+            // Canvas events are not supported on mobile - log and ignore
+            AppLogger.info('Canvas event ignored on mobile: ${event.canvasType}');
             break;
 
           case ChatStreamEventType.question:
@@ -393,36 +391,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     });
   }
 
-  /// Show a canvas overlay when receiving a canvas event from Amos
-  void _showCanvas(String canvasType, dynamic canvasData) {
-    // Update canvas state
-    ref.read(currentCanvasProvider.notifier).showCanvas(canvasType, canvasData);
-    ref.read(canvasVisibleProvider.notifier).show();
-
-    AppLogger.info('Showing canvas: $canvasType');
-  }
-
-  /// Close the current canvas overlay
-  void _closeCanvas() {
-    ref.read(canvasVisibleProvider.notifier).hide();
-    ref.read(currentCanvasProvider.notifier).closeCanvas();
-    ref.read(canvasHistoryProvider.notifier).clear();
-  }
-
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(chatMessagesProvider);
     final isLoading = ref.watch(chatLoadingProvider);
     final status = ref.watch(chatStatusProvider);
     final attachedFiles = ref.watch(attachedFilesProvider);
-    final isCanvasVisible = ref.watch(canvasVisibleProvider);
 
     final sessionId = ref.watch(chatSessionProvider) ?? '';
-
-    // Show canvas overlay when active
-    if (isCanvasVisible) {
-      return const CanvasOverlay();
-    }
 
     return Scaffold(
       appBar: AppBar(

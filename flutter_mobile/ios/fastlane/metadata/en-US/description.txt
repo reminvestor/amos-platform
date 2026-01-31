@@ -1,0 +1,48 @@
+Meet AMOS — your AI marketing copilot that turns conversations into campaigns, scans into contacts, and chaos into organized growth.
+
+Just chat naturally: "Send a follow-up email to everyone from last week's conference" or "What campaigns are performing best?" AMOS understands and executes.
+
+WHAT MAKES AMOS DIFFERENT
+
+Unlike basic AI chatbots, AMOS actually does things. It connects to your tools, manages your data, and takes action — not just answers questions.
+
+CORE FEATURES
+
+• AI Chat That Takes Action
+Chat naturally to send emails, create campaigns, look up contacts, and manage tasks. No menus to navigate, just tell AMOS what you need.
+
+• Smart Business Card Scanner
+Point your camera at any business card. AMOS extracts the contact info using AI vision and adds it to your CRM automatically.
+
+• Email Campaign Builder
+Create, schedule, and track email campaigns. Get AI-powered subject lines and content suggestions that improve open rates.
+
+• Contact & Lead Management
+Organize contacts with smart tags, notes, and interaction history. Import from scans, spreadsheets, or connected apps.
+
+• Document Intelligence
+Upload contracts, brand guides, or meeting notes. AMOS indexes everything so you can ask questions about your documents later.
+
+• Task & Reminder System
+Never drop the ball. AMOS tracks follow-ups, deadlines, and action items from your conversations.
+
+POWERFUL INTEGRATIONS
+
+Connect AMOS to the tools you already use:
+• Stripe — View payments, customers, and revenue
+• HubSpot — Sync contacts and deals
+• Mailgun — Send and track emails
+• Custom APIs — Connect any REST service
+
+BUILT FOR PROFESSIONALS
+
+Whether you're a solo entrepreneur, sales rep, or marketing team, AMOS scales with you. Handle everything from quick business card scans to complex multi-step campaigns.
+
+SECURITY FIRST
+
+• End-to-end encryption
+• SOC 2 compliant infrastructure
+• Your data is never used to train AI models
+• Enterprise SSO available
+
+Download AMOS and start working smarter today.

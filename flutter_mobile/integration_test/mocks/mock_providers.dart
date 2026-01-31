@@ -1,6 +1,7 @@
 import 'package:amos_mobile/models/user.dart';
 import 'package:amos_mobile/providers/auth_provider.dart';
 import 'package:amos_mobile/providers/realtime_provider.dart';
+import 'package:amos_mobile/services/api_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Mock user for screenshots
@@ -12,10 +13,17 @@ const mockUser = User(
   mfaEnabled: false,
 );
 
+/// Screenshot API token - use real token from dev environment
+/// Set via: --dart-define=SCREENSHOT_TOKEN=your_token
+const String _screenshotToken = String.fromEnvironment(
+  'SCREENSHOT_TOKEN',
+  defaultValue: 'mock_token_for_screenshots',
+);
+
 /// Pre-authenticated auth state for screenshots
-const mockAuthState = AuthState(
+final mockAuthState = AuthState(
   user: mockUser,
-  token: 'mock_token_for_screenshots',
+  token: _screenshotToken,
   isLoading: false,
   mfaRequired: false,
 );
@@ -24,6 +32,8 @@ const mockAuthState = AuthState(
 class MockAuthNotifier extends AuthNotifier {
   @override
   AuthState build() {
+    // Set the mock token on ApiClient so API calls work
+    ApiClient.instance.setAuthToken(mockAuthState.token);
     // Don't call super.build() - just return authenticated state
     return mockAuthState;
   }
