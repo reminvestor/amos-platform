@@ -110,9 +110,14 @@ module Api
       # POST /api/v1/vision/scan_and_save
       # Unified scan + save endpoint
       #
+      # If `extracted_data` is provided, it will be used instead of re-extracting from the image.
+      # This allows users to edit the OCR results before saving.
+      #
       def scan_and_save
         image_data, mime_type = extract_image_from_request
         mode = normalize_scan_mode(params[:mode])
+        # Use provided extracted_data if present (allows editing before save)
+        provided_data = params[:extracted_data]&.to_unsafe_h
 
         unless image_data.present?
           return render json: { success: false, error: "No image provided" }, status: :bad_request
@@ -123,13 +128,13 @@ module Api
 
           case mode
           when :business_card
-            save_business_card(service, image_data, mime_type)
+            save_business_card(service, image_data, mime_type, provided_data)
           when :receipt
-            save_receipt(service, image_data, mime_type)
+            save_receipt(service, image_data, mime_type, provided_data)
           when :document
-            save_document(service, image_data, mime_type)
+            save_document(service, image_data, mime_type, provided_data)
           when :whiteboard
-            save_whiteboard(service, image_data, mime_type)
+            save_whiteboard(service, image_data, mime_type, provided_data)
           else
             render json: { success: false, error: "Invalid mode" }, status: :bad_request
           end
@@ -252,8 +257,13 @@ module Api
         mode_map[mode_param.to_s] || mode_param.to_s.underscore.to_sym
       end
 
-      def save_business_card(service, image_data, mime_type)
-        data = service.extract_business_card(image_data, mime_type: mime_type)
+      def save_business_card(service, image_data, mime_type, provided_data = nil)
+        # Use provided data (user-edited) or extract fresh from image
+        data = if provided_data.present?
+                 provided_data.symbolize_keys
+               else
+                 service.extract_business_card(image_data, mime_type: mime_type)
+               end
         return render json: { success: false, error: data[:error] }, status: :unprocessable_entity if data[:error]
 
         contact = Contact.new(
@@ -268,7 +278,8 @@ module Api
           metadata: {
             company: data[:company], title: data[:title], website: data[:website],
             address: data[:address], linkedin: data[:linkedin], twitter: data[:twitter],
-            notes: data[:notes], source: "scan", scanned_at: Time.current.iso8601
+            notes: data[:notes], source: "scan", scanned_at: Time.current.iso8601,
+            user_edited: provided_data.present?
           }.compact
         )
 
@@ -279,8 +290,13 @@ module Api
         end
       end
 
-      def save_receipt(service, image_data, mime_type)
-        data = service.extract_receipt(image_data, mime_type: mime_type)
+      def save_receipt(service, image_data, mime_type, provided_data = nil)
+        # Use provided data (user-edited) or extract fresh from image
+        data = if provided_data.present?
+                 provided_data.symbolize_keys
+               else
+                 service.extract_receipt(image_data, mime_type: mime_type)
+               end
         return render json: { success: false, error: data[:error] }, status: :unprocessable_entity if data[:error]
 
         # Create a note with the receipt data for now
@@ -290,14 +306,19 @@ module Api
           thread_type: "personal_note",
           title: "Receipt: #{data[:merchant] || 'Unknown'}",
           content: format_receipt_note(data),
-          metadata: { source: "receipt_scan", receipt_data: data }
+          metadata: { source: "receipt_scan", receipt_data: data, user_edited: provided_data.present? }
         )
 
         render json: { success: true, id: note.id, message: "Receipt saved to notes!" }
       end
 
-      def save_document(service, image_data, mime_type)
-        data = service.extract_document(image_data, mime_type: mime_type)
+      def save_document(service, image_data, mime_type, provided_data = nil)
+        # Use provided data (user-edited) or extract fresh from image
+        data = if provided_data.present?
+                 provided_data.symbolize_keys
+               else
+                 service.extract_document(image_data, mime_type: mime_type)
+               end
         return render json: { success: false, error: data[:error] }, status: :unprocessable_entity if data[:error]
 
         # Find or create default RAG store for entity
@@ -335,7 +356,8 @@ module Api
             extracted_text: data[:text],
             scan_data: data,
             source: "mobile_scanner",
-            scanned_at: Time.current.iso8601
+            scanned_at: Time.current.iso8601,
+            user_edited: provided_data.present?
           }
         )
 
@@ -358,7 +380,8 @@ module Api
             metadata: {
               source: "mobile_scan",
               title: data[:title],
-              type: data[:type]
+              type: data[:type],
+              user_edited: provided_data.present?
             }
           )
         end
@@ -374,8 +397,13 @@ module Api
         render json: { success: false, error: "Failed to save document: #{e.message}" }, status: :internal_server_error
       end
 
-      def save_whiteboard(service, image_data, mime_type)
-        data = service.extract_whiteboard(image_data, mime_type: mime_type)
+      def save_whiteboard(service, image_data, mime_type, provided_data = nil)
+        # Use provided data (user-edited) or extract fresh from image
+        data = if provided_data.present?
+                 provided_data.symbolize_keys
+               else
+                 service.extract_whiteboard(image_data, mime_type: mime_type)
+               end
         return render json: { success: false, error: data[:error] }, status: :unprocessable_entity if data[:error]
 
         # Create a note with the whiteboard content
@@ -384,7 +412,7 @@ module Api
           thread_type: "personal_note",
           title: data[:title] || "Whiteboard Notes",
           content: format_whiteboard_note(data),
-          metadata: { source: "whiteboard_scan", whiteboard_data: data }
+          metadata: { source: "whiteboard_scan", whiteboard_data: data, user_edited: provided_data.present? }
         )
 
         render json: { success: true, id: note.id, message: "Whiteboard saved to notes!" }

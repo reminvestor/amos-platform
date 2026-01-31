@@ -142,14 +142,20 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
           result: result,
           imageFile: imageFile,
           mode: _selectedMode,
-          onSave: () => _saveResult(result, imageFile),
+          onSave: (editedFields) => _saveResult(
+            ScanResult.success(
+              mode: result.mode!,
+              extractedFields: editedFields,
+            ),
+            imageFile,
+          ),
         ),
       ),
     );
   }
 
   Future<void> _saveResult(ScanResult result, File imageFile) async {
-    Navigator.pop(context);
+    // Note: Navigator.pop is called by the sheet's _handleSave before this
     setState(() => _isProcessing = true);
 
     try {
@@ -367,12 +373,12 @@ class _ModeChip extends StatelessWidget {
   }
 }
 
-/// Bottom sheet showing scan results
-class _ScanResultSheet extends StatelessWidget {
+/// Bottom sheet showing scan results with editable fields
+class _ScanResultSheet extends StatefulWidget {
   final ScanResult result;
   final File imageFile;
   final ScanMode mode;
-  final VoidCallback onSave;
+  final void Function(Map<String, dynamic> editedFields) onSave;
 
   const _ScanResultSheet({
     required this.result,
@@ -380,6 +386,52 @@ class _ScanResultSheet extends StatelessWidget {
     required this.mode,
     required this.onSave,
   });
+
+  @override
+  State<_ScanResultSheet> createState() => _ScanResultSheetState();
+}
+
+class _ScanResultSheetState extends State<_ScanResultSheet> {
+  late Map<String, TextEditingController> _controllers;
+  late List<String> _fieldOrder;
+
+  @override
+  void initState() {
+    super.initState();
+    // Create controllers for each extracted field
+    _controllers = {};
+    _fieldOrder = [];
+    for (final entry in widget.result.extractedFields.entries) {
+      _fieldOrder.add(entry.key);
+      _controllers[entry.key] = TextEditingController(
+        text: entry.value?.toString() ?? '',
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Map<String, dynamic> _getEditedFields() {
+    final edited = <String, dynamic>{};
+    for (final key in _fieldOrder) {
+      final value = _controllers[key]?.text.trim() ?? '';
+      if (value.isNotEmpty) {
+        edited[key] = value;
+      }
+    }
+    return edited;
+  }
+
+  void _handleSave() {
+    Navigator.pop(context);
+    widget.onSave(_getEditedFields());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -401,12 +453,27 @@ class _ScanResultSheet extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              Icon(mode.icon, size: 24, color: mode.color),
+              Icon(widget.mode.icon, size: 24, color: widget.mode.color),
               const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Scanned ${widget.mode.label}',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+              // Edit hint
+              Icon(
+                LucideIcons.pencil,
+                size: 16,
+                color: context.textTertiary,
+              ),
+              const SizedBox(width: 4),
               Text(
-                'Scanned ${mode.label}',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
+                'Tap to edit',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: context.textTertiary,
                     ),
               ),
             ],
@@ -420,26 +487,25 @@ class _ScanResultSheet extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
-              // Image preview
+              // Image preview (collapsed)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Image.file(
-                  imageFile,
-                  height: 150,
+                  widget.imageFile,
+                  height: 100,
                   width: double.infinity,
                   fit: BoxFit.cover,
                 ),
               ),
               const SizedBox(height: 20),
 
-              // Extracted data based on mode
-              ...result.extractedFields.entries.map((entry) {
-                if (entry.value == null || entry.value.toString().isEmpty) {
-                  return const SizedBox.shrink();
-                }
-                return _FieldRow(
-                  label: _formatFieldName(entry.key),
-                  value: entry.value.toString(),
+              // Editable fields based on mode
+              ..._fieldOrder.map((key) {
+                final controller = _controllers[key]!;
+                return _EditableFieldRow(
+                  label: _formatFieldName(key),
+                  controller: controller,
+                  mode: widget.mode,
                 );
               }),
 
@@ -463,7 +529,7 @@ class _ScanResultSheet extends StatelessWidget {
               Expanded(
                 flex: 2,
                 child: FilledButton.icon(
-                  onPressed: onSave,
+                  onPressed: _handleSave,
                   icon: Icon(_getSaveIcon(), size: 18),
                   label: Text(_getSaveLabel()),
                 ),
@@ -476,7 +542,7 @@ class _ScanResultSheet extends StatelessWidget {
   }
 
   IconData _getSaveIcon() {
-    switch (mode) {
+    switch (widget.mode) {
       case ScanMode.businessCard:
         return LucideIcons.userPlus;
       case ScanMode.receipt:
@@ -489,7 +555,7 @@ class _ScanResultSheet extends StatelessWidget {
   }
 
   String _getSaveLabel() {
-    switch (mode) {
+    switch (widget.mode) {
       case ScanMode.businessCard:
         return 'Save Contact';
       case ScanMode.receipt:
@@ -512,35 +578,57 @@ class _ScanResultSheet extends StatelessWidget {
   }
 }
 
-class _FieldRow extends StatelessWidget {
+/// Editable field row for OCR results
+class _EditableFieldRow extends StatelessWidget {
   final String label;
-  final String value;
+  final TextEditingController controller;
+  final ScanMode mode;
 
-  const _FieldRow({
+  const _EditableFieldRow({
     required this.label,
-    required this.value,
+    required this.controller,
+    required this.mode,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: context.textTertiary,
-                ),
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: context.textSecondary),
+          floatingLabelStyle: TextStyle(color: mode.color),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.bodyMedium,
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: mode.color, width: 2),
           ),
-        ],
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 14,
+          ),
+          suffixIcon: Icon(
+            LucideIcons.pencil,
+            size: 16,
+            color: context.textTertiary,
+          ),
+        ),
+        style: Theme.of(context).textTheme.bodyMedium,
+        maxLines: _isMultiLine(label) ? 3 : 1,
       ),
     );
+  }
+
+  bool _isMultiLine(String label) {
+    final lowerLabel = label.toLowerCase();
+    return lowerLabel.contains('address') ||
+        lowerLabel.contains('note') ||
+        lowerLabel.contains('description') ||
+        lowerLabel.contains('content') ||
+        lowerLabel.contains('text');
   }
 }
