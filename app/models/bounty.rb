@@ -20,8 +20,13 @@ class Bounty < ApplicationRecord
   belongs_to :claimed_by, class_name: 'User', optional: true
   belongs_to :reviewed_by, class_name: 'User', optional: true
   belongs_to :support_ticket, optional: true
+  belongs_to :pull_request_submission, optional: true
 
   has_one :contribution, dependent: :nullify
+
+  # Work evidence validation
+  validates :pr_url, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), allow_blank: true }
+  validates :work_url, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), allow_blank: true }
 
   # Bounty types
   BOUNTY_TYPES = %w[
@@ -148,13 +153,38 @@ class Bounty < ApplicationRecord
     update!(status: 'in_progress')
   end
 
-  def submit!(notes: nil)
+  def submit!(notes: nil, pr_url: nil, commit_sha: nil, work_url: nil, artifacts: [])
     return false unless status.in?(%w[claimed in_progress])
 
-    update!(
+    attrs = {
       status: 'submitted',
       submitted_at: Time.current,
       submission_notes: notes
+    }
+
+    # Track code work
+    if pr_url.present?
+      attrs[:pr_url] = pr_url
+      attrs[:pr_number] = extract_pr_number(pr_url)
+    end
+    attrs[:commit_sha] = commit_sha if commit_sha.present?
+
+    # Track non-code work (blogs, designs, etc.)
+    attrs[:work_url] = work_url if work_url.present?
+    attrs[:work_artifacts] = artifacts if artifacts.present?
+
+    update!(attrs)
+  end
+
+  # Link to an existing PR submission
+  def link_pull_request!(pr_submission)
+    update!(
+      pull_request_submission: pr_submission,
+      pr_url: pr_submission.pr_url,
+      pr_number: pr_submission.pr_number,
+      commit_sha: pr_submission.merge_commit_sha,
+      branch_name: pr_submission.branch_name,
+      repo_url: pr_submission.repo_url
     )
   end
 
@@ -295,7 +325,7 @@ class Bounty < ApplicationRecord
   def create_contribution_for_claimer!
     return unless claimed_by.present?
 
-    Contribution.create!(
+    contribution = Contribution.create!(
       user: claimed_by,
       entity: entity,
       title: "Completed bounty: #{title}",
@@ -305,8 +335,21 @@ class Bounty < ApplicationRecord
       reviewed_by: reviewed_by,
       reviewed_at: Time.current,
       stake_value: effective_points,
-      external_reference: "bounty:#{id}"
+      external_reference: build_external_reference
     )
+
+    # Link bounty to contribution
+    update_column(:contribution_id, contribution.id) if respond_to?(:contribution_id)
+
+    contribution
+  end
+
+  def build_external_reference
+    refs = ["bounty:#{id}"]
+    refs << "pr:#{pr_url}" if pr_url.present?
+    refs << "commit:#{commit_sha}" if commit_sha.present?
+    refs << "work:#{work_url}" if work_url.present?
+    refs.join('|')
   end
 
   def contribution_type_from_bounty
@@ -321,5 +364,22 @@ class Bounty < ApplicationRecord
     when 'testing' then 'testing'
     else 'code'
     end
+  end
+
+  def extract_pr_number(url)
+    return nil if url.blank?
+    # Extract PR number from GitHub/GitLab URLs
+    # e.g., https://github.com/org/repo/pull/123
+    match = url.match(/\/pull\/(\d+)/) || url.match(/\/merge_requests\/(\d+)/)
+    match&.[](1)&.to_i
+  end
+
+  def work_evidence_summary
+    evidence = []
+    evidence << "PR: #{pr_url}" if pr_url.present?
+    evidence << "Commit: #{commit_sha[0..7]}" if commit_sha.present?
+    evidence << "Work: #{work_url}" if work_url.present?
+    evidence << "#{work_artifacts.count} artifacts" if work_artifacts.present? && work_artifacts.any?
+    evidence.join(' | ')
   end
 end

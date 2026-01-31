@@ -77,6 +77,49 @@ class Contribution < ApplicationRecord
     token_stake.present?
   end
 
+  # Parse external reference to get bounty, PR, and commit info
+  def parsed_reference
+    return {} if external_reference.blank?
+
+    refs = external_reference.split('|')
+    parsed = {}
+
+    refs.each do |ref|
+      key, value = ref.split(':', 2)
+      parsed[key.to_sym] = value if key && value
+    end
+
+    parsed
+  end
+
+  def bounty_id
+    parsed_reference[:bounty]&.to_i
+  end
+
+  def pr_url
+    parsed_reference[:pr]
+  end
+
+  def commit_sha
+    parsed_reference[:commit]
+  end
+
+  def work_url
+    parsed_reference[:work]
+  end
+
+  def has_code_evidence?
+    pr_url.present? || commit_sha.present?
+  end
+
+  def work_evidence_display
+    evidence = []
+    evidence << "PR: #{pr_url}" if pr_url.present?
+    evidence << "Commit: #{commit_sha[0..7]}" if commit_sha.present?
+    evidence << "Work: #{work_url}" if work_url.present?
+    evidence.join(' | ')
+  end
+
   def calculate_default_stake_value
     base_value = case contribution_type
     when 'feature' then 1000
