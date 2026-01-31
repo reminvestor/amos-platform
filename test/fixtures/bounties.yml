@@ -1,0 +1,79 @@
+# Bounty fixtures for testing
+
+open_bounty:
+  entity: one
+  title: Fix login bug
+  description: Users cannot log in on mobile devices
+  bounty_type: bug
+  points: 100
+  status: open
+  source: amos_thinking
+  urgency_score: 7
+  impact_score: 8
+
+claimed_bounty:
+  entity: one
+  title: Add dark mode
+  description: Implement dark theme for the UI
+  bounty_type: feature
+  points: 250
+  status: claimed
+  source: amos_thinking
+  claimed_by: one
+  claimed_at: <%= 1.hour.ago %>
+
+submitted_bounty:
+  entity: one
+  title: Write getting started guide
+  description: Create a tutorial for new users
+  bounty_type: documentation
+  points: 75
+  status: submitted
+  source: user_submitted
+  created_by: one
+  claimed_by: two
+  claimed_at: <%= 2.days.ago %>
+  submitted_at: <%= 1.hour.ago %>
+  submission_notes: "Created comprehensive guide with screenshots"
+  pr_url: "https://github.com/NuvolaNetworks/agent_marketing/pull/123"
+  pr_number: 123
+  commit_sha: "abc123def456789"
+
+approved_bounty:
+  entity: one
+  title: Fix typo in docs
+  description: Correct spelling errors
+  bounty_type: documentation
+  points: 25
+  final_points: 30
+  status: approved
+  source: amos_thinking
+  claimed_by: two
+  claimed_at: <%= 3.days.ago %>
+  submitted_at: <%= 2.days.ago %>
+  approved_at: <%= 1.day.ago %>
+  reviewed_by: one
+  review_notes: "Good attention to detail!"
+
+high_value_bounty:
+  entity: one
+  title: Implement OAuth2 provider
+  description: Add OAuth2 server capabilities for third-party integrations
+  bounty_type: feature
+  points: 500
+  status: open
+  source: feature_vote
+  urgency_score: 5
+  impact_score: 9
+  complexity_score: 8
+  upvotes: 15
+
+expired_bounty:
+  entity: one
+  title: Old task
+  description: This bounty has expired
+  bounty_type: bug
+  points: 50
+  status: open
+  source: amos_thinking
+  expires_at: <%= 1.day.ago %>
