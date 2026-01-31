@@ -8,6 +8,27 @@ class VisionScannerApiTest < ActionDispatch::IntegrationTest
     @auth_headers = { "Authorization" => "Bearer #{@user.api_key}" }
   end
 
+  # === Entity Requirement Tests ===
+  # Note: Database enforces entity_id NOT NULL, so all users have an entity.
+  # The "no_entity" error would only occur if:
+  # 1. The entity was deleted but user remains (orphaned foreign key)
+  # 2. The entity association fails to load (caching issues - now fixed)
+
+  test "scan_and_save returns 403 when entity association fails to load" do
+    # Simulate the case where entity association returns nil
+    # This tests the defensive check in require_entity!
+    User.any_instance.stubs(:entity).returns(nil)
+
+    post "/api/v1/vision/scan_and_save",
+         params: { mode: "business_card", image: test_image_base64, mime_type: "image/png" },
+         headers: @auth_headers
+
+    assert_response :forbidden
+    json = JSON.parse(response.body)
+    assert_equal "no_entity", json["error"]
+    assert_match /entity/i, json["message"]
+  end
+
   # === Scan Endpoint Tests ===
 
   test "scan endpoint requires authentication" do
@@ -203,6 +224,143 @@ class VisionScannerApiTest < ActionDispatch::IntegrationTest
     refute_equal 401, response.status
   end
 
+  # === Successful Save Tests (with entity) ===
+  # Note: These tests use extracted_data parameter to bypass the need
+  # for mocking GeminiVisionService, which makes them more reliable.
+
+  test "scan_and_save creates contact for business_card mode with extracted_data" do
+    # Provide pre-extracted data (simulates user editing before save)
+    extracted_data = {
+      first_name: "John",
+      last_name: "Doe",
+      email: "john.doe.#{SecureRandom.hex(4)}@example.com",
+      phone: "555-1234",
+      company: "Acme Inc",
+      title: "CEO"
+    }
+
+    post "/api/v1/vision/scan_and_save",
+         params: {
+           mode: "business_card",
+           image: test_image_base64,
+           mime_type: "image/png",
+           extracted_data: extracted_data
+         },
+         headers: @auth_headers
+
+    json = JSON.parse(response.body)
+
+    # Debug output if test would fail
+    unless json["success"] == true
+      puts "\n=== DEBUG: scan_and_save business_card response ==="
+      puts "Status: #{response.status}"
+      puts "Body: #{json.inspect}"
+      puts "User entity_id: #{@user.entity_id}"
+      puts "Entity: #{@entity.inspect}"
+      puts "=== END DEBUG ==="
+    end
+
+    assert_response :success, "Expected success, got #{response.status}: #{json['error'] || json['message']}"
+    assert_equal true, json["success"], "Expected success=true, got: #{json.inspect}"
+    assert json["id"].present?, "Should return contact ID"
+    assert_match /saved/i, json["message"]
+
+    # Verify contact was created correctly
+    contact = Contact.find(json["id"])
+    assert_equal "John", contact.first_name
+    assert_equal "Doe", contact.last_name
+    assert_equal @entity.id, contact.entity_id
+    assert_equal @user.id, contact.user_id
+    assert_equal true, contact.metadata["user_edited"]
+  end
+
+  test "scan_and_save creates receipt note with extracted_data" do
+    extracted_data = {
+      merchant: "Coffee Shop",
+      date: "2024-01-15",
+      total: "$12.50",
+      items: ["Latte - $5.00", "Muffin - $7.50"],
+      category: "Food & Dining"
+    }
+
+    post "/api/v1/vision/scan_and_save",
+         params: {
+           mode: "receipt",
+           image: test_image_base64,
+           mime_type: "image/png",
+           extracted_data: extracted_data
+         },
+         headers: @auth_headers
+
+    json = JSON.parse(response.body)
+
+    # Debug output if not successful
+    unless json["success"] == true
+      puts "\n=== DEBUG: receipt save response ==="
+      puts "Status: #{response.status}"
+      puts "Body: #{json.inspect}"
+      puts "=== END DEBUG ==="
+    end
+
+    assert_response :success, "Expected success, got #{response.status}: #{json['error']}"
+    assert_equal true, json["success"], "Expected success=true: #{json.inspect}"
+    assert_match /receipt.*saved/i, json["message"]
+  end
+
+  test "scan_and_save creates document in RAG store with extracted_data" do
+    extracted_data = {
+      title: "Important Contract",
+      type: "contract",
+      text: "This is the full text of the scanned document."
+    }
+
+    assert_difference "RagDocument.count", 1 do
+      post "/api/v1/vision/scan_and_save",
+           params: {
+             mode: "document",
+             image: test_image_base64,
+             mime_type: "image/png",
+             extracted_data: extracted_data
+           },
+           headers: @auth_headers
+    end
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert_equal true, json["success"]
+    assert_match /document.*knowledge base/i, json["message"]
+  end
+
+  test "scan_and_save creates whiteboard note with extracted_data" do
+    extracted_data = {
+      title: "Sprint Planning",
+      summary: "Discussion about Q1 priorities",
+      key_points: ["Focus on mobile app", "Reduce tech debt"],
+      action_items: ["Review backlog", "Schedule meeting"],
+      text: "Raw whiteboard text content"
+    }
+
+    assert_difference "HubThread.count", 1 do
+      post "/api/v1/vision/scan_and_save",
+           params: {
+             mode: "whiteboard",
+             image: test_image_base64,
+             mime_type: "image/png",
+             extracted_data: extracted_data
+           },
+           headers: @auth_headers
+    end
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert_equal true, json["success"]
+    assert_match /whiteboard.*saved/i, json["message"]
+  end
+
   private
 
+  # Small 1x1 white pixel PNG for testing
+  def test_image_base64
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+  end
 end
