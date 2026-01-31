@@ -284,6 +284,18 @@ module Api
         )
 
         if contact.save
+          # Also index in RAG for searchability
+          name = [data[:first_name] || data[:name]&.split&.first, data[:last_name]].compact.join(" ")
+          index_scan_in_rag(
+            image_data: image_data,
+            mime_type: mime_type,
+            title: "Business Card: #{name.presence || data[:company] || 'Unknown'}",
+            content: format_business_card_content(data),
+            scan_type: "business_card",
+            scan_data: data,
+            user_edited: provided_data.present?
+          )
+
           render json: { success: true, id: contact.id, message: "Contact saved!" }
         else
           render json: { success: false, error: contact.errors.full_messages.join(", ") }, status: :unprocessable_entity
@@ -307,6 +319,18 @@ module Api
           title: "Receipt: #{data[:merchant] || 'Unknown'}",
           content: format_receipt_note(data),
           metadata: { source: "receipt_scan", receipt_data: data, user_edited: provided_data.present? }
+        )
+
+        # Also index in RAG for searchability
+        title = "Receipt: #{data[:merchant] || 'Unknown'} - #{data[:date] || Time.current.strftime('%Y-%m-%d')}"
+        index_scan_in_rag(
+          image_data: image_data,
+          mime_type: mime_type,
+          title: title,
+          content: format_receipt_note(data),
+          scan_type: "receipt",
+          scan_data: data,
+          user_edited: provided_data.present?
         )
 
         render json: { success: true, id: note.id, message: "Receipt saved to notes!" }
@@ -407,12 +431,24 @@ module Api
         return render json: { success: false, error: data[:error] }, status: :unprocessable_entity if data[:error]
 
         # Create a note with the whiteboard content
+        title = data[:title] || "Whiteboard Notes"
         note = current_user.entity.hub_threads.create!(
           user: current_user,
           thread_type: "personal_note",
-          title: data[:title] || "Whiteboard Notes",
+          title: title,
           content: format_whiteboard_note(data),
           metadata: { source: "whiteboard_scan", whiteboard_data: data, user_edited: provided_data.present? }
+        )
+
+        # Also index in RAG for searchability
+        index_scan_in_rag(
+          image_data: image_data,
+          mime_type: mime_type,
+          title: "Whiteboard: #{title}",
+          content: format_whiteboard_note(data),
+          scan_type: "whiteboard",
+          scan_data: data,
+          user_edited: provided_data.present?
         )
 
         render json: { success: true, id: note.id, message: "Whiteboard saved to notes!" }
@@ -470,6 +506,90 @@ module Api
 
       def sanitize_filename(name)
         name.to_s.gsub(/[^a-zA-Z0-9_\-]/, '_').slice(0, 50)
+      end
+
+      # Index any scan in the RAG store for searchability
+      # Returns the created RagDocument or nil on failure
+      def index_scan_in_rag(image_data:, mime_type:, title:, content:, scan_type:, scan_data:, user_edited: false)
+        rag_store = current_user.entity.rag_stores.find_or_create_by!(
+          name: "Knowledge Base",
+          app_name: "amos",
+          store_type: "entity",
+          user: current_user
+        ) do |store|
+          store.status = "active"
+        end
+
+        # Create temp file from image
+        extension = mime_type_to_extension(mime_type)
+        filename = "#{sanitize_filename(title)}_#{Time.current.strftime('%Y%m%d_%H%M%S')}.#{extension}"
+        temp_file = Tempfile.new([filename, ".#{extension}"])
+        temp_file.binmode
+        temp_file.write(Base64.decode64(image_data))
+        temp_file.rewind
+
+        file_hash = Digest::SHA256.file(temp_file.path).hexdigest
+
+        document = rag_store.rag_documents.create!(
+          original_filename: filename,
+          title: title,
+          content_type: mime_type,
+          file_size_bytes: temp_file.size,
+          file_hash: file_hash,
+          processing_status: "completed",
+          is_latest_version: true,
+          version: 1,
+          docling_metadata: {
+            extracted_text: content,
+            scan_type: scan_type,
+            scan_data: scan_data,
+            source: "mobile_scanner",
+            scanned_at: Time.current.iso8601,
+            user_edited: user_edited
+          }
+        )
+
+        document.file.attach(io: temp_file, filename: filename, content_type: mime_type)
+        temp_file.close
+        temp_file.unlink
+
+        # Create searchable chunk
+        if content.present?
+          document.rag_chunks.create!(
+            content: content,
+            chunk_index: 0,
+            metadata: {
+              source: "mobile_scan",
+              scan_type: scan_type,
+              title: title,
+              user_edited: user_edited
+            }
+          )
+        end
+
+        document
+      rescue => e
+        Rails.logger.error("Failed to index scan in RAG: #{e.message}")
+        nil
+      end
+
+      # Format business card data as searchable text
+      def format_business_card_content(data)
+        lines = []
+        lines << "Business Card Scan"
+        lines << ""
+        lines << "Name: #{data[:name] || [data[:first_name], data[:last_name]].compact.join(' ')}" if data[:name] || data[:first_name] || data[:last_name]
+        lines << "Email: #{data[:email]}" if data[:email]
+        lines << "Phone: #{data[:phone] || data[:mobile]}" if data[:phone] || data[:mobile]
+        lines << "Company: #{data[:company]}" if data[:company]
+        lines << "Title: #{data[:title]}" if data[:title]
+        lines << "Website: #{data[:website]}" if data[:website]
+        lines << "Address: #{data[:address]}" if data[:address]
+        lines << "LinkedIn: #{data[:linkedin]}" if data[:linkedin]
+        lines << "Twitter: #{data[:twitter]}" if data[:twitter]
+        lines << ""
+        lines << "Notes: #{data[:notes]}" if data[:notes]
+        lines.join("\n")
       end
 
       def extract_image_from_request
