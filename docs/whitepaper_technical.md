@@ -455,6 +455,115 @@ This means early contributors earn more tokens per point, but late contributors 
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+### 6.8 Autonomous Bounty Generation (AMOS Thinking Time)
+
+AMOS doesn't just execute tasks—it thinks about how to improve the platform and creates work opportunities for contributors.
+
+#### Nightly Thinking Time
+
+Every night, AMOS runs an autonomous reflection cycle:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    AMOS THINKING TIME (2am daily)               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. PERCEIVE: Analyze platform state                            │
+│     ├── Errors and anomalies from logs                          │
+│     ├── Open tickets and feature requests                       │
+│     ├── User feedback and metrics                               │
+│     └── Community activity                                      │
+│                                                                 │
+│  2. REFLECT: What could be improved?                            │
+│     ├── Identify patterns and problems                          │
+│     ├── Prioritize by impact and urgency                        │
+│     └── Consider strategic goals                                │
+│                                                                 │
+│  3. IDEATE: Generate bounty ideas                               │
+│     ├── Bugs to fix                                             │
+│     ├── Features to build                                       │
+│     ├── Content to create (blogs, tutorials)                    │
+│     ├── Marketing campaigns                                     │
+│     └── Documentation improvements                              │
+│                                                                 │
+│  4. SCORE: Assign point values                                  │
+│     ├── Estimate effort (hours)                                 │
+│     ├── Assess user impact                                      │
+│     ├── Rate urgency and complexity                             │
+│     └── Calculate fair points                                   │
+│                                                                 │
+│  5. CREATE: Post bounties to the board                          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### AI-Scored Bounties
+
+Every bounty (whether created by AMOS or humans) is scored by AI:
+
+| Factor | Weight | Description |
+|--------|--------|-------------|
+| Effort | 20% | Estimated hours of work |
+| Impact | 25% | Users affected |
+| Urgency | 20% | Time sensitivity |
+| Complexity | 20% | Technical difficulty |
+| Strategic | 15% | Alignment with goals |
+
+The scoring produces fair, consistent point values:
+
+```ruby
+# AI scoring example
+AmosBountyScorer.score(
+  title: "Add dark mode to dashboard",
+  description: "Users have requested dark mode...",
+  bounty_type: "feature"
+)
+# => { points: 250, effort_score: 7, impact_score: 8, ... }
+```
+
+#### AI Work Review
+
+When contributors submit completed work, AMOS reviews it:
+
+1. **Quality Assessment**: Does the work meet requirements?
+2. **Point Adjustment**: Exceptional work gets +25%, issues get -10-25%
+3. **Feedback**: Constructive comments for the contributor
+4. **Approval/Rejection**: Final decision
+
+```ruby
+AmosWorkReviewer.review(
+  bounty: bounty,
+  submission_notes: "Implemented dark mode with CSS variables..."
+)
+# => { approved: true, final_points: 275, feedback: "Great work!..." }
+```
+
+#### Bounty Types
+
+AMOS creates bounties across all contribution categories:
+
+| Type | Examples | Typical Points |
+|------|----------|----------------|
+| Bug | Fix errors, crashes, data issues | 25-200 |
+| Feature | New functionality | 100-500 |
+| Documentation | Guides, API docs, READMEs | 25-100 |
+| Content | Blog posts, tutorials, videos | 50-200 |
+| Marketing | Ad copy, campaigns, outreach | 50-150 |
+| Support | Answer questions, community help | 10-50 |
+| Design | UI improvements, graphics | 75-300 |
+| Testing | Test coverage, QA | 50-150 |
+
+#### Human + AI Collaboration
+
+- **AMOS** creates bounties based on platform analysis
+- **Users** can also submit bounty ideas
+- **Token holders** vote on feature priorities
+- **AMOS** factors votes into bounty creation
+- **Contributors** choose what to work on
+- **AMOS** reviews and approves completed work
+
+This creates a self-improving platform where the AI identifies needs and the community fulfills them.
+
 ---
 
 ## 7. Blockchain Integration
