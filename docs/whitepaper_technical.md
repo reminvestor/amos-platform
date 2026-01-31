@@ -1197,4 +1197,37 @@ Similar to how growth stocks trade at high P/E ratios:
 
 ---
 
+---
+
+## 14. Regulatory Commitment
+
+### 14.1 Our Approach
+
+AMOS is committed to operating within applicable regulatory frameworks. We recognize that token-based economies occupy an evolving legal landscape, and we approach this with transparency and good faith.
+
+### 14.2 Guiding Principles
+
+1. **Utility First**: AMOS tokens are designed primarily for governance participation and revenue sharing—genuine utility within the platform ecosystem.
+
+2. **Contribution-Based Distribution**: Tokens are primarily earned through work (code, sales, community support), not purchased through a traditional offering.
+
+3. **Transparency**: All token mechanics, allocations, and governance decisions are public and auditable.
+
+4. **Adaptability**: We commit to adapting our structure and operations as regulatory guidance evolves, in consultation with legal counsel.
+
+5. **Good Faith Compliance**: We will engage proactively with regulators and comply with applicable laws in all jurisdictions where we operate.
+
+### 14.3 Jurisdictional Considerations
+
+- The platform operates under EU regulations (MiCA framework) where applicable
+- We monitor and comply with evolving guidance from relevant regulatory bodies
+- Contributors and users are responsible for understanding their local tax obligations
+- Geographic restrictions may apply to certain features based on regulatory requirements
+
+### 14.4 Not an Investment Offering
+
+**Important Disclaimer**: AMOS tokens are utility tokens for platform participation. This whitepaper does not constitute an offer to sell securities or a solicitation of an offer to buy securities in any jurisdiction. The token economy is designed for active participants, not passive investors. The decay mechanism explicitly discourages passive holding.
+
+---
+
 *This document is for informational purposes only and does not constitute financial advice or a securities offering.*
