@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_30_010001) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_30_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1219,6 +1219,32 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_010001) do
     t.index ["status"], name: "index_amos_jobs_on_status"
   end
 
+  create_table "amos_thinking_sessions", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "session_type", default: "nightly", null: false
+    t.string "status", default: "running"
+    t.jsonb "context_analyzed", default: {}
+    t.integer "errors_analyzed", default: 0
+    t.integer "tickets_analyzed", default: 0
+    t.integer "feature_requests_analyzed", default: 0
+    t.text "reflection_summary"
+    t.text "improvement_ideas"
+    t.integer "bounties_created", default: 0
+    t.integer "total_points_allocated", default: 0
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.integer "duration_seconds"
+    t.integer "llm_tokens_used", default: 0
+    t.decimal "llm_cost", precision: 10, scale: 4, default: "0.0"
+    t.text "thinking_log"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_amos_thinking_sessions_on_created_at"
+    t.index ["entity_id"], name: "index_amos_thinking_sessions_on_entity_id"
+    t.index ["session_type"], name: "index_amos_thinking_sessions_on_session_type"
+    t.index ["status"], name: "index_amos_thinking_sessions_on_status"
+  end
+
   create_table "analytics_connections", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "name"
@@ -1522,6 +1548,60 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_010001) do
     t.datetime "updated_at", null: false
     t.index ["is_active"], name: "index_billing_configurations_on_is_active"
     t.index ["name"], name: "index_billing_configurations_on_name", unique: true
+  end
+
+  create_table "bounties", force: :cascade do |t|
+    t.string "title", null: false
+    t.text "description"
+    t.string "bounty_type", null: false
+    t.integer "points", default: 0, null: false
+    t.string "status", default: "open"
+    t.bigint "entity_id", null: false
+    t.bigint "created_by_id"
+    t.bigint "claimed_by_id"
+    t.bigint "reviewed_by_id"
+    t.bigint "support_ticket_id"
+    t.text "ai_scoring_rationale"
+    t.float "estimated_hours"
+    t.integer "impact_score"
+    t.integer "urgency_score"
+    t.integer "complexity_score"
+    t.datetime "claimed_at"
+    t.datetime "submitted_at"
+    t.datetime "approved_at"
+    t.datetime "rejected_at"
+    t.datetime "expires_at"
+    t.text "submission_notes"
+    t.text "review_notes"
+    t.integer "final_points"
+    t.string "source"
+    t.jsonb "metadata", default: {}
+    t.integer "upvotes", default: 0
+    t.integer "downvotes", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "pr_url"
+    t.integer "pr_number"
+    t.string "commit_sha"
+    t.string "branch_name"
+    t.string "repo_url"
+    t.string "work_url"
+    t.jsonb "work_artifacts", default: []
+    t.bigint "pull_request_submission_id"
+    t.index ["bounty_type"], name: "index_bounties_on_bounty_type"
+    t.index ["claimed_by_id"], name: "index_bounties_on_claimed_by_id"
+    t.index ["commit_sha"], name: "index_bounties_on_commit_sha"
+    t.index ["created_by_id"], name: "index_bounties_on_created_by_id"
+    t.index ["entity_id", "status"], name: "index_bounties_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_bounties_on_entity_id"
+    t.index ["points"], name: "index_bounties_on_points"
+    t.index ["pr_number"], name: "index_bounties_on_pr_number"
+    t.index ["pull_request_submission_id"], name: "index_bounties_on_pull_request_submission_id"
+    t.index ["reviewed_by_id"], name: "index_bounties_on_reviewed_by_id"
+    t.index ["source"], name: "index_bounties_on_source"
+    t.index ["status", "bounty_type"], name: "index_bounties_on_status_and_bounty_type"
+    t.index ["status"], name: "index_bounties_on_status"
+    t.index ["support_ticket_id"], name: "index_bounties_on_support_ticket_id"
   end
 
   create_table "business_insights", force: :cascade do |t|
@@ -6417,6 +6497,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_010001) do
   add_foreign_key "ai_usage_logs", "entities"
   add_foreign_key "ai_usage_logs", "scout_messages"
   add_foreign_key "ai_usage_logs", "users"
+  add_foreign_key "amos_thinking_sessions", "entities"
   add_foreign_key "analytics_connections", "entities"
   add_foreign_key "analytics_query_logs", "entities"
   add_foreign_key "analytics_query_logs", "metric_definitions"
@@ -6442,6 +6523,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_010001) do
   add_foreign_key "benchmark_task_results", "agent_plugin_executions"
   add_foreign_key "benchmark_task_results", "agent_plugins"
   add_foreign_key "benchmark_task_results", "benchmark_runs"
+  add_foreign_key "bounties", "entities"
+  add_foreign_key "bounties", "pull_request_submissions"
+  add_foreign_key "bounties", "support_tickets"
+  add_foreign_key "bounties", "users", column: "claimed_by_id"
+  add_foreign_key "bounties", "users", column: "created_by_id"
+  add_foreign_key "bounties", "users", column: "reviewed_by_id"
   add_foreign_key "business_insights", "entities"
   add_foreign_key "business_insights", "scout_conversations", column: "source_conversation_id"
   add_foreign_key "business_profiles", "entities"
