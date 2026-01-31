@@ -28,10 +28,13 @@ module Api
           return
         end
 
-        # Cache user lookup by API key for 5 minutes to reduce DB load
-        @current_user = Rails.cache.fetch("api_user:#{token}", expires_in: 5.minutes) do
-          User.includes(:entity).find_by(api_key: token)
+        # Cache only the user_id to avoid ActiveRecord association serialization issues
+        # Full User object caching breaks associations like .entity
+        user_id = Rails.cache.fetch("api_user_id:#{token}", expires_in: 5.minutes) do
+          User.where(api_key: token).pick(:id)
         end
+
+        @current_user = User.includes(:entity).find_by(id: user_id) if user_id
 
         unless @current_user
           render json: { message: "Invalid token" }, status: :unauthorized
