@@ -8,8 +8,10 @@ class EnrollInSequenceExecutorTest < ActiveSupport::TestCase
     @sequence.update!(entity: @entity)
     
     # Create a fresh contact to avoid conflicts
+    @user = users(:one)
     @contact = Contact.create!(
       entity: @entity,
+      user: @user,
       email: "enroll-test-#{SecureRandom.hex(4)}@example.com",
       first_name: "Enroll",
       last_name: "Test"
@@ -36,8 +38,10 @@ class EnrollInSequenceExecutorTest < ActiveSupport::TestCase
     
     Workflows::Executors::EnrollInSequenceExecutor.new(
       step: step,
-      execution: execution,
-      inputs: inputs
+      config: config,
+      inputs: inputs,
+      context: {},
+      execution: execution
     )
   end
 
