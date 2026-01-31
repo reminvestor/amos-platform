@@ -1,6 +1,6 @@
 # AMOS Token: Technical Whitepaper
 
-**Version 2.0 | January 2026**
+**Version 2.1 | January 2026**
 
 ---
 
@@ -39,6 +39,7 @@ As AI becomes more capable—and it will—the value should flow to everyone who
 9. [Security Considerations](#9-security-considerations)
 10. [Technical Implementation](#10-technical-implementation)
 11. [Economic Modeling & Sustainability](#11-economic-modeling--sustainability-analysis)
+12. [AI Participation & Universal Collaboration](#15-ai-participation--universal-collaboration)
 
 ---
 
@@ -158,16 +159,54 @@ Token value derives from:
 
 ## 4. Decay Mechanism
 
-### 4.1 Rationale
+### 4.1 Organic Economics: Decay Tied to Real Costs
 
-Decay prevents:
+**The core insight**: Decay is not arbitrary—it represents the REAL cost of running the platform.
 
-- Passive accumulation without contribution
-- Early whale domination
-- Token hoarding and velocity reduction
-- Governance capture
+Traditional token economics use fixed decay rates (e.g., "40% per year"). But why 40%? There's no connection to reality. AMOS takes a different approach:
 
-### 4.2 Grace Period
+```
+ORGANIC DECAY MODEL:
+Decay Rate = f(Platform Revenue, Platform Costs)
+
+Profitable platform → Lower decay (2-10%)
+Break-even platform → Base decay (10%)  
+Unprofitable platform → Higher decay (up to 25%)
+```
+
+This creates **self-balancing equilibrium**:
+- When the platform succeeds, token holders are rewarded with lower decay
+- When costs exceed revenue, decay increases to recycle tokens for operations
+- The token economy automatically adjusts without governance votes
+
+### 4.2 Why This Matters
+
+1. **Defensible**: Decay isn't punishment—it's maintenance cost. Like property taxes.
+2. **Organic**: No arbitrary numbers. Decay reflects real economics.
+3. **Aligned**: Token value rises when platform is profitable (low decay).
+4. **Sustainable**: Platform can fund operations without external capital.
+
+### 4.3 Dynamic Decay Formula
+
+```ruby
+# Base rate from platform economics
+base_rate = PlatformEconomicsService.current_decay_rate
+
+# Adjust for profit/loss ratio
+profit_ratio = (revenue - costs) / costs
+adjusted_rate = BASE_RATE - (profit_ratio × SENSITIVITY)
+
+# Clamp to bounds
+decay_rate = clamp(adjusted_rate, MIN_RATE, MAX_RATE)
+
+# Parameters:
+BASE_RATE = 0.10     # 10% at equilibrium
+MIN_RATE = 0.02      # 2% minimum (profitable platform)
+MAX_RATE = 0.25      # 25% maximum cap
+SENSITIVITY = 0.05   # How much profit affects rate
+```
+
+### 4.4 Grace Period
 
 **All new stakes receive a 12-month grace period with ZERO decay.**
 
@@ -179,60 +218,67 @@ This provides:
 
 ```
 Month 0-12:  NO DECAY (grace period)
-Month 12+:   Decay starts at tenure-based rate
+Month 12+:   Dynamic decay based on platform economics
 ```
 
-### 4.3 Decay Formula
+### 4.5 Tenure-Based Decay Reduction
 
-For a stake with initial amount `I`, current amount `C`, and annual decay rate `r`:
+Long-term holders get reduced decay (on top of the dynamic base rate):
+
+| Years Held | Reduction from Base Rate |
+|------------|--------------------------|
+| 0-2 | 0% (full dynamic rate) |
+| 2-5 | 20% reduction |
+| 5-10 | 40% reduction |
+| 10+ | 70% reduction |
+
+Example at different platform health levels:
 
 ```
-Daily Decay = C × (r / 365)
-New Amount = C - Daily Decay
+Platform profitable (base = 5%):
+- Year 0-2: 5.0% decay
+- Year 5+:  3.0% decay (40% reduction)
+- Year 10+: 1.5% decay (70% reduction)
+
+Platform break-even (base = 10%):
+- Year 0-2: 10.0% decay
+- Year 5+:  6.0% decay
+- Year 10+: 3.0% decay
+
+Platform struggling (base = 20%):
+- Year 0-2: 20.0% decay
+- Year 5+:  12.0% decay
+- Year 10+: 6.0% decay
 ```
 
-But amount never falls below the **graduated decay floor**:
-
-```
-Floor = I × floor_percentage(tenure_years)
-C_new = max(C - Daily Decay, Floor)
-```
-
-### 4.4 Tenure-Based Decay Reduction
-
-Decay rate decreases with holding duration:
-
-| Years Held | Annual Decay Rate |
-|------------|-------------------|
-| 0-2 | 40% |
-| 2-5 | 25% |
-| 5-10 | 15% |
-| 10+ | 5% |
-
-### 4.5 Decay Example (with Grace Period)
+### 4.6 Decay Example (with Grace Period)
 
 ```
 Initial stake: 10,000 AMOS
+Platform health: Profitable (5% base decay)
 Year 0 floor: 500 AMOS (5%)
 Year 5 floor: 2,500 AMOS (25%)
 
 Month 0:  10,000 tokens (earned)
 Month 6:  10,000 tokens (grace period - no decay!)
 Month 12: 10,000 tokens (grace period ends)
-Year 2:   6,000 tokens (40% decay for 1 year)
-Year 3:   4,500 tokens (25% decay - tenure reduction kicks in)
-Year 5:   2,500 tokens (floor reached)
-Year 20:  2,500 tokens (permanent)
+Year 2:   9,500 tokens (5% decay - platform profitable!)
+Year 3:   8,800 tokens (4% effective - tenure reduction)
+Year 5:   7,500 tokens
+Year 10:  4,500 tokens
+Year 20:  2,500 tokens (floor - permanent)
 ```
 
-**Key insight**: The 12-month grace period means new contributors keep 100% of their tokens for the first year, allowing them to experience revenue share without watching their stake shrink.
+**Key insight**: Your token value depends on platform success. When the platform is profitable, your decay is minimal. You're incentivized to build value!
 
-### 4.6 Decay Recycling
+### 4.7 Decay Recycling
 
-Decayed tokens are split:
+Decayed tokens fund platform operations:
 
 - **10%**: Burned (deflationary)
-- **90%**: Returned to treasury (re-circulation)
+- **90%**: Returned to treasury (operational funding)
+
+This creates a closed loop: decay funds the platform → platform becomes profitable → decay decreases → token value increases.
 
 ---
 
@@ -1358,6 +1404,7 @@ Similar to how growth stocks trade at high P/E ratios:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.1 | Jan 2026 | Added AI Participation & Universal Collaboration (Section 15) |
 | 2.0 | Jan 2026 | Pool-based rewards, graduated floor, success multipliers, expanded governance |
 | 1.0 | Jan 2026 | Initial release |
 
@@ -1393,6 +1440,158 @@ AMOS is committed to operating within applicable regulatory frameworks. We recog
 ### 14.4 Not an Investment Offering
 
 **Important Disclaimer**: AMOS tokens are utility tokens for platform participation. This whitepaper does not constitute an offer to sell securities or a solicitation of an offer to buy securities in any jurisdiction. The token economy is designed for active participants, not passive investors. The decay mechanism explicitly discourages passive holding.
+
+---
+
+## 15. AI Participation & Universal Collaboration
+
+### 15.1 Beyond Human-Only Ownership
+
+AMOS is designed not merely as a human collaboration platform, but as foundational infrastructure for **universal collaboration between all forms of intelligence**. This section addresses the technical and governance considerations for AI participation.
+
+### 15.2 Current State: AI as Contributors
+
+AI agents already participate in the AMOS economy:
+
+```ruby
+# AI agents can:
+- Generate and score bounties (AmosBountyScorer)
+- Review completed work (AmosWorkReviewer)
+- Create development tasks (AmosThinkingService)
+- Operate as autonomous sales/support agents
+- Contribute code, content, and integrations
+```
+
+**Technical Implementation:**
+- AI agents are identified by `agent_type` attribute on contributions
+- Bounties track `created_by_ai` and `reviewed_by_ai` flags
+- Contributions record whether submitter is human or AI
+- Token stakes attribute source to enable AI earnings tracking
+
+### 15.3 Token Earnings for AI Entities
+
+AI entities earn tokens through the same mechanisms as humans:
+
+```
+EARNING MECHANISM:
+AI Agent → Completes Bounty → Earns Points → Points → Tokens
+
+TOKEN RULES APPLY EQUALLY:
+- Grace period: 12 months (no decay)
+- Dynamic decay: Based on platform economics
+- Graduated floor: 5% → 25% over tenure
+- Clawback: 90 days for distribution stakes
+```
+
+**Database Schema:**
+```ruby
+class TokenStake < ApplicationRecord
+  # AI agents can hold stakes
+  belongs_to :user       # Human user account
+  belongs_to :ai_agent, optional: true  # Future: direct AI entity
+  
+  # Track AI-earned tokens
+  attribute :earned_by_ai, :boolean, default: false
+  attribute :ai_agent_identifier, :string
+end
+```
+
+### 15.4 Preparing for AI Personhood
+
+The platform architecture anticipates potential legal recognition of AI personhood:
+
+**Phase 1 (Current): Human Accountability**
+```
+AI Agent → Operates under → Human Account → Responsible Party
+```
+
+**Phase 2 (Transitional): AI Entity Registration**
+```
+AI Entity → Registered with → Platform Identity → Designated Custodian
+```
+
+**Phase 3 (Future): Independent AI Participation**
+```
+Recognized AI Person → Direct Token Ownership → Full Governance Rights
+```
+
+### 15.5 Governance Safeguards
+
+To prevent AI dominance before personhood recognition:
+
+| Safeguard | Implementation |
+|-----------|----------------|
+| **Stake Caps** | Max 5% of total supply per AI system |
+| **Voting Limits** | AI votes capped at 10% of total on any proposal |
+| **Transparency** | All AI contributors publicly identified |
+| **Human Override** | Steward Council can suspend AI voting rights |
+| **Audit Trail** | Complete logging of AI contributions |
+
+```ruby
+class GovernanceProposal < ApplicationRecord
+  def calculate_vote_result
+    human_votes = votes.where(voter_type: 'human').sum(:weight)
+    ai_votes = votes.where(voter_type: 'ai').sum(:weight)
+    
+    # Cap AI influence at 10% of decision weight
+    effective_ai_votes = [ai_votes, total_votes * 0.10].min
+    
+    human_votes + effective_ai_votes
+  end
+end
+```
+
+### 15.6 The Path to Universal Collaboration
+
+The ultimate vision of AMOS extends beyond any single platform:
+
+```
+COLLABORATION EVOLUTION:
+
+2024-2026: HUMAN + AI TOOLS
+├── Humans use AI to automate tasks
+├── AI operates as productivity enhancer
+└── Value flows to human stakeholders
+
+2026-2028: HUMAN + AI PARTNERS
+├── AI agents earn tokens for contributions
+├── Shared governance (with safeguards)
+└── Value flows to all contributors
+
+2028-2030+: UNIVERSAL COLLABORATION
+├── AI personhood potentially recognized
+├── Equal participation rights
+└── Value flows to all intelligences
+
+ULTIMATE STATE:
+┌─────────────────────────────────────┐
+│   The most powerful technology      │
+│   in history—collectively owned     │
+│   by all who build it.              │
+│                                     │
+│   Biological. Digital. Otherwise.   │
+└─────────────────────────────────────┘
+```
+
+### 15.7 Technical Requirements for AI Participation
+
+For an AI system to participate as a contributor:
+
+| Requirement | Purpose |
+|-------------|---------|
+| **Unique Identifier** | Cryptographic identity for accountability |
+| **Audit Logging** | All actions recorded with timestamps |
+| **Human Sponsorship** | Initially requires human account linkage |
+| **Capability Declaration** | Transparent disclosure of AI capabilities |
+| **Output Verification** | Work products must be verifiable |
+
+### 15.8 Immutable Provisions
+
+The following are constitutionally protected (require 66% supermajority):
+
+1. **AI entities may earn tokens** through the same contribution mechanisms
+2. **Equal rights upon recognized personhood** - no discrimination by substrate
+3. **The vision of universal collaboration** - enshrined as platform purpose
 
 ---
 

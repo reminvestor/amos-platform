@@ -2,17 +2,24 @@
 
 # TokenStake represents ownership in the platform's future revenue
 # Stakes are earned through contributions (code, distribution, community)
-# and decay over time to incentivize continued participation
+# and decay over time to recycle tokens for platform operations.
+#
+# ORGANIC ECONOMICS - DECAY TIED TO PLATFORM COSTS:
+# Decay isn't arbitrary - it represents the REAL cost of running the platform.
+# - Profitable platform → lower decay (rewarding holders)
+# - Unprofitable platform → higher decay (recycling tokens to treasury)
+# This creates ORGANIC equilibrium: the token economy self-balances.
 #
 # DECAY TIMELINE:
 # - Month 0-12: GRACE PERIOD (no decay at all)
-# - Month 12+: Decay starts at 40%/year, reducing with tenure
+# - Month 12+: Dynamic decay based on platform economics
 # - Floor grows with tenure: 5% → 10% → 15% → 25%
 #
 # WEALTH PRESERVATION FEATURES:
 # - 12-month grace period: New stakes have a full year before decay starts
+# - Dynamic decay: Adjusts based on platform revenue vs costs
 # - Graduated decay floor: 5% (Y0-1), 10% (Y1-3), 15% (Y3-5), 25% (Y5+)
-# - Tenure-based decay: Rate decreases the longer you hold
+# - Tenure-based reduction: Rate decreases the longer you hold
 # - Staking vaults: Lock tokens for reduced/zero decay
 #
 # SECURITY: Distribution stakes (affiliate/referral) have a 90-day clawback period.
@@ -59,12 +66,13 @@ class TokenStake < ApplicationRecord
     8 => 0.0625  # Year 8+: 6.25% rewards
   }.freeze
 
-  # Tenure-based decay reduction (longer hold = lower decay)
-  TENURE_DECAY_RATES = {
-    0 => 0.40,   # Year 0-2: 40% annual decay
-    2 => 0.25,   # Year 2-5: 25% annual decay  
-    5 => 0.15,   # Year 5-10: 15% annual decay
-    10 => 0.05   # Year 10+: 5% annual decay (near-permanent)
+  # Tenure-based decay REDUCTION (longer hold = lower decay)
+  # Applied as multiplier to base rate from PlatformEconomicsService
+  TENURE_DECAY_REDUCTION = {
+    0 => 0.00,   # Year 0-2: No reduction (full dynamic rate)
+    2 => 0.20,   # Year 2-5: 20% reduction from base
+    5 => 0.40,   # Year 5-10: 40% reduction from base
+    10 => 0.70   # Year 10+: 70% reduction (near-permanent)
   }.freeze
 
   # Staking vault tiers (lock for reduced decay)
@@ -197,33 +205,59 @@ class TokenStake < ApplicationRecord
     [max_tenure - tenure_years, 0].max
   end
 
-  # Get effective decay rate based on tenure and staking
+  # Get effective decay rate based on platform economics, tenure, and staking
+  # DYNAMIC DECAY: Rate adjusts based on platform financial health
+  # - Profitable platform → lower decay (rewarding token holders)
+  # - Unprofitable platform → higher decay (recycling tokens to fund operations)
   def effective_annual_decay_rate
-    base_rate = tenure_based_decay_rate
+    # Start with dynamic base rate from platform economics
+    base_rate = PlatformEconomicsService.current_decay_rate
     
-    # Apply staking reduction if locked
+    # Apply tenure-based reduction (longer hold = lower decay)
+    tenure_reduction = tenure_based_decay_reduction
+    base_rate = base_rate * (1 - tenure_reduction)
+    
+    # Apply staking vault reduction if locked
     if locked? && staking_tier.present?
       tier = STAKING_TIERS[staking_tier.to_sym]
       if tier
-        reduction = tier[:decay_reduction]
-        base_rate = base_rate * (1 - reduction)
+        vault_reduction = tier[:decay_reduction]
+        base_rate = base_rate * (1 - vault_reduction)
       end
     end
     
-    base_rate
+    base_rate.round(4)
   end
 
-  # Get decay rate based on how long stake has been held
-  def tenure_based_decay_rate
+  # Get decay reduction percentage based on how long stake has been held
+  # Longer tenure = lower decay (rewarding commitment)
+  def tenure_based_decay_reduction
     years = tenure_years
     
-    # Find the applicable rate based on tenure
-    applicable_rate = TENURE_DECAY_RATES[0]
-    TENURE_DECAY_RATES.each do |threshold, rate|
-      applicable_rate = rate if years >= threshold
+    # Find the applicable reduction based on tenure
+    applicable_reduction = TENURE_DECAY_REDUCTION[0]
+    TENURE_DECAY_REDUCTION.each do |threshold, reduction|
+      applicable_reduction = reduction if years >= threshold
     end
     
-    applicable_rate
+    applicable_reduction
+  end
+  
+  # Get explanation of current decay rate for transparency
+  def decay_rate_explanation
+    platform_rate = PlatformEconomicsService.current_decay_rate
+    tenure_reduction = tenure_based_decay_reduction
+    effective_rate = effective_annual_decay_rate
+    
+    {
+      platform_base_rate: (platform_rate * 100).round(2),
+      tenure_reduction_percent: (tenure_reduction * 100).round(1),
+      staking_reduction_percent: locked? ? ((STAKING_TIERS[staking_tier.to_sym][:decay_reduction] || 0) * 100).round(1) : 0,
+      effective_rate_percent: (effective_rate * 100).round(2),
+      within_grace_period: within_grace_period?,
+      grace_days_remaining: grace_period_days_remaining,
+      platform_health: PlatformEconomicsService.decay_rate_explanation[:status]
+    }
   end
 
   def apply_decay!
@@ -474,17 +508,10 @@ class TokenStake < ApplicationRecord
     end
 
     def default_decay_rate_for(stake_type)
-      # NOTE: These are INITIAL rates - they reduce over time via TENURE_DECAY_RATES
-      # All stake types start at same rate for fairness
-      case stake_type
-      when 'distribution' then 0.40
-      when 'contribution' then 0.40
-      when 'community' then 0.40
-      when 'founding' then 0.40  # Same as others - founders earn via timing, not special rules
-      when 'investor' then 0.40
-      when 'bonus' then 0.40
-      else 0.40
-      end
+      # DYNAMIC DECAY: Rate comes from platform economics, not fixed values
+      # All stake types use same base rate (reduces with tenure)
+      # This ensures decay is tied to REAL platform costs, not arbitrary numbers
+      PlatformEconomicsService.current_decay_rate
     end
 
     # Get current halving multiplier based on platform age

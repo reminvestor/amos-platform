@@ -2,22 +2,35 @@
 
 # ContributionRewardCalculator - Simple Pool-Based Token Distribution
 #
-# THE MODEL:
+# THE MODEL (ORGANIC ECONOMICS):
 # 1. Daily pool of tokens available (16,000 AMOS, decreasing via halving)
 # 2. Contributors earn "points" for their work
 # 3. Your tokens = (your points / total points today) × daily pool
+# 4. Decay is DYNAMIC based on platform costs (see PlatformEconomicsService)
 #
 # EARNING POINTS:
-# - Sales: 1 user signed up = 1 point
+# - Referrals: 1 user invited = 1 point, 1 user CONVERTED = 10 points
+# - Sales: 1 user signed up = 1 point per user on their account
 # - Code/Community: Bounty value = points (50 AMOS bounty = 50 points)
 #
-# THAT'S IT. No multipliers, no complexity scales, no confusion.
-# A token is a token is a token.
+# NO FIXED TOKEN AMOUNTS. Your share depends on:
+# - How much you contributed relative to everyone else
+# - The daily emission pool (decreases via halving)
+#
+# This ensures the treasury is never overspent and rewards scale organically.
 #
 class ContributionRewardCalculator
   # Daily emission pool from treasury (decreases via halving schedule)
   # Year 0-2: 16,000/day, Year 2-4: 8,000/day, etc.
   BASE_DAILY_EMISSION = 16_000
+
+  # Referral points structure (at class level for visibility)
+  REFERRAL_POINTS = {
+    email_sent: 1,           # 1 point per referral email sent (incentivize action)
+    signup: 5,               # 5 points when referral signs up (free account)
+    conversion: 10,          # 10 points when referral converts to paid
+    active_month: 2          # 2 points per month the referred user stays active
+  }.freeze
 
   class << self
     # Calculate reward based on your share of today's pool
@@ -41,6 +54,49 @@ class ContributionRewardCalculator
         total_points_today: total_points_today
       }
     end
+
+    # === REFERRAL REWARDS ===
+    
+    # Calculate referral reward - points based on outcomes
+    #
+    # @param emails_sent [Integer] Number of referral emails sent
+    # @param signups [Integer] Number of referrals who signed up
+    # @param conversions [Integer] Number of referrals who converted to paid
+    # @param total_referral_points_today [Integer] Total referral points today
+    # @return [Hash] Reward details
+    def calculate_referral_reward(emails_sent: 0, signups: 0, conversions: 0, total_referral_points_today: nil)
+      your_points = (emails_sent * REFERRAL_POINTS[:email_sent]) +
+                    (signups * REFERRAL_POINTS[:signup]) +
+                    (conversions * REFERRAL_POINTS[:conversion])
+      
+      if total_referral_points_today.nil?
+        return {
+          points: your_points,
+          breakdown: {
+            emails: emails_sent * REFERRAL_POINTS[:email_sent],
+            signups: signups * REFERRAL_POINTS[:signup],
+            conversions: conversions * REFERRAL_POINTS[:conversion]
+          },
+          tokens: nil,
+          note: "Tokens calculated at end of period based on pool share"
+        }
+      end
+      
+      result = calculate_pool_share(
+        your_points: your_points,
+        total_points_today: total_referral_points_today
+      )
+      
+      result[:breakdown] = {
+        emails: emails_sent * REFERRAL_POINTS[:email_sent],
+        signups: signups * REFERRAL_POINTS[:signup],
+        conversions: conversions * REFERRAL_POINTS[:conversion]
+      }
+      
+      result
+    end
+    
+    # === SALES POINTS ===
 
     # Calculate sales reward - simple: 1 user = 1 point
     #
@@ -121,12 +177,15 @@ class ContributionRewardCalculator
       {
         daily_emission: current_daily_emission,
         halving_multiplier: current_halving_multiplier,
-        model: "pool_based",
+        model: "pool_based_organic",
+        current_decay_rate: PlatformEconomicsService.current_decay_rate,
         rules: {
+          referrals: "1 email = #{REFERRAL_POINTS[:email_sent]} pt, 1 signup = #{REFERRAL_POINTS[:signup]} pts, 1 conversion = #{REFERRAL_POINTS[:conversion]} pts",
           sales: "1 user signed up = 1 point",
           bounties: "Bounty value = points",
           tokens: "Your points / Total points × Daily pool"
-        }
+        },
+        note: "Token decay adjusts based on platform economics. See PlatformEconomicsService."
       }
     end
 

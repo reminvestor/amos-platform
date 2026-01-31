@@ -30,24 +30,40 @@ class SolanaTokenService
   class << self
     # === CONFIGURATION ===
     
+    def config
+      @config ||= begin
+        config_file = Rails.root.join('config', 'solana_token.yml')
+        if File.exist?(config_file)
+          env = mainnet? ? 'mainnet' : 'devnet'
+          YAML.load_file(config_file)[env] || {}
+        else
+          {}
+        end
+      end
+    end
+
     def rpc_url
-      ENV.fetch('SOLANA_RPC_URL', 'https://api.devnet.solana.com')
+      ENV.fetch('SOLANA_RPC_URL', config['network_url'] || 'https://api.devnet.solana.com')
     end
 
     def treasury_address
-      ENV.fetch('SOLANA_TREASURY_ADDRESS')
+      ENV.fetch('SOLANA_TREASURY_ADDRESS', nil) || config['treasury_address'] || raise("SOLANA_TREASURY_ADDRESS not set")
     end
 
     def token_mint
-      ENV.fetch('SOLANA_TOKEN_MINT')
+      ENV.fetch('SOLANA_TOKEN_MINT', nil) || config['token_mint'] || raise("SOLANA_TOKEN_MINT not set")
+    end
+
+    def treasury_token_account
+      ENV.fetch('SOLANA_TREASURY_TOKEN_ACCOUNT', nil) || config['treasury_token_account']
     end
 
     def mainnet?
-      rpc_url.include?('mainnet')
+      (ENV['SOLANA_RPC_URL'] || '').include?('mainnet')
     end
 
     def devnet?
-      rpc_url.include?('devnet')
+      !mainnet?
     end
 
     # === BALANCE CHECKS ===

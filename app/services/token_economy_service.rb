@@ -10,9 +10,16 @@
 # - Calculate revenue distribution
 # - Provide transparency metrics
 #
+# ORGANIC ECONOMICS:
+# - Decay is DYNAMIC based on platform revenue vs costs
+# - Profitable platform → lower decay (rewarding holders)
+# - Unprofitable platform → higher decay (recycling to operations)
+# - This creates self-balancing equilibrium
+#
 # The token economy is designed to:
 # - Align incentives (contributors and sellers are owners)
-# - Encourage continued participation (decay function)
+# - Tie decay to REAL economics (not arbitrary rates)
+# - Encourage continued participation (dynamic decay function)
 # - Be fully transparent (all ownership visible)
 # - Allow wealth preservation (decay floor, tenure reduction)
 # - Create scarcity (fixed supply, halving, burn)
@@ -389,6 +396,73 @@ class TokenEconomyService
       # Assuming $100K monthly revenue for illustration
       estimated_monthly_revenue = 100_000
       (estimated_monthly_revenue * REVENUE_ALLOCATION[:token_holders] * ownership / 100).round(2)
+    end
+
+    # === PLATFORM ECONOMICS TRANSPARENCY ===
+    
+    # Get comprehensive platform economics summary
+    # Exposes how decay connects to real platform costs
+    def platform_economics_summary
+      economics = PlatformEconomicsService.current_economics
+      decay_explanation = PlatformEconomicsService.decay_rate_explanation
+      
+      {
+        # Financial health
+        monthly_revenue: economics[:monthly_revenue],
+        monthly_costs: economics[:monthly_costs],
+        profit_margin: economics[:profit_margin],
+        runway_months: economics[:runway_months],
+        
+        # Dynamic decay (tied to economics)
+        current_decay_rate: decay_explanation[:current_rate],
+        annual_decay_percent: decay_explanation[:annual_percentage],
+        platform_health_status: decay_explanation[:status],
+        decay_explanation: decay_explanation[:explanation],
+        
+        # Token economy state
+        total_staked: economics[:total_staked],
+        daily_emission: economics[:daily_emission],
+        treasury_remaining: TokenStake.treasury_remaining,
+        
+        # Revenue allocation
+        revenue_allocation: REVENUE_ALLOCATION,
+        
+        # How decay connects to costs
+        organic_economics_explanation: <<~EXPLANATION
+          Token decay is not arbitrary - it's tied to REAL platform economics.
+          
+          When the platform is profitable:
+          → Decay rate is LOW (#{PlatformEconomicsService::MIN_DECAY_RATE * 100}% minimum)
+          → Token holders benefit from success
+          
+          When costs exceed revenue:
+          → Decay rate INCREASES (up to #{PlatformEconomicsService::MAX_DECAY_RATE * 100}% maximum)
+          → Tokens recycle to treasury to fund operations
+          → This keeps the platform running without external funding
+          
+          Current status: #{decay_explanation[:status].upcase}
+          Your tokens maintain value when the platform succeeds.
+        EXPLANATION
+      }
+    end
+    
+    # Get decay rate explanation for a specific user's stakes
+    def user_decay_explanation(user)
+      stakes = TokenStake.for_user(user).active
+      return nil if stakes.empty?
+      
+      platform_rate = PlatformEconomicsService.current_decay_rate
+      
+      stakes.map do |stake|
+        {
+          stake_id: stake.id,
+          stake_type: stake.stake_type,
+          current_amount: stake.current_amount,
+          decay_explanation: stake.decay_rate_explanation,
+          within_grace_period: stake.within_grace_period?,
+          projected_1_year: stake.projected_value_at(1.year.from_now)
+        }
+      end
     end
   end
 end

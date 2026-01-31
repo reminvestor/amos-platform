@@ -1618,6 +1618,36 @@ html[data-theme="light"] .space-tab.active {
   font-weight: 600;
 }
 
+// Premium Model Selection Section
+.advanced-model-section {
+  .form-switch {
+    .form-check-input {
+      cursor: pointer;
+      
+      &:checked {
+        background-color: #8b5cf6;
+        border-color: #8b5cf6;
+      }
+    }
+  }
+  
+  .premium-info-banner {
+    animation: fadeIn 0.2s ease;
+  }
+  
+  #premium-model-select {
+    &:focus {
+      border-color: #8b5cf6;
+      box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25);
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .model-presets {
   display: flex;
   flex-direction: column;
