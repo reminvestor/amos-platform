@@ -530,6 +530,14 @@ module Api
 
         file_hash = Digest::SHA256.file(temp_file.path).hexdigest
 
+        # User info for filtering/searching
+        uploader_name = [current_user.first_name, current_user.last_name].compact.join(" ").presence || current_user.email
+        uploader_info = {
+          user_id: current_user.id,
+          user_name: uploader_name,
+          user_email: current_user.email
+        }
+
         document = rag_store.rag_documents.create!(
           original_filename: filename,
           title: title,
@@ -545,7 +553,8 @@ module Api
             scan_data: scan_data,
             source: "mobile_scanner",
             scanned_at: Time.current.iso8601,
-            user_edited: user_edited
+            user_edited: user_edited,
+            **uploader_info
           }
         )
 
@@ -553,16 +562,21 @@ module Api
         temp_file.close
         temp_file.unlink
 
+        # Append uploader info to content for searchability
+        # e.g., "Show me receipts uploaded by John"
+        searchable_content = "#{content}\n\n---\nUploaded by: #{uploader_name} (#{current_user.email})"
+
         # Create searchable chunk
         if content.present?
           document.rag_chunks.create!(
-            content: content,
+            content: searchable_content,
             chunk_index: 0,
             metadata: {
               source: "mobile_scan",
               scan_type: scan_type,
               title: title,
-              user_edited: user_edited
+              user_edited: user_edited,
+              **uploader_info
             }
           )
         end
