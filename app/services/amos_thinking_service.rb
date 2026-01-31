@@ -75,13 +75,20 @@ class AmosThinkingService
       context = gather_context
       session.update!(context_analyzed: context.slice(:summary))
 
-      # Phase 2: Reflect
-      log("Phase 2: Reflecting...")
+      # Phase 2: Sync existing systems → bounties
+      log("Phase 2: Syncing existing systems to bounties...")
+      integration_bounties = sync_existing_systems_to_bounties
+
+      # Phase 3: Reflect
+      log("Phase 3: Reflecting...")
       reflection = reflect(context)
 
-      # Phase 3: Generate and score bounties
-      log("Phase 3: Generating bounties...")
-      bounties = create_bounties_from_reflection(reflection)
+      # Phase 4: Generate and score new bounties
+      log("Phase 4: Generating new bounties from reflection...")
+      ai_bounties = create_bounties_from_reflection(reflection)
+
+      # Combine all bounties
+      bounties = integration_bounties + ai_bounties
 
       # Complete session
       total_points = bounties.sum(&:points)
@@ -105,6 +112,24 @@ class AmosThinkingService
       session.fail!(e.message)
       raise
     end
+  end
+
+  # Sync existing platform systems to bounties
+  def sync_existing_systems_to_bounties
+    integration = BountyIntegrationService.new(@entity)
+    results = integration.sync_all!
+
+    all_bounties = results.values.flatten
+    log("Synced #{all_bounties.count} bounties from existing systems:")
+    log("  - #{results[:from_tickets].count} from tickets")
+    log("  - #{results[:from_goals].count} from goals")
+    log("  - #{results[:from_anomalies].count} from anomalies")
+    log("  - #{results[:from_features].count} from feature requests")
+
+    all_bounties
+  rescue => e
+    log("WARNING: Integration sync failed: #{e.message}")
+    []
   end
 
   # Gather all context for reflection

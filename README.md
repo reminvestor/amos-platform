@@ -190,8 +190,8 @@ Daily token pool is split based on your share of total points.
 
 ## 🌐 Links
 
-- **Website**: [amoslabs.io](https://amoslabs.io)
-- **Documentation**: [docs.amoslabs.io](https://docs.amoslabs.io)
+- **Website**: [amoslabs.io](https://amoslabs.com)
+- **Documentation**: [docs.amoslabs.io](https://docs.amoslabs.com)
 - **Discord**: [Join the community](https://discord.gg/amos)
 - **Twitter**: [@amoslabs](https://twitter.com/amoslabs)
 

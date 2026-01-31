@@ -84,6 +84,7 @@ class Bounty < ApplicationRecord
 
   # Callbacks
   before_validation :set_defaults, on: :create
+  after_update :sync_completion_to_source, if: :just_approved?
 
   # ═══════════════════════════════════════════════════════════════════════════
   # CREATION HELPERS
@@ -279,6 +280,16 @@ class Bounty < ApplicationRecord
   def set_defaults
     self.status ||= 'open'
     self.source ||= created_by.present? ? 'user_submitted' : 'amos_thinking'
+  end
+
+  def just_approved?
+    saved_change_to_status? && status == 'approved'
+  end
+
+  def sync_completion_to_source
+    BountyIntegrationService.new(entity).sync_bounty_completion!(self)
+  rescue => e
+    Rails.logger.error "[BOUNTY] Failed to sync completion: #{e.message}"
   end
 
   def create_contribution_for_claimer!
