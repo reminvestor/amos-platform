@@ -7,8 +7,10 @@ class SendSequenceEmailsJobTest < ActiveJob::TestCase
     @sequence.update!(entity: @entity)
     
     # Create a fresh contact to avoid enrollment conflicts
+    @user = users(:one)
     @contact = Contact.create!(
       entity: @entity,
+      user: @user,
       email: "send-job-test-#{SecureRandom.hex(4)}@example.com",
       first_name: "Job",
       last_name: "Test"

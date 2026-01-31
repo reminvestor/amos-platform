@@ -14,6 +14,7 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
     2.times do |i|
       @contacts << Contact.create!(
         entity: @entity,
+        user: @user,
         email: "flow-test-#{i}-#{SecureRandom.hex(4)}@example.com",
         first_name: "Test#{i}",
         last_name: "User#{i}"

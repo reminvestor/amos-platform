@@ -21,8 +21,10 @@ class SequenceMailerTest < ActionMailer::TestCase
     )
     
     # Create a fresh contact
+    @user = users(:one)
     @contact = Contact.create!(
       entity: @entity,
+      user: @user,
       first_name: "John",
       last_name: "Doe",
       email: "mailer-test-#{SecureRandom.hex(4)}@example.com"
