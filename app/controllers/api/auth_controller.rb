@@ -137,15 +137,12 @@ module Api
       end
 
       user = User.find_by(email: email)
-      unless user
-        render json: { message: "Invalid credentials" }, status: :unauthorized
-        return
-      end
 
       # Find and validate the trusted device token
-      trusted_device = user.trusted_devices.active.find_by(token: device_token)
+      # Use consistent error message to prevent user enumeration
+      trusted_device = user&.trusted_devices&.active&.find_by(token: device_token)
       unless trusted_device
-        render json: { message: "Device not trusted or trust expired" }, status: :unauthorized
+        render json: { message: "Invalid credentials" }, status: :unauthorized
         return
       end
 
