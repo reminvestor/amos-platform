@@ -43,6 +43,13 @@ class ActionCableService {
   Future<void> connect() async {
     if (_isConnected) return;
 
+    // Disable WebSocket connections during screenshot capture
+    const isScreenshotMode = bool.fromEnvironment('SCREENSHOT_MODE', defaultValue: false);
+    if (isScreenshotMode) {
+      _logger.info('Screenshot mode - skipping ActionCable connection');
+      return;
+    }
+
     try {
       final token = await ApiClient.instance.getAuthToken();
       if (token == null) {

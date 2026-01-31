@@ -41,7 +41,8 @@ class BusinessCardScannerService {
       final extension = imageFile.path.split('.').last.toLowerCase();
       final mimeType = _getMimeType(extension);
 
-      final response = await _api.post(
+      // ApiClient.post returns response.data directly, not the Response object
+      final data = await _api.post(
         '/api/v1/vision/scan_business_card',
         data: {
           'image': base64Image,
@@ -49,21 +50,16 @@ class BusinessCardScannerService {
         },
       );
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data['success'] == true) {
-          return BusinessCardResult.success(
-            ExtractedContact.fromJson(data['contact']),
-          );
-        } else {
-          return BusinessCardResult.error(
-            data['error'] ?? 'Failed to extract contact information',
-          );
-        }
-      } else {
-        return BusinessCardResult.error(
-          response.data['error'] ?? 'Server error: ${response.statusCode}',
+      if (data is Map && data['success'] == true) {
+        return BusinessCardResult.success(
+          ExtractedContact.fromJson(data['contact']),
         );
+      } else if (data is Map) {
+        return BusinessCardResult.error(
+          data['error'] ?? 'Failed to extract contact information',
+        );
+      } else {
+        return BusinessCardResult.error('Unexpected response format');
       }
     } catch (e) {
       return BusinessCardResult.error('Failed to scan business card: $e');
@@ -79,7 +75,8 @@ class BusinessCardScannerService {
       final extension = imageFile.path.split('.').last.toLowerCase();
       final mimeType = _getMimeType(extension);
 
-      final response = await _api.post(
+      // ApiClient.post returns response.data directly, not the Response object
+      final data = await _api.post(
         '/api/v1/vision/scan_business_card_and_save',
         data: {
           'image': base64Image,
@@ -87,26 +84,21 @@ class BusinessCardScannerService {
         },
       );
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data['success'] == true) {
-          return BusinessCardResult.success(
-            ExtractedContact.fromJson(data['extracted_data']),
-            savedContactId: data['contact']?['id'],
-            message: data['message'],
-          );
-        } else {
-          return BusinessCardResult.error(
-            data['error'] ?? 'Failed to save contact',
-            extractedData: data['extracted_data'] != null
-                ? ExtractedContact.fromJson(data['extracted_data'])
-                : null,
-          );
-        }
-      } else {
-        return BusinessCardResult.error(
-          response.data['error'] ?? 'Server error: ${response.statusCode}',
+      if (data is Map && data['success'] == true) {
+        return BusinessCardResult.success(
+          ExtractedContact.fromJson(data['extracted_data']),
+          savedContactId: data['contact']?['id'],
+          message: data['message'],
         );
+      } else if (data is Map) {
+        return BusinessCardResult.error(
+          data['error'] ?? 'Failed to save contact',
+          extractedData: data['extracted_data'] != null
+              ? ExtractedContact.fromJson(data['extracted_data'])
+              : null,
+        );
+      } else {
+        return BusinessCardResult.error('Unexpected response format');
       }
     } catch (e) {
       return BusinessCardResult.error('Failed to scan and save: $e');

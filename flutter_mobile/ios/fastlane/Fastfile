@@ -166,6 +166,11 @@ platform :ios do
       "iPad Pro 13-inch (M4)" # Required for iPad
     ]
 
+    # Build dart-define args for authenticated screenshots
+    api_arg = ENV["API_BASE_URL"] ? "--dart-define=API_BASE_URL=#{ENV["API_BASE_URL"]} " : ""
+    token_arg = ENV["SCREENSHOT_TOKEN"] ? "--dart-define=SCREENSHOT_TOKEN=#{ENV["SCREENSHOT_TOKEN"]} " : ""
+    screenshot_mode = "--dart-define=SCREENSHOT_MODE=true "
+
     devices.each do |device|
       UI.message("Capturing screenshots on #{device}...")
 
@@ -175,6 +180,9 @@ platform :ios do
            "--driver=test_driver/integration_test.dart " \
            "--target=integration_test/screenshot_test.dart " \
            "-d '#{device}' " \
+           "#{api_arg}" \
+           "#{token_arg}" \
+           "#{screenshot_mode}" \
            "|| true")  # Continue even if one device fails
       end
     end
@@ -185,12 +193,18 @@ platform :ios do
   desc "Take screenshots on a single device"
   lane :screenshot_device do |options|
     device = options[:device] || "iPhone 16 Pro Max"
+    api_arg = ENV["API_BASE_URL"] ? "--dart-define=API_BASE_URL=#{ENV["API_BASE_URL"]} " : ""
+    token_arg = ENV["SCREENSHOT_TOKEN"] ? "--dart-define=SCREENSHOT_TOKEN=#{ENV["SCREENSHOT_TOKEN"]} " : ""
+    screenshot_mode = "--dart-define=SCREENSHOT_MODE=true "
 
     Dir.chdir("..") do
       sh("flutter drive " \
          "--driver=test_driver/integration_test.dart " \
          "--target=integration_test/screenshot_test.dart " \
-         "-d '#{device}'")
+         "-d '#{device}' " \
+         "#{api_arg}" \
+         "#{token_arg}" \
+         "#{screenshot_mode}")
     end
   end
 
@@ -231,5 +245,132 @@ platform :ios do
       app_version: "1.0.0",
       sku: "com.amoslabs.mobile"
     )
+  end
+
+  # ============================================
+  # METADATA
+  # ============================================
+
+  desc "Upload only metadata (description, keywords, etc.) to App Store"
+  lane :upload_metadata do
+    deliver(
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      skip_metadata: false,
+      force: true
+    )
+  end
+
+  desc "Download current metadata from App Store Connect"
+  lane :download_metadata do
+    deliver(
+      download_metadata: true,
+      skip_binary_upload: true,
+      skip_screenshots: true
+    )
+  end
+
+  # ============================================
+  # NOTIFICATIONS
+  # ============================================
+
+  desc "Send Slack notification"
+  private_lane :notify_slack do |options|
+    return unless ENV["SLACK_WEBHOOK_URL"]
+
+    message = options[:message] || "Build completed"
+    success = options[:success].nil? ? true : options[:success]
+
+    slack(
+      message: message,
+      success: success,
+      slack_url: ENV["SLACK_WEBHOOK_URL"],
+      default_payloads: [:git_branch, :git_author],
+      attachment_properties: {
+        fields: [
+          {
+            title: "App",
+            value: "AMOS Mobile",
+            short: true
+          },
+          {
+            title: "Version",
+            value: get_version_number(xcodeproj: "Runner.xcodeproj", target: "Runner"),
+            short: true
+          },
+          {
+            title: "Build",
+            value: get_build_number(xcodeproj: "Runner.xcodeproj"),
+            short: true
+          }
+        ]
+      }
+    )
+  end
+
+  desc "Deploy to TestFlight with Slack notification"
+  lane :deploy_testflight_notify do
+    begin
+      deploy_testflight
+      notify_slack(message: "New TestFlight build uploaded successfully!")
+    rescue => exception
+      notify_slack(message: "TestFlight build failed: #{exception.message}", success: false)
+      raise exception
+    end
+  end
+
+  desc "Deploy to App Store with Slack notification"
+  lane :deploy_production_notify do
+    begin
+      deploy_production
+      notify_slack(message: "New App Store build uploaded successfully!")
+    rescue => exception
+      notify_slack(message: "App Store build failed: #{exception.message}", success: false)
+      raise exception
+    end
+  end
+
+  # ============================================
+  # BETA BADGE
+  # ============================================
+
+  desc "Add BETA badge to app icon"
+  lane :add_beta_badge do
+    add_badge(
+      shield: "BETA-#{get_version_number(xcodeproj: 'Runner.xcodeproj', target: 'Runner')}-orange",
+      no_badge: true,
+      shield_io_timeout: 10,
+      glob: "/Runner/Assets.xcassets/AppIcon.appiconset/*.png"
+    )
+  end
+
+  desc "Add version badge to app icon"
+  lane :add_version_badge do
+    version = get_version_number(xcodeproj: "Runner.xcodeproj", target: "Runner")
+    build = get_build_number(xcodeproj: "Runner.xcodeproj")
+
+    add_badge(
+      shield: "#{version}-#{build}-blue",
+      no_badge: true,
+      shield_io_timeout: 10,
+      glob: "/Runner/Assets.xcassets/AppIcon.appiconset/*.png"
+    )
+  end
+
+  desc "Remove badges from app icon (restore originals)"
+  lane :remove_badge do
+    # Reset icons from git
+    sh("cd .. && git checkout Runner/Assets.xcassets/AppIcon.appiconset/")
+    UI.success("App icons restored to original state")
+  end
+
+  desc "Deploy beta with badge and notification"
+  lane :deploy_beta_full do
+    add_beta_badge
+    begin
+      deploy_testflight_notify
+    ensure
+      remove_badge  # Always restore icons after build
+    end
   end
 end

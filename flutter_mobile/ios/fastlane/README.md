@@ -143,6 +143,70 @@ Full screenshot pipeline: capture, frame, and upload
 
 Create app on App Store Connect
 
+### ios upload_metadata
+
+```sh
+[bundle exec] fastlane ios upload_metadata
+```
+
+Upload only metadata (description, keywords, etc.) to App Store
+
+### ios download_metadata
+
+```sh
+[bundle exec] fastlane ios download_metadata
+```
+
+Download current metadata from App Store Connect
+
+### ios deploy_testflight_notify
+
+```sh
+[bundle exec] fastlane ios deploy_testflight_notify
+```
+
+Deploy to TestFlight with Slack notification
+
+### ios deploy_production_notify
+
+```sh
+[bundle exec] fastlane ios deploy_production_notify
+```
+
+Deploy to App Store with Slack notification
+
+### ios add_beta_badge
+
+```sh
+[bundle exec] fastlane ios add_beta_badge
+```
+
+Add BETA badge to app icon
+
+### ios add_version_badge
+
+```sh
+[bundle exec] fastlane ios add_version_badge
+```
+
+Add version badge to app icon
+
+### ios remove_badge
+
+```sh
+[bundle exec] fastlane ios remove_badge
+```
+
+Remove badges from app icon (restore originals)
+
+### ios deploy_beta_full
+
+```sh
+[bundle exec] fastlane ios deploy_beta_full
+```
+
+Deploy beta with badge and notification
+
 ----
 
 This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.

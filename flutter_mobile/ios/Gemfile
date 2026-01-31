@@ -2,3 +2,6 @@ source "https://rubygems.org"
 
 gem "fastlane"
 gem "cocoapods"
+
+# Fastlane plugins
+gem "fastlane-plugin-badge"  # Add version badges to app icons

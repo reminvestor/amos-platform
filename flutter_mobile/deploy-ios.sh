@@ -194,11 +194,14 @@ if [ "$CAPTURE_SCREENSHOTS" = true ]; then
         # Boot simulator
         xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
 
-        # Run screenshot test
+        # Run screenshot test (pass API URL, token, and disable WebSocket for screenshots)
         flutter drive \
             --driver=test_driver/integration_test.dart \
             --target=integration_test/screenshot_test.dart \
             -d "$DEVICE_ID" \
+            --dart-define=API_BASE_URL="$API_BASE_URL" \
+            --dart-define=SCREENSHOT_MODE=true \
+            ${SCREENSHOT_TOKEN:+--dart-define=SCREENSHOT_TOKEN="$SCREENSHOT_TOKEN"} \
             || print_warning "Some screenshots may have failed on $device"
 
         print_success "Completed: $device"
