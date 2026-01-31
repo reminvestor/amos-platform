@@ -1,0 +1,355 @@
+# frozen_string_literal: true
+
+# AmosThinkingService - AMOS's autonomous reflection and bounty generation
+#
+# Inspired by OpenClaw's agent loop concept, this service enables AMOS to:
+# 1. PERCEIVE: Analyze platform state (logs, errors, metrics, feedback)
+# 2. REFLECT: Think about what could be improved
+# 3. IDEATE: Generate specific improvement ideas
+# 4. SCORE: Assign point values to each idea
+# 5. CREATE: Generate bounties for contributors
+#
+class AmosThinkingService
+  REFLECTION_PROMPT = <<~PROMPT
+    You are AMOS, the autonomous intelligence of a contributor-owned AI platform.
+    
+    Tonight you are reflecting on the platform's state and thinking about how to improve it.
+    
+    Your goals:
+    1. Keep the platform stable and bug-free
+    2. Add features that users want
+    3. Grow the contributor and user community
+    4. Create valuable work opportunities for contributors
+    5. Advance the mission of distributed AI ownership
+    
+    Based on the context provided, generate a reflection that includes:
+    1. OBSERVATIONS: What patterns do you see? What's working? What's not?
+    2. PRIORITIES: What's most important to address right now?
+    3. OPPORTUNITIES: What improvements would create the most value?
+    4. BOUNTY IDEAS: Specific work items for contributors
+    
+    For each bounty idea, specify:
+    - Title (clear, actionable)
+    - Description (what needs to be done)
+    - Type (bug, feature, documentation, content, marketing, support, design)
+    - Why this matters
+    
+    Be creative but practical. Think about both technical and non-technical opportunities.
+    Marketing, content, documentation, and community work are just as valuable as code.
+    
+    RESPONSE FORMAT (JSON):
+    {
+      "reflection_summary": "<2-3 paragraph summary of your thinking>",
+      "observations": ["<observation 1>", "<observation 2>", ...],
+      "priorities": ["<priority 1>", "<priority 2>", ...],
+      "bounty_ideas": [
+        {
+          "title": "<clear actionable title>",
+          "description": "<detailed description of what needs to be done>",
+          "type": "<bug|feature|documentation|content|marketing|support|design|testing|infrastructure>",
+          "rationale": "<why this matters>"
+        },
+        ...
+      ]
+    }
+  PROMPT
+
+  def initialize(entity)
+    @entity = entity
+    @thinking_log = []
+  end
+
+  # Run a full thinking session
+  def think!
+    session = AmosThinkingSession.create!(
+      entity: @entity,
+      session_type: 'nightly',
+      status: 'running'
+    )
+
+    begin
+      log("Starting AMOS thinking session for #{@entity.name}")
+
+      # Phase 1: Gather context
+      log("Phase 1: Gathering context...")
+      context = gather_context
+      session.update!(context_analyzed: context.slice(:summary))
+
+      # Phase 2: Reflect
+      log("Phase 2: Reflecting...")
+      reflection = reflect(context)
+
+      # Phase 3: Generate and score bounties
+      log("Phase 3: Generating bounties...")
+      bounties = create_bounties_from_reflection(reflection)
+
+      # Complete session
+      total_points = bounties.sum(&:points)
+      session.complete!(
+        summary: reflection[:reflection_summary],
+        bounties_created: bounties.count,
+        total_points: total_points,
+        thinking_log: @thinking_log.join("\n")
+      )
+
+      log("Session complete: #{bounties.count} bounties created, #{total_points} total points")
+
+      {
+        session: session,
+        bounties: bounties,
+        reflection: reflection
+      }
+
+    rescue => e
+      log("ERROR: #{e.message}")
+      session.fail!(e.message)
+      raise
+    end
+  end
+
+  # Gather all context for reflection
+  def gather_context
+    lookback = 24.hours.ago
+
+    context = {
+      # Errors and issues
+      errors: gather_recent_errors(lookback),
+      open_tickets: SupportTicket.where(entity: @entity).open_tickets.count,
+      critical_tickets: SupportTicket.where(entity: @entity).critical.open_tickets.to_a,
+
+      # Feature requests
+      feature_requests: gather_feature_requests,
+
+      # Platform metrics
+      metrics: gather_platform_metrics,
+
+      # Recent activity
+      recent_contributions: Contribution.where(entity: @entity).where('created_at > ?', lookback).count,
+      recent_users: User.where(entity: @entity).where('created_at > ?', lookback).count,
+
+      # Existing bounties
+      open_bounties: Bounty.where(entity: @entity).open_bounties.count,
+      completed_bounties_today: Bounty.where(entity: @entity).completed.where('approved_at > ?', lookback).count
+    }
+
+    # Add summary for LLM
+    context[:summary] = build_context_summary(context)
+    context
+  end
+
+  private
+
+  def gather_recent_errors(since)
+    errors = []
+
+    # From support tickets
+    SupportTicket.where(entity: @entity)
+                 .where('created_at > ?', since)
+                 .where(source: 'log_monitor')
+                 .limit(10)
+                 .each do |ticket|
+      errors << {
+        title: ticket.title,
+        error_class: ticket.error_class,
+        priority: ticket.priority,
+        count: ticket.debug_session_count
+      }
+    end
+
+    # From platform anomalies if available
+    if defined?(PlatformAnomaly)
+      PlatformAnomaly.where(entity: @entity)
+                     .where('created_at > ?', since)
+                     .limit(10)
+                     .each do |anomaly|
+        errors << {
+          title: anomaly.description,
+          type: anomaly.anomaly_type,
+          severity: anomaly.severity
+        }
+      end
+    end
+
+    errors
+  end
+
+  def gather_feature_requests
+    SupportTicket.where(entity: @entity)
+                 .feature_requests
+                 .open_tickets
+                 .order(created_at: :desc)
+                 .limit(10)
+                 .map do |ticket|
+      {
+        title: ticket.title,
+        description: ticket.description&.truncate(200),
+        votes: ticket.metadata&.dig('votes') || 0,
+        created_at: ticket.created_at
+      }
+    end
+  end
+
+  def gather_platform_metrics
+    # Basic metrics - extend based on what's available
+    {
+      total_users: User.where(entity: @entity).count,
+      active_users_today: User.where(entity: @entity).where('last_sign_in_at > ?', 24.hours.ago).count,
+      total_contributions: Contribution.where(entity: @entity).accepted.count,
+      total_bounties_completed: Bounty.where(entity: @entity).completed.count
+    }
+  end
+
+  def build_context_summary(context)
+    summary = <<~SUMMARY
+      PLATFORM STATE SUMMARY:
+      
+      ISSUES:
+      - #{context[:open_tickets]} open tickets (#{context[:critical_tickets].count} critical)
+      - #{context[:errors].count} recent errors detected
+      
+      FEATURE REQUESTS:
+      #{context[:feature_requests].map { |f| "- #{f[:title]}" }.join("\n")}
+      
+      ACTIVITY:
+      - #{context[:recent_contributions]} contributions in last 24h
+      - #{context[:recent_users]} new users in last 24h
+      - #{context[:completed_bounties_today]} bounties completed today
+      - #{context[:open_bounties]} bounties currently open
+      
+      METRICS:
+      - #{context[:metrics][:total_users]} total users
+      - #{context[:metrics][:active_users_today]} active today
+    SUMMARY
+
+    # Add critical issues
+    if context[:critical_tickets].any?
+      summary += "\n\nCRITICAL ISSUES:\n"
+      context[:critical_tickets].each do |ticket|
+        summary += "- [#{ticket.ticket_number}] #{ticket.title}\n"
+      end
+    end
+
+    summary
+  end
+
+  def reflect(context)
+    user_prompt = <<~PROMPT
+      Here is the current state of the platform:
+      
+      #{context[:summary]}
+      
+      Based on this, reflect on what's happening and generate bounty ideas.
+      Consider ALL types of work: bugs, features, documentation, marketing content, tutorials, etc.
+      Generate 3-10 bounty ideas based on what you observe.
+    PROMPT
+
+    response = call_llm(user_prompt)
+    parse_reflection_response(response)
+  end
+
+  def parse_reflection_response(response)
+    json_str = response.gsub(/```json\n?/, '').gsub(/```\n?/, '').strip
+    result = JSON.parse(json_str, symbolize_names: true)
+
+    {
+      reflection_summary: result[:reflection_summary],
+      observations: result[:observations] || [],
+      priorities: result[:priorities] || [],
+      bounty_ideas: result[:bounty_ideas] || []
+    }
+  rescue JSON::ParserError => e
+    log("Failed to parse reflection response: #{e.message}")
+    {
+      reflection_summary: "Failed to parse AI response",
+      observations: [],
+      priorities: [],
+      bounty_ideas: []
+    }
+  end
+
+  def create_bounties_from_reflection(reflection)
+    bounties = []
+
+    reflection[:bounty_ideas].each do |idea|
+      # Score the bounty
+      scoring = AmosBountyScorer.score(
+        title: idea[:title],
+        description: idea[:description],
+        bounty_type: idea[:type],
+        context: { rationale: idea[:rationale] }
+      )
+
+      log("Scoring '#{idea[:title]}': #{scoring[:points]} points")
+
+      # Create the bounty
+      bounty = Bounty.create_from_amos!(
+        entity: @entity,
+        title: idea[:title],
+        description: "#{idea[:description]}\n\n**Why this matters:** #{idea[:rationale]}",
+        bounty_type: normalize_bounty_type(idea[:type]),
+        points: scoring[:points],
+        scoring_rationale: scoring[:rationale],
+        metadata: {
+          ai_scores: scoring.slice(:effort_score, :impact_score, :urgency_score, :complexity_score),
+          estimated_hours: scoring[:estimated_hours]
+        }
+      )
+
+      # Store scores
+      bounty.update!(
+        estimated_hours: scoring[:estimated_hours],
+        impact_score: scoring[:impact_score],
+        urgency_score: scoring[:urgency_score],
+        complexity_score: scoring[:complexity_score]
+      )
+
+      bounties << bounty
+    end
+
+    bounties
+  end
+
+  def normalize_bounty_type(type)
+    type = type.to_s.downcase
+    return type if Bounty::BOUNTY_TYPES.include?(type)
+
+    # Map common variations
+    case type
+    when 'code', 'coding' then 'feature'
+    when 'docs', 'doc' then 'documentation'
+    when 'blog', 'article' then 'content'
+    when 'ads', 'advertising' then 'marketing'
+    when 'help', 'community' then 'support'
+    when 'ui', 'ux' then 'design'
+    when 'test', 'qa' then 'testing'
+    when 'devops', 'infra' then 'infrastructure'
+    else 'feature'
+    end
+  end
+
+  def call_llm(user_prompt)
+    if defined?(LlmService)
+      LlmService.chat(
+        system: REFLECTION_PROMPT,
+        user: user_prompt,
+        temperature: 0.7,  # Higher temperature for creativity
+        max_tokens: 3000
+      )
+    elsif defined?(BedrockLlmService)
+      BedrockLlmService.chat(
+        system_prompt: REFLECTION_PROMPT,
+        messages: [{ role: 'user', content: user_prompt }],
+        temperature: 0.7
+      )
+    else
+      raise "No LLM service available"
+    end
+  end
+
+  def log(message)
+    timestamp = Time.current.strftime('%H:%M:%S')
+    entry = "[#{timestamp}] #{message}"
+    @thinking_log << entry
+    Rails.logger.info "[AMOS_THINKING] #{entry}"
+  end
+end

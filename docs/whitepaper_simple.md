@@ -110,9 +110,9 @@ Every user you bring to the platform earns you points:
 
 For code and community work, we use **bounties**:
 
-- See a task with a bounty (e.g., "Fix login bug - 50 AMOS")
+- See a task with a bounty (e.g., "Fix login bug - 50 points")
 - Complete the work
-- Get approved
+- Get approved by AI review
 - Earn those points
 
 | Task Type | Typical Bounty |
@@ -122,6 +122,31 @@ For code and community work, we use **bounties**:
 | New feature | 100-500 points |
 | Major feature | 500-2,000 points |
 | Tutorial | 75-150 points |
+| Blog post | 50-150 points |
+| Marketing campaign | 50-150 points |
+
+### Who Creates Bounties?
+
+**AMOS does!** Every night, AMOS (our AI) thinks about what the platform needs:
+
+1. 🔍 Analyzes errors, feedback, and metrics
+2. 💡 Comes up with improvement ideas
+3. 📋 Creates bounties with fair point values
+4. ✅ Reviews your completed work
+
+You can also submit bounty ideas, and the community votes on priorities.
+
+```
+🌙 AMOS NIGHTLY THINKING:
+
+"I noticed 3 users had trouble with the login page today.
+I'll create a 75-point bounty to fix that bug.
+
+Also, we haven't published a blog post in 2 weeks.
+I'll create a 100-point bounty for a tutorial on getting started."
+```
+
+**This means there's always work available** - the AI is constantly finding ways to improve the platform and creating opportunities for you to earn.
 
 ### Example: How Tokens Get Split
 
