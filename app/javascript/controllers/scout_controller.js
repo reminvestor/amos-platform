@@ -1088,6 +1088,10 @@ export default class extends Controller {
                   } catch (e) {
                     console.warn('⚠️ Failed to handle step_completed', e)
                   }
+                } else if (data.type === 'confirmation_required') {
+                  // CaMeL Security: Handle tool confirmation requests
+                  console.log('🔒 Confirmation required:', data.action_description)
+                  this.handleConfirmationRequired(data)
                 } else if (data.type === 'content') {
                   console.log("🎯 ENTERING CONTENT HANDLER - data.content:", data.content, "currentStreamingContent defined?", this.currentStreamingContent !== undefined)
                   
@@ -3932,6 +3936,122 @@ export default class extends Controller {
     if (indicator) {
       indicator.remove()
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CaMeL Security - Tool Confirmation Dialog
+  // Prompts user to confirm sensitive actions before execution
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  async handleConfirmationRequired(data) {
+    // Hide any thinking indicator
+    this.hideThinkingIndicator(true)
+    
+    // Build confirmation message
+    let message = `**Action Requires Confirmation**\n\n${data.action_description || 'Perform action'}`
+    
+    if (data.reason) {
+      message += `\n\n_${data.reason}_`
+    }
+    
+    if (data.untrusted_sources && data.untrusted_sources.length > 0) {
+      message += `\n\n**Data sources:** ${data.untrusted_sources.join(', ')}`
+    }
+    
+    // Show preview of args if available
+    if (data.args_preview) {
+      const previewItems = []
+      for (const [key, value] of Object.entries(data.args_preview)) {
+        if (value && value !== '[REDACTED]') {
+          previewItems.push(`• ${key}: ${value}`)
+        }
+      }
+      if (previewItems.length > 0) {
+        message += `\n\n**Details:**\n${previewItems.slice(0, 5).join('\n')}`
+      }
+    }
+    
+    // Add expiration warning
+    if (data.expires_at) {
+      const expiresIn = Math.max(0, Math.round((new Date(data.expires_at) - Date.now()) / 1000))
+      if (expiresIn < 300) {
+        message += `\n\n_This request expires in ${expiresIn} seconds._`
+      }
+    }
+    
+    // Display in chat
+    this.addMessage(message, 'ai')
+    
+    // Show confirmation dialog
+    const confirmed = await window.showConfirm(data.action_description || 'Proceed with this action?', {
+      title: 'Confirm Action',
+      confirmText: 'Confirm',
+      cancelText: 'Cancel',
+      dangerous: data.tool_name === 'delete_object'
+    })
+    
+    if (confirmed) {
+      // Send confirmation to server
+      await this.confirmToolAction(data.confirmation_id)
+    } else {
+      // Deny the action
+      await this.denyToolAction(data.confirmation_id)
+    }
+  }
+  
+  async confirmToolAction(confirmationId) {
+    try {
+      this.showThinkingIndicator('Executing')
+      
+      const response = await fetch('/api/v1/tool_confirmations/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.getCSRFToken()
+        },
+        body: JSON.stringify({ confirmation_id: confirmationId })
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        console.log('✅ Tool action confirmed and executed')
+        // The result will be streamed back via SSE
+      } else {
+        this.hideThinkingIndicator(true)
+        this.addMessage(`Action failed: ${result.error || 'Unknown error'}`, 'ai')
+      }
+    } catch (error) {
+      console.error('Failed to confirm tool action:', error)
+      this.hideThinkingIndicator(true)
+      this.addMessage('Failed to confirm action. Please try again.', 'ai')
+    }
+  }
+  
+  async denyToolAction(confirmationId) {
+    try {
+      const response = await fetch('/api/v1/tool_confirmations/deny', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.getCSRFToken()
+        },
+        body: JSON.stringify({ confirmation_id: confirmationId })
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        this.addMessage('Action cancelled. Let me know if you\'d like to try something else.', 'ai')
+      }
+    } catch (error) {
+      console.error('Failed to deny tool action:', error)
+    }
+  }
+  
+  getCSRFToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]')
+    return meta ? meta.content : ''
   }
 
   // Update tool progress with percentage for long-running operations

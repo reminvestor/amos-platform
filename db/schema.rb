@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1219,6 +1219,32 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
     t.index ["status"], name: "index_amos_jobs_on_status"
   end
 
+  create_table "amos_thinking_sessions", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "session_type", default: "nightly", null: false
+    t.string "status", default: "running"
+    t.jsonb "context_analyzed", default: {}
+    t.integer "errors_analyzed", default: 0
+    t.integer "tickets_analyzed", default: 0
+    t.integer "feature_requests_analyzed", default: 0
+    t.text "reflection_summary"
+    t.text "improvement_ideas"
+    t.integer "bounties_created", default: 0
+    t.integer "total_points_allocated", default: 0
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.integer "duration_seconds"
+    t.integer "llm_tokens_used", default: 0
+    t.decimal "llm_cost", precision: 10, scale: 4, default: "0.0"
+    t.text "thinking_log"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_amos_thinking_sessions_on_created_at"
+    t.index ["entity_id"], name: "index_amos_thinking_sessions_on_entity_id"
+    t.index ["session_type"], name: "index_amos_thinking_sessions_on_session_type"
+    t.index ["status"], name: "index_amos_thinking_sessions_on_status"
+  end
+
   create_table "analytics_connections", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "name"
@@ -1524,6 +1550,60 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
     t.index ["name"], name: "index_billing_configurations_on_name", unique: true
   end
 
+  create_table "bounties", force: :cascade do |t|
+    t.string "title", null: false
+    t.text "description"
+    t.string "bounty_type", null: false
+    t.integer "points", default: 0, null: false
+    t.string "status", default: "open"
+    t.bigint "entity_id", null: false
+    t.bigint "created_by_id"
+    t.bigint "claimed_by_id"
+    t.bigint "reviewed_by_id"
+    t.bigint "support_ticket_id"
+    t.text "ai_scoring_rationale"
+    t.float "estimated_hours"
+    t.integer "impact_score"
+    t.integer "urgency_score"
+    t.integer "complexity_score"
+    t.datetime "claimed_at"
+    t.datetime "submitted_at"
+    t.datetime "approved_at"
+    t.datetime "rejected_at"
+    t.datetime "expires_at"
+    t.text "submission_notes"
+    t.text "review_notes"
+    t.integer "final_points"
+    t.string "source"
+    t.jsonb "metadata", default: {}
+    t.integer "upvotes", default: 0
+    t.integer "downvotes", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "pr_url"
+    t.integer "pr_number"
+    t.string "commit_sha"
+    t.string "branch_name"
+    t.string "repo_url"
+    t.string "work_url"
+    t.jsonb "work_artifacts", default: []
+    t.bigint "pull_request_submission_id"
+    t.index ["bounty_type"], name: "index_bounties_on_bounty_type"
+    t.index ["claimed_by_id"], name: "index_bounties_on_claimed_by_id"
+    t.index ["commit_sha"], name: "index_bounties_on_commit_sha"
+    t.index ["created_by_id"], name: "index_bounties_on_created_by_id"
+    t.index ["entity_id", "status"], name: "index_bounties_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_bounties_on_entity_id"
+    t.index ["points"], name: "index_bounties_on_points"
+    t.index ["pr_number"], name: "index_bounties_on_pr_number"
+    t.index ["pull_request_submission_id"], name: "index_bounties_on_pull_request_submission_id"
+    t.index ["reviewed_by_id"], name: "index_bounties_on_reviewed_by_id"
+    t.index ["source"], name: "index_bounties_on_source"
+    t.index ["status", "bounty_type"], name: "index_bounties_on_status_and_bounty_type"
+    t.index ["status"], name: "index_bounties_on_status"
+    t.index ["support_ticket_id"], name: "index_bounties_on_support_ticket_id"
+  end
+
   create_table "business_insights", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "insight_type"
@@ -1776,6 +1856,34 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
     t.datetime "updated_at", null: false
     t.index ["entity_id", "stats_date"], name: "index_context_graph_stats_on_entity_id_and_stats_date", unique: true
     t.index ["entity_id"], name: "index_context_graph_stats_on_entity_id"
+  end
+
+  create_table "contributions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id"
+    t.bigint "reviewed_by_id"
+    t.string "contribution_type", null: false
+    t.string "title", null: false
+    t.text "description", null: false
+    t.integer "status", default: 0, null: false
+    t.decimal "stake_value", precision: 18, scale: 4
+    t.decimal "complexity_multiplier", precision: 5, scale: 2, default: "1.0"
+    t.string "external_reference"
+    t.string "external_url"
+    t.text "review_notes"
+    t.datetime "reviewed_at"
+    t.datetime "merged_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contribution_type"], name: "index_contributions_on_contribution_type"
+    t.index ["entity_id"], name: "index_contributions_on_entity_id"
+    t.index ["external_reference"], name: "index_contributions_on_external_reference"
+    t.index ["reviewed_by_id"], name: "index_contributions_on_reviewed_by_id"
+    t.index ["status"], name: "index_contributions_on_status"
+    t.index ["user_id", "contribution_type"], name: "index_contributions_on_user_id_and_contribution_type"
+    t.index ["user_id", "status"], name: "index_contributions_on_user_id_and_status"
+    t.index ["user_id"], name: "index_contributions_on_user_id"
   end
 
   create_table "conversation_embeddings", force: :cascade do |t|
@@ -2365,6 +2473,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
     t.string "bedrock_last_ingestion_job_id"
     t.boolean "use_shared_token_pool", default: false
     t.bigint "token_pool_owner_id"
+    t.boolean "quarantine_llm_enabled", default: false
     t.index ["bedrock_kb_id"], name: "index_entities_on_bedrock_kb_id"
     t.index ["bedrock_kb_status"], name: "index_entities_on_bedrock_kb_status"
     t.index ["bedrock_knowledge_base_id"], name: "index_entities_on_bedrock_knowledge_base_id"
@@ -2708,6 +2817,45 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
     t.index ["entity_id", "knowledge_type"], name: "idx_on_entity_id_knowledge_type_54ffe25eb8"
     t.index ["entity_id"], name: "index_global_knowledge_archives_on_entity_id"
     t.index ["source_agent_slug"], name: "index_global_knowledge_archives_on_source_agent_slug"
+  end
+
+  create_table "governance_proposals", force: :cascade do |t|
+    t.bigint "proposer_id", null: false
+    t.bigint "entity_id"
+    t.string "title", null: false
+    t.text "description", null: false
+    t.string "proposal_type", null: false
+    t.string "status", default: "discussion", null: false
+    t.decimal "staked_amount", precision: 20, scale: 4, default: "0.0"
+    t.datetime "voting_started_at"
+    t.datetime "finalized_at"
+    t.datetime "executed_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "snapshot_at"
+    t.decimal "snapshot_total_supply", precision: 24, scale: 8
+    t.index ["entity_id"], name: "index_governance_proposals_on_entity_id"
+    t.index ["proposal_type"], name: "index_governance_proposals_on_proposal_type"
+    t.index ["proposer_id"], name: "index_governance_proposals_on_proposer_id"
+    t.index ["snapshot_at"], name: "index_governance_proposals_on_snapshot_at"
+    t.index ["status"], name: "index_governance_proposals_on_status"
+    t.index ["voting_started_at"], name: "index_governance_proposals_on_voting_started_at"
+  end
+
+  create_table "governance_votes", force: :cascade do |t|
+    t.bigint "governance_proposal_id", null: false
+    t.bigint "user_id", null: false
+    t.string "vote", null: false
+    t.decimal "voting_power", precision: 20, scale: 4, null: false
+    t.datetime "voted_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.decimal "stake_at_snapshot", precision: 24, scale: 8
+    t.index ["governance_proposal_id", "user_id"], name: "idx_gov_votes_proposal_user", unique: true
+    t.index ["governance_proposal_id"], name: "index_governance_votes_on_governance_proposal_id"
+    t.index ["user_id"], name: "index_governance_votes_on_user_id"
+    t.index ["vote"], name: "index_governance_votes_on_vote"
   end
 
   create_table "hub_messages", force: :cascade do |t|
@@ -3735,6 +3883,29 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
     t.index ["status"], name: "index_payouts_on_status"
   end
 
+  create_table "pending_tool_confirmations", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "confirmation_id", null: false
+    t.string "tool_name", null: false
+    t.string "status", default: "pending"
+    t.jsonb "tool_args", default: {}
+    t.jsonb "data_sources", default: []
+    t.string "action_description"
+    t.string "reason"
+    t.string "session_id"
+    t.datetime "expires_at"
+    t.datetime "resolved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["confirmation_id"], name: "index_pending_tool_confirmations_on_confirmation_id", unique: true
+    t.index ["entity_id", "status"], name: "index_pending_tool_confirmations_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_pending_tool_confirmations_on_entity_id"
+    t.index ["expires_at"], name: "index_pending_tool_confirmations_on_expires_at"
+    t.index ["session_id", "status"], name: "index_pending_tool_confirmations_on_session_id_and_status"
+    t.index ["user_id"], name: "index_pending_tool_confirmations_on_user_id"
+  end
+
   create_table "pipeline_artifacts", force: :cascade do |t|
     t.bigint "pipeline_execution_id", null: false
     t.bigint "agent_execution_id"
@@ -3886,6 +4057,24 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
     t.index ["triggered_goal_id"], name: "index_platform_anomalies_on_triggered_goal_id"
   end
 
+  create_table "platform_costs", force: :cascade do |t|
+    t.string "category", null: false
+    t.decimal "amount", precision: 12, scale: 2, null: false
+    t.string "description"
+    t.datetime "recorded_at", null: false
+    t.string "period_type", default: "one_time"
+    t.date "period_start"
+    t.date "period_end"
+    t.jsonb "metadata", default: {}
+    t.bigint "recorded_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_platform_costs_on_category"
+    t.index ["period_start", "period_end"], name: "index_platform_costs_on_period_start_and_period_end"
+    t.index ["recorded_at"], name: "index_platform_costs_on_recorded_at"
+    t.index ["recorded_by_id"], name: "index_platform_costs_on_recorded_by_id"
+  end
+
   create_table "platform_evolution_tickets", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "ticket_type", null: false
@@ -4031,6 +4220,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
     t.boolean "is_active"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["entity_id", "resource_type", "resource_id"], name: "idx_policy_rules_tool_lookup", where: "((resource_type)::text = 'Tool'::text)"
     t.index ["entity_id"], name: "index_policy_rules_on_entity_id"
   end
 
@@ -4237,6 +4427,41 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
     t.index ["referred_entity_id"], name: "index_referrals_on_referred_entity_id"
     t.index ["referred_user_id"], name: "index_referrals_on_referred_user_id"
     t.index ["status"], name: "index_referrals_on_status"
+  end
+
+  create_table "revenue_distributions", force: :cascade do |t|
+    t.string "period", null: false
+    t.decimal "gross_revenue", precision: 15, scale: 2, null: false
+    t.decimal "holder_pool", precision: 15, scale: 2, null: false
+    t.decimal "usdc_distributed", precision: 15, scale: 2, default: "0.0"
+    t.decimal "buyback_burned", precision: 20, scale: 4, default: "0.0"
+    t.integer "recipients_count", default: 0
+    t.datetime "distributed_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["distributed_at"], name: "index_revenue_distributions_on_distributed_at"
+    t.index ["period"], name: "index_revenue_distributions_on_period", unique: true
+  end
+
+  create_table "revenue_payments", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "revenue_distribution_id"
+    t.decimal "amount", precision: 15, scale: 2, null: false
+    t.string "currency", default: "USDC", null: false
+    t.string "period", null: false
+    t.string "status", default: "pending", null: false
+    t.string "payment_method"
+    t.string "transaction_signature"
+    t.datetime "paid_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["period"], name: "index_revenue_payments_on_period"
+    t.index ["revenue_distribution_id"], name: "index_revenue_payments_on_revenue_distribution_id"
+    t.index ["status"], name: "index_revenue_payments_on_status"
+    t.index ["user_id", "period"], name: "index_revenue_payments_on_user_id_and_period", unique: true
+    t.index ["user_id"], name: "index_revenue_payments_on_user_id"
   end
 
   create_table "rich_text_sections", force: :cascade do |t|
@@ -5091,6 +5316,148 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
     t.index ["entity_id"], name: "index_tenant_quotas_on_entity_id"
   end
 
+  create_table "token_buybacks", force: :cascade do |t|
+    t.string "period", null: false
+    t.decimal "usdc_amount", precision: 15, scale: 2, null: false
+    t.decimal "estimated_tokens", precision: 20, scale: 4
+    t.decimal "actual_tokens_bought", precision: 20, scale: 4
+    t.decimal "token_price_at_buyback", precision: 15, scale: 6
+    t.string "status", default: "pending", null: false
+    t.string "swap_transaction_signature"
+    t.string "burn_transaction_signature"
+    t.datetime "executed_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["period"], name: "index_token_buybacks_on_period"
+    t.index ["status"], name: "index_token_buybacks_on_status"
+  end
+
+  create_table "token_claims", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id"
+    t.decimal "amount", precision: 18, scale: 9, null: false
+    t.string "wallet_address", null: false
+    t.string "status", default: "pending", null: false
+    t.string "transaction_signature"
+    t.string "blockhash"
+    t.bigint "slot"
+    t.datetime "confirmed_at"
+    t.decimal "network_fee", precision: 18, scale: 9
+    t.decimal "platform_fee", precision: 18, scale: 9
+    t.text "error_message"
+    t.integer "retry_count", default: 0
+    t.datetime "last_retry_at"
+    t.string "ip_address"
+    t.string "user_agent"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "disbursement_currency", default: "amos"
+    t.jsonb "swap_quote"
+    t.string "swap_transaction_signature"
+    t.decimal "final_amount", precision: 18, scale: 9
+    t.decimal "swap_rate", precision: 18, scale: 9
+    t.index ["created_at"], name: "index_token_claims_on_created_at"
+    t.index ["disbursement_currency"], name: "index_token_claims_on_disbursement_currency"
+    t.index ["entity_id"], name: "index_token_claims_on_entity_id"
+    t.index ["status"], name: "index_token_claims_on_status"
+    t.index ["transaction_signature"], name: "index_token_claims_on_transaction_signature", unique: true
+    t.index ["user_id", "status"], name: "index_token_claims_on_user_id_and_status"
+    t.index ["user_id"], name: "index_token_claims_on_user_id"
+    t.index ["wallet_address"], name: "index_token_claims_on_wallet_address"
+  end
+
+  create_table "token_deposits", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id"
+    t.bigint "token_stake_id"
+    t.decimal "amount", precision: 18, scale: 9, null: false
+    t.string "wallet_address", null: false
+    t.string "status", default: "pending", null: false
+    t.string "transaction_signature", null: false
+    t.string "blockhash"
+    t.bigint "slot"
+    t.datetime "confirmed_at"
+    t.boolean "verified", default: false
+    t.datetime "verified_at"
+    t.text "error_message"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_token_deposits_on_entity_id"
+    t.index ["status"], name: "index_token_deposits_on_status"
+    t.index ["token_stake_id"], name: "index_token_deposits_on_token_stake_id"
+    t.index ["transaction_signature"], name: "index_token_deposits_on_transaction_signature", unique: true
+    t.index ["user_id", "status"], name: "index_token_deposits_on_user_id_and_status"
+    t.index ["user_id"], name: "index_token_deposits_on_user_id"
+    t.index ["verified"], name: "index_token_deposits_on_verified"
+    t.index ["wallet_address"], name: "index_token_deposits_on_wallet_address"
+  end
+
+  create_table "token_stake_transactions", force: :cascade do |t|
+    t.bigint "token_stake_id", null: false
+    t.bigint "user_id", null: false
+    t.string "transaction_type", null: false
+    t.decimal "amount", precision: 18, scale: 4, null: false
+    t.decimal "balance_before", precision: 18, scale: 4, null: false
+    t.decimal "balance_after", precision: 18, scale: 4, null: false
+    t.string "description"
+    t.string "external_reference"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_token_stake_transactions_on_created_at"
+    t.index ["token_stake_id"], name: "index_token_stake_transactions_on_token_stake_id"
+    t.index ["transaction_type"], name: "index_token_stake_transactions_on_transaction_type"
+    t.index ["user_id", "transaction_type"], name: "index_token_stake_transactions_on_user_id_and_transaction_type"
+    t.index ["user_id"], name: "index_token_stake_transactions_on_user_id"
+  end
+
+  create_table "token_stakes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id"
+    t.string "source_type"
+    t.bigint "source_id"
+    t.string "stake_type", null: false
+    t.string "category"
+    t.decimal "initial_amount", precision: 18, scale: 4, null: false
+    t.decimal "current_amount", precision: 18, scale: 4, null: false
+    t.decimal "decay_rate", precision: 5, scale: 4, default: "0.5", null: false
+    t.decimal "total_decayed", precision: 18, scale: 4, default: "0.0"
+    t.datetime "earned_at", null: false
+    t.datetime "last_decay_at"
+    t.datetime "vested_at"
+    t.boolean "is_transferable", default: false
+    t.boolean "is_locked", default: false
+    t.datetime "lock_until"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "staking_tier", default: "none"
+    t.datetime "locked_until"
+    t.bigint "beneficiary_id"
+    t.bigint "transferred_to_id"
+    t.datetime "transferred_at"
+    t.decimal "permanent_floor", precision: 18, scale: 4
+    t.string "clawback_status"
+    t.index ["beneficiary_id"], name: "index_token_stakes_on_beneficiary_id"
+    t.index ["category"], name: "index_token_stakes_on_category"
+    t.index ["clawback_status"], name: "index_token_stakes_on_clawback_status"
+    t.index ["current_amount"], name: "index_token_stakes_active", where: "(current_amount > (0)::numeric)"
+    t.index ["earned_at"], name: "index_token_stakes_on_earned_at"
+    t.index ["entity_id", "stake_type"], name: "index_token_stakes_on_entity_id_and_stake_type"
+    t.index ["entity_id"], name: "index_token_stakes_on_entity_id"
+    t.index ["locked_until"], name: "index_token_stakes_on_locked_until"
+    t.index ["source_type", "source_id"], name: "index_token_stakes_on_source"
+    t.index ["stake_type", "clawback_status"], name: "index_token_stakes_on_distribution_clawback"
+    t.index ["stake_type"], name: "index_token_stakes_on_stake_type"
+    t.index ["staking_tier"], name: "index_token_stakes_on_staking_tier"
+    t.index ["transferred_to_id"], name: "index_token_stakes_on_transferred_to_id"
+    t.index ["user_id", "stake_type"], name: "index_token_stakes_on_user_id_and_stake_type"
+    t.index ["user_id"], name: "index_token_stakes_on_user_id"
+  end
+
   create_table "tool_definitions", force: :cascade do |t|
     t.string "name", null: false
     t.text "description"
@@ -5441,12 +5808,19 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
     t.string "terms_version"
     t.datetime "privacy_accepted_at"
     t.string "privacy_version"
+    t.string "solana_wallet_address"
+    t.datetime "wallet_verified_at"
+    t.string "wallet_verification_message"
+    t.string "wallet_verification_signature"
+    t.string "preferred_disbursement_currency", default: "amos"
+    t.boolean "auto_convert_to_stable", default: false
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"
     t.index ["otp_required_for_login"], name: "index_users_on_otp_required_for_login"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true, where: "(provider IS NOT NULL)"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["solana_wallet_address"], name: "index_users_on_solana_wallet_address", unique: true
     t.index ["stripe_customer_id"], name: "index_users_on_stripe_customer_id", unique: true
     t.index ["tts_preferences"], name: "index_users_on_tts_preferences", using: :gin
   end
@@ -5993,6 +6367,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
   add_foreign_key "ai_usage_logs", "entities"
   add_foreign_key "ai_usage_logs", "scout_messages"
   add_foreign_key "ai_usage_logs", "users"
+  add_foreign_key "amos_thinking_sessions", "entities"
   add_foreign_key "analytics_connections", "entities"
   add_foreign_key "analytics_query_logs", "entities"
   add_foreign_key "analytics_query_logs", "metric_definitions"
@@ -6018,6 +6393,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
   add_foreign_key "benchmark_task_results", "agent_plugin_executions"
   add_foreign_key "benchmark_task_results", "agent_plugins"
   add_foreign_key "benchmark_task_results", "benchmark_runs"
+  add_foreign_key "bounties", "entities"
+  add_foreign_key "bounties", "pull_request_submissions"
+  add_foreign_key "bounties", "support_tickets"
+  add_foreign_key "bounties", "users", column: "claimed_by_id"
+  add_foreign_key "bounties", "users", column: "created_by_id"
+  add_foreign_key "bounties", "users", column: "reviewed_by_id"
   add_foreign_key "business_insights", "entities"
   add_foreign_key "business_insights", "scout_conversations", column: "source_conversation_id"
   add_foreign_key "business_profiles", "entities"
@@ -6048,6 +6429,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
   add_foreign_key "contacts", "users"
   add_foreign_key "contacts", "users", column: "assigned_user_id"
   add_foreign_key "context_graph_stats", "entities"
+  add_foreign_key "contributions", "entities"
+  add_foreign_key "contributions", "users"
+  add_foreign_key "contributions", "users", column: "reviewed_by_id"
   add_foreign_key "conversation_embeddings", "entities"
   add_foreign_key "conversation_embeddings", "scout_messages"
   add_foreign_key "conversation_summaries", "entities"
@@ -6132,6 +6516,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
   add_foreign_key "factory_test_sessions", "entities"
   add_foreign_key "factory_test_sessions", "users"
   add_foreign_key "global_knowledge_archives", "entities"
+  add_foreign_key "governance_proposals", "entities"
+  add_foreign_key "governance_proposals", "users", column: "proposer_id"
+  add_foreign_key "governance_votes", "governance_proposals"
+  add_foreign_key "governance_votes", "users"
   add_foreign_key "hub_messages", "agent_input_requests"
   add_foreign_key "hub_messages", "agent_plugin_executions"
   add_foreign_key "hub_messages", "hub_messages", column: "reply_to_id"
@@ -6226,6 +6614,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
   add_foreign_key "opportunities", "users"
   add_foreign_key "payouts", "admin_users", column: "processed_by_id"
   add_foreign_key "payouts", "affiliates"
+  add_foreign_key "pending_tool_confirmations", "entities"
+  add_foreign_key "pending_tool_confirmations", "users"
   add_foreign_key "pipeline_artifacts", "agent_executions"
   add_foreign_key "pipeline_artifacts", "pipeline_executions"
   add_foreign_key "pipeline_events", "pipeline_executions"
@@ -6237,6 +6627,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
   add_foreign_key "platform_anomalies", "agent_goals", column: "triggered_goal_id"
   add_foreign_key "platform_anomalies", "entities"
   add_foreign_key "platform_anomalies", "platform_perceptions"
+  add_foreign_key "platform_costs", "users", column: "recorded_by_id"
   add_foreign_key "platform_evolution_tickets", "entities"
   add_foreign_key "platform_perceptions", "entities"
   add_foreign_key "plugin_permissions", "custom_plugins"
@@ -6267,6 +6658,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
   add_foreign_key "referrals", "affiliates"
   add_foreign_key "referrals", "entities", column: "referred_entity_id"
   add_foreign_key "referrals", "users", column: "referred_user_id"
+  add_foreign_key "revenue_payments", "revenue_distributions"
+  add_foreign_key "revenue_payments", "users"
   add_foreign_key "rich_text_sections", "landing_pages"
   add_foreign_key "saved_searches", "entities"
   add_foreign_key "saved_searches", "users"
@@ -6338,6 +6731,17 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_000001) do
   add_foreign_key "team_invites", "entities"
   add_foreign_key "team_invites", "users", column: "invited_by_id"
   add_foreign_key "tenant_quotas", "entities"
+  add_foreign_key "token_claims", "entities"
+  add_foreign_key "token_claims", "users"
+  add_foreign_key "token_deposits", "entities"
+  add_foreign_key "token_deposits", "token_stakes"
+  add_foreign_key "token_deposits", "users"
+  add_foreign_key "token_stake_transactions", "token_stakes"
+  add_foreign_key "token_stake_transactions", "users"
+  add_foreign_key "token_stakes", "entities"
+  add_foreign_key "token_stakes", "users"
+  add_foreign_key "token_stakes", "users", column: "beneficiary_id"
+  add_foreign_key "token_stakes", "users", column: "transferred_to_id"
   add_foreign_key "tool_definitions", "app_modules"
   add_foreign_key "tool_definitions", "entities"
   add_foreign_key "tool_definitions", "users", column: "created_by_id"
