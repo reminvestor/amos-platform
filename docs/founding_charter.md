@@ -233,6 +233,25 @@ _[To be signed upon mainnet launch]_
 
 ---
 
+## Article VIII: Regulatory Commitment
+
+### 8.1 Good Faith Compliance
+
+The AMOS platform commits to operating in good faith with all applicable regulatory frameworks. We recognize that token-based economies exist in an evolving legal landscape and approach this with transparency and adaptability.
+
+### 8.2 Principles
+
+1. **Utility First**: Tokens are designed for genuine utility (governance, revenue share), not speculation
+2. **Contribution-Based**: Tokens are primarily earned through work, not purchased through offerings
+3. **Transparency**: All mechanics are public and auditable
+4. **Adaptability**: We will evolve our structure as regulatory guidance clarifies
+
+### 8.3 Not an Investment
+
+AMOS tokens are utility tokens for platform participation. The decay mechanism explicitly discourages passive holding. This charter and associated documents do not constitute an offer to sell securities.
+
+---
+
 ## Changelog
 
 | Version | Date | Changes |

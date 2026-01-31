@@ -542,4 +542,37 @@ Ways tokens typically crash:
 
 ---
 
+---
+
+## Legal Stuff (Important!)
+
+### Our Commitment
+
+We're committed to doing this the right way:
+
+- **We follow the rules**: We work with lawyers to make sure we're operating legally
+- **Tokens are for participating, not just speculating**: The decay mechanism proves this
+- **We're transparent**: Everything is public and auditable
+- **We adapt**: As regulations evolve, we'll evolve with them
+
+### What This Is (and Isn't)
+
+**AMOS tokens ARE:**
+- A way to earn ownership through contribution
+- A mechanism for governance and revenue sharing
+- Utility tokens for platform participation
+
+**AMOS tokens are NOT:**
+- An investment offering
+- A get-rich-quick scheme
+- A promise of profits
+
+### Your Responsibilities
+
+- **Taxes**: You're responsible for reporting token income in your country
+- **Research**: Understand what you're participating in
+- **Local laws**: Some features may not be available in all regions
+
+---
+
 *This document is for educational purposes only. Cryptocurrency involves risk. Always do your own research.*
