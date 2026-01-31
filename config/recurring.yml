@@ -128,6 +128,34 @@ production:
     schedule: every 5 minutes
 
   # ========================================
+  # Token Economy Jobs
+  # ========================================
+  
+  # Daily token decay - apply decay to all stakes
+  token_daily_decay:
+    class: TokenDecayJob
+    queue: billing
+    schedule: at 1am every day
+
+  # ========================================
+  # AMOS Thinking Time Jobs - Autonomous Bounty Generation
+  # ========================================
+  
+  # Nightly thinking time - AMOS reflects and creates bounties
+  amos_thinking_time:
+    class: AmosThinkingTimeJob
+    queue: living_platform
+    schedule: at 2am every day
+  
+  # Weekly deep reflection - more comprehensive analysis
+  amos_weekly_reflection:
+    class: AmosThinkingTimeJob
+    queue: living_platform
+    schedule: at 3am every sunday
+    args:
+      - entity_id: null
+
+  # ========================================
   # Tool Embeddings Jobs
   # ========================================
   

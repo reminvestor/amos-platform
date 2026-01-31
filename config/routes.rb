@@ -243,8 +243,58 @@ Rails.application.routes.draw do
       resources :jobs, only: [ :show ]
       post "crawler_contacts", to: "crawler_contacts#create"
 
+      # Token Economy API - Transparency Dashboard
+      scope :token_economy, controller: 'token_economy' do
+        get 'stats', action: :stats
+        get 'distribution', action: :distribution
+        get 'leaderboard', action: :leaderboard
+        get 'my_profile', action: :my_profile
+        get 'my_stakes', action: :my_stakes
+        get 'my_contributions', action: :my_contributions
+        post 'contributions', action: :create_contribution
+      end
+
+      # Solana Wallet Integration
+      scope :wallet, controller: 'token_wallet' do
+        post 'connect', action: :connect
+        delete 'disconnect', action: :disconnect
+        get 'balance', action: :balance
+        post 'claim', action: :claim
+        post 'deposit', action: :deposit
+        get 'transactions', action: :transactions
+        get 'claim/:id', action: :claim_status
+        post 'claim/:id/retry', action: :retry_claim
+      end
+
       # Crawler Job Logging
       post "crawler_jobs/:id/logs", to: "crawler_job_logs#create"
+
+      # Token Economy API
+      scope :token_economy, controller: 'token_economy' do
+        get 'stats', action: :stats
+        get 'distribution', action: :distribution
+        get 'leaderboard', action: :leaderboard
+      end
+
+      # Solana Wallet Integration
+      scope :wallet, controller: 'token_wallet' do
+        post 'connect', action: :connect
+        delete 'disconnect', action: :disconnect
+        get 'balance', action: :balance
+        post 'claim', action: :claim
+        post 'deposit', action: :deposit
+        get 'transactions', action: :transactions
+        get 'claim/:id', action: :claim_status
+        post 'claim/:id/retry', action: :retry_claim
+      end
+
+      # Token Swap (Jupiter DEX)
+      scope :swap, controller: 'token_swap' do
+        get 'quote', action: :quote
+        get 'price', action: :price
+        get 'supported_tokens', action: :supported_tokens
+        post 'prepare', action: :prepare
+      end
 
       # Custom Agents API
       resources :agents, only: [ :index, :show ] do
@@ -822,6 +872,9 @@ Rails.application.routes.draw do
       end
     end
 
+    # Wallet Management (Token Economy)
+    get "wallet", to: "wallet#index", as: :wallet
+
     # Social media account management
     resources :social_media_accounts, only: [ :index, :new, :create ] do
       collection do
@@ -854,6 +907,10 @@ Rails.application.routes.draw do
 
     # Root redirects to chat (default mode)
     root to: redirect("/chat"), as: :application_root
+
+    # Public Transparency Dashboard (no auth required)
+    get "/transparency", to: "transparency#index", as: :transparency
+    get "/transparency/api", to: "transparency#api", as: :transparency_api
 
     # Chat Mode (AMOS AI Conversational Interface)
     get "/chat", to: "scout#index", as: :chat_mode
@@ -967,6 +1024,7 @@ Rails.application.routes.draw do
   # Model selection mode routes
   post "scout/set_model_mode", to: "scout#set_model_mode"
   get "scout/model_mode", to: "scout#get_model_mode"
+  post "scout/set_premium_model", to: "scout#set_premium_model"
 
   # Scout Intelligent Canvas routes
   post "scout/load_canvas", to: "scout#load_canvas"
@@ -1247,6 +1305,12 @@ Rails.application.routes.draw do
     get "/observability/workflows", to: "observability#workflows", as: :observability_workflows
     get "/observability/performance", to: "observability#performance", as: :observability_performance
     get "/observability/errors", to: "observability#errors", as: :observability_errors
+
+    # Platform Economics Dashboard
+    get "/platform_economics", to: "platform_economics#index", as: :platform_economics
+    post "/platform_economics/refresh", to: "platform_economics#refresh", as: :platform_economics_refresh
+    get "/platform_economics/export", to: "platform_economics#export", as: :platform_economics_export
+    get "/platform_economics/reconciliation", to: "platform_economics#reconciliation", as: :platform_economics_reconciliation
 
     # Scout session management (Redis history)
     resources :scout_sessions, only: [:index, :show, :destroy] do

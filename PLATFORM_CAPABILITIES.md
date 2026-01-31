@@ -348,4 +348,34 @@ Users can do a "Fresh Start" which:
 
 ---
 
+---
+
+## 🪙 Token Economy
+
+AMOS includes a built-in token economy for contributor ownership:
+
+### How It Works
+
+| Component | Description |
+|-----------|-------------|
+| **Earning** | Contributors earn AMOS tokens for approved work |
+| **Revenue Share** | 50% of platform revenue distributed to token holders |
+| **Governance** | Token holders vote on features, budgets, strategy |
+| **Decay** | Stakes decay over time to encourage ongoing participation |
+| **Trading** | Tokens tradeable on Solana DEXs |
+
+### Related Documentation
+
+- [Simple Whitepaper](docs/whitepaper_simple.md) - Easy overview
+- [Technical Whitepaper](docs/whitepaper_technical.md) - Full mechanics
+- [Founding Charter](docs/founding_charter.md) - Constitutional principles
+
+---
+
+## 📜 License
+
+AMOS is open source under the [Apache License 2.0](LICENSE).
+
+---
+
 *This document reflects the current architecture as of January 2026.*

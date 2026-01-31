@@ -1,0 +1,423 @@
+<div class="scout-canvas wallet-canvas">
+  <!-- Header -->
+  <div class="settings-bar d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-2">
+      <i data-lucide="wallet" class="text-warning" style="width: 24px; height: 24px;"></i>
+      <h4 class="mb-0">AMOS Wallet</h4>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" onclick="window.refreshWalletCanvas()" aria-label="Refresh wallet">
+        <i data-lucide="refresh-cw" aria-hidden="true"></i> Refresh
+      </button>
+      <a href="<%= wallet_path %>" class="btn btn-sm btn-outline-primary" target="_blank">
+        <i data-lucide="external-link" aria-hidden="true"></i> Full Page
+      </a>
+    </div>
+  </div>
+
+  <!-- Wallet Connection Section -->
+  <div class="card border-0 shadow-sm mb-4" id="canvas-wallet-card">
+    <div class="card-body">
+      <div id="canvas-wallet-not-connected">
+        <div class="text-center py-4">
+          <img src="https://phantom.app/img/phantom-icon-purple.svg" alt="Phantom" width="48" class="mb-3">
+          <h5>Connect Your Wallet</h5>
+          <p class="text-muted mb-3">Link your Phantom wallet to claim or deposit AMOS tokens.</p>
+          <button class="btn btn-primary" onclick="window.connectCanvasWallet()">
+            <i data-lucide="plug" class="me-2" aria-hidden="true"></i>Connect Phantom
+          </button>
+        </div>
+        <div class="alert alert-info mt-3 mb-0">
+          <i data-lucide="info" class="me-2" aria-hidden="true"></i>
+          <small>Don't have Phantom? <a href="https://phantom.app/" target="_blank">Download it here</a></small>
+        </div>
+      </div>
+
+      <div id="canvas-wallet-connected" style="display: none;">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-success">Connected</span>
+            <code class="small" id="canvas-wallet-address">-</code>
+          </div>
+          <button class="btn btn-sm btn-outline-danger" onclick="window.disconnectCanvasWallet()">
+            <i data-lucide="unplug" aria-hidden="true"></i> Disconnect
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Balance Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="text-muted small mb-1">Platform Balance</div>
+          <div class="h4 mb-0" id="canvas-internal-balance">-</div>
+          <div class="text-muted small">Staked AMOS</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="text-muted small mb-1">Claimable</div>
+          <div class="h4 mb-0 text-success" id="canvas-claimable-balance">-</div>
+          <div class="text-muted small">Available to withdraw</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="text-muted small mb-1">Pending Claims</div>
+          <div class="h4 mb-0 text-warning" id="canvas-pending-claims">-</div>
+          <div class="text-muted small">Being processed</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="text-muted small mb-1">On-Chain</div>
+          <div class="h4 mb-0 text-info" id="canvas-onchain-balance">-</div>
+          <div class="text-muted small">In your wallet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-transparent">
+      <h6 class="mb-0"><i data-lucide="zap" class="me-2" aria-hidden="true"></i>Quick Actions</h6>
+    </div>
+    <div class="card-body">
+      <div class="d-grid gap-2">
+        <button class="btn btn-success" id="canvas-claim-btn" onclick="window.openClaimModal()" disabled>
+          <i data-lucide="upload" class="me-2" aria-hidden="true"></i>Claim Tokens to Wallet
+        </button>
+        <button class="btn btn-outline-primary" onclick="window.scoutSendMessage('Show me my token earnings and contribution history')">
+          <i data-lucide="bar-chart-2" class="me-2" aria-hidden="true"></i>View Earning History
+        </button>
+        <button class="btn btn-outline-secondary" onclick="window.scoutSendMessage('How can I earn more AMOS tokens?')">
+          <i data-lucide="help-circle" class="me-2" aria-hidden="true"></i>How to Earn Tokens
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Token Economy Overview -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+      <h6 class="mb-0"><i data-lucide="coins" class="me-2" aria-hidden="true"></i>Token Economy</h6>
+      <button class="btn btn-sm btn-link p-0" onclick="window.scoutSendMessage('Explain the AMOS token economy in detail')">
+        Learn more
+      </button>
+    </div>
+    <div class="card-body">
+      <div class="row g-2 small">
+        <div class="col-6">
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Total Supply:</span>
+            <strong>1B AMOS</strong>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Revenue Share:</span>
+            <strong class="text-success">50%</strong>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Grace Period:</span>
+            <strong>12 months</strong>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Decay Floor:</span>
+            <strong>25% min</strong>
+          </div>
+        </div>
+      </div>
+      <hr class="my-2">
+      <div class="text-center">
+        <a href="/docs/whitepaper_simple.md" target="_blank" class="btn btn-sm btn-outline-primary">
+          <i data-lucide="book-open" class="me-2" aria-hidden="true"></i>Read Whitepaper
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-transparent">
+      <h6 class="mb-0"><i data-lucide="activity" class="me-2" aria-hidden="true"></i>Recent Transactions</h6>
+    </div>
+    <div class="card-body p-0">
+      <div id="canvas-transactions-loading" class="text-center py-4">
+        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+      </div>
+      <div id="canvas-transactions-empty" class="text-center py-4 text-muted" style="display: none;">
+        <i data-lucide="inbox" class="mb-2" style="width: 32px; height: 32px;"></i>
+        <p class="mb-0">No transactions yet</p>
+      </div>
+      <div id="canvas-transactions-list" style="display: none;">
+        <div class="list-group list-group-flush" id="canvas-transactions-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Claim Modal -->
+  <div class="modal fade" id="canvas-claim-modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i data-lucide="upload" class="me-2"></i>Claim AMOS Tokens</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Amount to Claim</label>
+            <div class="input-group">
+              <input type="number" class="form-control" id="canvas-claim-amount" placeholder="100" min="100">
+              <span class="input-group-text">AMOS</span>
+              <button class="btn btn-outline-secondary" onclick="window.setCanvasMaxClaim()">Max</button>
+            </div>
+            <div class="form-text">Minimum: 100 AMOS. Fee: 1%</div>
+          </div>
+          <div id="canvas-claim-preview" style="display: none;">
+            <div class="alert alert-secondary mb-0">
+              <div class="d-flex justify-content-between">
+                <span>You'll receive:</span>
+                <strong id="canvas-net-amount">-</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success" onclick="window.submitCanvasClaim()">
+            <i data-lucide="check" class="me-2"></i>Confirm Claim
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // Initialize on load
+  window.refreshWalletCanvas = async function() {
+    await loadCanvasBalance();
+    await loadCanvasTransactions();
+  };
+
+  window.connectCanvasWallet = async function() {
+    try {
+      if (!window.amosWallet) {
+        window.scoutSendMessage('I need to connect my Phantom wallet but the integration is not loaded. Can you help?');
+        return;
+      }
+
+      const response = await window.amosWallet.connectToPlatform();
+      
+      if (response.success || response.wallet_address) {
+        onCanvasWalletConnected(window.amosWallet.publicKey);
+        loadCanvasBalance();
+      } else if (response.error) {
+        alert('Connection failed: ' + response.error);
+      }
+    } catch (error) {
+      console.error('Wallet connection error:', error);
+      if (error.message.includes('No Solana wallet')) {
+        window.open('https://phantom.app', '_blank');
+      } else {
+        alert('Failed to connect: ' + error.message);
+      }
+    }
+  };
+
+  window.disconnectCanvasWallet = async function() {
+    try {
+      await window.amosWallet.disconnectFromPlatform();
+      onCanvasWalletDisconnected();
+    } catch (error) {
+      console.error('Disconnect error:', error);
+    }
+  };
+
+  function onCanvasWalletConnected(address) {
+    document.getElementById('canvas-wallet-not-connected').style.display = 'none';
+    document.getElementById('canvas-wallet-connected').style.display = 'block';
+    document.getElementById('canvas-wallet-address').textContent = formatAddress(address);
+    document.getElementById('canvas-claim-btn').disabled = false;
+  }
+
+  function onCanvasWalletDisconnected() {
+    document.getElementById('canvas-wallet-not-connected').style.display = 'block';
+    document.getElementById('canvas-wallet-connected').style.display = 'none';
+    document.getElementById('canvas-claim-btn').disabled = true;
+  }
+
+  async function loadCanvasBalance() {
+    try {
+      const response = await fetch('/api/v1/wallet/balance');
+      const data = await response.json();
+      
+      document.getElementById('canvas-internal-balance').textContent = formatAmount(data.internal_balance || 0);
+      document.getElementById('canvas-claimable-balance').textContent = formatAmount(data.claimable_balance || 0);
+      document.getElementById('canvas-pending-claims').textContent = formatAmount(data.pending_claims || 0);
+      document.getElementById('canvas-onchain-balance').textContent = formatAmount(data.on_chain_balance || 0);
+      
+      window.canvasClaimableBalance = data.claimable_balance || 0;
+      
+      if (data.wallet_connected && data.wallet_address) {
+        onCanvasWalletConnected(data.wallet_address);
+      }
+      
+      if (data.claimable_balance >= 100) {
+        document.getElementById('canvas-claim-btn').disabled = false;
+      }
+    } catch (error) {
+      console.error('Failed to load balance:', error);
+    }
+  }
+
+  async function loadCanvasTransactions() {
+    document.getElementById('canvas-transactions-loading').style.display = 'block';
+    document.getElementById('canvas-transactions-list').style.display = 'none';
+    document.getElementById('canvas-transactions-empty').style.display = 'none';
+    
+    try {
+      const response = await fetch('/api/v1/wallet/transactions');
+      const data = await response.json();
+      
+      document.getElementById('canvas-transactions-loading').style.display = 'none';
+      
+      if (!data.transactions || data.transactions.length === 0) {
+        document.getElementById('canvas-transactions-empty').style.display = 'block';
+        return;
+      }
+      
+      const tbody = document.getElementById('canvas-transactions-body');
+      tbody.innerHTML = data.transactions.slice(0, 5).map(tx => `
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <span class="badge ${tx.type === 'claim' ? 'bg-warning' : 'bg-success'} me-2">
+              ${tx.type === 'claim' ? '↑' : '↓'}
+            </span>
+            <span>${formatAmount(tx.amount)} AMOS</span>
+          </div>
+          <div class="text-end">
+            <span class="badge ${getStatusBadge(tx.status)}">${tx.status}</span>
+            <div class="text-muted small">${new Date(tx.created_at).toLocaleDateString()}</div>
+          </div>
+        </div>
+      `).join('');
+      
+      document.getElementById('canvas-transactions-list').style.display = 'block';
+      
+    } catch (error) {
+      console.error('Failed to load transactions:', error);
+      document.getElementById('canvas-transactions-loading').style.display = 'none';
+      document.getElementById('canvas-transactions-empty').style.display = 'block';
+    }
+  }
+
+  window.openClaimModal = function() {
+    const modal = new bootstrap.Modal(document.getElementById('canvas-claim-modal'));
+    modal.show();
+  };
+
+  window.setCanvasMaxClaim = function() {
+    document.getElementById('canvas-claim-amount').value = Math.floor(window.canvasClaimableBalance || 0);
+    updateCanvasClaimPreview();
+  };
+
+  function updateCanvasClaimPreview() {
+    const amount = parseFloat(document.getElementById('canvas-claim-amount').value) || 0;
+    const preview = document.getElementById('canvas-claim-preview');
+    
+    if (amount >= 100) {
+      const net = amount * 0.99;
+      document.getElementById('canvas-net-amount').textContent = formatAmount(net) + ' AMOS';
+      preview.style.display = 'block';
+    } else {
+      preview.style.display = 'none';
+    }
+  }
+
+  document.getElementById('canvas-claim-amount')?.addEventListener('input', updateCanvasClaimPreview);
+
+  window.submitCanvasClaim = async function() {
+    const amount = parseFloat(document.getElementById('canvas-claim-amount').value);
+    
+    if (!amount || amount < 100) {
+      alert('Minimum claim is 100 AMOS');
+      return;
+    }
+    
+    try {
+      const response = await window.amosWallet.claimTokens(amount);
+      
+      if (response.success) {
+        bootstrap.Modal.getInstance(document.getElementById('canvas-claim-modal')).hide();
+        window.scoutSendMessage(`Great news! I just submitted a claim for ${amount} AMOS tokens. Claim ID: ${response.claim_id}`);
+        setTimeout(() => {
+          loadCanvasBalance();
+          loadCanvasTransactions();
+        }, 2000);
+      } else {
+        alert('Claim failed: ' + response.error);
+      }
+    } catch (error) {
+      console.error('Claim error:', error);
+      alert('Claim failed: ' + error.message);
+    }
+  };
+
+  function getStatusBadge(status) {
+    switch (status) {
+      case 'completed': return 'bg-success';
+      case 'processing': return 'bg-primary';
+      case 'pending': case 'validated': return 'bg-warning';
+      case 'failed': return 'bg-danger';
+      default: return 'bg-secondary';
+    }
+  }
+
+  function formatAddress(address) {
+    if (!address) return '-';
+    return address.slice(0, 4) + '...' + address.slice(-4);
+  }
+
+  function formatAmount(amount) {
+    return Number(amount || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    });
+  }
+
+  // Auto-load on canvas init
+  setTimeout(() => {
+    loadCanvasBalance();
+    loadCanvasTransactions();
+  }, 100);
+})();
+</script>
+
+<style>
+.wallet-canvas .card {
+  transition: all 0.2s ease;
+}
+.wallet-canvas .card:hover {
+  transform: translateY(-2px);
+}
+.wallet-canvas .h4 {
+  font-weight: 600;
+}
+</style>

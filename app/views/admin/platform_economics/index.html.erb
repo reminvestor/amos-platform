@@ -1,0 +1,385 @@
+<% content_for :title, "Platform Economics Dashboard" %>
+
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">
+        <i class="bi bi-graph-up-arrow text-primary me-2"></i>
+        Platform Economics Dashboard
+      </h1>
+      <p class="text-muted mb-0">Real-time token economy health and financial metrics</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary" id="refresh-btn">
+        <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+      </button>
+      <a href="<%= admin_platform_economics_export_path(format: :csv) %>" class="btn btn-outline-primary">
+        <i class="bi bi-download me-1"></i> Export
+      </a>
+    </div>
+  </div>
+
+  <!-- Key Metrics Row -->
+  <div class="row g-4 mb-4">
+    <!-- Profit Ratio Card -->
+    <div class="col-md-3">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="text-muted text-uppercase small mb-2">Profit Ratio (π)</h6>
+              <h2 class="mb-0" id="profit-ratio">
+                <%= number_to_percentage(@economics[:financials][:profit_ratio] * 100, precision: 1) rescue "0%" %>
+              </h2>
+              <p class="text-muted small mb-0" id="profit-status">
+                <%= profit_status_text(@economics[:financials][:profit_ratio]) %>
+              </p>
+            </div>
+            <div class="icon-box bg-<%= profit_color(@economics[:financials][:profit_ratio]) %>-subtle rounded-3 p-3">
+              <i class="bi bi-percent text-<%= profit_color(@economics[:financials][:profit_ratio]) %> fs-4"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decay Rate Card -->
+    <div class="col-md-3">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="text-muted text-uppercase small mb-2">Current Decay Rate</h6>
+              <h2 class="mb-0" id="decay-rate">
+                <%= number_to_percentage(@economics[:token_economy][:decay_rate] * 100, precision: 2) rescue "10%" %>
+              </h2>
+              <p class="text-muted small mb-0">
+                <span class="badge bg-<%= decay_badge_color(@economics[:token_economy][:decay_status]) %>">
+                  <%= @economics[:token_economy][:decay_status]&.humanize || "Healthy" %>
+                </span>
+              </p>
+            </div>
+            <div class="icon-box bg-warning-subtle rounded-3 p-3">
+              <i class="bi bi-graph-down text-warning fs-4"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly Revenue Card -->
+    <div class="col-md-3">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="text-muted text-uppercase small mb-2">Monthly Revenue</h6>
+              <h2 class="mb-0" id="monthly-revenue">
+                <%= number_to_currency(@economics[:financials][:monthly_revenue], precision: 0) rescue "$0" %>
+              </h2>
+              <p class="text-muted small mb-0">This month</p>
+            </div>
+            <div class="icon-box bg-success-subtle rounded-3 p-3">
+              <i class="bi bi-currency-dollar text-success fs-4"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly Costs Card -->
+    <div class="col-md-3">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="text-muted text-uppercase small mb-2">Monthly Costs</h6>
+              <h2 class="mb-0" id="monthly-costs">
+                <%= number_to_currency(@economics[:financials][:monthly_costs], precision: 0) rescue "$0" %>
+              </h2>
+              <p class="text-muted small mb-0">AWS + Fixed</p>
+            </div>
+            <div class="icon-box bg-danger-subtle rounded-3 p-3">
+              <i class="bi bi-credit-card text-danger fs-4"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Token Economy Row -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-4">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <h6 class="text-muted text-uppercase small mb-3">
+            <i class="bi bi-coin me-1"></i> Token Economy
+          </h6>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Total Staked</span>
+            <strong><%= number_with_delimiter(@economics[:token_economy][:total_staked]&.round || 0) %> AMOS</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Daily Emission</span>
+            <strong><%= number_with_delimiter(@economics[:token_economy][:daily_emission] || 16000) %> AMOS</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Halving Multiplier</span>
+            <strong><%= @economics[:token_economy][:halving_multiplier] || 1.0 %>x</strong>
+          </div>
+          <hr>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Runway</span>
+            <strong class="<%= @economics[:financials][:runway_months].to_i > 12 ? 'text-success' : 'text-warning' %>">
+              <%= @economics[:financials][:runway_months].to_i > 100 ? "∞ (profitable)" : "#{@economics[:financials][:runway_months]} months" %>
+            </strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decay Equation Card -->
+    <div class="col-md-8">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <h6 class="text-muted text-uppercase small mb-3">
+            <i class="bi bi-calculator me-1"></i> Live Decay Equation
+          </h6>
+          
+          <div class="bg-dark text-light p-4 rounded-3 font-monospace mb-3">
+            <div class="row align-items-center">
+              <div class="col-auto">
+                <span class="text-warning">δ</span> = 10% - (<span class="text-info">π</span> × 5%)
+              </div>
+              <div class="col-auto">
+                <i class="bi bi-arrow-right text-muted"></i>
+              </div>
+              <div class="col-auto">
+                <span class="text-warning">δ</span> = 10% - (<span class="text-info"><%= (@economics[:financials][:profit_ratio] * 100).round(1) rescue 0 %>%</span> × 5%)
+              </div>
+              <div class="col-auto">
+                <i class="bi bi-arrow-right text-muted"></i>
+              </div>
+              <div class="col-auto">
+                <span class="text-warning">δ</span> = <span class="text-success fs-5"><%= (@economics[:token_economy][:decay_rate] * 100).round(2) rescue 10 %>%</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-4">
+              <p class="small text-muted mb-1">Where:</p>
+              <ul class="small mb-0">
+                <li><span class="text-warning">δ</span> = Decay Rate</li>
+                <li><span class="text-info">π</span> = Profit Ratio = (R - C) / C</li>
+              </ul>
+            </div>
+            <div class="col-md-8">
+              <p class="small text-muted mb-1">Current Values:</p>
+              <ul class="small mb-0">
+                <li>Revenue (R): <%= number_to_currency(@economics[:financials][:monthly_revenue], precision: 0) rescue "$0" %></li>
+                <li>Costs (C): <%= number_to_currency(@economics[:financials][:monthly_costs], precision: 0) rescue "$0" %></li>
+                <li>Bounds: 2% ≤ δ ≤ 25%</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Breakdown Row -->
+  <div class="row g-4 mb-4">
+    <!-- Cost Breakdown -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-0">
+          <h6 class="mb-0">
+            <i class="bi bi-pie-chart me-1"></i> Cost Breakdown (This Month)
+          </h6>
+        </div>
+        <div class="card-body">
+          <% if @economics[:cost_breakdown].present? %>
+            <% @economics[:cost_breakdown].each do |category, amount| %>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span>
+                  <i class="bi bi-<%= cost_icon(category) %> me-2 text-muted"></i>
+                  <%= category.to_s.humanize %>
+                </span>
+                <span class="badge bg-light text-dark">
+                  <%= number_to_currency(amount, precision: 2) %>
+                </span>
+              </div>
+              <div class="progress mb-3" style="height: 6px;">
+                <div class="progress-bar bg-danger" 
+                     style="width: <%= cost_percentage(amount, @economics[:financials][:monthly_costs]) %>%">
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="text-muted text-center mb-0">No cost data available</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Revenue Breakdown -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-0">
+          <h6 class="mb-0">
+            <i class="bi bi-bar-chart me-1"></i> Revenue Breakdown (This Month)
+          </h6>
+        </div>
+        <div class="card-body">
+          <% if @economics[:revenue_breakdown].present? %>
+            <% @economics[:revenue_breakdown].each do |source, amount| %>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span>
+                  <i class="bi bi-<%= revenue_icon(source) %> me-2 text-muted"></i>
+                  <%= source.to_s.humanize %>
+                </span>
+                <span class="badge bg-light text-dark">
+                  <%= number_to_currency(amount, precision: 2) %>
+                </span>
+              </div>
+              <div class="progress mb-3" style="height: 6px;">
+                <div class="progress-bar bg-success" 
+                     style="width: <%= revenue_percentage(amount, @economics[:financials][:monthly_revenue]) %>%">
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="text-muted text-center mb-0">No revenue data available</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Revenue Allocation Visualization -->
+  <div class="row g-4 mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-0">
+          <h6 class="mb-0">
+            <i class="bi bi-diagram-3 me-1"></i> Revenue Allocation
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="row text-center">
+            <div class="col-md-3">
+              <div class="p-3 bg-primary bg-opacity-10 rounded-3">
+                <h3 class="text-primary mb-1">50%</h3>
+                <p class="mb-0 small">Token Holders</p>
+                <p class="text-muted small mb-0">
+                  <%= number_to_currency((@economics[:financials][:monthly_revenue] || 0) * 0.5, precision: 0) %>/mo
+                </p>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="p-3 bg-info bg-opacity-10 rounded-3">
+                <h3 class="text-info mb-1">30%</h3>
+                <p class="mb-0 small">R&D</p>
+                <p class="text-muted small mb-0">
+                  <%= number_to_currency((@economics[:financials][:monthly_revenue] || 0) * 0.3, precision: 0) %>/mo
+                </p>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="p-3 bg-warning bg-opacity-10 rounded-3">
+                <h3 class="text-warning mb-1">10%</h3>
+                <p class="mb-0 small">Operations</p>
+                <p class="text-muted small mb-0">
+                  <%= number_to_currency((@economics[:financials][:monthly_revenue] || 0) * 0.1, precision: 0) %>/mo
+                </p>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="p-3 bg-secondary bg-opacity-10 rounded-3">
+                <h3 class="text-secondary mb-1">10%</h3>
+                <p class="mb-0 small">Treasury</p>
+                <p class="text-muted small mb-0">
+                  <%= number_to_currency((@economics[:financials][:monthly_revenue] || 0) * 0.1, precision: 0) %>/mo
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Documentation Link -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 bg-light">
+        <div class="card-body text-center py-3">
+          <i class="bi bi-book me-1"></i>
+          <a href="/docs/token_economy_math.md" target="_blank" class="text-decoration-none">
+            View Complete Mathematical Framework
+          </a>
+          <span class="text-muted mx-2">|</span>
+          <a href="/docs/token_economy_equations.md" target="_blank" class="text-decoration-none">
+            Equation Cheat Sheet
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const refreshBtn = document.getElementById('refresh-btn');
+  
+  refreshBtn?.addEventListener('click', function() {
+    this.disabled = true;
+    this.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i> Refreshing...';
+    
+    fetch('<%= admin_platform_economics_refresh_path %>', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content,
+        'Accept': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert('Failed to refresh: ' + (data.error || 'Unknown error'));
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Refresh';
+      }
+    })
+    .catch(err => {
+      console.error('Refresh error:', err);
+      refreshBtn.disabled = false;
+      refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Refresh';
+    });
+  });
+});
+</script>
+
+<style>
+.icon-box {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+</style>
