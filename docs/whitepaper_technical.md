@@ -326,76 +326,133 @@ The token economy accommodates multiple participation styles:
 
 ## 6. Reward Calculation
 
-### 6.1 Pool-Based Relative Scoring
+### 6.1 The Simple Model
 
-**No USD denomination.** Contributions are measured in internal points, and rewards come from a daily emission pool:
+AMOS uses a **pool-based distribution** with the simplest possible rules:
 
 ```
-Your Tokens = (Your Points / Total Period Points) × Daily Emission Pool
+Your Tokens = (Your Points / Total Points Today) × Daily Pool
 ```
 
-This ensures:
-- No dependency on external prices
-- Collaborative distribution
+**Two ways to earn points:**
+
+1. **Sales**: 1 user signed up = 1 point
+2. **Bounties**: Bounty value = points (50 AMOS bounty = 50 points)
+
+That's it. No multipliers, no complexity scales, no formulas. A token is a token.
+
+### 6.2 Why Pool-Based?
+
+Fixed rewards don't work in reality:
+- What if everyone signs up 1 million users one day?
+- You'd blow through the treasury instantly
+- The daily emission is the cap
+
+Pool-based distribution ensures:
+- Treasury is protected (never overspend)
+- Proportionality is preserved (2x contribution = 2x tokens)
 - Self-balancing economics
 - Simple to understand
 
-### 6.2 Base Contribution Points
+### 6.3 Sales Rewards
 
-| Contribution Type | Base Points |
-|-------------------|-------------|
-| Feature (code) | 500 |
-| Bug Fix | 100 |
-| Security Fix | 300 |
-| Documentation | 50 |
-| Affiliate Sale | 200 |
-| Enterprise Deal | 500 |
-| Support Ticket | 25 |
-| Content Creation | 50 |
-| Tutorial | 150 |
+| Users Signed Up | Points | Example |
+|-----------------|--------|---------|
+| 1 | 1 | Betty refers her friend |
+| 10 | 10 | Small team signs up |
+| 100 | 100 | Medium business |
+| 1,000 | 1,000 | Enterprise deal |
+| 10,000 | 10,000 | Large corporation |
 
-### 6.3 Complexity Multipliers
+**Example calculation:**
 
-| Level | Multiplier |
-|-------|------------|
-| 1 (Trivial) | 0.5x |
-| 2 (Simple) | 0.75x |
-| 3 (Standard) | 1.0x |
-| 4 (Complex) | 1.5x |
-| 5 (Exceptional) | 2.5x |
+```
+Today's activity:
+├── You signed up 100 users (100 points)
+├── Alex signed up 50 users (50 points)
+├── Betty signed up 10 users (10 points)
+└── Total: 160 points
 
-### 6.4 Halving Schedule
+Daily pool: 16,000 AMOS
 
-Daily emission pool decreases over time:
+Your share: 100/160 = 62.5%
+Your tokens: 16,000 × 62.5% = 10,000 AMOS
 
-| Year | Multiplier | Daily Emission |
-|------|------------|----------------|
-| 0-2 | 1.0x | ~16,000 AMOS |
-| 2-4 | 0.5x | ~8,000 AMOS |
-| 4-6 | 0.25x | ~4,000 AMOS |
-| 6-8 | 0.125x | ~2,000 AMOS |
-| 8+ | 0.0625x | ~1,000 AMOS |
+Alex's tokens: 16,000 × 31.25% = 5,000 AMOS
+Betty's tokens: 16,000 × 6.25% = 1,000 AMOS
+```
 
-### 6.5 Success Multipliers (Rewarding Growth)
+The ratio is preserved. You get 10x Betty because you signed up 10x users.
 
-When the platform succeeds (token price rises), contributors are **rewarded more**, not less:
+### 6.4 Bounty Rewards
 
-| Success Band | Price Range | Multiplier | Rationale |
-|--------------|-------------|------------|-----------|
-| Struggling | <$0.01 | 1.0x | Baseline protection |
-| Building | $0.01-$0.05 | 1.1x | Slight boost |
-| Growing | $0.05-$0.20 | 1.25x | Success bonus |
-| Thriving | $0.20-$0.50 | 1.5x | Share the success! |
-| Soaring | >$0.50 | 2.0x | Big success = big rewards |
+Code and community contributions use a **bounty system**:
 
-### 6.6 Complete Reward Formula
+- Maintainers set bounty values on work items
+- Contributors see bounty upfront
+- Complete the work → get the bounty as points
+- Points convert to tokens via pool share
 
-```ruby
-points = base_points × complexity_mult × halving_mult × success_mult
-tokens = points × point_to_token_ratio
+| Bounty | Points | Example Work |
+|--------|--------|--------------|
+| 25 | 25 | Fix typo, answer support ticket |
+| 50 | 50 | Minor bug fix, documentation |
+| 150 | 150 | Tutorial, translation |
+| 500 | 500 | New feature, security fix |
+| 2,000 | 2,000 | Major feature, core infrastructure |
 
-# With bounds
-tokens = clamp(tokens, MIN_TOKENS, MAX_TOKENS)
+### 6.5 Combined Pool
+
+All points go into the same daily pool:
+
+```
+Today's total activity:
+├── Sales: 500 users signed up = 500 points
+├── Code: 1,000 bounty points claimed
+├── Community: 200 bounty points claimed
+└── Total: 1,700 points
+
+Daily pool: 16,000 AMOS
+
+Example - you completed a 150-point bounty:
+Your share: 150/1,700 = 8.8%
+Your tokens: 16,000 × 8.8% = 1,412 AMOS
+```
+
+### 6.6 Halving Schedule
+
+Daily emission pool decreases over time to create scarcity:
+
+| Year | Daily Emission | Rationale |
+|------|----------------|-----------|
+| 0-2 | 16,000 AMOS | Bootstrap phase |
+| 2-4 | 8,000 AMOS | First halving |
+| 4-6 | 4,000 AMOS | Second halving |
+| 6-8 | 2,000 AMOS | Third halving |
+| 8+ | 1,000 AMOS | Maintenance mode |
+
+This means early contributors earn more tokens per point, but late contributors earn tokens that are likely worth more (scarcity + network effects).
+
+### 6.7 What Users See
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  TODAY'S EARNINGS                                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  📊 Your Activity                                               │
+│     Users signed up: 50                                         │
+│     Bounties completed: 150 points                              │
+│     Total points: 200                                           │
+│                                                                 │
+│  🏊 Today's Pool                                                 │
+│     Total platform points: 2,500                                │
+│     Your share: 8.0%                                            │
+│     Daily pool: 16,000 AMOS                                     │
+│                                                                 │
+│  💰 Your Tokens: 1,280 AMOS                                     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---

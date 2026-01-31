@@ -78,44 +78,70 @@ The more you contribute, the more you own. And your ownership is **real** - you 
 
 ## How Do I Earn AMOS?
 
-### The Daily Reward Pool
+### The Simple Rules
 
-Every day, a pool of AMOS tokens is available for contributors. Your share depends on how much you contribute compared to everyone else:
+There are only **two ways** to earn tokens:
+
+1. **Sign up users** → 1 user = 1 point
+2. **Complete bounties** → Bounty value = points
+
+Every day, a pool of tokens (16,000 AMOS) is split among everyone based on their points:
 
 ```
-Your Tokens = (Your Contribution Points / Total Points) × Daily Pool
+Your Tokens = (Your Points / Everyone's Points) × Daily Pool
 ```
 
-**Simple version:** More contribution = bigger slice of the pie.
+**That's it.** No complicated formulas. No multipliers. A token is a token.
 
-### 1. Build (For Developers)
+### Selling: Sign Up Users
 
-If you contribute code to the platform:
+Every user you bring to the platform earns you points:
 
-| Contribution | Typical Reward |
-|--------------|----------------|
-| New feature | ~500 tokens |
-| Bug fix | ~100 tokens |
-| Documentation | ~50 tokens |
+| You Sign Up | Points | Example |
+|-------------|--------|---------|
+| 1 user | 1 | Refer a friend |
+| 10 users | 10 | Small team |
+| 100 users | 100 | Medium business |
+| 1,000 users | 1,000 | Enterprise |
 
-### 2. Sell (For Affiliates & Partners)
+**Why this works:** Betty signs up her friend (1 point). Alex closes an enterprise with 1,000 users (1,000 points). Alex gets 1,000x more tokens. Fair and simple.
 
-If you bring customers to the platform:
+### Building & Supporting: Complete Bounties
 
-| Action | Reward |
-|--------|--------|
-| Customer signs up & pays | ~200 tokens |
-| Enterprise deal | ~500 tokens |
+For code and community work, we use **bounties**:
 
-### 3. Support (For Community)
+- See a task with a bounty (e.g., "Fix login bug - 50 AMOS")
+- Complete the work
+- Get approved
+- Earn those points
 
-If you help grow the community:
+| Task Type | Typical Bounty |
+|-----------|----------------|
+| Fix a typo | 10-25 points |
+| Bug fix | 25-100 points |
+| New feature | 100-500 points |
+| Major feature | 500-2,000 points |
+| Tutorial | 75-150 points |
 
-| Action | Typical Reward |
-|--------|----------------|
-| Answer user questions | ~25 tokens |
-| Create tutorial | ~150 tokens |
-| Translate content | ~100 tokens |
+### Example: How Tokens Get Split
+
+```
+Today's activity across the whole platform:
+├── Total users signed up: 500
+├── Total bounty points claimed: 1,000
+└── Total points: 1,500
+
+Daily pool: 16,000 AMOS
+
+If you signed up 50 users today:
+Your share: 50/1,500 = 3.3%
+Your tokens: 16,000 × 3.3% = 533 AMOS
+```
+
+**More activity on the platform?** Tokens per point go down.
+**Less activity?** Tokens per point go up.
+
+The system balances itself automatically.
 
 ---
 

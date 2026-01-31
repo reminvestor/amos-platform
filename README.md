@@ -139,15 +139,20 @@ We welcome contributions! Every contribution earns AMOS tokens.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-### Contributor Rewards
+### How Rewards Work
 
-| Contribution Type | Typical Reward |
-|-------------------|----------------|
-| Feature | ~500 AMOS |
-| Bug Fix | ~100 AMOS |
-| Documentation | ~50 AMOS |
-| Security Fix | ~300 AMOS |
-| Tutorial | ~150 AMOS |
+**Simple rules:**
+- **Sign up users** → 1 user = 1 point
+- **Complete bounties** → Bounty value = points
+
+Daily token pool is split based on your share of total points.
+
+| Task Type | Typical Bounty |
+|-----------|----------------|
+| Bug Fix | 25-100 points |
+| Feature | 100-500 points |
+| Documentation | 25-75 points |
+| Tutorial | 75-150 points |
 
 ---
 
