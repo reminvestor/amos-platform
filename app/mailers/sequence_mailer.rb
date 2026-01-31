@@ -29,7 +29,7 @@ class SequenceMailer < ApplicationMailer
     from_email = @entity.try(:from_email) || 
                  @entity.try(:default_from_email) ||
                  ENV['DEFAULT_FROM_EMAIL'] || 
-                 Rails.application.config.action_mailer.default_options[:from] ||
+                 Rails.application.config.action_mailer.default_options&.dig(:from) ||
                  'noreply@amoslabs.com'
     from_name = @entity.name.presence || 'AMOS'
 
