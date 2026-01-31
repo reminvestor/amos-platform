@@ -1,0 +1,29 @@
+# AmosThinkingSession fixtures for testing
+
+completed_session:
+  entity: one
+  session_type: nightly
+  status: completed
+  reflection_summary: "Platform is healthy. Identified 3 areas for improvement."
+  bounties_created: 3
+  total_points_allocated: 450
+  errors_analyzed: 5
+  tickets_analyzed: 10
+  started_at: <%= 2.hours.ago %>
+  completed_at: <%= 1.hour.ago %>
+  duration_seconds: 3600
+
+running_session:
+  entity: one
+  session_type: nightly
+  status: running
+  started_at: <%= 5.minutes.ago %>
+
+failed_session:
+  entity: one
+  session_type: weekly_review
+  status: failed
+  thinking_log: "FAILED: LLM service unavailable"
+  started_at: <%= 1.day.ago %>
+  completed_at: <%= 1.day.ago %>
+  duration_seconds: 30

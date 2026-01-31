@@ -22,4 +22,23 @@ module Clockwork
     Rails.logger.info "Running daily maintenance tasks"
     # Add other daily tasks here
   end
+
+  # Sync AWS costs daily at 6 AM UTC
+  # (AWS Cost Explorer typically updates around 4-5 AM UTC)
+  every(1.day, 'Sync AWS Costs from Cost Explorer', at: '06:00') do
+    Rails.logger.info "Syncing AWS costs from Cost Explorer"
+    SyncAwsCostsJob.perform_later
+  end
+
+  # Monthly reconciliation on the 2nd of each month
+  # (Ensures previous month's data is fully available)
+  every(1.month, 'Monthly AWS Cost Reconciliation', at: '07:00') do
+    Rails.logger.info "Running monthly AWS cost reconciliation"
+    prev_month = 1.month.ago
+    SyncAwsCostsJob.perform_later(
+      sync_monthly: true,
+      year: prev_month.year,
+      month: prev_month.month
+    )
+  end
 end

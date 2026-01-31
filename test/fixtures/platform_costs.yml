@@ -1,0 +1,29 @@
+# Platform costs for testing organic economics
+
+compute_monthly:
+  category: compute
+  amount: 5000.00
+  recorded_at: <%= Time.current - 5.days %>
+  period_type: monthly
+  description: AWS compute costs
+
+infrastructure_monthly:
+  category: infrastructure
+  amount: 1000.00
+  recorded_at: <%= Time.current - 10.days %>
+  period_type: monthly
+  description: Database and storage
+
+third_party_stripe:
+  category: third_party
+  amount: 250.00
+  recorded_at: <%= Time.current - 3.days %>
+  period_type: monthly
+  description: Stripe processing fees
+
+old_cost:
+  category: compute
+  amount: 4500.00
+  recorded_at: <%= Time.current - 45.days %>
+  period_type: one_time
+  description: Old compute cost for testing date ranges

@@ -1,0 +1,385 @@
+<% content_for :title, "AMOS Transparency Dashboard" %>
+
+<div class="container py-5">
+  <!-- Header -->
+  <div class="text-center mb-5">
+    <h1 class="display-5 fw-bold mb-3">
+      <i class="bi bi-shield-check text-primary me-2"></i>
+      Transparency Dashboard
+    </h1>
+    <p class="lead text-muted">
+      Real-time financials for the AMOS platform. Every dollar in, every dollar out.
+    </p>
+    <p class="text-muted small">
+      Last updated: <%= @economics[:generated_at]&.strftime("%B %d, %Y at %I:%M %p UTC") || "Just now" %>
+    </p>
+  </div>
+
+  <!-- Key Metrics Cards -->
+  <div class="row g-4 mb-5">
+    <!-- Total Revenue Card -->
+    <div class="col-md-3">
+      <div class="card h-100 border-0 shadow-sm bg-success bg-opacity-10">
+        <div class="card-body text-center">
+          <div class="display-6 text-success mb-2">
+            <i class="bi bi-arrow-up-circle"></i>
+          </div>
+          <h3 class="h2 mb-1">
+            <%= number_to_currency(@economics[:financials][:monthly_revenue] || 0, precision: 0) %>
+          </h3>
+          <p class="text-muted mb-0">Monthly Revenue</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Costs Card -->
+    <div class="col-md-3">
+      <div class="card h-100 border-0 shadow-sm bg-danger bg-opacity-10">
+        <div class="card-body text-center">
+          <div class="display-6 text-danger mb-2">
+            <i class="bi bi-arrow-down-circle"></i>
+          </div>
+          <h3 class="h2 mb-1">
+            <%= number_to_currency(@economics[:financials][:monthly_costs] || 0, precision: 0) %>
+          </h3>
+          <p class="text-muted mb-0">Monthly Costs</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Token Holder Payout -->
+    <div class="col-md-3">
+      <div class="card h-100 border-0 shadow-sm bg-primary bg-opacity-10">
+        <div class="card-body text-center">
+          <div class="display-6 text-primary mb-2">
+            <i class="bi bi-people"></i>
+          </div>
+          <h3 class="h2 mb-1">
+            <%= number_to_currency((@economics[:financials][:monthly_revenue] || 0) * 0.5, precision: 0) %>
+          </h3>
+          <p class="text-muted mb-0">To Token Holders (50%)</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Treasury Card -->
+    <div class="col-md-3">
+      <div class="card h-100 border-0 shadow-sm bg-warning bg-opacity-10">
+        <div class="card-body text-center">
+          <div class="display-6 text-warning mb-2">
+            <i class="bi bi-safe"></i>
+          </div>
+          <h3 class="h2 mb-1">
+            <%= number_with_delimiter((@economics[:token_economy][:total_staked] || 0).round) %>
+          </h3>
+          <p class="text-muted mb-0">AMOS Tokens Staked</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Revenue Flow Visualization -->
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-header bg-transparent border-0 py-3">
+      <h5 class="mb-0">
+        <i class="bi bi-diagram-3 me-2"></i>
+        Where Does the Money Go?
+      </h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <!-- Revenue Sources -->
+        <div class="col-md-4">
+          <h6 class="text-muted text-uppercase small mb-3">Revenue Sources</h6>
+          <% (@economics[:revenue_breakdown] || {}).each do |source, amount| %>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span><%= source.to_s.humanize %></span>
+              <strong><%= number_to_currency(amount, precision: 0) %></strong>
+            </div>
+          <% end %>
+          <% if @economics[:revenue_breakdown].blank? %>
+            <p class="text-muted small">Revenue data coming soon</p>
+          <% end %>
+        </div>
+
+        <!-- Flow Arrow -->
+        <div class="col-md-1 d-flex align-items-center justify-content-center">
+          <i class="bi bi-arrow-right fs-2 text-muted d-none d-md-block"></i>
+          <i class="bi bi-arrow-down fs-2 text-muted d-md-none"></i>
+        </div>
+
+        <!-- Distribution -->
+        <div class="col-md-7">
+          <h6 class="text-muted text-uppercase small mb-3">Distribution</h6>
+          
+          <!-- Token Holders - 50% -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span>
+                <i class="bi bi-people text-primary me-2"></i>
+                Token Holders
+              </span>
+              <span>
+                <strong class="text-primary">50%</strong>
+                <span class="text-muted ms-2">
+                  (<%= number_to_currency((@economics[:financials][:monthly_revenue] || 0) * 0.5, precision: 0) %>)
+                </span>
+              </span>
+            </div>
+            <div class="progress" style="height: 24px;">
+              <div class="progress-bar bg-primary" style="width: 50%;">
+                Token Holders
+              </div>
+            </div>
+          </div>
+
+          <!-- R&D - 30% -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span>
+                <i class="bi bi-code-square text-info me-2"></i>
+                R&D / Development
+              </span>
+              <span>
+                <strong class="text-info">30%</strong>
+                <span class="text-muted ms-2">
+                  (<%= number_to_currency((@economics[:financials][:monthly_revenue] || 0) * 0.3, precision: 0) %>)
+                </span>
+              </span>
+            </div>
+            <div class="progress" style="height: 24px;">
+              <div class="progress-bar bg-info" style="width: 30%;">
+                R&D
+              </div>
+            </div>
+          </div>
+
+          <!-- Operations - 10% -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span>
+                <i class="bi bi-gear text-warning me-2"></i>
+                Operations (Tools & Infrastructure)
+              </span>
+              <span>
+                <strong class="text-warning">10%</strong>
+                <span class="text-muted ms-2">
+                  (<%= number_to_currency((@economics[:financials][:monthly_revenue] || 0) * 0.1, precision: 0) %>)
+                </span>
+              </span>
+            </div>
+            <div class="progress" style="height: 24px;">
+              <div class="progress-bar bg-warning" style="width: 10%;">
+                Ops
+              </div>
+            </div>
+          </div>
+
+          <!-- Treasury - 10% -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span>
+                <i class="bi bi-safe text-secondary me-2"></i>
+                Treasury (Emergency Fund)
+              </span>
+              <span>
+                <strong class="text-secondary">10%</strong>
+                <span class="text-muted ms-2">
+                  (<%= number_to_currency((@economics[:financials][:monthly_revenue] || 0) * 0.1, precision: 0) %>)
+                </span>
+              </span>
+            </div>
+            <div class="progress" style="height: 24px;">
+              <div class="progress-bar bg-secondary" style="width: 10%;">
+                Treasury
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Token Economy Health -->
+  <div class="row g-4 mb-5">
+    <!-- Decay Rate Card -->
+    <div class="col-md-6">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-header bg-transparent border-0 py-3">
+          <h5 class="mb-0">
+            <i class="bi bi-graph-down me-2"></i>
+            Dynamic Decay Rate
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="text-center mb-4">
+            <div class="display-4 fw-bold text-<%= decay_color(@economics[:token_economy][:decay_rate]) %>">
+              <%= number_to_percentage((@economics[:token_economy][:decay_rate] || 0.10) * 100, precision: 2) %>
+            </div>
+            <p class="text-muted">Annual decay rate</p>
+          </div>
+
+          <div class="bg-light rounded-3 p-3 mb-3">
+            <p class="mb-2 small fw-bold">Why does this matter?</p>
+            <p class="mb-0 small text-muted">
+              Decay rate adjusts based on platform profitability. When we're profitable, 
+              decay is lower (rewarding token holders). When costs exceed revenue, 
+              decay increases to recycle tokens back to the treasury.
+            </p>
+          </div>
+
+          <div class="bg-dark text-light p-3 rounded-3 font-monospace small">
+            δ = 10% - (π × 5%) where π = (Revenue - Costs) / Costs
+            <br>
+            <span class="text-muted">Current: δ = 10% - (<%= ((@economics[:financials][:profit_ratio] || 0) * 100).round(1) %>% × 5%) = <%= ((@economics[:token_economy][:decay_rate] || 0.10) * 100).round(2) %>%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Token Supply Card -->
+    <div class="col-md-6">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-header bg-transparent border-0 py-3">
+          <h5 class="mb-0">
+            <i class="bi bi-coin me-2"></i>
+            Token Supply
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+            <span>Total Supply (Fixed Forever)</span>
+            <strong>100,000,000 AMOS</strong>
+          </div>
+          
+          <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+            <span>Currently Staked</span>
+            <strong><%= number_with_delimiter((@economics[:token_economy][:total_staked] || 0).round) %> AMOS</strong>
+          </div>
+          
+          <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+            <span>Daily Emission</span>
+            <strong><%= number_with_delimiter(@economics[:token_economy][:daily_emission] || 16000) %> AMOS</strong>
+          </div>
+          
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span>Halving Multiplier</span>
+            <strong><%= @economics[:token_economy][:halving_multiplier] || 1.0 %>x</strong>
+          </div>
+
+          <div class="alert alert-info mb-0" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Halving Schedule:</strong> Emissions halve every 2 years to ensure long-term sustainability.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Historical Data (Placeholder) -->
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-header bg-transparent border-0 py-3">
+      <h5 class="mb-0">
+        <i class="bi bi-clock-history me-2"></i>
+        Historical Disbursements
+      </h5>
+    </div>
+    <div class="card-body">
+      <% if @distributions.present? %>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Period</th>
+                <th>Gross Revenue</th>
+                <th>Holder Pool (50%)</th>
+                <th>USDC Distributed</th>
+                <th>Recipients</th>
+                <th>Avg Payout</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @distributions.each do |dist| %>
+                <tr>
+                  <td><%= dist.period %></td>
+                  <td><%= number_to_currency(dist.gross_revenue, precision: 0) %></td>
+                  <td><%= number_to_currency(dist.holder_pool, precision: 0) %></td>
+                  <td><%= number_to_currency(dist.usdc_distributed, precision: 0) %></td>
+                  <td><%= number_with_delimiter(dist.recipients_count) %></td>
+                  <td><%= number_to_currency(dist.average_payout, precision: 2) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-calendar-x display-4 mb-3 d-block"></i>
+          <p class="mb-0">No distributions yet. First distribution coming soon!</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Trust Badges -->
+  <div class="row g-4 mb-5">
+    <div class="col-md-4">
+      <div class="text-center p-4">
+        <i class="bi bi-lock display-4 text-success mb-3 d-block"></i>
+        <h6>Mint Authority Disabled</h6>
+        <p class="text-muted small mb-0">No one can ever create more AMOS tokens. Supply is fixed at 100M forever.</p>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="text-center p-4">
+        <i class="bi bi-file-code display-4 text-primary mb-3 d-block"></i>
+        <h6>Open Source</h6>
+        <p class="text-muted small mb-0">All platform code is public on GitHub. Verify everything yourself.</p>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="text-center p-4">
+        <i class="bi bi-eye display-4 text-info mb-3 d-block"></i>
+        <h6>Real-Time Transparency</h6>
+        <p class="text-muted small mb-0">This dashboard updates in real-time from actual platform data.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Call to Action -->
+  <div class="text-center">
+    <div class="bg-primary bg-opacity-10 rounded-3 p-5">
+      <h3 class="mb-3">Ready to Own Your Future?</h3>
+      <p class="text-muted mb-4">
+        Contribute to AMOS and earn tokens. Every line of code, every customer referred, 
+        every community contribution earns you ownership.
+      </p>
+      <div class="d-flex gap-3 justify-content-center flex-wrap">
+        <a href="<%= docs_path('whitepaper_simple') rescue '#' %>" class="btn btn-outline-primary">
+          <i class="bi bi-book me-2"></i>Read the Whitepaper
+        </a>
+        <a href="<%= docs_path('token_economy_equations') rescue '#' %>" class="btn btn-outline-secondary">
+          <i class="bi bi-calculator me-2"></i>See the Math
+        </a>
+        <% if current_user %>
+          <a href="<%= dashboard_path rescue '#' %>" class="btn btn-primary">
+            <i class="bi bi-rocket me-2"></i>Start Contributing
+          </a>
+        <% else %>
+          <a href="<%= signup_path rescue '#' %>" class="btn btn-primary">
+            <i class="bi bi-rocket me-2"></i>Get Started
+          </a>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% content_for :head do %>
+<style>
+  .progress-bar {
+    font-size: 0.75rem;
+    line-height: 24px;
+  }
+</style>
+<% end %>

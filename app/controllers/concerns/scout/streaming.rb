@@ -113,8 +113,6 @@ module Scout
     def stream_thinking_indicator
       return if @client_disconnected
 
-      Rails.logger.info "🤔 [Scout SSE] Sending thinking indicator..."
-      
       data = JSON.generate({
         type: "thinking",
         message: "Thinking",
@@ -124,14 +122,11 @@ module Scout
 
       response.stream.write(chunk)
       response.stream.flush if response.stream.respond_to?(:flush)
-      
-      Rails.logger.info "🤔 [Scout SSE] Thinking indicator sent successfully"
     rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
       Rails.logger.info "🔌 Client disconnected during thinking indicator: #{e.message}"
       mark_client_disconnected!
     rescue => e
       Rails.logger.error "Stream thinking indicator error: #{e.message}"
-      Rails.logger.error e.backtrace.first(5).join("\n")
     end
 
     # Stream "working" indicator - shows during tool execution with animated dots
