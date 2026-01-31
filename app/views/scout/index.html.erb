@@ -169,8 +169,52 @@
                     </p>
                   </div>
 
-                  <!-- Model selection now uses the Thinking Depth slider above -->
-                  <!-- Advanced model selection has been removed - the slider controls thinking depth -->
+                  <!-- Advanced Model Selection - Premium Claude Models -->
+                  <div class="advanced-model-section mt-3 pt-3" style="border-top: 1px solid var(--bs-border-color);">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <label class="admin-label text-xs uppercase text-muted d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">
+                        <i data-lucide="crown" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                        Premium Models
+                      </label>
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="premium-mode-toggle" role="switch">
+                        <label class="form-check-label small text-muted" for="premium-mode-toggle">Enable</label>
+                      </div>
+                    </div>
+                    
+                    <!-- Premium Model Selection (hidden by default) -->
+                    <div id="premium-models-section" class="d-none">
+                      <div class="premium-info-banner mb-2 p-2 rounded" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1)); border: 1px solid rgba(139, 92, 246, 0.2);">
+                        <p class="mb-0 small" style="color: var(--bs-body-color);">
+                          <i data-lucide="zap" style="width: 12px; height: 12px; margin-right: 4px; color: #8b5cf6;"></i>
+                          <strong>Claude models</strong> deliver exceptional quality. Usage billed at cost + 20%.
+                        </p>
+                      </div>
+                      
+                      <select id="premium-model-select" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                        <optgroup label="Claude 4.5 Series">
+                          <option value="claude-sonnet-4-5" data-desc="Best for everyday tasks - fast, accurate, and cost-effective" data-cost="medium">Claude Sonnet 4.5 ⭐</option>
+                          <option value="claude-haiku-4-5" data-desc="Ultra-fast for quick responses - most budget-friendly premium" data-cost="low">Claude Haiku 4.5</option>
+                          <option value="claude-opus-4-5" data-desc="Maximum intelligence for complex reasoning and coding" data-cost="high">Claude Opus 4.5 👑</option>
+                        </optgroup>
+                        <optgroup label="Claude 3.5 Series">
+                          <option value="claude-3-5-sonnet" data-desc="Reliable all-rounder for writing, research, and analysis" data-cost="medium">Claude 3.5 Sonnet</option>
+                          <option value="claude-3-5-haiku" data-desc="Fast responses for simple questions and basic tasks" data-cost="low">Claude 3.5 Haiku</option>
+                        </optgroup>
+                      </select>
+                      <p class="premium-model-desc text-muted small mt-1" id="premium-model-desc">
+                        Best for everyday tasks - fast, accurate, and cost-effective
+                      </p>
+                    </div>
+                    
+                    <!-- Open Source Default Info -->
+                    <div id="opensource-info" class="text-muted small">
+                      <p class="mb-0">
+                        <i data-lucide="cpu" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                        Default: Open-source models (Qwen, DeepSeek) - included free with your plan
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -900,6 +944,118 @@ document.addEventListener('turbo:load', function() {
 
   // Initialize mode indicators on page load
   updateModeIndicators();
+
+  // ====================================
+  // Premium Model Selection (Claude)
+  // ====================================
+  const premiumToggle = document.getElementById('premium-mode-toggle');
+  const premiumModelsSection = document.getElementById('premium-models-section');
+  const opensourceInfo = document.getElementById('opensource-info');
+  const premiumModelSelect = document.getElementById('premium-model-select');
+  const premiumModelDesc = document.getElementById('premium-model-desc');
+
+  // Track premium mode state
+  let isPremiumMode = localStorage.getItem('scout_premium_mode') === 'true';
+  let selectedPremiumModel = localStorage.getItem('scout_premium_model') || 'claude-sonnet-4-5';
+
+  // Initialize premium mode UI
+  function initPremiumMode() {
+    if (!premiumToggle) return;
+    
+    // Set initial state
+    premiumToggle.checked = isPremiumMode;
+    updatePremiumUI();
+    
+    // If premium mode, set the selected model
+    if (isPremiumMode && premiumModelSelect) {
+      premiumModelSelect.value = selectedPremiumModel;
+      updatePremiumDescription();
+    }
+    
+    // Toggle listener
+    premiumToggle.addEventListener('change', async (e) => {
+      isPremiumMode = e.target.checked;
+      localStorage.setItem('scout_premium_mode', isPremiumMode);
+      updatePremiumUI();
+      
+      // Save to server
+      await savePremiumModel(isPremiumMode ? selectedPremiumModel : null);
+      
+      console.log(`👑 Premium mode: ${isPremiumMode ? 'ON - ' + selectedPremiumModel : 'OFF (open-source)'}`);
+    });
+    
+    // Model select listener
+    if (premiumModelSelect) {
+      premiumModelSelect.addEventListener('change', async (e) => {
+        selectedPremiumModel = e.target.value;
+        localStorage.setItem('scout_premium_model', selectedPremiumModel);
+        updatePremiumDescription();
+        updateBrainFill(selectedPremiumModel);
+        
+        // Save to server
+        await savePremiumModel(selectedPremiumModel);
+        
+        console.log(`👑 Premium model changed to: ${selectedPremiumModel}`);
+      });
+    }
+  }
+  
+  function updatePremiumUI() {
+    if (!premiumModelsSection || !opensourceInfo) return;
+    
+    if (isPremiumMode) {
+      premiumModelsSection.classList.remove('d-none');
+      opensourceInfo.classList.add('d-none');
+      updateBrainFill(selectedPremiumModel);
+      if (currentModelName) {
+        const modelName = premiumModelSelect?.options[premiumModelSelect.selectedIndex]?.text || 'Claude';
+        currentModelName.textContent = modelName;
+      }
+    } else {
+      premiumModelsSection.classList.add('d-none');
+      opensourceInfo.classList.remove('d-none');
+      updateBrainFill(null, 50); // Reset to default
+      updateModeIndicators(); // Show the depth mode name
+    }
+  }
+  
+  function updatePremiumDescription() {
+    if (!premiumModelSelect || !premiumModelDesc) return;
+    const selectedOption = premiumModelSelect.options[premiumModelSelect.selectedIndex];
+    premiumModelDesc.textContent = selectedOption?.dataset?.desc || '';
+  }
+  
+  async function savePremiumModel(model) {
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      await fetch('/scout/set_premium_model', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ model: model })
+      });
+    } catch (err) {
+      console.warn('Failed to save premium model to server:', err);
+    }
+  }
+  
+  // Expose function for getting selected model
+  window.getSelectedModel = function() {
+    if (isPremiumMode && selectedPremiumModel) {
+      return selectedPremiumModel;
+    }
+    return null; // Backend uses open-source default
+  };
+  
+  // Check if premium mode is active
+  window.isPremiumModeActive = function() {
+    return isPremiumMode;
+  };
+  
+  // Initialize
+  initPremiumMode();
 
   // Override updateBrainFill to accept optional power parameter
   const originalUpdateBrainFill = updateBrainFill;

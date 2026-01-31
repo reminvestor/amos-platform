@@ -484,6 +484,44 @@ class ScoutController < ApplicationController
     }
   end
 
+  # Set premium model (Claude models for users who want higher quality)
+  # When nil, system uses default open-source models (Qwen, DeepSeek)
+  def set_premium_model
+    model = params[:model]
+    
+    # Valid premium models (Claude only for now)
+    valid_models = %w[
+      claude-sonnet-4-5
+      claude-haiku-4-5
+      claude-opus-4-5
+      claude-3-5-sonnet
+      claude-3-5-haiku
+    ]
+    
+    if model.nil? || model.blank?
+      # User disabled premium mode - use open-source
+      session[:premium_model] = nil
+      Rails.logger.info "[Scout] Premium mode disabled - using open-source models"
+      render json: { success: true, model: nil, mode: 'open-source' }
+    elsif valid_models.include?(model)
+      # User selected a premium model
+      session[:premium_model] = model
+      Rails.logger.info "[Scout] Premium model set to: #{model}"
+      render json: { 
+        success: true, 
+        model: model, 
+        mode: 'premium',
+        note: 'Usage billed at cost + 20%'
+      }
+    else
+      Rails.logger.warn "[Scout] Invalid premium model: #{model}"
+      render json: { 
+        success: false, 
+        error: "Invalid model. Valid: #{valid_models.join(', ')}" 
+      }, status: 400
+    end
+  end
+
   # Handle file uploads from chat
   def upload_files
     Rails.logger.info "Scout upload_files called"
@@ -590,10 +628,13 @@ class ScoutController < ApplicationController
     current_canvas = params[:current_canvas]
     context = params[:context]
     file_urls = params[:file_urls] || []
-    selected_model = params[:model] # Get the selected model from frontend
+    # Use explicit model from params, or fall back to premium model from session
+    selected_model = params[:model] || session[:premium_model]
 
     Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
-    Rails.logger.info "Selected model: #{selected_model}" if selected_model
+    if selected_model
+      Rails.logger.info "Selected model: #{selected_model} (premium: #{session[:premium_model].present?})"
+    end
     Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
     
     # Log specific landing page details if on landing page editor
@@ -1393,6 +1434,9 @@ class ScoutController < ApplicationController
       when "user_profile"
         canvas_content = render_user_profile_canvas(canvas_data)
         canvas_title = "My Profile"
+      when "wallet"
+        canvas_content = render_wallet_canvas(canvas_data)
+        canvas_title = "AMOS Wallet"
       when "business_profile"
         canvas_content = render_business_profile_canvas(canvas_data)
         canvas_title = "Business Settings"
@@ -5307,6 +5351,17 @@ class ScoutController < ApplicationController
     )
   end
 
+  def render_wallet_canvas(data = {})
+    render_to_string(
+      partial: "scout/canvas/wallet",
+      locals: {
+        user: current_user,
+        entity: current_entity,
+        canvas_data: data
+      }
+    )
+  end
+
   def calculate_avg_open_rate
     campaigns_with_stats = current_entity.campaigns.where.not(mailgun_stats: nil)
     return 0 if campaigns_with_stats.empty?
@@ -6390,15 +6445,24 @@ class ScoutController < ApplicationController
       # Get model mode from session (set by slider: auto/fast/balanced/powerful)
       current_model_mode = session[:model_mode]&.to_sym || :auto
       
+      # Check if using premium model
+      premium_model = session[:premium_model]
+      is_premium = premium_model.present?
+      
       metadata = {
         attached_files: file_urls,
         canvas: canvas_hash,
-        model_preference: model_preference, # nil when using slider mode
+        model_preference: model_preference || premium_model, # Explicit model or premium from session
         model_mode: current_model_mode,     # The slider mode
-        voice_mode: params[:voice_mode] == 'true'
+        voice_mode: params[:voice_mode] == 'true',
+        premium_mode: is_premium             # Flag for billing
       }
       
-      Rails.logger.info "[Scout] Model selection - explicit: #{model_preference.inspect}, mode: #{current_model_mode}"
+      if is_premium
+        Rails.logger.info "[Scout] 👑 Premium mode - using #{premium_model}"
+      else
+        Rails.logger.info "[Scout] Model selection - explicit: #{model_preference.inspect}, mode: #{current_model_mode}"
+      end
     
     # Build enhanced message if files are attached
     enhanced_message = message

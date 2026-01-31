@@ -161,6 +161,8 @@ Daily token pool is split based on your share of total points.
 - **[Simple Whitepaper](docs/whitepaper_simple.md)** - Easy-to-understand overview
 - **[Technical Whitepaper](docs/whitepaper_technical.md)** - Deep dive into mechanics
 - **[Founding Charter](docs/founding_charter.md)** - Constitutional principles
+- **[Token Economy Math](docs/token_economy_math.md)** - Complete mathematical framework
+- **[Equation Cheat Sheet](docs/token_economy_equations.md)** - Quick reference for all formulas
 - **[Platform Capabilities](PLATFORM_CAPABILITIES.md)** - Technical features
 - **[API Documentation](docs/)** - Integration guides
 
@@ -183,14 +185,30 @@ Daily token pool is split based on your share of total points.
 | Network | Solana |
 | Mint Authority | Disabled (forever) |
 | Revenue Share | 50% to token holders |
-| Decay Rate | 40%/year (with 12-month grace) |
+| Decay Rate | **2-25%/year (dynamic)** - tied to platform economics |
+| Grace Period | 12 months (no decay for new stakes) |
 | Permanent Floor | 5% → 25% (grows with tenure) |
+
+### Organic Token Economy
+
+What makes AMOS truly unique: **decay is tied to real platform economics**.
+
+```
+Decay Rate = 10% - (Profit Ratio × 5%)
+
+When profitable → Lower decay (rewards holders)
+When unprofitable → Higher decay (recycles tokens)
+```
+
+This creates **organic equilibrium** - the token economy self-balances based on reality.
+
+[See the complete math →](docs/token_economy_equations.md)
 
 ---
 
 ## 🌐 Links
 
-- **Website**: [amoslabs.io](https://amoslabs.com)
+- **Website**: [amoslabs.com](https://amoslabs.com)
 - **Documentation**: [docs.amoslabs.io](https://docs.amoslabs.com)
 - **Discord**: [Join the community](https://discord.gg/amos)
 - **Twitter**: [@amoslabs](https://twitter.com/amoslabs)

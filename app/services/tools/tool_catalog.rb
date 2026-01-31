@@ -461,7 +461,9 @@ module Tools
         # CRM / Sales canvases (accessible via chat only)
         "pipeline_viewer", "contact_detail", "activities_viewer",
         # Support & Evolution canvases
-        "support_tickets"
+        "support_tickets",
+        # Token Economy
+        "wallet"
       ]
 
       # Add module canvases if entity is provided

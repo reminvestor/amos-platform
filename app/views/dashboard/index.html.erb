@@ -261,15 +261,15 @@
       </div>
     </div>
 
-    <%# Referral Program %>
+    <%# Referral Program - Pool-Based Rewards %>
     <div class="admin-card" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%); border-color: rgba(99, 102, 241, 0.3);">
       <div style="display: flex; align-items: center; gap: 0.75rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(99, 102, 241, 0.2); margin-bottom: 1.5rem;">
         <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%); display: flex; align-items: center; justify-content: center;">
           <i data-lucide="gift" class="icon-xl text-white"></i>
         </div>
         <div>
-          <h4 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;">Refer a Friend & Earn Tokens</h4>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Earn up to 750,000 free tokens!</p>
+          <h4 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;">Refer Friends & Earn AMOS</h4>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Earn your share of the daily token pool!</p>
         </div>
       </div>
 
@@ -277,28 +277,42 @@
         <div style="display: flex; align-items: start; gap: 0.75rem;">
           <div style="width: 1.5rem; height: 1.5rem; border-radius: 50%; background: #3B82F6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem; color: white; font-weight: 600;">1</div>
           <div>
-            <div style="color: white; font-weight: 500;">Share up to 5 friend emails</div>
-            <div style="color: #94A3B8; font-size: 0.875rem;">Get <span style="color: #FACC15; font-weight: 600;">50,000 tokens</span> for each email</div>
+            <div style="color: white; font-weight: 500;">Send referral invitations</div>
+            <div style="color: #94A3B8; font-size: 0.875rem;">Earn <span style="color: #FACC15; font-weight: 600;">1 point</span> per email sent</div>
           </div>
         </div>
         <div style="display: flex; align-items: start; gap: 0.75rem;">
           <div style="width: 1.5rem; height: 1.5rem; border-radius: 50%; background: #22C55E; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem; color: white; font-weight: 600;">2</div>
           <div>
-            <div style="color: white; font-weight: 500;">When your friend signs up</div>
-            <div style="color: #94A3B8; font-size: 0.875rem;">Earn <span style="color: #22C55E; font-weight: 600;">100,000 bonus tokens</span></div>
+            <div style="color: white; font-weight: 500;">When they sign up</div>
+            <div style="color: #94A3B8; font-size: 0.875rem;">Earn <span style="color: #22C55E; font-weight: 600;">5 bonus points</span></div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: start; gap: 0.75rem;">
+          <div style="width: 1.5rem; height: 1.5rem; border-radius: 50%; background: #8B5CF6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem; color: white; font-weight: 600;">3</div>
+          <div>
+            <div style="color: white; font-weight: 500;">When they convert to paid</div>
+            <div style="color: #94A3B8; font-size: 0.875rem;">Earn <span style="color: #8B5CF6; font-weight: 600;">10 bonus points</span></div>
           </div>
         </div>
       </div>
 
       <div style="margin-top: 1.5rem; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 0.5rem;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="color: #94A3B8; font-size: 0.875rem;">Total per referral:</span>
-          <span style="color: white; font-weight: 600;">150,000 tokens</span>
+          <span style="color: #94A3B8; font-size: 0.875rem;">Daily Token Pool:</span>
+          <span style="color: white; font-weight: 600;"><%= number_with_delimiter(ContributionRewardCalculator.current_daily_emission.to_i) %> AMOS</span>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
-          <span style="color: #94A3B8; font-size: 0.875rem;">Maximum (5 referrals):</span>
-          <span style="color: #22C55E; font-weight: 600;">750,000 tokens</span>
+          <span style="color: #94A3B8; font-size: 0.875rem;">Your share:</span>
+          <span style="color: #22C55E; font-weight: 600;">Your Points ÷ Total Points</span>
         </div>
+      </div>
+
+      <div style="margin-top: 0.75rem; padding: 0.5rem; background: rgba(250, 204, 21, 0.1); border-radius: 0.375rem; border: 1px solid rgba(250, 204, 21, 0.2);">
+        <p style="color: #FACC15; font-size: 0.75rem; margin: 0; text-align: center;">
+          <i data-lucide="info" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
+          No fixed amounts – your tokens depend on your contribution relative to others!
+        </p>
       </div>
 
       <div style="margin-top: 1rem; text-align: center;">
@@ -326,7 +340,7 @@
         <div class="alert alert-info mb-4">
           <div class="d-flex align-items-center gap-2">
             <i data-lucide="info" style="width: 16px; height: 16px;"></i>
-            <span>Enter up to 5 friend emails. You'll earn <strong>50,000 tokens</strong> for each, plus <strong>100,000 bonus</strong> when they sign up! Your friends get <strong>200,000 free tokens</strong> on signup.</span>
+            <span>Earn <strong>1 point</strong> per invite, <strong>5 points</strong> when they sign up, <strong>10 points</strong> when they convert! Points earn you a share of the daily <strong><%= number_with_delimiter(ContributionRewardCalculator.current_daily_emission.to_i) %> AMOS</strong> pool.</span>
           </div>
         </div>
 
@@ -354,9 +368,12 @@
         </form>
 
         <div class="p-3 rounded mb-3" style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2);">
-          <div class="d-flex justify-content-between align-items-center small">
-            <span class="text-body-secondary">Tokens you'll earn:</span>
-            <span class="text-success fw-bold" id="referral-token-count">0 tokens</span>
+          <div class="d-flex justify-content: space-between; align-items-center small">
+            <span class="text-body-secondary">Points you'll earn:</span>
+            <span class="text-success fw-bold" id="referral-token-count">0 points</span>
+          </div>
+          <div class="text-body-secondary small mt-1" style="font-size: 0.75rem;">
+            Points convert to AMOS tokens based on your share of today's pool
           </div>
         </div>
       </div>
@@ -412,8 +429,9 @@
         }
       });
       
-      const tokens = validEmails * 50000;
-      tokenCount.textContent = tokens.toLocaleString() + ' tokens';
+      // Pool-based: 1 point per email sent (signups/conversions earn more later)
+      const points = validEmails * 1;
+      tokenCount.textContent = points + ' points';
       submitBtn.disabled = validEmails === 0;
     }
     
@@ -455,8 +473,8 @@
           const modal = bootstrap.Modal.getInstance(document.getElementById('referralModal'));
           modal.hide();
           
-          // Show success message
-          alert('Invitations sent! You earned ' + (emails.length * 50000).toLocaleString() + ' tokens!');
+          // Show success message - pool-based rewards
+          alert('Invitations sent! You earned ' + emails.length + ' points. Your AMOS tokens will be calculated based on your share of the daily pool!');
           
           // Reset form
           emailInputs.forEach(input => input.value = '');

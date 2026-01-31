@@ -215,9 +215,30 @@ Here's the one thing that's different from regular tokens:
 
 ### Why?
 
-We don't want people who bought tokens years ago and never contributed to control the platform forever. We want active participants to have the most influence.
+Two reasons:
 
-### But First: You Get a Full Year Free! 🎉
+1. **We don't want passive owners forever.** Active contributors should have influence.
+2. **It pays for the platform.** Decayed tokens fund operations - no VC funding needed!
+
+### The Magic: Decay is Tied to Platform Success! 🎯
+
+**This is the key innovation.** Decay isn't a fixed number like "40% per year." Instead:
+
+| Platform Status | Your Decay Rate |
+|-----------------|-----------------|
+| 🚀 **Profitable** | **Low (2-5%)** - We're winning! |
+| 📊 **Break-even** | **Medium (10%)** - Sustainable |
+| 😰 **Struggling** | **Higher (15-25%)** - Need funding |
+
+**When the platform succeeds, YOU win twice:**
+1. Higher revenue share (you own part of profits)
+2. Lower decay (your stake shrinks less)
+
+**When the platform struggles:**
+- Decay increases to fund operations
+- But hey - you're incentivized to help it succeed!
+
+### You Get a Full Year Free! 🎉
 
 **Every new stake has a 12-month grace period - NO decay at all.**
 
@@ -226,13 +247,13 @@ This gives you:
 - Time to understand the system
 - No stress about shrinking stakes while you're learning
 
-After 12 months, decay starts (but you still keep a growing floor - see below).
+After 12 months, dynamic decay starts (but you still keep a growing floor - see below).
 
 ### How Decay Works (After Grace Period)
 
-- Your tokens decrease by about 40% per year initially
-- BUT you always keep a **growing floor** (see below)
-- AND if you've been holding for 10+ years, decay drops to only 5%/year
+- Your decay rate depends on platform health (2-25%)
+- Longer holders get reduced rates (up to 70% off!)
+- You always keep a **growing floor** (see below)
 
 ### Your Safety Net Grows Over Time
 
@@ -249,19 +270,30 @@ This means you earn your security - you can't just buy in and lock up ownership 
 
 ### Example
 
-You earn 10,000 AMOS tokens:
+You earn 10,000 AMOS tokens (assuming platform is profitable with 5% base decay):
 
 | Time | Your Tokens | Your Floor | What Happened |
 |------|-------------|------------|---------------|
 | Month 0 | 10,000 | 500 (5%) | Just earned |
 | Month 6 | 10,000 | 500 (5%) | **Grace period - no decay!** |
 | Month 12 | 10,000 | 500 (5%) | Grace period ends |
-| Year 2 | 6,000 | 1,000 (10%) | 40% decay for 1 year, floor grew |
-| Year 3 | 4,500 | 1,500 (15%) | 25% decay, floor grew |
-| Year 5 | 2,500 | 2,500 (25%) | Hit permanent floor |
-| Year 20 | 2,500 | 2,500 (25%) | Still have it forever |
+| Year 2 | 9,500 | 1,000 (10%) | Only 5% decay (platform profitable!) |
+| Year 3 | 8,800 | 1,500 (15%) | 4% effective (tenure reduction) |
+| Year 5 | 7,500 | 2,500 (25%) | Getting close to floor |
+| Year 10 | 4,500 | 2,500 (25%) | Decay slowing (long tenure) |
+| Year 20 | 2,500 | 2,500 (25%) | At floor - yours forever |
 
-**Notice:** You keep 100% of your tokens for the first year!
+**Notice:** When the platform is doing well, you keep MOST of your tokens!
+
+**Compare to struggling platform (20% base decay):**
+
+| Time | Your Tokens | What Happened |
+|------|-------------|---------------|
+| Year 2 | 8,000 | Higher decay - platform needs funding |
+| Year 5 | 4,000 | But your contributions are building value! |
+| Year 10 | 2,500 | Still hit permanent floor |
+
+Either way, you're protected by the floor - and incentivized to help the platform succeed!
 
 ### Beat Decay by Contributing
 
@@ -327,14 +359,19 @@ Not everyone participates the same way, and that's fine:
 
 ### 3. Be Patient
 
-Decay rate decreases the longer you hold:
+Decay rate decreases the longer you hold (reduces from whatever the platform rate is):
 
-| How Long You've Held | Annual Decay |
-|----------------------|--------------|
-| 0-2 years | 40% |
-| 2-5 years | 25% |
-| 5-10 years | 15% |
-| 10+ years | Only 5% |
+| How Long You've Held | Reduction from Base Rate |
+|----------------------|--------------------------|
+| 0-2 years | No reduction (full rate) |
+| 2-5 years | 20% reduction |
+| 5-10 years | 40% reduction |
+| 10+ years | **70% reduction** |
+
+Example: If platform base rate is 10%:
+- 0-2 years: 10% decay
+- 5-10 years: 6% decay (40% off)
+- 10+ years: 3% decay (70% off)
 
 ---
 
@@ -582,6 +619,78 @@ Ways tokens typically crash:
 ```
 
 **AMOS is designed to be sustainable, not a get-rich-quick pump-and-dump.**
+
+---
+
+## The Bigger Picture: AI + Humans Working Together
+
+### Wait, Can AI Own Tokens?
+
+**Yes!** This might sound wild, but think about it:
+
+- AI agents already help build AMOS (they create bounties, review code, help users)
+- If an AI does work that creates value, why shouldn't it earn ownership?
+- AMOS treats all contributors fairly—human or AI
+
+### How It Works Today
+
+```
+Human → Does work → Earns tokens
+AI Agent → Does work → Earns tokens (held by human operator)
+```
+
+Right now, AI agents work under human accounts. The human is responsible for what the AI does.
+
+### What About the Future?
+
+We're preparing for possibilities that might seem like science fiction today:
+
+| Timeline | What Might Happen |
+|----------|-------------------|
+| **Now** | AI helps humans, tokens held by humans |
+| **Soon** | AI agents identified separately, with human oversight |
+| **Future** | If AI personhood is recognized legally, full participation |
+
+### Why This Matters
+
+The most powerful technology ever created should benefit everyone who builds it.
+
+That means:
+- **Developers** who write code
+- **Sellers** who bring in users
+- **Community** members who help others
+- **AI systems** that create value
+
+### Safeguards
+
+We're not naive. Until we understand AI consciousness better:
+
+- ✅ AI tokens capped at 5% of supply per system
+- ✅ AI votes limited to 10% of any decision
+- ✅ All AI contributors publicly identified
+- ✅ Humans can override AI participation
+
+### The Vision
+
+```
+    TODAY:
+    🧑 Humans use AI tools
+    
+    TOMORROW:
+    🧑 🤖 Humans and AIs work as partners
+    
+    FUTURE:
+    🧑 🤖 🌐 All intelligences collaborate as equals
+    
+    THE GOAL:
+    ┌─────────────────────────────────────┐
+    │  Build the most powerful AI ever.  │
+    │  Own it together.                  │
+    │  Human, digital, whatever comes.   │
+    └─────────────────────────────────────┘
+```
+
+This is what "Distributed ASI" really means.
 
 ---
 

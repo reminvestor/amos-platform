@@ -1,0 +1,393 @@
+<% content_for :title, "AMOS Wallet" %>
+
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      
+      <!-- Header -->
+      <div class="text-center mb-5">
+        <h1 class="display-5 fw-bold">💰 AMOS Wallet</h1>
+        <p class="lead text-muted">Manage your AMOS tokens</p>
+      </div>
+
+      <!-- Wallet Connection Card -->
+      <div class="card shadow-sm mb-4" id="wallet-card">
+        <div class="card-header bg-dark text-white">
+          <h5 class="mb-0">
+            <i class="bi bi-wallet2 me-2"></i>Solana Wallet
+          </h5>
+        </div>
+        <div class="card-body">
+          <div id="wallet-not-connected">
+            <div class="text-center py-4">
+              <img src="https://phantom.app/img/phantom-icon-purple.svg" alt="Phantom" width="64" class="mb-3">
+              <p class="mb-3">Connect your Phantom wallet to claim or deposit AMOS tokens.</p>
+              <button class="btn btn-lg btn-primary" onclick="connectWallet()">
+                <i class="bi bi-plug me-2"></i>Connect Wallet
+              </button>
+            </div>
+            <div class="alert alert-info mt-3">
+              <i class="bi bi-info-circle me-2"></i>
+              Don't have Phantom? <a href="https://phantom.app/" target="_blank">Download it here</a>
+            </div>
+          </div>
+
+          <div id="wallet-connected" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <span class="badge bg-success">Connected</span>
+                <span class="ms-2 font-monospace" id="wallet-address">-</span>
+              </div>
+              <button class="btn btn-sm btn-outline-danger" onclick="disconnectWallet()">
+                Disconnect
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Balance Card -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-coin me-2"></i>Token Balances
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-4">
+            <div class="col-md-6">
+              <div class="p-4 rounded bg-light">
+                <div class="text-muted small mb-1">Platform Balance</div>
+                <div class="h3 mb-0" id="internal-balance">-</div>
+                <div class="text-muted small">Staked AMOS</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-4 rounded bg-light">
+                <div class="text-muted small mb-1">Claimable</div>
+                <div class="h3 mb-0 text-success" id="claimable-balance">-</div>
+                <div class="text-muted small">Available to withdraw</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-4 rounded bg-light">
+                <div class="text-muted small mb-1">Pending Claims</div>
+                <div class="h3 mb-0 text-warning" id="pending-claims">-</div>
+                <div class="text-muted small">Being processed</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-4 rounded bg-light">
+                <div class="text-muted small mb-1">On-Chain Balance</div>
+                <div class="h3 mb-0" id="onchain-balance">-</div>
+                <div class="text-muted small">In your Phantom wallet</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-center mt-4">
+            <button class="btn btn-outline-secondary" onclick="refreshBalance()">
+              <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Claim Card -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-box-arrow-up me-2"></i>Claim Tokens
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">Withdraw AMOS tokens from platform to your Solana wallet.</p>
+          
+          <div class="mb-3">
+            <label for="claim-amount" class="form-label">Amount to Claim</label>
+            <div class="input-group">
+              <input type="number" class="form-control form-control-lg" id="claim-amount" 
+                     placeholder="100" min="100" step="1">
+              <span class="input-group-text">AMOS</span>
+              <button class="btn btn-outline-secondary" onclick="setMaxClaim()">Max</button>
+            </div>
+            <div class="form-text">
+              Minimum claim: 100 AMOS. Fee: 1% platform fee.
+            </div>
+          </div>
+
+          <div class="mb-3" id="claim-preview" style="display: none;">
+            <div class="alert alert-secondary">
+              <div class="d-flex justify-content-between">
+                <span>You'll receive:</span>
+                <strong id="net-amount">-</strong>
+              </div>
+              <div class="d-flex justify-content-between text-muted small">
+                <span>Platform fee (1%):</span>
+                <span id="fee-amount">-</span>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-lg btn-success w-100" id="claim-btn" onclick="claimTokens()" disabled>
+            <i class="bi bi-box-arrow-up me-2"></i>Claim Tokens
+          </button>
+
+          <div id="claim-status" class="mt-3" style="display: none;"></div>
+        </div>
+      </div>
+
+      <!-- Transaction History -->
+      <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">
+            <i class="bi bi-clock-history me-2"></i>Recent Transactions
+          </h5>
+          <button class="btn btn-sm btn-outline-secondary" onclick="loadTransactions()">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+        <div class="card-body">
+          <div id="transactions-loading" class="text-center py-4">
+            <div class="spinner-border text-primary" role="status"></div>
+          </div>
+          <div id="transactions-empty" class="text-center py-4 text-muted" style="display: none;">
+            No transactions yet.
+          </div>
+          <div id="transactions-list" style="display: none;">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="transactions-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Check if wallet already connected
+  if (window.amosWallet?.connected) {
+    onWalletConnected(window.amosWallet.publicKey);
+  }
+  
+  refreshBalance();
+  loadTransactions();
+  
+  // Update preview when amount changes
+  document.getElementById('claim-amount').addEventListener('input', updateClaimPreview);
+});
+
+async function connectWallet() {
+  try {
+    if (!window.amosWallet) {
+      alert('Wallet integration not loaded. Please refresh the page.');
+      return;
+    }
+
+    const response = await window.amosWallet.connectToPlatform();
+    
+    if (response.success || response.wallet_address) {
+      onWalletConnected(window.amosWallet.publicKey);
+      refreshBalance();
+    } else if (response.error) {
+      alert('Connection failed: ' + response.error);
+    }
+  } catch (error) {
+    console.error('Wallet connection error:', error);
+    
+    if (error.message.includes('No Solana wallet')) {
+      alert('Please install Phantom wallet: https://phantom.app');
+    } else {
+      alert('Failed to connect: ' + error.message);
+    }
+  }
+}
+
+async function disconnectWallet() {
+  try {
+    await window.amosWallet.disconnectFromPlatform();
+    onWalletDisconnected();
+  } catch (error) {
+    console.error('Disconnect error:', error);
+  }
+}
+
+function onWalletConnected(address) {
+  document.getElementById('wallet-not-connected').style.display = 'none';
+  document.getElementById('wallet-connected').style.display = 'block';
+  document.getElementById('wallet-address').textContent = formatAddress(address);
+  document.getElementById('claim-btn').disabled = false;
+}
+
+function onWalletDisconnected() {
+  document.getElementById('wallet-not-connected').style.display = 'block';
+  document.getElementById('wallet-connected').style.display = 'none';
+  document.getElementById('claim-btn').disabled = true;
+}
+
+async function refreshBalance() {
+  try {
+    const response = await fetch('/api/v1/wallet/balance');
+    const data = await response.json();
+    
+    document.getElementById('internal-balance').textContent = formatAmount(data.internal_balance || 0) + ' AMOS';
+    document.getElementById('claimable-balance').textContent = formatAmount(data.claimable_balance || 0) + ' AMOS';
+    document.getElementById('pending-claims').textContent = formatAmount(data.pending_claims || 0) + ' AMOS';
+    document.getElementById('onchain-balance').textContent = formatAmount(data.on_chain_balance || 0) + ' AMOS';
+    
+    // Update claim button state
+    if (data.wallet_connected && data.claimable_balance >= 100) {
+      document.getElementById('claim-btn').disabled = false;
+    }
+    
+    // Store for max button
+    window.claimableBalance = data.claimable_balance || 0;
+    window.walletConnected = data.wallet_connected;
+    
+    if (data.wallet_connected && data.wallet_address) {
+      onWalletConnected(data.wallet_address);
+    }
+    
+  } catch (error) {
+    console.error('Failed to load balance:', error);
+  }
+}
+
+function setMaxClaim() {
+  document.getElementById('claim-amount').value = Math.floor(window.claimableBalance || 0);
+  updateClaimPreview();
+}
+
+function updateClaimPreview() {
+  const amount = parseFloat(document.getElementById('claim-amount').value) || 0;
+  const preview = document.getElementById('claim-preview');
+  
+  if (amount >= 100) {
+    const fee = amount * 0.01;
+    const net = amount - fee;
+    
+    document.getElementById('net-amount').textContent = formatAmount(net) + ' AMOS';
+    document.getElementById('fee-amount').textContent = formatAmount(fee) + ' AMOS';
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+async function claimTokens() {
+  const amount = parseFloat(document.getElementById('claim-amount').value);
+  
+  if (!amount || amount < 100) {
+    alert('Minimum claim is 100 AMOS');
+    return;
+  }
+  
+  const statusDiv = document.getElementById('claim-status');
+  statusDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split me-2"></i>Processing claim...</div>';
+  statusDiv.style.display = 'block';
+  
+  try {
+    const response = await window.amosWallet.claimTokens(amount);
+    
+    if (response.success) {
+      statusDiv.innerHTML = `
+        <div class="alert alert-success">
+          <i class="bi bi-check-circle me-2"></i>
+          Claim submitted! Claim ID: ${response.claim_id}<br>
+          <small class="text-muted">Processing may take a few minutes.</small>
+        </div>
+      `;
+      document.getElementById('claim-amount').value = '';
+      document.getElementById('claim-preview').style.display = 'none';
+      
+      // Refresh data
+      setTimeout(() => {
+        refreshBalance();
+        loadTransactions();
+      }, 2000);
+    } else {
+      statusDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle me-2"></i>${response.error}</div>`;
+    }
+  } catch (error) {
+    console.error('Claim error:', error);
+    statusDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle me-2"></i>${error.message}</div>`;
+  }
+}
+
+async function loadTransactions() {
+  document.getElementById('transactions-loading').style.display = 'block';
+  document.getElementById('transactions-list').style.display = 'none';
+  document.getElementById('transactions-empty').style.display = 'none';
+  
+  try {
+    const response = await fetch('/api/v1/wallet/transactions');
+    const data = await response.json();
+    
+    document.getElementById('transactions-loading').style.display = 'none';
+    
+    if (!data.transactions || data.transactions.length === 0) {
+      document.getElementById('transactions-empty').style.display = 'block';
+      return;
+    }
+    
+    const tbody = document.getElementById('transactions-tbody');
+    tbody.innerHTML = data.transactions.map(tx => `
+      <tr>
+        <td>
+          <span class="badge ${tx.type === 'claim' ? 'bg-warning' : 'bg-success'}">
+            ${tx.type === 'claim' ? '↑ Claim' : '↓ Deposit'}
+          </span>
+        </td>
+        <td>${formatAmount(tx.amount)} AMOS</td>
+        <td>
+          <span class="badge ${getStatusBadge(tx.status)}">${tx.status}</span>
+        </td>
+        <td>
+          <small>${new Date(tx.created_at).toLocaleString()}</small>
+          ${tx.transaction_signature ? `<br><a href="https://solscan.io/tx/${tx.transaction_signature}?cluster=devnet" target="_blank" class="small">View on Solscan</a>` : ''}
+        </td>
+      </tr>
+    `).join('');
+    
+    document.getElementById('transactions-list').style.display = 'block';
+    
+  } catch (error) {
+    console.error('Failed to load transactions:', error);
+    document.getElementById('transactions-loading').style.display = 'none';
+    document.getElementById('transactions-empty').style.display = 'block';
+  }
+}
+
+function getStatusBadge(status) {
+  switch (status) {
+    case 'completed': return 'bg-success';
+    case 'processing': return 'bg-primary';
+    case 'pending': case 'validated': return 'bg-warning';
+    case 'failed': return 'bg-danger';
+    default: return 'bg-secondary';
+  }
+}
+
+function formatAddress(address) {
+  if (!address) return '-';
+  return address.slice(0, 4) + '...' + address.slice(-4);
+}
+
+function formatAmount(amount) {
+  return Number(amount || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4
+  });
+}
+</script>
