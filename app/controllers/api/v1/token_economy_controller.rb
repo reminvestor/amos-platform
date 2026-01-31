@@ -5,7 +5,8 @@ module Api
     # API endpoints for the token economy transparency dashboard
     # Provides public access to ownership distribution and economy stats
     class TokenEconomyController < Api::V1::BaseController
-      skip_before_action :authenticate_user!, only: [:stats, :distribution, :leaderboard]
+      skip_before_action :authenticate_api_user!, only: [:stats, :distribution, :leaderboard]
+      skip_before_action :require_entity!, only: [:stats, :distribution, :leaderboard]
 
       # GET /api/v1/token_economy/stats
       # Public endpoint showing economy-wide statistics
