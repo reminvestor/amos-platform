@@ -176,15 +176,15 @@ module Api
 
           # Create the contact
           contact = Contact.new(
-            user: current_user,
-            entity: current_user.entity,
+            user_id: current_user.id,
+            entity_id: current_user.entity.id,
             email: contact_data[:email],
             first_name: contact_data[:first_name] || contact_data[:name]&.split&.first,
             last_name: contact_data[:last_name] || contact_data[:name]&.split&.drop(1)&.join(" "),
-            phone: contact_data[:phone] || contact_data[:mobile],
             status: "active",
             lead: true,
             metadata: {
+              phone: contact_data[:phone] || contact_data[:mobile],
               company: contact_data[:company],
               title: contact_data[:title],
               website: contact_data[:website],
@@ -267,15 +267,15 @@ module Api
         return render json: { success: false, error: data[:error] }, status: :unprocessable_entity if data[:error]
 
         contact = Contact.new(
-          user: current_user,
-          entity: current_user.entity,
+          user_id: current_user.id,
+          entity_id: current_user.entity.id,
           email: data[:email],
           first_name: data[:first_name] || data[:name]&.split&.first,
           last_name: data[:last_name] || data[:name]&.split&.drop(1)&.join(" "),
-          phone: data[:phone] || data[:mobile],
           status: "active",
           lead: true,
           metadata: {
+            phone: data[:phone] || data[:mobile],
             company: data[:company], title: data[:title], website: data[:website],
             address: data[:address], linkedin: data[:linkedin], twitter: data[:twitter],
             notes: data[:notes], source: "scan", scanned_at: Time.current.iso8601,
@@ -314,11 +314,15 @@ module Api
         # Create a note with the receipt data for now
         # TODO: Create proper Expense model when needed
         note = current_user.entity.hub_threads.create!(
-          user: current_user,
-          thread_type: "personal_note",
-          title: "Receipt: #{data[:merchant] || 'Unknown'}",
-          content: format_receipt_note(data),
-          metadata: { source: "receipt_scan", receipt_data: data, user_edited: provided_data.present? }
+          started_by: current_user,
+          thread_type: HubThread::WORK_STREAM,
+          subject: "Receipt: #{data[:merchant] || 'Unknown'}",
+          metadata: {
+            source: "receipt_scan",
+            receipt_data: data,
+            user_edited: provided_data.present?,
+            content: format_receipt_note(data)
+          }
         )
 
         # Also index in RAG for searchability
@@ -433,11 +437,15 @@ module Api
         # Create a note with the whiteboard content
         title = data[:title] || "Whiteboard Notes"
         note = current_user.entity.hub_threads.create!(
-          user: current_user,
-          thread_type: "personal_note",
-          title: title,
-          content: format_whiteboard_note(data),
-          metadata: { source: "whiteboard_scan", whiteboard_data: data, user_edited: provided_data.present? }
+          started_by: current_user,
+          thread_type: HubThread::WORK_STREAM,
+          subject: title,
+          metadata: {
+            source: "whiteboard_scan",
+            whiteboard_data: data,
+            user_edited: provided_data.present?,
+            content: format_whiteboard_note(data)
+          }
         )
 
         # Also index in RAG for searchability

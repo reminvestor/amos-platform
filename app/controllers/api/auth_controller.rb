@@ -149,6 +149,11 @@ module Api
       # Device token is valid - grant access without password/MFA
       trusted_device.touch_last_used!
 
+      # SECURITY: Rotate device token on each use (prevents token replay attacks)
+      new_device_token = SecureRandom.hex(32)
+      trusted_device.update!(token: new_device_token)
+      Rails.logger.info "🔐 Device token rotated for user #{user.email}"
+
       # Generate API key if not present
       if user.api_key.blank?
         user.update(api_key: SecureRandom.hex(32))
@@ -168,7 +173,8 @@ module Api
         },
         api_key: user.api_key,
         token: user.api_key,
-        trusted_device_used: true
+        trusted_device_used: true,
+        new_device_token: new_device_token  # Client must store this for next login
       }, status: :ok
     end
 
@@ -282,10 +288,13 @@ module Api
         return
       end
 
-      # Cache user lookup by API key for 5 minutes to reduce DB load
-      @current_user = Rails.cache.fetch("api_user:#{token}", expires_in: 5.minutes) do
-        User.includes(:entity).find_by(api_key: token)
+      # Cache only the user_id to avoid ActiveRecord association serialization issues
+      # Full User object caching breaks associations like .entity
+      user_id = Rails.cache.fetch("api_user_id:#{token}", expires_in: 5.minutes) do
+        User.where(api_key: token).pick(:id)
       end
+
+      @current_user = User.includes(:entity).find_by(id: user_id) if user_id
 
       unless @current_user
         render json: { message: "Invalid token" }, status: :unauthorized
