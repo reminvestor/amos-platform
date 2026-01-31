@@ -144,7 +144,7 @@ class SequenceMailerTest < ActionMailer::TestCase
   test "sequence_email uses entity name as from name" do
     email = SequenceMailer.sequence_email(@delivery)
     
-    from = email.from_address&.display_name || email[:from].to_s
+    from = email[:from].to_s
     assert_includes from, @entity.name
   end
 end
