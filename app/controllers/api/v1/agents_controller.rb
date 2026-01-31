@@ -3,7 +3,7 @@
 module Api
   module V1
     class AgentsController < BaseController
-      skip_before_action :require_entity!
+      # Entity required - agents are scoped to entity
       before_action :set_agent, only: [:show, :execute]
 
       # GET /api/v1/agents
