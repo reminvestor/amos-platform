@@ -1003,6 +1003,10 @@ document.addEventListener('turbo:load', function() {
   function updatePremiumUI() {
     if (!premiumModelsSection || !opensourceInfo) return;
     
+    // Get the thinking depth section to enable/disable
+    const modelModeSection = document.getElementById('model-mode-section');
+    const modelModeSliderEl = document.getElementById('model-mode-slider');
+    
     if (isPremiumMode) {
       premiumModelsSection.classList.remove('d-none');
       opensourceInfo.classList.add('d-none');
@@ -1011,11 +1015,41 @@ document.addEventListener('turbo:load', function() {
         const modelName = premiumModelSelect?.options[premiumModelSelect.selectedIndex]?.text || 'Claude';
         currentModelName.textContent = modelName;
       }
+      
+      // Disable thinking depth slider when premium model is selected
+      // This makes it clear that premium model takes precedence
+      if (modelModeSection) {
+        modelModeSection.style.opacity = '0.4';
+        modelModeSection.style.pointerEvents = 'none';
+        modelModeSection.title = 'Thinking depth is controlled by your premium model selection';
+      }
+      if (modelModeSliderEl) {
+        modelModeSliderEl.disabled = true;
+      }
+      // Update mode description to indicate premium override
+      if (modeDescription) {
+        modeDescription.innerHTML = '<i data-lucide="crown" style="width: 12px; height: 12px; margin-right: 4px; color: #8b5cf6;"></i><strong style="color: #8b5cf6;">Premium Model Active:</strong> Thinking depth is determined by your selected Claude model.';
+        // Refresh lucide icons for the new crown icon
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
     } else {
       premiumModelsSection.classList.add('d-none');
       opensourceInfo.classList.remove('d-none');
       updateBrainFill(null, 50); // Reset to default
       updateModeIndicators(); // Show the depth mode name
+      
+      // Re-enable thinking depth slider when using auto mode
+      if (modelModeSection) {
+        modelModeSection.style.opacity = '1';
+        modelModeSection.style.pointerEvents = 'auto';
+        modelModeSection.title = '';
+      }
+      if (modelModeSliderEl) {
+        modelModeSliderEl.disabled = false;
+      }
+      // Restore the thinking depth description using existing updateModeDisplay
+      const currentSliderValue = modelModeSliderEl ? parseInt(modelModeSliderEl.value) : 0;
+      updateModeDisplay(currentSliderValue);
     }
   }
   
@@ -2081,21 +2115,68 @@ document.addEventListener('turbo:load', function() {
   function parseSimpleMarkdown(text) {
     console.log('📝 Parsing markdown:', text);
     
-    // First check if the text already contains HTML tags like <strong>
-    // If it does, we need to handle it differently
-    const hasHtmlTags = /<(strong|em|ul|li|h[1-6])>/i.test(text);
+    // Check for rich HTML content (Bootstrap components, tables, complex layouts)
+    // This indicates AMOS outputted HTML directly instead of using create_freeform_canvas
+    const richHtmlPatterns = [
+      /<div[^>]*class\s*=\s*['"][^'"]*(?:container|card|row|col-|alert|mb-|mt-|py-|px-)[^'"]*['"][^>]*>/i,
+      /<table[^>]*>/i,
+      /<(section|article|header|footer|nav|main|aside)[^>]*>/i,
+      /class\s*=\s*['"][^'"]*(?:btn|badge|form-|input-|d-flex|justify-|align-)[^'"]*['"][^>]*>/i,
+    ];
     
-    if (hasHtmlTags) {
-      // Text already has HTML, so we'll sanitize it but preserve the allowed tags
+    const isRichHtml = richHtmlPatterns.some(pattern => pattern.test(text));
+    
+    if (isRichHtml) {
+      // AMOS outputted complex HTML - extract text content and add note
+      console.log('⚠️ Detected rich HTML in message, extracting text content');
       const div = document.createElement('div');
-      div.innerHTML = text; // Use innerHTML to preserve HTML
+      div.innerHTML = text;
       
-      // Remove any dangerous tags but keep formatting tags
-      const allowedTags = ['strong', 'em', 'b', 'i', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'p'];
+      // Extract meaningful text content
+      let textContent = div.textContent || div.innerText || '';
+      textContent = textContent.replace(/\s+/g, ' ').trim();
+      
+      // If we got meaningful text, use it; otherwise show a fallback
+      if (textContent.length > 20) {
+        // Truncate if too long and add note
+        const displayText = textContent.length > 500 
+          ? textContent.substring(0, 500) + '...'
+          : textContent;
+        return `<p>${displayText}</p><p class="text-muted small"><em>📊 Rich content detected - I should display this in a canvas for better formatting.</em></p>`;
+      } else {
+        return '<p><em>📊 I\'ve prepared some data for you. Let me display it properly...</em></p>';
+      }
+    }
+    
+    // Check if the text contains simple HTML formatting tags
+    const hasSimpleHtmlTags = /<(strong|em|b|i|ul|ol|li|h[1-6]|p|br|a|span|div)[\s>]/i.test(text);
+    
+    if (hasSimpleHtmlTags) {
+      // Text has HTML - sanitize it but preserve safe formatting tags
+      const div = document.createElement('div');
+      div.innerHTML = text;
+      
+      // Extended list of allowed tags for chat display
+      const allowedTags = ['strong', 'em', 'b', 'i', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'p', 'a', 'span', 'code', 'pre'];
       const elements = div.querySelectorAll('*');
       elements.forEach(el => {
-        if (!allowedTags.includes(el.tagName.toLowerCase())) {
-          el.replaceWith(el.textContent);
+        const tagName = el.tagName.toLowerCase();
+        if (!allowedTags.includes(tagName)) {
+          // Replace complex tags with their text content
+          el.replaceWith(document.createTextNode(el.textContent));
+        } else {
+          // Remove potentially dangerous attributes from allowed tags
+          const allowedAttrs = ['href', 'target', 'rel'];
+          Array.from(el.attributes).forEach(attr => {
+            if (!allowedAttrs.includes(attr.name)) {
+              el.removeAttribute(attr.name);
+            }
+          });
+          // Add safe attributes for links
+          if (tagName === 'a' && el.hasAttribute('href')) {
+            el.setAttribute('target', '_blank');
+            el.setAttribute('rel', 'noopener noreferrer');
+          }
         }
       });
       

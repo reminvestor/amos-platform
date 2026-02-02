@@ -14,6 +14,23 @@ module SubdomainConfig
       ["app", "dev", ""]
     end
   end
+  
+  # Builder portal subdomain (build.amoslabs.com)
+  # For external contributors: bounty board, proposals, contributions
+  def self.build_subdomain?(subdomain)
+    subdomain == "build"
+  end
+  
+  # Governance portal subdomain (gov.amoslabs.com)
+  # For token holders: voting, treasury, parameter governance
+  def self.gov_subdomain?(subdomain)
+    subdomain == "gov"
+  end
+  
+  # All platform subdomains (excludes landing pages)
+  def self.platform_subdomains
+    ["app", "dev", "build", "gov"]
+  end
 
   # Get the host for landing page subdomains
   # Landing pages are accessible at: {subdomain}.lp.{domain}

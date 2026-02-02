@@ -1,6 +1,7 @@
 require 'test_helper'
 
 class SendSequenceEmailsJobTest < ActiveJob::TestCase
+  include ActionMailer::TestHelper
   setup do
     @entity = entities(:default)
     @sequence = email_sequences(:active_sequence)
@@ -42,7 +43,8 @@ class SendSequenceEmailsJobTest < ActiveJob::TestCase
   end
 
   test "should process enrollments ready to send" do
-    assert_enqueued_emails 1 do
+    # The job uses deliver_now, so we check emails sent (not enqueued)
+    assert_emails 1 do
       SendSequenceEmailsJob.perform_now(@sequence.id)
     end
   end
@@ -50,7 +52,8 @@ class SendSequenceEmailsJobTest < ActiveJob::TestCase
   test "should skip opted-out contacts" do
     @contact.update!(opted_out: true)
     
-    assert_no_enqueued_emails do
+    # The job uses deliver_now, so we check emails sent (not enqueued)
+    assert_no_emails do
       SendSequenceEmailsJob.perform_now(@sequence.id)
     end
     
@@ -96,7 +99,7 @@ class SendSequenceEmailsJobTest < ActiveJob::TestCase
   test "should skip if sequence is not active" do
     @sequence.update!(status: 'paused')
     
-    assert_no_enqueued_emails do
+    assert_no_emails do
       SendSequenceEmailsJob.perform_now(@sequence.id)
     end
   end
@@ -127,8 +130,8 @@ class SendSequenceEmailsJobTest < ActiveJob::TestCase
       next_send_at: 1.minute.ago
     )
     
-    # Should send emails for both sequences
-    assert_enqueued_emails 2 do
+    # Should send emails for both sequences (uses deliver_now)
+    assert_emails 2 do
       SendSequenceEmailsJob.perform_now
     end
   end

@@ -77,7 +77,7 @@ module Rag
 
     test "warms cache for popular query" do
       # Skip if Redis isn't available (cache warming depends on Redis)
-      skip "Redis not available in CI environment" unless redis_available?
+      skip "Redis or cache not available" unless redis_available? && cache_available?
 
       # Clean up existing queries from fixtures first
       RagQuery.delete_all
@@ -264,6 +264,17 @@ module Rag
       result
     rescue => e
       Rails.logger.debug "Redis not available for test: #{e.message}"
+      false
+    end
+
+    def cache_available?
+      # Test if Rails.cache actually works for read/write
+      test_key = "test_cache_available_#{Time.now.to_i}"
+      Rails.cache.write(test_key, 'test', expires_in: 5.seconds)
+      result = Rails.cache.read(test_key) == 'test'
+      Rails.cache.delete(test_key)
+      result
+    rescue => e
       false
     end
   end

@@ -239,7 +239,7 @@ class BountyTest < ActiveSupport::TestCase
       commit_sha: 'abc123def456789'
     )
 
-    summary = bounty.work_evidence_summary
+    summary = bounty.send(:work_evidence_summary)
 
     assert summary.include?('PR:')
     assert summary.include?('Commit: abc123de')  # Truncated

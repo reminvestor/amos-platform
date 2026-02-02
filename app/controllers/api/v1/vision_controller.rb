@@ -124,7 +124,8 @@ module Api
         end
 
         begin
-          service = GeminiVisionService.new
+          # Only instantiate service if we need to extract data (no provided_data)
+          service = provided_data.blank? ? GeminiVisionService.new : nil
 
           case mode
           when :business_card

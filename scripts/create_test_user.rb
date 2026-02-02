@@ -1,5 +1,13 @@
 #!/usr/bin/env ruby
 # Create test user with known password
+#
+# SECURITY: This script should NEVER run in production
+
+if defined?(Rails) && Rails.env.production?
+  puts "🚨 SECURITY ERROR: Cannot create test users in production!"
+  puts "   This script is for development/testing only."
+  exit 1
+end
 
 puts "🔧 Creating Test User"
 puts ""

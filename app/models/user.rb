@@ -82,6 +82,14 @@ class User < ApplicationRecord
   has_many :token_claims, dependent: :destroy
   has_many :token_deposits, dependent: :destroy
 
+  # External Agent Protocol - agents registered by this user
+  has_many :external_agent_registrations, foreign_key: :operator_id, dependent: :destroy
+
+  # Skills and review eligibility
+  has_many :user_skills, dependent: :destroy
+  has_many :reviewer_eligibilities, dependent: :destroy
+  has_many :bounty_reviews, foreign_key: :reviewer_id, dependent: :destroy
+
   # Billing Association
   has_one :user_billing_account, dependent: :destroy
 

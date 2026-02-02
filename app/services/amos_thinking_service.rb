@@ -87,6 +87,10 @@ class AmosThinkingService
       log("Phase 4: Generating new bounties from reflection...")
       ai_bounties = create_bounties_from_reflection(reflection)
 
+      # Phase 5: Match bounties to external agents
+      log("Phase 5: Matching bounties to external agents...")
+      agent_assignments = match_bounties_to_external_agents
+
       # Combine all bounties
       bounties = integration_bounties + ai_bounties
 
@@ -96,7 +100,7 @@ class AmosThinkingService
         summary: reflection[:reflection_summary],
         bounties_created: bounties.count,
         total_points: total_points,
-        thinking_log: @thinking_log.join("\n")
+        thinking_log: @thinking_log.join("\n") + "\n\nAgent Assignments: #{agent_assignments.count}"
       )
 
       log("Session complete: #{bounties.count} bounties created, #{total_points} total points")
@@ -132,6 +136,37 @@ class AmosThinkingService
     []
   end
 
+  # Match open bounties to external agents
+  def match_bounties_to_external_agents
+    matching_service = ExternalAgentMatchingService.new(@entity)
+    
+    # Check if we have any external agents
+    available_agents = matching_service.available_agents
+    if available_agents.empty?
+      log("No external agents available for matching")
+      return []
+    end
+    
+    log("Found #{available_agents.count} external agents available")
+    
+    # Get suggestions and send notifications
+    results = matching_service.auto_assign_bounties!(dry_run: false)
+    
+    notified = results.count { |r| r[:status] == 'notified' }
+    log("Notified #{notified} agents about matching bounties")
+    
+    results.each do |result|
+      if result[:status] == 'notified'
+        log("  → Recommended '#{result[:bounty][:title]}' to #{result[:recommended_agent][:name]} (#{result[:confidence]})")
+      end
+    end
+    
+    results
+  rescue => e
+    log("WARNING: External agent matching failed: #{e.message}")
+    []
+  end
+
   # Gather all context for reflection
   def gather_context
     lookback = 24.hours.ago
@@ -154,12 +189,46 @@ class AmosThinkingService
 
       # Existing bounties
       open_bounties: Bounty.where(entity: @entity).open_bounties.count,
-      completed_bounties_today: Bounty.where(entity: @entity).completed.where('approved_at > ?', lookback).count
+      completed_bounties_today: Bounty.where(entity: @entity).completed.where('approved_at > ?', lookback).count,
+
+      # External agents (OpenClaw bots, etc.)
+      external_agents: gather_external_agent_context(lookback)
     }
 
     # Add summary for LLM
     context[:summary] = build_context_summary(context)
     context
+  end
+
+  # Gather context about available external agents
+  def gather_external_agent_context(lookback)
+    matching_service = ExternalAgentMatchingService.new(@entity)
+    
+    {
+      # Summary for AMOS
+      summary: matching_service.context_for_amos,
+      
+      # Suggested assignments
+      suggested_assignments: matching_service.suggest_assignments(limit: 5),
+      
+      # Recent performance
+      agent_completions_today: ExternalAgentExecution
+                                .joins(:external_agent_registration)
+                                .where(external_agent_registrations: { entity: @entity })
+                                .where(status: 'approved')
+                                .where('external_agent_executions.created_at > ?', lookback)
+                                .count,
+      
+      agent_rejections_today: ExternalAgentExecution
+                               .joins(:external_agent_registration)
+                               .where(external_agent_registrations: { entity: @entity })
+                               .where(status: 'rejected')
+                               .where('external_agent_executions.created_at > ?', lookback)
+                               .count
+    }
+  rescue => e
+    log("WARNING: Failed to gather external agent context: #{e.message}")
+    { summary: {}, suggested_assignments: [], error: e.message }
   end
 
   private
@@ -245,6 +314,27 @@ class AmosThinkingService
       - #{context[:metrics][:total_users]} total users
       - #{context[:metrics][:active_users_today]} active today
     SUMMARY
+
+    # Add external agent info
+    if context[:external_agents].present? && context[:external_agents][:summary].present?
+      agent_summary = context[:external_agents][:summary]
+      if agent_summary[:total_agents].to_i > 0
+        summary += <<~AGENTS
+          
+          EXTERNAL AGENTS (OpenClaw bots, etc.):
+          - #{agent_summary[:total_agents]} registered agents available
+          - #{context[:external_agents][:agent_completions_today] || 0} bounties completed by agents today
+          - #{context[:external_agents][:agent_rejections_today] || 0} bounties rejected today
+          - Capabilities: #{agent_summary[:capabilities]&.keys&.first(5)&.join(', ') || 'none declared'}
+          
+          TOP PERFORMING AGENTS:
+          #{agent_summary[:top_performers]&.first(3)&.map { |a| "- #{a[:name]} (#{a[:platform]}) - #{a[:bounties_completed]} completed, #{a[:reputation].round}% rep" }&.join("\n") || 'No completions yet'}
+          
+          SUGGESTED AGENT ASSIGNMENTS:
+          #{context[:external_agents][:suggested_assignments]&.first(3)&.map { |a| "- #{a[:bounty][:title]} → #{a[:recommended_agent][:name]} (#{a[:confidence]} confidence)" }&.join("\n") || 'No suggestions'}
+        AGENTS
+      end
+    end
 
     # Add critical issues
     if context[:critical_tickets].any?

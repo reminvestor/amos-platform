@@ -192,6 +192,29 @@ module Tools
         )
       end
 
+      # Find the operation to validate parameters
+      operation = find_operation(integration, operation_name)
+      
+      if operation
+        # Validate parameters against schema BEFORE making API call
+        validation_result = validate_params_against_schema(operation, params)
+        if validation_result[:invalid_params].any?
+          return error_response(
+            "Invalid parameters: #{validation_result[:invalid_params].join(', ')}",
+            hint: "Valid parameters for #{operation_name}: #{validation_result[:valid_params].join(', ')}",
+            operation: operation_name,
+            integration: integration.name
+          )
+        end
+        
+        # Warn about unknown params (but don't fail)
+        if validation_result[:unknown_params].any?
+          Rails.logger.warn "[ExecuteIntegrationAction] Unknown params for #{operation_name}: #{validation_result[:unknown_params].join(', ')}"
+        end
+      else
+        Rails.logger.warn "[ExecuteIntegrationAction] No operation schema found for #{operation_name} - skipping validation"
+      end
+
       # Execute via UniversalIntegrationExecutor
       result = UniversalIntegrationExecutor.execute(
         integration: integration,
@@ -279,6 +302,62 @@ module Tools
                   .order(created_at: :desc)
                   .first
       end
+    end
+
+    # Find operation by name - tries multiple formats
+    def find_operation(integration, operation_name)
+      # Try exact match first
+      op = integration.integration_operations.enabled.find_by(operation_id: operation_name)
+      return op if op
+      
+      # Try with integration prefix (e.g., "list_charges" -> "stripe.list_charges")
+      op = integration.integration_operations.enabled.find_by(operation_id: "#{integration.slug}.#{operation_name}")
+      return op if op
+      
+      # Try without prefix (e.g., "stripe.list_charges" -> "list_charges")
+      if operation_name.include?('.')
+        short_name = operation_name.split('.').last
+        op = integration.integration_operations.enabled.find_by(operation_id: short_name)
+        return op if op
+      end
+      
+      # Try by name field
+      op = integration.integration_operations.enabled.where("LOWER(name) = ?", operation_name.downcase.gsub('_', ' ')).first
+      return op if op
+      
+      nil
+    end
+
+    # Validate parameters against operation schema
+    # Returns { valid_params: [...], invalid_params: [...], unknown_params: [...] }
+    def validate_params_against_schema(operation, params)
+      schema = operation.request_schema
+      valid_params = []
+      invalid_params = []
+      unknown_params = []
+      
+      # If no schema, we can't validate - allow all
+      unless schema.present? && schema["properties"].present?
+        return { valid_params: params.keys.map(&:to_s), invalid_params: [], unknown_params: [] }
+      end
+      
+      schema_props = schema["properties"].keys.map(&:to_s)
+      valid_params = schema_props
+      
+      # Check each provided param
+      params.each do |key, _value|
+        key_str = key.to_s
+        
+        # Common invalid params that Stripe doesn't accept
+        stripe_invalid = %w[order sort_by desc asc sort direction orderBy order_by]
+        if stripe_invalid.include?(key_str)
+          invalid_params << key_str
+        elsif !schema_props.include?(key_str)
+          unknown_params << key_str
+        end
+      end
+      
+      { valid_params: valid_params, invalid_params: invalid_params, unknown_params: unknown_params }
     end
 
     def slim_response(data)

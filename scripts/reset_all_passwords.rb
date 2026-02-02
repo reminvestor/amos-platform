@@ -1,5 +1,13 @@
 #!/usr/bin/env ruby
 # Reset all user passwords to 'password123'
+#
+# SECURITY: This script should NEVER run in production
+
+if defined?(Rails) && Rails.env.production?
+  puts "🚨 SECURITY ERROR: Cannot reset passwords in production!"
+  puts "   This script is for development/testing only."
+  exit 1
+end
 
 puts "🔧 Resetting All User Passwords"
 puts ""

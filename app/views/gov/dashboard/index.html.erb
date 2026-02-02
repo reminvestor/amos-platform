@@ -1,0 +1,131 @@
+<% content_for :title, "Dashboard - Amos Governance" %>
+
+<div class="row mb-4">
+  <div class="col">
+    <h1 class="display-5 fw-bold mb-2">
+      <i class="bi bi-bank me-2 text-primary"></i>Amos Governance
+    </h1>
+    <p class="text-muted lead">
+      Shape the future of the platform. Vote on proposals, manage treasury, and adjust parameters.
+    </p>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-4 mb-5">
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value"><%= @stats[:total_proposals] %></div>
+      <div class="stat-label">Total Proposals</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value"><%= @stats[:active_votes] %></div>
+      <div class="stat-label">Active Votes</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value"><%= number_with_delimiter(@stats[:treasury_balance]) %></div>
+      <div class="stat-label">Treasury (AMOS)</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value"><%= number_with_delimiter(@stats[:total_staked]) %></div>
+      <div class="stat-label">Total Staked</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Active Proposals -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Active Proposals</h5>
+        <a href="#" class="btn btn-sm btn-outline-primary">View All</a>
+      </div>
+      <div class="card-body">
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-inbox display-4 d-block mb-3"></i>
+          <h5>Coming Soon</h5>
+          <p class="mb-0">
+            Proposals will be synced from the on-chain governance program.
+            <br>
+            <a href="https://github.com/amoslabs/amos-governance" class="text-primary">View the Solana program →</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Governance Actions -->
+  <div class="col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Governance Actions</h5>
+      </div>
+      <div class="card-body">
+        <div class="d-grid gap-2">
+          <a href="#" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>Create Proposal
+          </a>
+          <a href="#" class="btn btn-outline-secondary">
+            <i class="bi bi-safe me-2"></i>View Treasury
+          </a>
+          <a href="#" class="btn btn-outline-secondary">
+            <i class="bi bi-sliders me-2"></i>Platform Parameters
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Your Voting Power</h5>
+      </div>
+      <div class="card-body">
+        <% if wallet_connected? %>
+          <div class="text-center">
+            <div class="display-6 fw-bold text-primary"><%= number_with_delimiter(amos_balance) %></div>
+            <div class="text-muted">AMOS tokens</div>
+          </div>
+        <% else %>
+          <div class="text-center text-muted">
+            <i class="bi bi-wallet2 display-6 d-block mb-2"></i>
+            <p class="mb-0">Connect your wallet to see your voting power</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Governance Parameters -->
+<div class="row mt-4">
+  <div class="col">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Current Parameters</h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-4">
+          <div class="col-md-4">
+            <h6 class="text-muted mb-1">Priority Algorithm</h6>
+            <p class="mb-0">MRR Weight: <strong>60%</strong> | Community Weight: <strong>40%</strong></p>
+          </div>
+          <div class="col-md-4">
+            <h6 class="text-muted mb-1">Quality Gates</h6>
+            <p class="mb-0">Min Benchmark: <strong>70%</strong> | Min A/B Improvement: <strong>5%</strong></p>
+          </div>
+          <div class="col-md-4">
+            <h6 class="text-muted mb-1">Reward Distribution</h6>
+            <p class="mb-0">Completion: <strong>40%</strong> | A/B: <strong>30%</strong> | Merge: <strong>30%</strong></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

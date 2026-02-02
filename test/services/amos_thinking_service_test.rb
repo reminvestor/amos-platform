@@ -145,14 +145,19 @@ class AmosThinkingServiceTest < ActiveSupport::TestCase
   # === INTEGRATION WITH SYSTEMS ===
 
   test "sync_existing_systems_to_bounties calls integration service" do
-    integration_called = false
+    mock_result = { from_tickets: [], from_goals: [], from_anomalies: [], from_features: [] }
+    sync_called = false
+    
+    BountyIntegrationService.any_instance.stubs(:sync_all!).with do
+      sync_called = true
+      true
+    end.returns(mock_result)
 
-    BountyIntegrationService.any_instance.stub(:sync_all!, -> {
-      integration_called = true
-      { from_tickets: [], from_goals: [], from_anomalies: [], from_features: [] }
-    }) do
+    # Should complete without error
+    assert_nothing_raised do
       @service.send(:sync_existing_systems_to_bounties)
-      assert integration_called
     end
+    
+    assert sync_called, "Expected BountyIntegrationService.sync_all! to be called"
   end
 end

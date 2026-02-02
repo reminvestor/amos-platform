@@ -198,12 +198,10 @@
 
         <%# Main Navigation %>
         <nav>
-          <%# Dashboard - Work/Team spaces only %>
-          <% if sidebar_section_visible?('dashboard') %>
-            <%= link_to advanced_mode_path, class: "nav-item #{'active' if request.path == advanced_mode_path}" do %>
-              <i data-lucide="layout-dashboard"></i>
-              <span>Dashboard</span>
-            <% end %>
+          <%# Dashboard - Always visible %>
+          <%= link_to advanced_mode_path, class: "nav-item #{'active' if request.path == advanced_mode_path}" do %>
+            <i data-lucide="layout-dashboard"></i>
+            <span>Dashboard</span>
           <% end %>
 
           <%# 
@@ -298,10 +296,9 @@
             </button>
             <div class="collapse <%= 'show' if ['agent_plugins', 'tools', 'scout', 'voice', 'scheduled_tasks'].include?(controller_name) || controller_path.start_with?('ai_settings') %>" id="aiCollapse">
               <div class="nav-section-content">
-                <% if sidebar_section_visible?('agents') %>
-                  <%= link_to agent_plugins_path, class: "nav-item #{'active' if controller_name == 'agent_plugins'}" do %>
-                    <span>My Loadouts</span>
-                  <% end %>
+                <%# Agent Loadouts - Always visible %>
+                <%= link_to agent_plugins_path, class: "nav-item #{'active' if controller_name == 'agent_plugins'}" do %>
+                  <span>Agent Loadouts</span>
                 <% end %>
                 <%= link_to tools_path, class: "nav-item #{'active' if controller_name == 'tools'}" do %>
                   <span>My Tools</span>
@@ -321,6 +318,12 @@
             </div>
           </div>
           <% end %>
+
+          <%# Token Economy Section - MOVED TO build.amoslabs.com and gov.amoslabs.com
+              Customers don't need this in the main app. Token economy features are for:
+              - Builders (build.amoslabs.com) - earning tokens through contributions
+              - Governance (gov.amoslabs.com) - voting and treasury management
+          %>
 
           <%# Entity Settings - Only for Entity Admins (and Work/Team spaces) %>
           <% if current_user.entity_admin? && sidebar_section_visible?('settings') %>

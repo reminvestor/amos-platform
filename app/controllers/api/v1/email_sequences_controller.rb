@@ -233,7 +233,7 @@ module Api
               status: enrollment.status,
               current_step_number: enrollment.current_step_number,
               progress_percentage: enrollment.progress_percentage,
-              enrolled_at: enrollment.enrolled_at&.iso8601,
+              enrolled_at: enrollment.created_at&.iso8601,
               next_send_at: enrollment.next_send_at&.iso8601
             }
           end

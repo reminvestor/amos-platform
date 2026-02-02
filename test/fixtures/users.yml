@@ -8,6 +8,7 @@ one:
   encrypted_password: "$2a$04$4KcNtJFuY1ro2J6EHGK/kO7BdsfQZtR/dS02T3Chjc/BeojG9UKPK"
   onboarded: true
   role: "admin"
+  api_key: "test_api_key_user_one_abcdef1234567890"
 
 two:
   entity: one
@@ -17,6 +18,17 @@ two:
   encrypted_password: "$2a$04$4KcNtJFuY1ro2J6EHGK/kO7BdsfQZtR/dS02T3Chjc/BeojG9UKPK"
   onboarded: true
   role: "marketer"
+  api_key: "test_api_key_user_two_abcdef1234567890"
+
+three:
+  entity: one
+  email: "user3@test.com"
+  first_name: "Test"
+  last_name: "User3"
+  encrypted_password: "$2a$04$4KcNtJFuY1ro2J6EHGK/kO7BdsfQZtR/dS02T3Chjc/BeojG9UKPK"
+  onboarded: true
+  role: "marketer"
+  api_key: "test_api_key_user_three_abcdef12345678"
 
 default:
   entity: default
@@ -26,6 +38,7 @@ default:
   encrypted_password: "$2a$04$4KcNtJFuY1ro2J6EHGK/kO7BdsfQZtR/dS02T3Chjc/BeojG9UKPK"
   onboarded: true
   role: "admin"
+  api_key: "test_api_key_default_abcdef1234567890"
 
 admin_user:
   entity: demo_company
@@ -35,6 +48,7 @@ admin_user:
   encrypted_password: "$2a$04$4KcNtJFuY1ro2J6EHGK/kO7BdsfQZtR/dS02T3Chjc/BeojG9UKPK"
   onboarded: true
   role: "admin"
+  api_key: "test_api_key_admin_abcdef12345678901"
 
 another_user:
   entity: another_entity

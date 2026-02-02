@@ -4,8 +4,8 @@ require 'test_helper'
 
 class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
   setup do
-    @entity = entities(:default)
     @user = users(:one)
+    @entity = @user.entity  # Use the user's entity to avoid mismatch
     @user.update!(api_key: SecureRandom.hex(32)) unless @user.api_key.present?
     @contact_group = contact_groups(:default_group)
     
@@ -41,6 +41,10 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
   # ============================================
   
   test "complete email sequence flow from creation to delivery" do
+    # Clear any existing contacts in the contact group and add only test contacts
+    @contact_group.contacts.clear
+    @contact_group.contacts = @contacts
+    
     # Step 1: Create a new email sequence
     sequence = EmailSequence.create!(
       name: "Integration Test Sequence",
@@ -140,7 +144,8 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
     end
     
     # Step 8: Simulate time passing and send step 3 (final step)
-    travel 4.days do
+    # Step 3 has 72-hour delay after step 2 was sent at +25 hours = ~97 hours total
+    travel 5.days do
       assert_emails @contacts.count do
         SendSequenceEmailsJob.perform_now(sequence.id)
       end
@@ -155,9 +160,11 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
       end
     end
     
-    # Verify final stats
+    # Verify final stats - counts should be updated via callbacks
     sequence.reload
     assert_equal @contacts.count, sequence.completed_count
+    assert_equal 0, sequence.active_count
+    assert_equal 100.0, sequence.completion_rate
     assert_equal 0, sequence.active_count
     assert_equal 100.0, sequence.completion_rate
   end

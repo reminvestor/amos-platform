@@ -1,0 +1,128 @@
+<div class="container-fluid py-4">
+  <div class="admin-page-header mb-4">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="edit"></i>
+      </div>
+      <div class="header-text">
+        <h1>Edit Policy: <%= @policy.name %></h1>
+        <p>Modify AI usage policy settings</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="admin-card">
+        <div>
+          <%= form_with(model: @policy, url: entity_policy_path(@policy), method: :patch, local: true) do |f| %>
+            <% if @policy.errors.any? %>
+              <div class="alert alert-danger">
+                <h5>Errors:</h5>
+                <ul class="mb-0">
+                  <% @policy.errors.full_messages.each do |msg| %>
+                    <li><%= msg %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+
+            <div class="mb-3">
+              <%= f.label :name, "Policy Name", class: "form-label" %>
+              <%= f.text_field :name, class: "form-control", placeholder: "e.g., Limit write operations" %>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <%= f.label :resource_type, "Applies To", class: "form-label" %>
+                <%= f.select :resource_type,
+                    options_for_select(['Connection', 'Integration', 'Operation', 'Global'], @policy.resource_type),
+                    { include_blank: "Select type" },
+                    class: "form-select" %>
+                <small class="form-text text-muted">What type of resource does this policy apply to?</small>
+              </div>
+              
+              <div class="col-md-6 mb-3">
+                <%= f.label :action, "Action Type", class: "form-label" %>
+                <%= f.select :action,
+                    options_for_select(['read', 'write', 'delete', 'execute', 'all'], @policy.action),
+                    {},
+                    class: "form-select" %>
+                <small class="form-text text-muted">What actions does this policy control?</small>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :agent_role, "Agent Role (Optional)", class: "form-label" %>
+              <%= f.select :agent_role,
+                  options_for_select(['planner', 'executor', 'analyst', 'verifier'], @policy.agent_role),
+                  { include_blank: "All agents" },
+                  class: "form-select" %>
+              <small class="form-text text-muted">Leave blank to apply to all agents</small>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <%= f.label :max_daily_calls, "Max Daily API Calls (Optional)", class: "form-label" %>
+                <%= f.number_field :max_daily_calls, class: "form-control", placeholder: "e.g., 1000" %>
+              </div>
+              
+              <div class="col-md-6 mb-3">
+                <%= f.label :max_write_calls, "Max Write Operations (Optional)", class: "form-label" %>
+                <%= f.number_field :max_write_calls, class: "form-control", placeholder: "e.g., 100" %>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <div class="form-check">
+                <%= f.check_box :requires_confirmation, class: "form-check-input" %>
+                <%= f.label :requires_confirmation, "Require User Confirmation", class: "form-check-label" %>
+                <div class="form-text">Ask user before executing operations covered by this policy</div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <div class="form-check">
+                <%= f.check_box :is_active, class: "form-check-input" %>
+                <%= f.label :is_active, "Active", class: "form-check-label" %>
+              </div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <%= f.submit "Update Policy", class: "btn btn-primary" %>
+              <%= link_to "Cancel", entity_policy_path(@policy), class: "btn btn-outline-secondary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Help Sidebar -->
+    <div class="col-lg-4">
+      <div class="admin-card">
+        <h5 class="card-title">
+          <i data-lucide="info" class="me-2 icon-purple"></i>
+          Policy Examples
+        </h5>
+        <div>
+          <h6 class="mb-2" style="color: var(--text-primary);">Common Policies:</h6>
+          <ul class="small">
+            <li class="mb-2"><strong>Limit API Calls:</strong> Set max_daily_calls to prevent overuse</li>
+            <li class="mb-2"><strong>Protect Write Operations:</strong> Set requires_confirmation for write actions</li>
+            <li class="mb-2"><strong>Agent-Specific:</strong> Different rules for planner vs executor agents</li>
+            <li class="mb-2"><strong>Global Limits:</strong> Apply budget constraints across all integrations</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>

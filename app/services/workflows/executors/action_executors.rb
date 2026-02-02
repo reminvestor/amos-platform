@@ -348,8 +348,7 @@ module Workflows
             contact: contact,
             entity: entity,
             status: sequence.status == 'active' ? 'active' : 'pending',
-            current_step_number: 0,
-            enrolled_at: Time.current
+            current_step_number: 0
           )
 
           # If sequence is active, set up first email timing

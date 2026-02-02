@@ -447,6 +447,44 @@
           </a>
         </li>
 
+        <!-- AI & Agents Section -->
+        <li class="nav-item2 mt-3">
+          <div class="px-3 py-2">
+            <small class="text-muted text-uppercase fw-bold">AI & Agents</small>
+          </div>
+        </li>
+        <li class="nav-item2">
+          <a class="sidebar-link <%= request.path.start_with?('/agent_plugins') ? 'active' : '' %>" href="<%= agent_plugins_path %>">
+            <i data-lucide="cpu" class="me-2" aria-hidden="true"></i>
+            <span class="nav-link-text">Agent Loadouts</span>
+          </a>
+        </li>
+        <li class="nav-item2">
+          <a class="sidebar-link <%= request.path.start_with?('/tools') ? 'active' : '' %>" href="<%= tools_path %>">
+            <i data-lucide="wrench" class="me-2" aria-hidden="true"></i>
+            <span class="nav-link-text">Tools</span>
+          </a>
+        </li>
+
+        <!-- Transparency & Economy -->
+        <li class="nav-item2 mt-3">
+          <div class="px-3 py-2">
+            <small class="text-muted text-uppercase fw-bold">Token Economy</small>
+          </div>
+        </li>
+        <li class="nav-item2">
+          <a class="sidebar-link <%= request.path.start_with?('/transparency') ? 'active' : '' %>" href="<%= transparency_path %>">
+            <i data-lucide="eye" class="me-2" aria-hidden="true"></i>
+            <span class="nav-link-text">Transparency</span>
+          </a>
+        </li>
+        <li class="nav-item2">
+          <a class="sidebar-link <%= current_page?(wallet_path) ? 'active' : '' %>" href="<%= wallet_path %>">
+            <i data-lucide="wallet" class="me-2" aria-hidden="true"></i>
+            <span class="nav-link-text">AMOS Wallet</span>
+          </a>
+        </li>
+
         <!-- Affiliate Program -->
         <% if user_signed_in? %>
           <li class="nav-item2 mt-3">
@@ -494,12 +532,6 @@
                 <a class="sidebar-link small <%= current_page?(entities_path) ? 'active' : '' %>" href="<%= entities_path %>">
                   <i data-lucide="briefcase" class="me-2" aria-hidden="true"></i>
                   <span class="nav-link-text">Entity Info</span>
-                </a>
-              </li>
-              <li class="nav-item2">
-                <a class="sidebar-link small <%= current_page?(wallet_path) ? 'active' : '' %>" href="<%= wallet_path %>">
-                  <i data-lucide="wallet" class="me-2" aria-hidden="true"></i>
-                  <span class="nav-link-text">AMOS Wallet</span>
                 </a>
               </li>
             </ul>

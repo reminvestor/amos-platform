@@ -239,7 +239,8 @@ class UnifiedPreprocessorService
       mentioned_modules: mentioned[:modules],
       mentioned_objects: mentioned[:objects],
       confident: intent != :unknown,
-      method: :regex
+      method: :regex,
+      original_message: message  # Preserve for skill discovery
     }
   end
   
@@ -888,7 +889,51 @@ class UnifiedPreprocessorService
       parts << "[MODULES: #{schemas}]"
     end
     
+    # 📚 SKILL INJECTION - Dynamic expertise based on task
+    # Skills provide "how-to" knowledge, while tools provide "what to do"
+    skill_injection = discover_relevant_skills(results, classification)
+    if skill_injection.present?
+      parts << ""
+      parts << skill_injection[:skill_block]
+    end
+    
     parts.join("\n")
+  end
+  
+  # Discover and inject relevant skills based on context
+  def discover_relevant_skills(results, classification)
+    return nil unless defined?(SkillLibraryService)
+    
+    # Get mentioned integrations from preprocessing
+    mentioned_integrations = classification[:mentioned_integrations] || []
+    
+    # Also include connected integrations if they're part of the context
+    if results[:integrations][:tool_usage].present?
+      connected = results[:integrations][:tool_usage]
+                    .select { |u| u[:status] == :connected }
+                    .map { |u| u[:slug] }
+      mentioned_integrations = (mentioned_integrations + connected).uniq
+    end
+    
+    # Build canvas context
+    canvas_context = nil
+    if @current_canvas.present?
+      canvas_context = { type: @current_canvas }
+    end
+    
+    # Get the original message from classification (if available)
+    message = classification[:original_message] || ''
+    
+    SkillLibraryService.discover_skills(
+      message: message,
+      entity: @entity,
+      integrations: mentioned_integrations,
+      canvas_context: canvas_context,
+      limit: 2  # Keep context compact
+    )
+  rescue => e
+    Rails.logger.warn "[Preprocessor] Skill discovery failed: #{e.message}"
+    nil
   end
   
   # ═══════════════════════════════════════════════════════════════

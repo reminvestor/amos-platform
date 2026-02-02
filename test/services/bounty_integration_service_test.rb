@@ -67,7 +67,8 @@ class BountyIntegrationServiceTest < ActiveSupport::TestCase
       description: 'Low priority',
       source: 'user_reported',
       priority: 'low',
-      category: 'bug'
+      category: 'bug',
+      status: 'open'
     )
 
     # High priority - should create bounty
@@ -77,12 +78,13 @@ class BountyIntegrationServiceTest < ActiveSupport::TestCase
       description: 'High priority',
       source: 'user_reported',
       priority: 'high',
-      category: 'bug'
+      category: 'bug',
+      status: 'open'
     )
 
-    AmosBountyScorer.stub(:score_ticket, ->(_) {
-      { points: 150, rationale: 'Test', effort_score: 5, impact_score: 5, urgency_score: 5, complexity_score: 5, estimated_hours: 2 }
-    }) do
+    mock_score = { points: 150, rationale: 'Test', effort_score: 5, impact_score: 5, urgency_score: 5, complexity_score: 5, estimated_hours: 2 }
+    
+    AmosBountyScorer.stub(:score, mock_score) do
       bounties = @service.create_bounties_from_tickets!
 
       assert_equal 1, bounties.count
@@ -170,12 +172,13 @@ class BountyIntegrationServiceTest < ActiveSupport::TestCase
       description: 'Fix ASAP',
       source: 'log_monitor',
       priority: 'critical',
-      category: 'bug'
+      category: 'bug',
+      status: 'open'
     )
 
-    AmosBountyScorer.stub(:score_ticket, ->(_) {
-      { points: 200, rationale: 'Test', effort_score: 5, impact_score: 8, urgency_score: 10, complexity_score: 6, estimated_hours: 4 }
-    }) do
+    mock_score = { points: 200, rationale: 'Test', effort_score: 5, impact_score: 8, urgency_score: 10, complexity_score: 6, estimated_hours: 4 }
+    
+    AmosBountyScorer.stub :score, mock_score do
       results = @service.sync_all!
 
       assert results[:from_tickets].any?

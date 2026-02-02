@@ -5,6 +5,13 @@ class Artifact < ApplicationRecord
   validates :name, presence: true
   validates :source, presence: true
 
+  # Returns sample rows as an array of hashes
+  # Sample is stored as JSON
+  def sample_rows
+    return [] unless sample.present?
+    sample.is_a?(Array) ? sample : []
+  end
+
   # Build a basic schema from an array of hashes
   def self.infer_schema(rows)
     return {} unless rows.is_a?(Array) && rows.first.is_a?(Hash)

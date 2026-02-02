@@ -8,10 +8,10 @@ class RagEndToEndTest < ActionDispatch::IntegrationTest
     @entity = entities(:one)
     @user = users(:one)
 
-    # Check if we have required API keys
-    @has_openai = ENV['OPENAI_API_KEY'].present?
+    # Check if we have required API keys (uses Bedrock for embeddings, Pinecone for vectors)
+    @has_aws = ENV['AWS_ACCESS_KEY_ID'].present? || ENV['AWS_REGION'].present?
     @has_pinecone = ENV['PINECONE_API_KEY'].present?
-    @can_run_e2e = @has_openai && @has_pinecone
+    @can_run_e2e = @has_aws && @has_pinecone
   end
 
   # ============================================================================
@@ -19,7 +19,7 @@ class RagEndToEndTest < ActionDispatch::IntegrationTest
   # ============================================================================
 
   test "complete RAG workflow: create, store, query" do
-    skip "Requires valid OpenAI and Pinecone API keys" unless @can_run_e2e
+    skip "Requires AWS Bedrock and Pinecone API keys - run with RUN_RAG_E2E=true" unless @can_run_e2e && ENV['RUN_RAG_E2E'] == 'true'
 
     service = RagStoreService.new
 

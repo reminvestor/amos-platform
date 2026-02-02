@@ -63,7 +63,21 @@ class Bounty < ApplicationRecord
     log_monitor
     feature_vote
     support_ticket
+    user_funded
   ].freeze
+
+  # Funding sources
+  FUNDING_SOURCES = %w[platform user].freeze
+  
+  # Escrow statuses
+  ESCROW_STATUSES = %w[none escrowed released refunded].freeze
+  
+  # Reviewer types
+  REVIEWER_TYPES = %w[auto creator admin specific_user].freeze
+
+  # Additional associations for user-funded bounties
+  belongs_to :funded_by, class_name: 'User', optional: true
+  belongs_to :designated_reviewer, class_name: 'User', optional: true
 
   # Validations
   validates :title, presence: true
@@ -71,12 +85,19 @@ class Bounty < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
   validates :points, numericality: { greater_than: 0 }
   validates :source, inclusion: { in: SOURCES }, allow_nil: true
+  validates :funding_source, inclusion: { in: FUNDING_SOURCES }, allow_nil: true
+  validates :escrow_status, inclusion: { in: ESCROW_STATUSES }, allow_nil: true
+  validates :reviewer_type, inclusion: { in: REVIEWER_TYPES }, allow_nil: true
+  validates :funded_amount, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  validate :user_funded_requires_funder
+  validate :pr_required_has_repo, if: :requires_pr?
 
   # Scopes
   scope :open_bounties, -> { where(status: 'open') }
   scope :available, -> { where(status: 'open').where('expires_at IS NULL OR expires_at > ?', Time.current) }
   scope :claimed, -> { where(status: %w[claimed in_progress]) }
   scope :pending_review, -> { where(status: %w[submitted reviewing]) }
+  scope :pending_human_review, -> { where(status: 'reviewing').where(ai_review_completed: true) }
   scope :completed, -> { where(status: 'approved') }
   scope :by_type, ->(type) { where(bounty_type: type) }
   scope :by_points, -> { order(points: :desc) }
@@ -86,6 +107,14 @@ class Bounty < ApplicationRecord
   scope :recent, -> { order(created_at: :desc) }
   scope :high_value, -> { where('points >= ?', 200) }
   scope :quick_wins, -> { where('points <= ?', 50) }
+  
+  # User-funded bounty scopes
+  scope :platform_funded, -> { where(funding_source: 'platform') }
+  scope :user_funded, -> { where(funding_source: 'user') }
+  scope :funded_by_user, ->(user) { where(funded_by: user) }
+  scope :escrowed, -> { where(escrow_status: 'escrowed') }
+  scope :requires_pr, -> { where(requires_pr: true) }
+  scope :awaiting_human_review, -> { pending_human_review }
 
   # Callbacks
   before_validation :set_defaults, on: :create
@@ -132,6 +161,55 @@ class Bounty < ApplicationRecord
       metadata: { ticket_number: ticket.ticket_number }
     )
   end
+
+  # Create a user-funded bounty (user pays from their AMOS token balance)
+  def self.create_user_funded!(
+    entity:,
+    created_by:,
+    title:,
+    description:,
+    bounty_type:,
+    points:,
+    requires_pr: false,
+    target_repo: nil,
+    target_branch: 'main',
+    expires_in: 30.days,
+    metadata: {}
+  )
+    # Validate user has sufficient AMOS token balance
+    user_balance = TokenStake.for_user(created_by).active.sum(:current_amount)
+    raise InsufficientBalanceError, "Insufficient AMOS balance (have: #{user_balance.round(2)}, need: #{points})" if user_balance < points
+
+    transaction do
+      bounty = create!(
+        entity: entity,
+        created_by: created_by,
+        funded_by: created_by,
+        title: title,
+        description: description,
+        bounty_type: bounty_type,
+        points: points,
+        source: 'user_funded',
+        funding_source: 'user',
+        funded_amount: points,
+        escrow_status: 'escrowed',
+        requires_pr: requires_pr,
+        target_repo: target_repo,
+        target_branch: target_branch,
+        reviewer_type: 'creator',  # Creator reviews their own bounties
+        requires_human_review: true,
+        expires_at: expires_in.from_now,
+        metadata: metadata
+      )
+
+      # Escrow the tokens (deduct from user's stake)
+      BountyEscrowService.escrow!(bounty: bounty, user: created_by, amount: points)
+
+      bounty
+    end
+  end
+
+  class InsufficientBalanceError < StandardError; end
 
   # ═══════════════════════════════════════════════════════════════════════════
   # STATUS TRANSITIONS
@@ -224,6 +302,169 @@ class Bounty < ApplicationRecord
 
     # Release for others to claim
     release_claim!
+    
+    # Refund escrow if user-funded
+    refund_escrow! if user_funded?
+  end
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # HUMAN REVIEW WORKFLOW
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # Record AI pre-review result (always happens before human review)
+  def record_ai_review!(result)
+    update!(
+      ai_review_completed: true,
+      ai_review_result: result,
+      ai_review_at: Time.current
+    )
+  end
+
+  # Check if ready for human review
+  def ready_for_human_review?
+    status == 'reviewing' && ai_review_completed? && requires_human_review?
+  end
+
+  # Get the appropriate reviewer for this bounty
+  def required_reviewer
+    case reviewer_type
+    when 'creator'
+      created_by || funded_by
+    when 'admin'
+      nil  # Any admin can review
+    when 'specific_user'
+      designated_reviewer
+    else
+      # 'auto' - system bounties need admin, user bounties need creator
+      system_bounty? ? nil : (created_by || funded_by)
+    end
+  end
+
+  # Can this user review this bounty?
+  def can_be_reviewed_by?(user)
+    return false unless ready_for_human_review?
+    
+    case reviewer_type
+    when 'creator'
+      user == created_by || user == funded_by || user.admin?
+    when 'admin'
+      user.admin?
+    when 'specific_user'
+      user == designated_reviewer || user.admin?
+    else
+      # System bounties require admin
+      if system_bounty?
+        user.admin?
+      else
+        user == created_by || user == funded_by || user.admin?
+      end
+    end
+  end
+
+  # Human approves the work
+  def human_approve!(reviewer:, notes: nil, final_points: nil)
+    return false unless can_be_reviewed_by?(reviewer)
+    return false unless ready_for_human_review?
+
+    # Validate PR merged if required
+    if requires_pr? && !pr_merged?
+      return { success: false, error: "PR must be merged before approval" }
+    end
+
+    transaction do
+      update!(
+        status: 'approved',
+        reviewed_by: reviewer,
+        approved_at: Time.current,
+        human_review_at: Time.current,
+        human_review_notes: notes,
+        final_points: final_points || points,
+        review_notes: notes
+      )
+
+      # Release escrow to claimant if user-funded
+      release_escrow! if user_funded?
+
+      # Create contribution record
+      create_contribution_for_claimer!
+    end
+
+    true
+  end
+
+  # Human rejects the work
+  def human_reject!(reviewer:, notes:)
+    return false unless can_be_reviewed_by?(reviewer)
+    return false unless ready_for_human_review?
+
+    transaction do
+      update!(
+        status: 'rejected',
+        reviewed_by: reviewer,
+        rejected_at: Time.current,
+        human_review_at: Time.current,
+        human_review_notes: notes,
+        review_notes: notes
+      )
+
+      # Refund escrow if user-funded
+      refund_escrow! if user_funded?
+
+      # Release for others to claim
+      release_claim!
+    end
+
+    true
+  end
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # USER-FUNDED BOUNTY HELPERS
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  def user_funded?
+    funding_source == 'user'
+  end
+
+  def platform_funded?
+    funding_source == 'platform' || funding_source.nil?
+  end
+
+  def system_bounty?
+    created_by.nil? && source.in?(%w[amos_thinking log_monitor])
+  end
+
+  def escrowed?
+    escrow_status == 'escrowed'
+  end
+
+  def release_escrow!
+    return unless user_funded? && escrowed?
+    
+    BountyEscrowService.release!(bounty: self, recipient: claimed_by, amount: funded_amount)
+    update!(escrow_status: 'released')
+  end
+
+  def refund_escrow!
+    return unless user_funded? && escrowed?
+    
+    BountyEscrowService.refund!(bounty: self, user: funded_by, amount: funded_amount)
+    update!(escrow_status: 'refunded')
+  end
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PR REQUIREMENTS
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  def requires_pr?
+    requires_pr == true
+  end
+
+  def pr_merged?
+    pull_request_submission&.is_merged? || pr_url.present? && commit_sha.present?
+  end
+
+  def pr_approved?
+    pull_request_submission&.is_approved?
   end
 
   def cancel!(reason: nil)
@@ -381,5 +622,17 @@ class Bounty < ApplicationRecord
     evidence << "Work: #{work_url}" if work_url.present?
     evidence << "#{work_artifacts.count} artifacts" if work_artifacts.present? && work_artifacts.any?
     evidence.join(' | ')
+  end
+
+  def user_funded_requires_funder
+    if funding_source == 'user' && funded_by.nil?
+      errors.add(:funded_by, "is required for user-funded bounties")
+    end
+  end
+
+  def pr_required_has_repo
+    if requires_pr? && target_repo.blank?
+      errors.add(:target_repo, "is required when PR is required")
+    end
   end
 end

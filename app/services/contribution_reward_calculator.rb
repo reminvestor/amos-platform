@@ -140,6 +140,64 @@ class ContributionRewardCalculator
       )
     end
 
+    # === REVIEW REWARDS ===
+    
+    # Reviewers earn points for reviewing AI-generated work
+    # Default: 10% of bounty points, with quality multipliers
+    REVIEW_POINTS = {
+      base_percentage: 10,      # 10% of bounty points as base review reward
+      excellent_multiplier: 1.5, # 95%+ accuracy, 50+ reviews
+      good_multiplier: 1.2,      # 90%+ accuracy, 20+ reviews
+      poor_multiplier: 0.5       # < 80% accuracy
+    }.freeze
+
+    # Calculate review reward for reviewing a bounty
+    #
+    # @param bounty_points [Numeric] Points of the bounty being reviewed
+    # @param quality_multiplier [Numeric] Quality multiplier based on reviewer history
+    # @param total_review_points_today [Numeric] Total review points earned today
+    # @return [Hash] Reward details
+    def calculate_review_reward(bounty_points:, quality_multiplier: 1.0, total_review_points_today: nil)
+      base_points = bounty_points * REVIEW_POINTS[:base_percentage] / 100.0
+      your_points = (base_points * quality_multiplier).round(2)
+      
+      if total_review_points_today.nil?
+        return {
+          points: your_points,
+          base_points: base_points,
+          multiplier: quality_multiplier,
+          tokens: nil,
+          note: "Tokens calculated at end of period based on pool share"
+        }
+      end
+      
+      result = calculate_pool_share(
+        your_points: your_points,
+        total_points_today: total_review_points_today
+      )
+      
+      result[:base_points] = base_points
+      result[:multiplier] = quality_multiplier
+      result
+    end
+
+    # Get quality multiplier for a reviewer
+    #
+    # @param total_reviews [Integer] Total reviews completed
+    # @param accuracy [Numeric] Percentage of reviews upheld (0-100)
+    # @return [Numeric] Quality multiplier
+    def review_quality_multiplier(total_reviews:, accuracy:)
+      if total_reviews >= 50 && accuracy >= 95
+        REVIEW_POINTS[:excellent_multiplier]
+      elsif total_reviews >= 20 && accuracy >= 90
+        REVIEW_POINTS[:good_multiplier]
+      elsif accuracy < 80
+        REVIEW_POINTS[:poor_multiplier]
+      else
+        1.0
+      end
+    end
+
     # Calculate combined reward (sales + bounties in same pool)
     #
     # @param your_points [Numeric] Your total points (users + bounties)
@@ -183,7 +241,14 @@ class ContributionRewardCalculator
           referrals: "1 email = #{REFERRAL_POINTS[:email_sent]} pt, 1 signup = #{REFERRAL_POINTS[:signup]} pts, 1 conversion = #{REFERRAL_POINTS[:conversion]} pts",
           sales: "1 user signed up = 1 point",
           bounties: "Bounty value = points",
+          reviews: "#{REVIEW_POINTS[:base_percentage]}% of bounty points × quality multiplier",
           tokens: "Your points / Total points × Daily pool"
+        },
+        review_multipliers: {
+          excellent: "#{REVIEW_POINTS[:excellent_multiplier]}x (50+ reviews, 95%+ accuracy)",
+          good: "#{REVIEW_POINTS[:good_multiplier]}x (20+ reviews, 90%+ accuracy)",
+          standard: "1.0x (base rate)",
+          poor: "#{REVIEW_POINTS[:poor_multiplier]}x (< 80% accuracy)"
         },
         note: "Token decay adjusts based on platform economics. See PlatformEconomicsService."
       }

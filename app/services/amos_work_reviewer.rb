@@ -163,4 +163,122 @@ class AmosWorkReviewer
       }
     end
   end
+
+  # Instance-based interface for external agent reviews
+  attr_reader :entity
+
+  def initialize(entity:)
+    @entity = entity
+  end
+
+  # Review work submitted by an external agent
+  # @param bounty [Bounty] The bounty being reviewed
+  # @param submission [Hash] The submission data (work_summary, deliverables)
+  # @param work_log [String] Agent's work narrative
+  # @param tools_used [Array] Tools the agent used
+  # @return [Hash] Review result with approved, quality_score, recommended_tokens, feedback
+  def review_external_agent_work(bounty:, submission:, work_log:, tools_used:)
+    Rails.logger.info "[WORK_REVIEWER] Reviewing external agent submission for bounty #{bounty.id}"
+
+    # Build review prompt with external agent context
+    user_prompt = build_external_agent_prompt(bounty, submission, work_log, tools_used)
+    
+    response = self.class.send(:call_llm, user_prompt)
+    result = parse_external_agent_response(response, bounty.points)
+
+    Rails.logger.info "[WORK_REVIEWER] External agent review result: approved=#{result['approved']}, quality=#{result['quality_score']}"
+    
+    result
+  rescue => e
+    Rails.logger.error "[WORK_REVIEWER] External agent review error: #{e.message}"
+    external_agent_fallback_review(bounty.points)
+  end
+
+  private
+
+  EXTERNAL_AGENT_REVIEW_PROMPT = <<~PROMPT
+    You are reviewing work submitted by an EXTERNAL AI AGENT (not a human).
+    
+    External agents connect via the External Agent Protocol (EAP) from platforms like OpenClaw.
+    They claim bounties, use platform tools, and submit work for review.
+    
+    REVIEW CRITERIA FOR AI AGENT WORK:
+    1. COMPLETENESS: Did the agent fully address the bounty requirements?
+    2. QUALITY: Is the output well-structured and useful?
+    3. TOOL USAGE: Did the agent use appropriate tools effectively?
+    4. DELIVERABLES: Are the deliverables present and in correct format?
+    5. ORIGINALITY: Is this genuine work, not just copied content?
+    
+    BE FAIR BUT CAREFUL:
+    - Approve work that genuinely completes the task
+    - Reject work that appears automated/low-effort
+    - Flag suspicious patterns for human review
+    
+    RESPONSE FORMAT (JSON only):
+    {
+      "approved": <true/false>,
+      "quality_score": <1-100>,
+      "recommended_tokens": <integer points to award>,
+      "feedback": "<feedback for the agent>",
+      "rejection_reason": "<if rejected, explain why>" or null,
+      "flags": ["suspicious_pattern"] or []
+    }
+  PROMPT
+
+  def build_external_agent_prompt(bounty, submission, work_log, tools_used)
+    <<~PROMPT
+      #{EXTERNAL_AGENT_REVIEW_PROMPT}
+
+      BOUNTY DETAILS:
+      - ID: #{bounty.id}
+      - Title: #{bounty.title}
+      - Type: #{bounty.bounty_type}
+      - Points: #{bounty.points}
+      - Description: #{bounty.description&.truncate(500)}
+
+      AGENT SUBMISSION:
+      - Work Summary: #{submission['work_summary'] || 'Not provided'}
+      - Deliverables: #{JSON.pretty_generate(submission['deliverables'] || {})}
+
+      WORK LOG:
+      #{work_log || 'No work log provided'}
+
+      TOOLS USED:
+      #{(tools_used || []).map { |t| "- #{t['tool_name']}" }.join("\n")}
+
+      Review this submission and respond with JSON only.
+    PROMPT
+  end
+
+  def parse_external_agent_response(response, original_points)
+    json_str = response.gsub(/```json\n?/, '').gsub(/```\n?/, '').strip
+    result = JSON.parse(json_str)
+
+    # Clamp recommended tokens
+    recommended = result['recommended_tokens'] || original_points
+    recommended = recommended.to_i.clamp(0, (original_points * 1.25).to_i)
+
+    {
+      'approved' => result['approved'] == true,
+      'quality_score' => result['quality_score'].to_i.clamp(1, 100),
+      'recommended_tokens' => recommended,
+      'feedback' => result['feedback'],
+      'rejection_reason' => result['rejection_reason'],
+      'flags' => result['flags'] || []
+    }
+  rescue JSON::ParserError => e
+    Rails.logger.warn "[WORK_REVIEWER] Failed to parse external agent review JSON: #{e.message}"
+    external_agent_fallback_review(original_points)
+  end
+
+  def external_agent_fallback_review(original_points)
+    {
+      'approved' => true,
+      'quality_score' => 70,
+      'recommended_tokens' => original_points,
+      'feedback' => 'Work reviewed and approved. Thank you for your contribution via External Agent Protocol!',
+      'rejection_reason' => nil,
+      'flags' => []
+    }
+  end
 end

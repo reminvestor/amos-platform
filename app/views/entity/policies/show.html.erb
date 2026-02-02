@@ -1,0 +1,182 @@
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);">
+        <i data-lucide="shield-alert"></i>
+      </div>
+      <div class="header-text">
+        <h1><%= @policy.name %></h1>
+        <p>AI Usage Policy Details</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to edit_entity_policy_path(@policy), class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="edit"></i>
+        <span>Edit</span>
+      <% end %>
+      <%= button_to toggle_entity_policy_path(@policy), method: :post, class: "admin-btn #{@policy.is_active ? 'admin-btn-warning' : 'admin-btn-success'}" do %>
+        <i data-lucide="<%= @policy.is_active ? 'pause-circle' : 'play-circle' %>"></i>
+        <span><%= @policy.is_active ? 'Disable' : 'Enable' %></span>
+      <% end %>
+      <%= link_to entity_policies_path, class: "admin-btn admin-btn-secondary" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Back</span>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <%# Policy Details Card %>
+      <div class="admin-card mb-4">
+        <div style="padding: 1.5rem 1.5rem 1rem 1.5rem; border-bottom: 1px solid var(--border-color);">
+          <h5 class="card-title mb-0">Policy Configuration</h5>
+        </div>
+        <div class="p-4">
+          <div class="row">
+            <div class="col-md-6 mb-4">
+              <label class="form-label text-muted small mb-1">Status</label>
+              <div>
+                <% if @policy.is_active %>
+                  <span class="admin-badge admin-badge-success">
+                    <i data-lucide="check-circle" class="icon-sm"></i>
+                    <span>Active</span>
+                  </span>
+                <% else %>
+                  <span class="admin-badge admin-badge-secondary">
+                    <i data-lucide="circle" class="icon-sm"></i>
+                    <span>Inactive</span>
+                  </span>
+                <% end %>
+              </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+              <label class="form-label text-muted small mb-1">Resource Type</label>
+              <div>
+                <span class="admin-badge admin-badge-info"><%= @policy.resource_type %></span>
+              </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+              <label class="form-label text-muted small mb-1">Action Type</label>
+              <div>
+                <span class="admin-badge admin-badge-purple"><%= @policy.action.titleize %></span>
+              </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+              <label class="form-label text-muted small mb-1">Agent Role</label>
+              <div style="color: var(--text-primary);">
+                <%= @policy.agent_role.present? ? @policy.agent_role.titleize : 'All Agents' %>
+              </div>
+            </div>
+          </div>
+
+          <hr style="border-color: var(--border-color); margin: 1rem 0;">
+
+          <h6 class="mb-3" style="color: var(--text-primary);">
+            <i data-lucide="gauge" class="me-2 icon-purple"></i>
+            Limits & Budgets
+          </h6>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label text-muted small mb-1">Max Daily API Calls</label>
+              <div style="color: var(--text-primary); font-size: 1.25rem; font-weight: 600;">
+                <%= @policy.max_daily_calls.present? ? number_with_delimiter(@policy.max_daily_calls) : '—' %>
+              </div>
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label text-muted small mb-1">Max Write Operations</label>
+              <div style="color: var(--text-primary); font-size: 1.25rem; font-weight: 600;">
+                <%= @policy.max_write_calls.present? ? number_with_delimiter(@policy.max_write_calls) : '—' %>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <label class="form-label text-muted small mb-1">Requires User Confirmation</label>
+            <div>
+              <% if @policy.requires_confirmation %>
+                <span class="admin-badge admin-badge-warning">
+                  <i data-lucide="alert-circle" class="icon-sm"></i>
+                  <span>Yes - User must confirm</span>
+                </span>
+              <% else %>
+                <span class="admin-badge admin-badge-secondary">
+                  <i data-lucide="check" class="icon-sm"></i>
+                  <span>No - Automatic execution</span>
+                </span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <%# Info Card %>
+      <div class="admin-card mb-4">
+        <div style="padding: 1.5rem 1.5rem 1rem 1.5rem; border-bottom: 1px solid var(--border-color);">
+          <h5 class="card-title mb-0">
+            <i data-lucide="info" class="me-2 icon-purple"></i>
+            Policy Info
+          </h5>
+        </div>
+        <div class="p-4">
+          <div class="mb-3">
+            <label class="form-label text-muted small mb-1">Created</label>
+            <div style="color: var(--text-primary);">
+              <%= @policy.created_at.strftime("%B %d, %Y at %I:%M %p") %>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small mb-1">Last Updated</label>
+            <div style="color: var(--text-primary);">
+              <%= @policy.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Quick Actions Card %>
+      <div class="admin-card">
+        <div style="padding: 1.5rem 1.5rem 1rem 1.5rem; border-bottom: 1px solid var(--border-color);">
+          <h5 class="card-title mb-0">
+            <i data-lucide="zap" class="me-2 icon-purple"></i>
+            Actions
+          </h5>
+        </div>
+        <div class="p-4">
+          <div class="d-grid gap-2">
+            <%= link_to edit_entity_policy_path(@policy), class: "admin-btn admin-btn-outline w-100" do %>
+              <i data-lucide="edit"></i>
+              <span>Edit Policy</span>
+            <% end %>
+            <%= button_to toggle_entity_policy_path(@policy), method: :post, class: "admin-btn admin-btn-outline w-100", style: "border-color: #{@policy.is_active ? 'rgb(234, 179, 8)' : 'rgb(74, 222, 128)'}; color: #{@policy.is_active ? 'rgb(234, 179, 8)' : 'rgb(74, 222, 128)'};" do %>
+              <i data-lucide="<%= @policy.is_active ? 'pause-circle' : 'play-circle' %>"></i>
+              <span><%= @policy.is_active ? 'Disable Policy' : 'Enable Policy' %></span>
+            <% end %>
+            <%= button_to entity_policy_path(@policy), method: :delete, data: { confirm: "Are you sure you want to delete this policy?" }, class: "admin-btn admin-btn-outline w-100", style: "border-color: #ef4444; color: #ef4444;" do %>
+              <i data-lucide="trash-2"></i>
+              <span>Delete Policy</span>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>

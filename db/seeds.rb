@@ -85,6 +85,13 @@ load Rails.root.join('db', 'seeds', 'integrations.rb')
 load Rails.root.join('db', 'seeds', 'integration_actions.rb')
 load Rails.root.join('db', 'seeds', 'godaddy_integration.rb')
 
+# Clean up integration operations: remove duplicates, add proper schemas
+# This must run AFTER integrations.rb and integration_actions.rb
+load Rails.root.join('db', 'seeds', 'integration_operations_cleanup.rb')
+
 if Rails.env.development?
   load Rails.root.join('db', 'seeds', 'demo_users.rb')
 end
+
+# Load policy rules (after entities exist)
+load Rails.root.join('db', 'seeds', 'policy_rules.rb')

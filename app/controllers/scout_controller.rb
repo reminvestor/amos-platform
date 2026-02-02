@@ -6372,27 +6372,80 @@ class ScoutController < ApplicationController
     )
   end
   
+  # Process response content to detect and extract HTML to canvas
+  def process_response_html(content)
+    return { clean_content: content, canvas_data: nil } if content.blank?
+    
+    # Use the ResponseHtmlProcessor to detect and extract HTML
+    result = Amos::ResponseHtmlProcessor.process(content)
+    
+    if result[:canvas_suggestion]
+      Rails.logger.info "[Scout] Extracted HTML to canvas: #{result[:canvas_suggestion][:canvas_data][:title]}"
+      {
+        clean_content: result[:content],
+        canvas_data: result[:canvas_suggestion][:canvas_data]
+      }
+    else
+      { clean_content: content, canvas_data: nil }
+    end
+  end
+  
   def setup_amos_streaming
+    # Accumulator for streaming content to detect HTML at message boundaries
+    @streaming_content_buffer = ""
+    
     # Set up a callback to stream Amos responses back through SSE
     @orchestrator.on_stream do |response|
       case response[:type]
       when 'assistant_message', 'amos_response'
+        content = response[:content].to_s
+        
         # Only stream if this is a streaming chunk, not the complete message
         # Complete messages are handled by ActionCable separately
         if response[:metadata]&.dig(:streaming)
-          Rails.logger.debug "[Scout SSE] Streaming chunk to frontend: #{response[:content][0..20]}..."
-          stream_update(response[:content])
+          # Accumulate content for HTML detection at message end
+          @streaming_content_buffer += content
+          
+          # Check for rich HTML in accumulated content (but only act on complete messages)
+          # For now, just stream the chunk - frontend will handle display
+          Rails.logger.debug "[Scout SSE] Streaming chunk to frontend: #{content[0..20]}..."
+          stream_update(content)
           
           # Chunks are now properly paced at the source
           # No additional delay needed here
         elsif response[:metadata]&.dig(:complete)
-          # Complete message - just save it, don't stream it
-          # The UI already has this content from streaming chunks
-          save_scout_message("assistant", response[:content])
+          # Complete message - check for HTML and potentially route to canvas
+          full_content = @streaming_content_buffer.present? ? @streaming_content_buffer : content
+          @streaming_content_buffer = "" # Reset buffer
+          
+          # Process HTML if present - this will extract to canvas if needed
+          processed = process_response_html(full_content)
+          
+          # Save the cleaned message
+          save_scout_message("assistant", processed[:clean_content])
+          
+          # If we extracted HTML to canvas, stream the canvas update
+          if processed[:canvas_data]
+            stream_update({
+              type: 'load_canvas',
+              canvas: 'freeform_canvas',
+              canvas_data: processed[:canvas_data]
+            })
+          end
         elsif !response[:metadata]&.dig(:streaming) && !response[:metadata]&.dig(:already_saved)
           # Non-streaming message (like delegation acknowledgments)
-          stream_update(response[:content])
-          save_scout_message("assistant", response[:content])
+          # Check for HTML here too
+          processed = process_response_html(content)
+          stream_update(processed[:clean_content])
+          save_scout_message("assistant", processed[:clean_content])
+          
+          if processed[:canvas_data]
+            stream_update({
+              type: 'load_canvas',
+              canvas: 'freeform_canvas',
+              canvas_data: processed[:canvas_data]
+            })
+          end
         end
         
       when 'job_status'
