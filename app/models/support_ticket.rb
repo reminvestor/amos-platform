@@ -18,6 +18,7 @@ class SupportTicket < ApplicationRecord
   has_many :code_fixes, dependent: :destroy
   has_many :pull_request_submissions, dependent: :destroy
   has_many :error_log_entries, dependent: :nullify
+  has_one :bounty, dependent: :nullify
 
   # Sources
   SOURCES = %w[

@@ -168,8 +168,13 @@ module Tools
     def perform_simple_stats(artifact, args)
       data = artifact.sample_rows || []
       
-      # Get numeric fields
-      numeric_fields = data.first&.select { |k, v| v.is_a?(Numeric) }&.keys || []
+      # Ensure we have hashes with proper access
+      return success_response(data: { total_rows: 0, fields: {} }, operation: 'simple_stats') if data.empty?
+      return error_response("Sample data format error: expected array of hashes") unless data.first.is_a?(Hash)
+      
+      # Get numeric fields - ensure hash access works with string keys
+      first_row = data.first.with_indifferent_access
+      numeric_fields = first_row.select { |k, v| v.is_a?(Numeric) }.keys
       
       stats = {
         total_rows: data.length,
@@ -286,7 +291,11 @@ module Tools
     end
     
     def generate_aggregation_html(data, operation)
-      return "<p>No data to display</p>" if data.empty?
+      return "<p>No data to display</p>" if data.nil? || (data.respond_to?(:empty?) && data.empty?)
+      
+      # Handle different data structures
+      return generate_stats_html(data) if operation == 'simple_stats' && data.is_a?(Hash)
+      return "<p>No tabular data</p>" unless data.is_a?(Array) && data.first.is_a?(Hash)
       
       # Get column names
       columns = data.first.keys
@@ -311,6 +320,39 @@ module Tools
       html
     end
     
+    def generate_stats_html(stats)
+      html = <<~HTML
+        <div class="stats-results">
+          <p><strong>Total Rows:</strong> #{stats[:total_rows]}</p>
+          <table class="table table-striped table-hover">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Count</th>
+                <th>Sum</th>
+                <th>Average</th>
+                <th>Min</th>
+                <th>Max</th>
+              </tr>
+            </thead>
+            <tbody>
+              #{(stats[:fields] || {}).map { |field, s|
+                "<tr>
+                  <td>#{field}</td>
+                  <td>#{s[:count]}</td>
+                  <td>#{format_value(s[:sum])}</td>
+                  <td>#{format_value(s[:avg])}</td>
+                  <td>#{format_value(s[:min])}</td>
+                  <td>#{format_value(s[:max])}</td>
+                </tr>"
+              }.join}
+            </tbody>
+          </table>
+        </div>
+      HTML
+      html
+    end
+
     def format_value(value)
       case value
       when Float

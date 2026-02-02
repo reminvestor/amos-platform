@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= content_for?(:title) ? yield(:title) : "Amos Governance - Shape the Platform" %></title>
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  
+  <style>
+    :root {
+      --amos-primary: #8b5cf6;
+      --amos-secondary: #a78bfa;
+      --amos-success: #22c55e;
+      --amos-warning: #f59e0b;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #1a0f2e 0%, #2d1b4e 100%);
+      min-height: 100vh;
+    }
+    
+    .navbar-brand {
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--amos-primary), var(--amos-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, var(--amos-primary), var(--amos-secondary));
+      border: none;
+    }
+    
+    .stat-card {
+      text-align: center;
+      padding: 1.5rem;
+    }
+    
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--amos-primary), var(--amos-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .stat-label {
+      color: #94a3b8;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .proposal-status {
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    
+    .status-active { background: #22c55e33; color: #22c55e; }
+    .status-passed { background: #6366f133; color: #6366f1; }
+    .status-rejected { background: #ef444433; color: #ef4444; }
+    
+    .wallet-btn {
+      background: rgba(139, 92, 246, 0.2);
+      border: 1px solid var(--amos-primary);
+      color: white;
+    }
+    
+    .wallet-btn:hover {
+      background: var(--amos-primary);
+    }
+    
+    .token-balance {
+      background: rgba(139, 92, 246, 0.2);
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
+    }
+  </style>
+  
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark border-bottom border-secondary">
+    <div class="container">
+      <a class="navbar-brand" href="<%= gov_root_path %>">
+        <i class="bi bi-bank me-2"></i>Amos Governance
+      </a>
+      
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="<%= gov_root_path %>">Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">Proposals</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">Treasury</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">Parameters</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">Analytics</a>
+          </li>
+        </ul>
+        
+        <div class="d-flex align-items-center gap-3">
+          <a href="https://build.amoslabs.com" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-hammer me-1"></i>Build
+          </a>
+          <% if wallet_connected? %>
+            <div class="token-balance d-flex align-items-center gap-2">
+              <span class="text-muted small">AMOS</span>
+              <span class="fw-bold"><%= number_with_delimiter(amos_balance) %></span>
+            </div>
+            <span class="badge bg-success">
+              <i class="bi bi-wallet2 me-1"></i><%= current_wallet[0..4] %>...<%= current_wallet[-4..] %>
+            </span>
+          <% else %>
+            <button class="btn wallet-btn btn-sm" id="connect-wallet">
+              <i class="bi bi-wallet2 me-1"></i>Connect Wallet
+            </button>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </nav>
+  
+  <main class="container py-4">
+    <% if flash[:notice] %>
+      <div class="alert alert-success alert-dismissible fade show">
+        <%= flash[:notice] %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    <% end %>
+    
+    <% if flash[:alert] %>
+      <div class="alert alert-danger alert-dismissible fade show">
+        <%= flash[:alert] %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    <% end %>
+    
+    <%= yield %>
+  </main>
+  
+  <footer class="border-top border-secondary py-4 mt-5">
+    <div class="container text-center text-muted">
+      <p class="mb-0">
+        <a href="https://app.amoslabs.com" class="text-muted text-decoration-none me-3">App</a>
+        <a href="https://build.amoslabs.com" class="text-muted text-decoration-none me-3">Build</a>
+        <a href="https://docs.amoslabs.com" class="text-muted text-decoration-none">Docs</a>
+      </p>
+      <small>&copy; <%= Date.current.year %> Amos Labs. Governed by AMOS token holders.</small>
+    </div>
+  </footer>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Wallet connection placeholder
+    document.getElementById('connect-wallet')?.addEventListener('click', async () => {
+      alert('Solana wallet connection coming soon!\\n\\nThis will integrate with Phantom, Solflare, and other Solana wallets.');
+    });
+  </script>
+</body>
+</html>

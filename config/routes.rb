@@ -156,6 +156,63 @@ Rails.application.routes.draw do
         end
       end
 
+      # External Agent Protocol (EAP) - OpenClaw and other external AI agents
+      resources :external_agents, only: [:index, :destroy] do
+        collection do
+          post :register
+          get :bounties
+          get :status
+        end
+      end
+      
+      # External agent bounty operations (uses agent API key, not user key)
+      scope :external_agents do
+        post 'bounties/:bounty_id/claim', to: 'external_agents#claim_bounty', as: :external_agent_claim_bounty
+        post 'bounties/:bounty_id/submit', to: 'external_agents#submit_work', as: :external_agent_submit_work
+        post 'tools/:tool_name/execute', to: 'external_agents#execute_tool', as: :external_agent_execute_tool
+        get 'executions/:id', to: 'external_agents#execution_status', as: :external_agent_execution
+        
+        # AMOS recommendations and notifications
+        get 'notifications', to: 'external_agents#notifications', as: :external_agent_notifications
+        post 'notifications/:id/action', to: 'external_agents#notification_action', as: :external_agent_notification_action
+        get 'recommended_bounties', to: 'external_agents#recommended_bounties', as: :external_agent_recommended_bounties
+        
+        # Platform capabilities (for agent context)
+        get 'platform_info', to: 'external_agents#platform_info', as: :external_agent_platform_info
+        get 'available_tools', to: 'external_agents#available_tools', as: :external_agent_available_tools
+        get 'bounty_types', to: 'external_agents#bounty_types', as: :external_agent_bounty_types
+      end
+
+      # Bounty review (human verification of completed work)
+      resources :bounty_reviews, only: [:index, :show] do
+        member do
+          post :approve
+          post :reject
+        end
+      end
+
+      # User-funded bounties
+      resources :bounties, only: [:index, :show, :create] do
+        collection do
+          get :my_funded  # Bounties user is funding
+          get :my_created  # Bounties user created
+        end
+        member do
+          post :cancel  # Cancel and refund escrowed bounty
+        end
+      end
+
+      # User skills for review eligibility
+      resources :user_skills, only: [:index, :show, :create], param: :skill_type do
+        member do
+          post :request_verification
+        end
+        collection do
+          get :review_history
+          get :eligible_bounties
+        end
+      end
+
       resources :contacts, only: [ :create ]
       resources :contacts_list, only: [ :index, :show, :create, :update, :destroy ], path: 'contacts_list'
 
@@ -648,7 +705,12 @@ Rails.application.routes.draw do
     end
 
     # Entity-level Agent & Tool Management
-    resources :agent_plugins
+    resources :agent_plugins do
+      collection do
+        get :import
+        post :import_skill
+      end
+    end
     resources :tools
     
     # User-facing Scheduled Tasks Management
@@ -972,6 +1034,73 @@ Rails.application.routes.draw do
   # Marketing site moved to external service - redirect root to app login
   constraints(lambda { |req| !req.subdomain.present? || req.subdomain == 'www' }) do
     get '/', to: redirect('/users/sign_in')
+  end
+
+  # ========================================
+  # Builder Portal (build.amoslabs.com)
+  # For external contributors: bounty board, proposals, leaderboard
+  # ========================================
+  constraints(lambda { |req| SubdomainConfig.build_subdomain?(req.subdomain) }) do
+    scope module: 'build' do
+      root to: 'dashboard#index', as: :build_root
+      
+      resources :bounties, only: [:index, :show] do
+        member do
+          post :claim
+          post :submit_work
+        end
+      end
+      
+      resources :proposals, only: [:index, :show, :new, :create] do
+        member do
+          post :vote
+          delete :withdraw_vote
+        end
+      end
+      
+      resources :contributions, only: [:index, :show]
+      
+      get 'leaderboard', to: 'leaderboard#index'
+      get 'my-contributions', to: 'contributions#my_contributions'
+      get 'my-rewards', to: 'rewards#index'
+    end
+  end
+  
+  # ========================================
+  # Governance Portal (gov.amoslabs.com)
+  # For token holders: voting, treasury, parameter governance
+  # ========================================
+  constraints(lambda { |req| SubdomainConfig.gov_subdomain?(req.subdomain) }) do
+    scope module: 'gov' do
+      root to: 'dashboard#index', as: :gov_root
+      
+      resources :proposals, only: [:index, :show, :new, :create] do
+        member do
+          post :vote
+          delete :withdraw_vote
+        end
+        collection do
+          get :active
+          get :passed
+          get :rejected
+        end
+      end
+      
+      resource :treasury, only: [:show] do
+        get :transactions
+        get :allocations
+      end
+      
+      resources :parameters, only: [:index, :show] do
+        member do
+          post :propose_change
+        end
+      end
+      
+      get 'analytics', to: 'analytics#index'
+      get 'my-votes', to: 'votes#my_votes'
+      get 'my-stakes', to: 'stakes#index'
+    end
   end
 
   # Debug routes for troubleshooting

@@ -154,6 +154,26 @@
             </div>
           </div>
 
+          <%# Token Economy Category %>
+          <div class="nav-group #{'active' if controller_name.in?(%w[platform_economics token_stakes revenue_distributions])}">
+            <div class="nav-item nav-group-header" style="cursor: pointer;">
+              <i data-lucide="coins"></i>
+              <span>Token Economy</span>
+              <i data-lucide="chevron-down" class="chevron-icon"></i>
+            </div>
+            <div class="nav-submenu">
+              <%= link_to admin_platform_economics_path, class: "nav-subitem #{'active' if controller_name == 'platform_economics'}" do %>
+                <span>Platform Economics</span>
+              <% end %>
+              <%= link_to transparency_path, class: "nav-subitem" do %>
+                <span>Transparency Dashboard</span>
+              <% end %>
+              <%= link_to admin_billing_index_path, class: "nav-subitem #{'active' if controller_name == 'billing' && action_name == 'token_economy'}" do %>
+                <span>Token Distribution</span>
+              <% end %>
+            </div>
+          </div>
+
           <%# System Category %>
           <div class="nav-group #{'active' if controller_name.in?(%w[integrations connections users billing])}">
             <div class="nav-item nav-group-header" style="cursor: pointer;">

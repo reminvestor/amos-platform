@@ -1,0 +1,22 @@
+[package]
+name = "amos_governance"
+version = "0.1.0"
+description = "On-chain governance program for Amos Labs platform - priority algorithms, reward calculations, and quality gates"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/amos-labs/amos-governance"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "amos_governance"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.29.0"
+anchor-spl = "0.29.0"

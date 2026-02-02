@@ -1,0 +1,204 @@
+<div class="container-fluid py-4">
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="file-code"></i>
+      </div>
+      <div class="header-text">
+        <h1>Import Claude Skill</h1>
+        <p>Import a SKILL.md file to create an agent loadout</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <%= link_to agent_plugins_path, class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="arrow-left" aria-hidden="true"></i>
+        <span>Back to Agents</span>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-card-title">Import Options</h5>
+        </div>
+        <div class="admin-card-body">
+          <%= form_tag import_skill_agent_plugins_path, method: :post, multipart: true, class: "import-form" do %>
+            
+            <!-- Tab Navigation -->
+            <ul class="nav nav-tabs mb-4" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="paste-tab" data-bs-toggle="tab" data-bs-target="#paste-panel" type="button" role="tab">
+                  <i data-lucide="clipboard-paste" class="me-2" style="width: 16px; height: 16px;"></i>
+                  Paste Content
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="url-tab" data-bs-toggle="tab" data-bs-target="#url-panel" type="button" role="tab">
+                  <i data-lucide="link" class="me-2" style="width: 16px; height: 16px;"></i>
+                  From URL
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="file-tab" data-bs-toggle="tab" data-bs-target="#file-panel" type="button" role="tab">
+                  <i data-lucide="upload" class="me-2" style="width: 16px; height: 16px;"></i>
+                  Upload File
+                </button>
+              </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+              <!-- Paste Content Tab -->
+              <div class="tab-pane fade show active" id="paste-panel" role="tabpanel">
+                <div class="mb-3">
+                  <label class="form-label">Paste SKILL.md Content</label>
+                  <%= text_area_tag :skill_content, nil, 
+                      class: "form-control font-monospace", 
+                      rows: 20,
+                      placeholder: "# Skill Name\n\nBrief description of what this skill does.\n\n## Description\n\nDetailed description...\n\n## Instructions\n\nStep-by-step instructions..." %>
+                  <div class="form-text">Paste the full content of a SKILL.md file</div>
+                </div>
+              </div>
+
+              <!-- URL Tab -->
+              <div class="tab-pane fade" id="url-panel" role="tabpanel">
+                <div class="mb-3">
+                  <label class="form-label">GitHub or Raw URL</label>
+                  <%= text_field_tag :skill_url, nil, 
+                      class: "form-control", 
+                      placeholder: "https://github.com/user/repo/blob/main/.claude/skills/my-skill/SKILL.md" %>
+                  <div class="form-text">
+                    Enter a GitHub URL (blob URLs will be automatically converted to raw) or a direct raw file URL
+                  </div>
+                </div>
+                <div class="alert alert-info small">
+                  <i data-lucide="info" class="me-2" style="width: 14px; height: 14px;"></i>
+                  <strong>Tip:</strong> You can paste a GitHub blob URL directly - we'll convert it to the raw format automatically.
+                </div>
+              </div>
+
+              <!-- File Upload Tab -->
+              <div class="tab-pane fade" id="file-panel" role="tabpanel">
+                <div class="mb-3">
+                  <label class="form-label">Upload SKILL.md File</label>
+                  <div class="upload-zone p-4 border-2 border-dashed rounded text-center" style="border-style: dashed; border-color: var(--bs-border-color);">
+                    <%= file_field_tag :skill_file, 
+                        class: "form-control", 
+                        accept: ".md,.markdown,text/markdown" %>
+                    <p class="text-muted mt-2 mb-0 small">Drag and drop or click to select a .md file</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <div class="d-flex justify-content-end gap-2">
+              <%= link_to "Cancel", agent_plugins_path, class: "admin-btn admin-btn-outline" %>
+              <%= submit_tag "Import Skill", class: "admin-btn admin-btn-primary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <!-- Help Card -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-card-title">
+            <i data-lucide="help-circle" class="me-2" style="width: 16px; height: 16px;"></i>
+            What are Claude Skills?
+          </h5>
+        </div>
+        <div class="admin-card-body">
+          <p class="small text-muted">
+            Claude Skills are structured markdown files that provide instructions for AI agents. 
+            They follow a three-level format:
+          </p>
+          
+          <div class="skill-level mb-3">
+            <strong class="d-block mb-1" style="color: var(--text-primary);">Level 1: Metadata</strong>
+            <p class="small text-muted mb-0">Name and brief description (~100 tokens)</p>
+          </div>
+          
+          <div class="skill-level mb-3">
+            <strong class="d-block mb-1" style="color: var(--text-primary);">Level 2: Instructions</strong>
+            <p class="small text-muted mb-0">Detailed step-by-step guidance (&lt;5k tokens)</p>
+          </div>
+          
+          <div class="skill-level mb-3">
+            <strong class="d-block mb-1" style="color: var(--text-primary);">Level 3: Resources</strong>
+            <p class="small text-muted mb-0">Scripts and reference materials (loaded as needed)</p>
+          </div>
+
+          <hr>
+          
+          <p class="small text-muted mb-2">
+            <strong>How Loadouts Compare:</strong>
+          </p>
+          <ul class="small text-muted">
+            <li><strong>Skills</strong> = Instructions (what to do)</li>
+            <li><strong>Loadouts</strong> = Permissions (what's allowed)</li>
+          </ul>
+          <p class="small text-muted">
+            When you import a skill, it becomes an Agent with the skill's instructions as its system prompt. 
+            You can then configure tool permissions, budgets, and data scopes.
+          </p>
+        </div>
+      </div>
+
+      <!-- Example Card -->
+      <div class="admin-card mt-4">
+        <div class="admin-card-header">
+          <h5 class="admin-card-title">
+            <i data-lucide="code" class="me-2" style="width: 16px; height: 16px;"></i>
+            SKILL.md Format
+          </h5>
+        </div>
+        <div class="admin-card-body">
+          <pre class="bg-dark text-light p-3 rounded small" style="font-size: 0.75rem; overflow-x: auto;"><code># Test-Driven Development
+
+Enforces RED-GREEN-REFACTOR cycles.
+
+## Description
+
+This skill implements TDD methodology...
+
+**Use this skill when:**
+- Implementing new features
+- Fixing bugs
+- Refactoring code
+
+## Instructions
+
+### The TDD Cycle
+
+1. RED: Write failing test first
+2. GREEN: Write minimal code to pass
+3. REFACTOR: Clean up
+
+## Examples
+
+```
+Use tdd skill for "user auth feature"
+```
+
+## Resources
+
+- [Testing Guide](resources/guide.md)</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>

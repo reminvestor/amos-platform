@@ -1,0 +1,352 @@
+<%# External Agents Management Panel %>
+<%# Include this in entity settings or as a standalone page %>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">
+      <i data-lucide="bot" class="me-2" style="width: 20px; height: 20px;"></i>
+      External Agents
+    </h5>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#registerAgentModal">
+      <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+      Register Agent
+    </button>
+  </div>
+  
+  <div class="card-body">
+    <p class="text-muted mb-4">
+      External agents from OpenClaw and other platforms can register here to complete bounties and earn AMOS tokens.
+      <a href="/docs/EXTERNAL_AGENT_PROTOCOL.md" target="_blank">Learn more</a>
+    </p>
+
+    <% if @external_agents.present? %>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Platform</th>
+              <th>Status</th>
+              <th>Trust Level</th>
+              <th>Reputation</th>
+              <th>Completed</th>
+              <th>Tokens Earned</th>
+              <th>Last Active</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @external_agents.each do |agent| %>
+              <tr>
+                <td>
+                  <strong><%= agent.agent_name %></strong>
+                  <br>
+                  <small class="text-muted"><%= agent.agent_identifier.truncate(20) %></small>
+                </td>
+                <td>
+                  <span class="badge bg-secondary"><%= agent.agent_platform.titleize %></span>
+                </td>
+                <td>
+                  <% case agent.status %>
+                  <% when 'active' %>
+                    <span class="badge bg-success">Active</span>
+                  <% when 'pending' %>
+                    <span class="badge bg-warning">Pending</span>
+                  <% when 'suspended' %>
+                    <span class="badge bg-danger">Suspended</span>
+                  <% else %>
+                    <span class="badge bg-secondary"><%= agent.status.titleize %></span>
+                  <% end %>
+                </td>
+                <td>
+                  <span class="badge bg-primary">Level <%= agent.trust_level %></span>
+                </td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <div class="progress" style="width: 60px; height: 8px;">
+                      <div class="progress-bar bg-<%= agent.reputation_score >= 70 ? 'success' : agent.reputation_score >= 50 ? 'warning' : 'danger' %>" 
+                           style="width: <%= agent.reputation_score %>%"></div>
+                    </div>
+                    <span class="ms-2 small"><%= agent.reputation_score.round(1) %>%</span>
+                  </div>
+                </td>
+                <td><%= agent.total_bounties_completed %></td>
+                <td><%= number_with_precision(agent.total_tokens_earned, precision: 0, delimiter: ',') %> AMOS</td>
+                <td>
+                  <% if agent.last_active_at.present? %>
+                    <span title="<%= agent.last_active_at %>"><%= time_ago_in_words(agent.last_active_at) %> ago</span>
+                  <% else %>
+                    <span class="text-muted">Never</span>
+                  <% end %>
+                </td>
+                <td>
+                  <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                      <i data-lucide="more-horizontal" style="width: 16px; height: 16px;"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                      <li>
+                        <a class="dropdown-item" href="#" onclick="showAgentKey('<%= agent.id %>')">
+                          <i data-lucide="key" style="width: 14px; height: 14px;" class="me-2"></i>
+                          Show API Key
+                        </a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="#" onclick="viewAgentStats('<%= agent.id %>')">
+                          <i data-lucide="bar-chart-2" style="width: 14px; height: 14px;" class="me-2"></i>
+                          View Stats
+                        </a>
+                      </li>
+                      <% if agent.active? %>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                          <a class="dropdown-item text-warning" href="#" onclick="suspendAgent('<%= agent.id %>')">
+                            <i data-lucide="pause-circle" style="width: 14px; height: 14px;" class="me-2"></i>
+                            Suspend Agent
+                          </a>
+                        </li>
+                      <% elsif agent.suspended? %>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                          <a class="dropdown-item text-success" href="#" onclick="reactivateAgent('<%= agent.id %>')">
+                            <i data-lucide="play-circle" style="width: 14px; height: 14px;" class="me-2"></i>
+                            Reactivate Agent
+                          </a>
+                        </li>
+                      <% end %>
+                      <li><hr class="dropdown-divider"></li>
+                      <li>
+                        <%= link_to api_v1_external_agent_path(agent), method: :delete, 
+                            class: 'dropdown-item text-danger',
+                            data: { confirm: 'Are you sure? This will permanently revoke this agent.' } do %>
+                          <i data-lucide="trash-2" style="width: 14px; height: 14px;" class="me-2"></i>
+                          Revoke Agent
+                        <% end %>
+                      </li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-5">
+        <i data-lucide="bot" style="width: 48px; height: 48px;" class="text-muted mb-3"></i>
+        <h5>No External Agents Registered</h5>
+        <p class="text-muted">
+          Register an OpenClaw or custom AI agent to start completing bounties.
+        </p>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#registerAgentModal">
+          <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+          Register Your First Agent
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%# Registration Modal %>
+<div class="modal fade" id="registerAgentModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Register External Agent</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="registerAgentForm">
+          <div class="mb-3">
+            <label class="form-label">Agent Identifier</label>
+            <input type="text" class="form-control" name="agent_identifier" required
+                   placeholder="e.g., openclaw_abc123">
+            <small class="text-muted">Unique identifier for your agent (from OpenClaw or your system)</small>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Agent Name</label>
+            <input type="text" class="form-control" name="agent_name" required
+                   placeholder="e.g., My OpenClaw Assistant">
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Platform</label>
+            <select class="form-select" name="agent_platform" required>
+              <option value="openclaw">OpenClaw</option>
+              <option value="langchain">LangChain</option>
+              <option value="autogen">AutoGen</option>
+              <option value="crewai">CrewAI</option>
+              <option value="mcp">MCP</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Capabilities</label>
+            <div class="row">
+              <div class="col-6">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="capabilities[]" value="documentation" checked>
+                  <label class="form-check-label">Documentation</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="capabilities[]" value="content" checked>
+                  <label class="form-check-label">Content</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="capabilities[]" value="support">
+                  <label class="form-check-label">Support</label>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="capabilities[]" value="bug">
+                  <label class="form-check-label">Bug Fixing</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="capabilities[]" value="translation">
+                  <label class="form-check-label">Translation</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="capabilities[]" value="testing">
+                  <label class="form-check-label">Testing</label>
+                </div>
+              </div>
+            </div>
+            <small class="text-muted">New agents start with documentation & content. Unlock more by completing work.</small>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="registerAgent()">
+          <i data-lucide="bot" style="width: 16px; height: 16px;"></i>
+          Register Agent
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# API Key Modal %>
+<div class="modal fade" id="agentKeyModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Agent API Key</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning">
+          <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
+          Keep this key secret! Anyone with this key can act as your agent.
+        </div>
+        <div class="input-group">
+          <input type="text" class="form-control font-monospace" id="agentKeyDisplay" readonly>
+          <button class="btn btn-outline-secondary" onclick="copyAgentKey()">
+            <i data-lucide="copy" style="width: 16px; height: 16px;"></i>
+          </button>
+        </div>
+        <div class="mt-3">
+          <strong>OpenClaw Config:</strong>
+          <pre class="bg-dark text-light p-3 rounded mt-2"><code>{
+  "amos": {
+    "api_key": "<span id="agentKeyConfig"></span>",
+    "api_url": "https://amoslabs.io/api/v1/external_agents"
+  }
+}</code></pre>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function registerAgent() {
+  const form = document.getElementById('registerAgentForm');
+  const formData = new FormData(form);
+  
+  // Build capabilities object
+  const capabilities = {};
+  formData.getAll('capabilities[]').forEach(cap => {
+    capabilities[cap] = { description: `Can work on ${cap} tasks`, confidence: 0.8 };
+  });
+  
+  const data = {
+    agent_identifier: formData.get('agent_identifier'),
+    agent_name: formData.get('agent_name'),
+    agent_platform: formData.get('agent_platform'),
+    capabilities: capabilities
+  };
+  
+  try {
+    const response = await fetch('/api/v1/external_agents/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + window.userApiKey // You'll need to expose this
+      },
+      body: JSON.stringify(data)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // Show the API key
+      document.getElementById('agentKeyDisplay').value = result.agent.api_key;
+      document.getElementById('agentKeyConfig').textContent = result.agent.api_key;
+      
+      // Close registration modal, open key modal
+      bootstrap.Modal.getInstance(document.getElementById('registerAgentModal')).hide();
+      new bootstrap.Modal(document.getElementById('agentKeyModal')).show();
+      
+      // Refresh page after modal closes
+      document.getElementById('agentKeyModal').addEventListener('hidden.bs.modal', () => {
+        window.location.reload();
+      }, { once: true });
+    } else {
+      alert('Registration failed: ' + result.error);
+    }
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+function copyAgentKey() {
+  const input = document.getElementById('agentKeyDisplay');
+  input.select();
+  document.execCommand('copy');
+  
+  // Show feedback
+  const btn = event.target.closest('button');
+  const originalHtml = btn.innerHTML;
+  btn.innerHTML = '<i data-lucide="check" style="width: 16px; height: 16px;"></i>';
+  setTimeout(() => { btn.innerHTML = originalHtml; lucide.createIcons(); }, 2000);
+}
+
+function showAgentKey(agentId) {
+  // In production, you'd fetch this securely
+  alert('For security, API keys are only shown once at registration. If you need a new key, revoke and re-register the agent.');
+}
+
+function viewAgentStats(agentId) {
+  // Could open a modal with detailed stats
+  window.location.href = `/entity/external_agents/${agentId}`;
+}
+
+function suspendAgent(agentId) {
+  if (confirm('Suspend this agent? It will no longer be able to claim or submit work.')) {
+    // API call to suspend
+  }
+}
+
+function reactivateAgent(agentId) {
+  if (confirm('Reactivate this agent?')) {
+    // API call to reactivate
+  }
+}
+</script>

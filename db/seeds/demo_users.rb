@@ -1,5 +1,12 @@
 # Demo Users for Development
 # This ensures demo users always exist with correct passwords
+#
+# SECURITY: This file should NEVER run in production
+
+if Rails.env.production?
+  puts "⚠️  Skipping demo users in production environment"
+  return
+end
 
 puts "🔧 Setting up demo users..."
 

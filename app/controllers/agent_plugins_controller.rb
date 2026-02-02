@@ -8,6 +8,19 @@ class AgentPluginsController < ApplicationController
   def index
     @my_agents = AgentPlugin.where(entity: current_entity).order(created_at: :desc)
     @system_agents = AgentPlugin.system_wide.active
+    
+    # Count custom skills (imported SKILL.md files)
+    @skills_count = @my_agents.select { |a| a.configuration&.dig('skill_format') == 'claude_skill_md' }.count
+    
+    # Load built-in skills from SkillLibraryService
+    @builtin_skills = begin
+      SkillLibraryService::INTEGRATION_SKILLS.to_a
+    rescue NameError, StandardError => e
+      Rails.logger.warn "[AgentPlugins] Could not load built-in skills: #{e.message}"
+      []
+    end
+    
+    @builtin_skills_count = @builtin_skills.size
   end
 
   def show
@@ -43,6 +56,33 @@ class AgentPluginsController < ApplicationController
   def destroy
     @agent.destroy
     redirect_to agent_plugins_path, notice: 'Agent deleted successfully.'
+  end
+
+  # Import a Claude SKILL.md file
+  def import
+    # Show the import form
+  end
+
+  def import_skill
+    importer = SkillFileImporterService.new(entity: current_entity, user: current_user)
+    
+    result = if params[:skill_url].present?
+      importer.import_from_url(params[:skill_url])
+    elsif params[:skill_content].present?
+      importer.import_from_content(params[:skill_content], source: 'paste')
+    elsif params[:skill_file].present?
+      content = params[:skill_file].read
+      importer.import_from_content(content, source: params[:skill_file].original_filename)
+    else
+      SkillFileImporterService::Result.new(success: false, errors: ['Please provide a skill file, URL, or paste content'])
+    end
+
+    if result.success
+      redirect_to agent_plugin_path(result.agent_plugin), notice: "Skill '#{result.agent_plugin.name}' imported successfully! Review the configuration and activate when ready."
+    else
+      flash.now[:alert] = result.errors.join(', ')
+      render :import, status: :unprocessable_entity
+    end
   end
 
   private

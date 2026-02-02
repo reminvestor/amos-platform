@@ -170,14 +170,23 @@ module Amos
       last_message = @context.recent_messages.last
       model_mode = last_message&.dig(:metadata, :model_mode)&.to_sym || :auto
       
+      # Get the user's premium model selection from brain icon dropdown
+      # This takes priority over auto-selected models
+      model_preference = last_message&.dig(:metadata, :model_preference)
+      if model_preference.present?
+        Rails.logger.info "[ScoutToolsService] 👑 Using premium model from user selection: #{model_preference}"
+      end
+      
       # Create service with the loadout
       # Pass fresh_start_at from context to filter memory (excludes old messages from before Fresh Start)
       # Pass intent_mode for seamless role adaptation
+      # Pass model from user's explicit selection (brain icon dropdown)
       service = ScoutGenericToolsServiceV2.new(
         @user,
         @entity,
         @session_id,
         agent_loadout: main_chat_loadout,
+        model: model_preference, # User's explicit model selection (nil means auto-select)
         fresh_start_at: @context.respond_to?(:fresh_start_at) ? @context.fresh_start_at : nil,
         intent_mode: @intent_mode
       )
@@ -185,7 +194,7 @@ module Amos
       # Apply the user's selected thinking depth mode
       # This controls max_tokens, temperature, and prompt modifiers
       service.set_model_mode(model_mode)
-      Rails.logger.info "[ScoutToolsService] Set thinking depth mode: #{model_mode}, intent_mode: #{@intent_mode}"
+      Rails.logger.info "[ScoutToolsService] Set thinking depth mode: #{model_mode}, intent_mode: #{@intent_mode}, model: #{model_preference || 'auto'}"
       
       service
     end

@@ -51,8 +51,8 @@ class SmartAgentTest < ActiveSupport::TestCase
       ]
     )
 
-    assert result[:success], "Aggregation should succeed"
-    assert_not_nil result[:data][:results], "Results should be present"
+    assert result[:success], "Aggregation should succeed: #{result[:error]}"
+    assert_not_nil result[:data], "Results should be present"
   end
 
   test "agent loadout enforcement allows permitted tools" do
@@ -73,7 +73,7 @@ class SmartAgentTest < ActiveSupport::TestCase
       operation: "simple_stats"
     )
 
-    assert result[:success], "Allowed tool should succeed"
+    assert result[:success], "Allowed tool should succeed: #{result[:error]}"
     assert loadout.tool_allowed?("aggregate_artifact_data"), "Tool should be in allowlist"
   end
 

@@ -181,11 +181,11 @@ class TokenEconomyServiceTest < ActiveSupport::TestCase
     )
 
     # Total: 1000, user1 has 60%, user2 has 40%
-    # Revenue: $10,000, token holder pool: $4,000 (40%)
+    # Revenue: $10,000, token holder pool: $5,000 (50%)
     distribution = TokenEconomyService.calculate_revenue_distribution(10_000)
 
-    assert_equal 2400.0, distribution[@user.id] # 60% of $4,000
-    assert_equal 1600.0, distribution[@user2.id] # 40% of $4,000
+    assert_equal 3000.0, distribution[@user.id] # 60% of $5,000
+    assert_equal 2000.0, distribution[@user2.id] # 40% of $5,000
   end
 
   test "returns empty distribution when no stakes exist" do

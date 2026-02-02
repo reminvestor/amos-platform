@@ -52,12 +52,13 @@ class EnrollInSequenceExecutorTest < ActiveSupport::TestCase
     )
     
     result = executor.execute
+    output = result[:output] || {}
     
-    assert result[:success]
-    assert result[:enrolled]
-    assert_not_nil result[:enrollment_id]
+    assert result[:success], "Expected success but got: #{result.inspect}"
+    assert output[:enrolled]
+    assert_not_nil output[:enrollment_id]
     
-    enrollment = SequenceEnrollment.find(result[:enrollment_id])
+    enrollment = SequenceEnrollment.find(output[:enrollment_id])
     assert_equal @contact.id, enrollment.contact_id
     assert_equal @sequence.id, enrollment.email_sequence_id
   end
@@ -71,8 +72,10 @@ class EnrollInSequenceExecutorTest < ActiveSupport::TestCase
     )
     
     result = executor.execute
+    output = result[:output] || {}
     
-    enrollment = SequenceEnrollment.find(result[:enrollment_id])
+    assert result[:success], "Expected success but got: #{result.inspect}"
+    enrollment = SequenceEnrollment.find(output[:enrollment_id])
     assert_equal 'pending', enrollment.status
   end
 
@@ -85,8 +88,10 @@ class EnrollInSequenceExecutorTest < ActiveSupport::TestCase
     )
     
     result = executor.execute
+    output = result[:output] || {}
     
-    enrollment = SequenceEnrollment.find(result[:enrollment_id])
+    assert result[:success], "Expected success but got: #{result.inspect}"
+    enrollment = SequenceEnrollment.find(output[:enrollment_id])
     assert_equal 'active', enrollment.status
     assert_not_nil enrollment.started_at
     assert_not_nil enrollment.next_send_at
@@ -106,10 +111,11 @@ class EnrollInSequenceExecutorTest < ActiveSupport::TestCase
     )
     
     result = executor.execute
+    output = result[:output] || {}
     
     assert result[:success]
-    assert_not result[:enrolled]
-    assert result[:already_enrolled]
+    assert_not output[:enrolled]
+    assert output[:already_enrolled]
   end
 
   test "should fail with missing sequence_id" do

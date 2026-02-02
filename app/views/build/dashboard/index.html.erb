@@ -1,0 +1,116 @@
+<% content_for :title, "Dashboard - Amos Build" %>
+
+<div class="row mb-4">
+  <div class="col">
+    <h1 class="display-5 fw-bold mb-2">
+      <i class="bi bi-hammer me-2 text-primary"></i>Build with Amos
+    </h1>
+    <p class="text-muted lead">
+      Contribute code, ideas, and improvements. Earn AMOS tokens for your work.
+    </p>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-4 mb-5">
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value"><%= @stats[:open_bounties] %></div>
+      <div class="stat-label">Open Bounties</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value"><%= number_with_delimiter(@stats[:total_rewards]) %></div>
+      <div class="stat-label">AMOS Rewards Available</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value"><%= @stats[:active_proposals] %></div>
+      <div class="stat-label">Active Proposals</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value"><%= @stats[:contributors] %></div>
+      <div class="stat-label">Contributors</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Featured Bounties -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-trophy me-2"></i>Featured Bounties</h5>
+        <a href="#" class="btn btn-sm btn-outline-primary">View All</a>
+      </div>
+      <div class="card-body">
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-inbox display-4 d-block mb-3"></i>
+          <h5>Coming Soon</h5>
+          <p class="mb-0">
+            Bounties will be populated from the on-chain governance program.
+            <br>
+            <a href="https://github.com/amoslabs/amos-governance" class="text-primary">View the Solana program →</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Quick Actions -->
+  <div class="col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
+      </div>
+      <div class="card-body">
+        <div class="d-grid gap-2">
+          <a href="#" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>Submit Proposal
+          </a>
+          <a href="#" class="btn btn-outline-secondary">
+            <i class="bi bi-search me-2"></i>Browse Bounties
+          </a>
+          <a href="#" class="btn btn-outline-secondary">
+            <i class="bi bi-bar-chart me-2"></i>View Leaderboard
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>How It Works</h5>
+      </div>
+      <div class="card-body">
+        <ol class="ps-3 mb-0">
+          <li class="mb-2">Connect your Solana wallet</li>
+          <li class="mb-2">Browse open bounties or submit proposals</li>
+          <li class="mb-2">Claim a bounty and submit your work</li>
+          <li class="mb-2">Pass quality gates (benchmarks, A/B tests)</li>
+          <li class="mb-0">Earn AMOS tokens on successful merge</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Contributions -->
+<div class="row mt-4">
+  <div class="col">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-activity me-2"></i>Recent Contributions</h5>
+      </div>
+      <div class="card-body">
+        <div class="text-center py-4 text-muted">
+          <p class="mb-0">No contributions yet. Be the first to contribute!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

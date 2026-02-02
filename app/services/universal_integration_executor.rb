@@ -72,7 +72,10 @@ class UniversalIntegrationExecutor
         duration_ms: ((Time.current - start_time) * 1000).round
       )
       
-      # 10. Return standardized response
+      # 10. SCHEMA LEARNING: Learn from successful/failed calls to auto-correct schemas
+      learn_from_result(operation_record, params, result)
+      
+      # 11. Return standardized response
       format_response(result, operation_record, connection)
       
     rescue => e
@@ -86,6 +89,15 @@ class UniversalIntegrationExecutor
         error: e,
         duration_ms: ((Time.current - start_time) * 1000).round
       )
+      
+      # Learn from exception as failure
+      if defined?(operation_record) && operation_record
+        IntegrationSchemaLearnerService.learn_from_failure(
+          operation: operation_record,
+          params: params,
+          error: e.message
+        )
+      end
       
       error_response("Execution failed: #{e.message}", error_class: e.class.name)
     end
@@ -216,6 +228,33 @@ class UniversalIntegrationExecutor
     Rails.logger.error "Params: #{params.inspect}"
   end
   
+  # Schema Learning: Auto-update operation schemas based on success/failure
+  # This prevents AMOS from making the same mistakes repeatedly
+  def learn_from_result(operation, params, result)
+    return unless operation.present?
+    
+    if result[:success]
+      # Learn from success - update schema with working params
+      IntegrationSchemaLearnerService.learn_from_success(
+        operation: operation,
+        params: params,
+        response: result[:data],
+        context: { user_id: user&.id, entity_id: entity&.id }
+      )
+    else
+      # Learn from failure - record bad params
+      IntegrationSchemaLearnerService.learn_from_failure(
+        operation: operation,
+        params: params,
+        error: result[:error] || result[:error_details],
+        context: { user_id: user&.id, entity_id: entity&.id }
+      )
+    end
+  rescue => e
+    # Don't let learning failures break execution
+    Rails.logger.warn "[SchemaLearner] Learning failed: #{e.message}"
+  end
+  
   def format_response(result, operation, connection)
     # Standardized response format
     response = {
@@ -226,8 +265,11 @@ class UniversalIntegrationExecutor
     }
     
     if result[:success]
+      # Apply currency formatting if specified in schema
+      formatted_data = apply_response_formatting(result[:data], operation, connection.integration)
+      
       response.merge!(
-        data: result[:data],
+        data: formatted_data,
         status_code: result[:status_code] || result[:status] || 200,
         message: result[:message] || "Operation completed successfully"
       )
@@ -316,6 +358,67 @@ class UniversalIntegrationExecutor
       success: false,
       error: message
     }.merge(extra)
+  end
+  
+  # Apply response formatting based on operation schema or integration metadata
+  # Handles currency conversion (cents to dollars) and timestamp formatting
+  def apply_response_formatting(data, operation, integration)
+    return data unless data.present?
+    
+    # Get formatting hints from operation schema or integration metadata
+    formatting = operation.request_schema&.dig('response_formatting') ||
+                 integration.metadata&.dig('currency_handling')
+    
+    return data unless formatting.present?
+    
+    currency_fields = formatting['currency_fields'] || formatting['common_currency_fields'] || []
+    divisor = formatting['currency_divisor'] || formatting['divisor'] || 100
+    
+    return data if currency_fields.empty?
+    
+    # Apply formatting to data
+    if data.is_a?(Array)
+      data.map { |record| format_record_currencies(record, currency_fields, divisor) }
+    elsif data.is_a?(Hash)
+      # Handle Stripe's {data: [...]} wrapper
+      if data['data'].is_a?(Array)
+        data.merge('data' => data['data'].map { |r| format_record_currencies(r, currency_fields, divisor) })
+      else
+        format_record_currencies(data, currency_fields, divisor)
+      end
+    else
+      data
+    end
+  rescue => e
+    Rails.logger.warn "[UniversalExecutor] Response formatting failed: #{e.message}"
+    data  # Return original data on error
+  end
+  
+  def format_record_currencies(record, currency_fields, divisor)
+    return record unless record.is_a?(Hash)
+    
+    formatted = record.dup
+    
+    currency_fields.each do |field|
+      # Handle nested fields like 'items.data[].price.unit_amount'
+      if field.include?('.')
+        # Skip complex nested paths for now - these need special handling
+        next
+      end
+      
+      # Convert string keys to handle both symbol and string keys
+      value = formatted[field] || formatted[field.to_sym]
+      
+      if value.is_a?(Integer) || value.is_a?(Float)
+        formatted_value = (value.to_f / divisor).round(2)
+        # Store both original and formatted values
+        formatted["#{field}_cents"] = value
+        formatted[field] = formatted_value
+        formatted[field.to_sym] = formatted_value if formatted.key?(field.to_sym)
+      end
+    end
+    
+    formatted
   end
 end
 

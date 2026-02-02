@@ -27,14 +27,23 @@ class BountyIntegrationService
     bounties = []
 
     # Get high-priority tickets without bounties
+    # Note: Must filter out NULL support_ticket_ids to avoid SQL NOT IN with NULL issue
+    existing_bounty_ticket_ids = Bounty.where(entity: entity)
+                                       .where.not(support_ticket_id: nil)
+                                       .select(:support_ticket_id)
+    
     eligible_tickets = SupportTicket.where(entity: entity)
                                     .where(status: %w[open investigating])
                                     .where(priority: %w[high critical])
-                                    .where.not(id: Bounty.where(entity: entity).select(:support_ticket_id))
+                                    .where.not(id: existing_bounty_ticket_ids)
                                     .limit(10)
 
+    Rails.logger.info "[BOUNTY_INTEGRATION] Found #{eligible_tickets.count} eligible tickets"
+
     eligible_tickets.each do |ticket|
+      Rails.logger.info "[BOUNTY_INTEGRATION] Processing ticket #{ticket.id}: #{ticket.title}"
       bounty = create_bounty_from_ticket(ticket)
+      Rails.logger.info "[BOUNTY_INTEGRATION] Bounty result: #{bounty.inspect}"
       bounties << bounty if bounty
     end
 
@@ -43,17 +52,25 @@ class BountyIntegrationService
   end
 
   def create_bounty_from_ticket(ticket)
-    return nil if ticket.bounty.present?  # Already has a bounty
+    Rails.logger.info "[BOUNTY_INTEGRATION] Checking if ticket #{ticket.id} already has a bounty..."
+    if ticket.bounty.present?
+      Rails.logger.info "[BOUNTY_INTEGRATION] Ticket #{ticket.id} already has bounty"
+      return nil
+    end
 
     # Score the ticket
+    Rails.logger.info "[BOUNTY_INTEGRATION] Scoring ticket #{ticket.id}..."
     scoring = AmosBountyScorer.score_ticket(ticket)
+    Rails.logger.info "[BOUNTY_INTEGRATION] Score result: #{scoring.inspect}"
 
     # Create the bounty
+    Rails.logger.info "[BOUNTY_INTEGRATION] Creating bounty..."
     bounty = Bounty.create_from_ticket!(
       ticket,
       points: scoring[:points],
       scoring_rationale: scoring[:rationale]
     )
+    Rails.logger.info "[BOUNTY_INTEGRATION] Bounty created: #{bounty.id}"
 
     # Update bounty with AI scores
     bounty.update!(
@@ -71,6 +88,7 @@ class BountyIntegrationService
 
   rescue => e
     Rails.logger.error "[BOUNTY_INTEGRATION] Failed to create bounty from ticket #{ticket.id}: #{e.message}"
+    Rails.logger.error "[BOUNTY_INTEGRATION] #{e.backtrace.first(3).join("\n")}"
     nil
   end
 

@@ -124,7 +124,7 @@ class BountyFlowE2ETest < ActiveSupport::TestCase
       puts "   ✓ Bounty approved with #{@bounty.final_points} points"
 
       # Verify contribution was created
-      contribution = Contribution.find_by(external_reference: @bounty.build_external_reference)
+      contribution = Contribution.find_by(external_reference: @bounty.send(:build_external_reference))
       if contribution
         assert_equal @contributor, contribution.user
         assert_equal 220, contribution.stake_value
@@ -155,7 +155,7 @@ class BountyFlowE2ETest < ActiveSupport::TestCase
     puts "   Full trail:"
     puts "   └─ Ticket: #{ticket.ticket_number}"
     puts "   └─ Bounty: ##{@bounty.id} (#{@bounty.effective_points} points)"
-    puts "   └─ Work Evidence: #{@bounty.work_evidence_summary}"
+    puts "   └─ Work Evidence: #{@bounty.send(:work_evidence_summary)}"
     puts "   └─ Contributor: #{@contributor.email}"
 
     puts "\n✅ COMPLETE FLOW SUCCESSFUL!"

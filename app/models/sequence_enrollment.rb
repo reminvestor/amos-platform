@@ -6,6 +6,9 @@ class SequenceEnrollment < ApplicationRecord
   # Status options
   STATUSES = %w[pending active completed paused cancelled].freeze
 
+  # Callbacks to keep sequence counts in sync
+  after_save :update_sequence_counts, if: :saved_change_to_status?
+
   # Validations
   validates :status, inclusion: { in: STATUSES }
   validates :contact_id, uniqueness: { scope: :email_sequence_id, message: 'is already enrolled in this sequence' }
@@ -90,5 +93,13 @@ class SequenceEnrollment < ApplicationRecord
   def days_in_sequence
     return 0 unless started_at
     ((Time.current - started_at) / 1.day).round(2)
+  end
+
+  private
+
+  def update_sequence_counts
+    email_sequence.update_enrollment_counts if email_sequence.present?
+  rescue => e
+    Rails.logger.warn "[SequenceEnrollment] Failed to update sequence counts: #{e.message}"
   end
 end

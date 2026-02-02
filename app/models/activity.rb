@@ -25,6 +25,8 @@ class Activity < ApplicationRecord
     'email_sent' => { icon: 'send', color: '#3B82F6', label: 'Email Sent' },
     'email_opened' => { icon: 'mail-open', color: '#22D3EE', label: 'Email Opened' },
     'email_clicked' => { icon: 'mouse-pointer', color: '#A855F7', label: 'Email Clicked' },
+    'email_bounced' => { icon: 'mail-x', color: '#EF4444', label: 'Email Bounced' },
+    'spam_complaint' => { icon: 'alert-triangle', color: '#DC2626', label: 'Spam Complaint' },
     'page_view' => { icon: 'eye', color: '#64748B', label: 'Page View' }
   }.freeze
 

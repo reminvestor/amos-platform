@@ -14,6 +14,7 @@ class ScoutGenericToolsServiceV2
     @session_id = session_id
     @agent_loadout = agent_loadout
     @model = model # Model to use (defaults to ENV['BEDROCK_DEFAULT_MODEL'] or 'claude-sonnet-4-5')
+    @user_selected_model = model.present? # Track if user explicitly selected a model
     @fresh_start_at = fresh_start_at # Filter memory to only after this time
     @ai_service = BedrockService.new(user: user, entity: entity)
     @ai_provider_name = Rails.application.config.ai_service.to_s.capitalize
@@ -95,14 +96,20 @@ class ScoutGenericToolsServiceV2
 
     result = preprocessor.preprocess(message: user_message)
 
-    # Update model if auto-selected
-    if @model.nil? || @model_mode == :auto
+    # Update model if auto-selected (but NEVER override user's explicit selection)
+    # @user_selected_model tracks whether user explicitly chose a model (e.g., from brain icon dropdown)
+    if !@user_selected_model && (@model.nil? || @model_mode == :auto)
       @model = result[:suggested_model]
       Rails.logger.info "[Scout] Unified preprocessor: model=#{result[:suggested_model]}, " \
                         "intent=#{result[:classification_method]}, " \
                         "tools=#{result[:tools]&.length || 0}, " \
                         "agents=#{result[:suggested_agents]&.length || 0}, " \
                         "latency=#{result[:latency_ms]}ms"
+    else
+      Rails.logger.info "[Scout] Unified preprocessor: intent=#{result[:classification_method]}, " \
+                        "tools=#{result[:tools]&.length || 0}, " \
+                        "agents=#{result[:suggested_agents]&.length || 0}, " \
+                        "latency=#{result[:latency_ms]}ms (keeping user-selected model: #{@model})"
     end
 
     # Store preprocessing result for context injection AND tool selection
@@ -344,8 +351,19 @@ class ScoutGenericToolsServiceV2
       # TOOL & MODEL SELECTION: Use preloaded data from UnifiedPreprocessor
       # The preprocessor already ran parallel threads to discover relevant tools/agents
       
-      # Model was pre-selected by UnifiedPreprocessor (but can be overridden)
-      @model = @preprocess_result[:suggested_model] || 'qwen3-next-80b'
+      # IMPORTANT: Only use preprocessor's model if user didn't explicitly select one
+      # Model selection priority:
+      # 1. User's explicit selection from brain icon dropdown (@user_selected_model = true)
+      # 2. Preprocessor's suggested model (based on message complexity)
+      # 3. Fallback to qwen3-next-80b
+      if @user_selected_model
+        Rails.logger.info "[Scout] 👑 Using user-selected model: #{@model} (overrides preprocessor suggestion: #{@preprocess_result[:suggested_model]})"
+      elsif @model.nil?
+        @model = @preprocess_result[:suggested_model] || 'qwen3-next-80b'
+        Rails.logger.info "[Scout] Using auto-selected model: #{@model}"
+      else
+        Rails.logger.info "[Scout] Using model: #{@model}"
+      end
       
       # DeepSeek R1 is for reasoning only - no tools
       if @model == 'deepseek-r1'

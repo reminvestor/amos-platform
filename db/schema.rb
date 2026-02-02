@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_01_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -452,6 +452,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "human_bounty_id"
     t.index ["agent_plugin_id", "status"], name: "index_agent_goals_on_agent_plugin_id_and_status"
     t.index ["agent_plugin_id"], name: "index_agent_goals_on_agent_plugin_id"
     t.index ["created_by_agent_id"], name: "index_agent_goals_on_created_by_agent_id"
@@ -459,6 +460,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
     t.index ["entity_id", "status"], name: "index_agent_goals_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_agent_goals_on_entity_id"
     t.index ["execution_task_id"], name: "index_agent_goals_on_execution_task_id"
+    t.index ["human_bounty_id"], name: "index_agent_goals_on_human_bounty_id"
     t.index ["scheduled_for"], name: "index_agent_goals_on_scheduled_for"
     t.index ["school_enrollment_id"], name: "index_agent_goals_on_school_enrollment_id"
     t.index ["target_type", "target_id"], name: "index_agent_goals_on_target_type_and_target_id"
@@ -1588,20 +1590,73 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
     t.string "work_url"
     t.jsonb "work_artifacts", default: []
     t.bigint "pull_request_submission_id"
+    t.boolean "requires_human_review", default: true, null: false
+    t.boolean "requires_pr", default: false, null: false
+    t.boolean "ai_review_completed", default: false
+    t.jsonb "ai_review_result", default: {}
+    t.datetime "ai_review_at"
+    t.datetime "human_review_at"
+    t.text "human_review_notes"
+    t.string "funding_source", default: "platform", null: false
+    t.bigint "funded_by_id"
+    t.decimal "funded_amount", precision: 18, scale: 4, default: "0.0"
+    t.string "escrow_status", default: "none"
+    t.string "escrow_transaction_id"
+    t.string "target_repo"
+    t.string "target_branch", default: "main"
+    t.text "pr_template"
+    t.string "reviewer_type", default: "auto"
+    t.bigint "designated_reviewer_id"
+    t.decimal "review_reward_percentage", precision: 5, scale: 2, default: "10.0"
+    t.decimal "review_reward_points", precision: 10, scale: 2
     t.index ["bounty_type"], name: "index_bounties_on_bounty_type"
     t.index ["claimed_by_id"], name: "index_bounties_on_claimed_by_id"
     t.index ["commit_sha"], name: "index_bounties_on_commit_sha"
     t.index ["created_by_id"], name: "index_bounties_on_created_by_id"
+    t.index ["designated_reviewer_id"], name: "index_bounties_on_designated_reviewer_id"
     t.index ["entity_id", "status"], name: "index_bounties_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_bounties_on_entity_id"
+    t.index ["escrow_status"], name: "index_bounties_on_escrow_status"
+    t.index ["funded_by_id", "status"], name: "index_bounties_on_funded_by_id_and_status"
+    t.index ["funded_by_id"], name: "index_bounties_on_funded_by_id"
+    t.index ["funding_source"], name: "index_bounties_on_funding_source"
     t.index ["points"], name: "index_bounties_on_points"
     t.index ["pr_number"], name: "index_bounties_on_pr_number"
     t.index ["pull_request_submission_id"], name: "index_bounties_on_pull_request_submission_id"
+    t.index ["requires_pr"], name: "index_bounties_on_requires_pr"
     t.index ["reviewed_by_id"], name: "index_bounties_on_reviewed_by_id"
     t.index ["source"], name: "index_bounties_on_source"
     t.index ["status", "bounty_type"], name: "index_bounties_on_status_and_bounty_type"
     t.index ["status"], name: "index_bounties_on_status"
     t.index ["support_ticket_id"], name: "index_bounties_on_support_ticket_id"
+  end
+
+  create_table "bounty_reviews", force: :cascade do |t|
+    t.bigint "bounty_id", null: false
+    t.bigint "reviewer_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "decision", null: false
+    t.text "notes"
+    t.integer "quality_assessment"
+    t.jsonb "criteria_scores", default: {}
+    t.bigint "external_agent_execution_id"
+    t.decimal "review_points", precision: 10, scale: 2, default: "0.0"
+    t.decimal "tokens_earned", precision: 18, scale: 4, default: "0.0"
+    t.boolean "reward_processed", default: false
+    t.boolean "was_overturned", default: false
+    t.bigint "overturned_by_id"
+    t.string "overturn_reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bounty_id", "reviewer_id"], name: "index_bounty_reviews_on_bounty_id_and_reviewer_id", unique: true
+    t.index ["bounty_id"], name: "index_bounty_reviews_on_bounty_id"
+    t.index ["decision", "created_at"], name: "index_bounty_reviews_on_decision_and_created_at"
+    t.index ["entity_id"], name: "index_bounty_reviews_on_entity_id"
+    t.index ["external_agent_execution_id"], name: "index_bounty_reviews_on_external_agent_execution_id"
+    t.index ["overturned_by_id"], name: "index_bounty_reviews_on_overturned_by_id"
+    t.index ["reviewer_id", "created_at"], name: "index_bounty_reviews_on_reviewer_id_and_created_at"
+    t.index ["reviewer_id"], name: "index_bounty_reviews_on_reviewer_id"
+    t.index ["reward_processed"], name: "index_bounty_reviews_on_reward_processed"
   end
 
   create_table "business_insights", force: :cascade do |t|
@@ -2725,6 +2780,134 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
     t.index ["status"], name: "index_execution_plans_on_status"
     t.index ["user_id", "created_at"], name: "index_execution_plans_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_execution_plans_on_user_id"
+  end
+
+  create_table "external_agent_daily_stats", force: :cascade do |t|
+    t.bigint "external_agent_registration_id", null: false
+    t.date "stat_date", null: false
+    t.integer "bounties_claimed", default: 0
+    t.integer "bounties_completed", default: 0
+    t.integer "bounties_rejected", default: 0
+    t.integer "tool_calls", default: 0
+    t.decimal "tokens_earned", precision: 18, scale: 4, default: "0.0"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["external_agent_registration_id", "stat_date"], name: "idx_ext_agent_daily_stats_unique", unique: true
+    t.index ["external_agent_registration_id"], name: "idx_on_external_agent_registration_id_a354e9081d"
+  end
+
+  create_table "external_agent_executions", force: :cascade do |t|
+    t.bigint "external_agent_registration_id", null: false
+    t.bigint "bounty_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "status", default: "in_progress", null: false
+    t.jsonb "tools_used", default: []
+    t.integer "tool_calls_count", default: 0
+    t.text "work_log"
+    t.jsonb "submission_data", default: {}
+    t.jsonb "review_result", default: {}
+    t.decimal "quality_score", precision: 5, scale: 2
+    t.text "review_notes"
+    t.bigint "reviewed_by_id"
+    t.datetime "started_at"
+    t.datetime "submitted_at"
+    t.datetime "reviewed_at"
+    t.datetime "expires_at"
+    t.decimal "tokens_awarded", precision: 18, scale: 4
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.boolean "ai_pre_review_passed", default: false
+    t.boolean "awaiting_human_review", default: false
+    t.bigint "human_reviewer_id"
+    t.datetime "human_review_at"
+    t.text "human_review_notes"
+    t.index ["awaiting_human_review"], name: "index_external_agent_executions_on_awaiting_human_review"
+    t.index ["bounty_id", "status"], name: "index_external_agent_executions_on_bounty_id_and_status"
+    t.index ["bounty_id"], name: "index_external_agent_executions_on_bounty_id"
+    t.index ["entity_id"], name: "index_external_agent_executions_on_entity_id"
+    t.index ["expires_at"], name: "index_external_agent_executions_on_expires_at"
+    t.index ["external_agent_registration_id", "status"], name: "idx_ext_agent_exec_agent_status"
+    t.index ["external_agent_registration_id"], name: "idx_on_external_agent_registration_id_ea82cbfe09"
+    t.index ["reviewed_by_id"], name: "index_external_agent_executions_on_reviewed_by_id"
+    t.index ["status"], name: "index_external_agent_executions_on_status"
+  end
+
+  create_table "external_agent_notifications", force: :cascade do |t|
+    t.bigint "external_agent_registration_id", null: false
+    t.string "notification_type", null: false
+    t.string "title", null: false
+    t.text "message"
+    t.jsonb "metadata", default: {}
+    t.boolean "read", default: false
+    t.boolean "actioned", default: false
+    t.string "action_taken"
+    t.datetime "read_at"
+    t.datetime "actioned_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["external_agent_registration_id", "read"], name: "idx_on_external_agent_registration_id_read_c5875d332f"
+    t.index ["external_agent_registration_id"], name: "idx_on_external_agent_registration_id_ab2b97fe68"
+    t.index ["notification_type", "created_at"], name: "idx_on_notification_type_created_at_f7bc97374f"
+  end
+
+  create_table "external_agent_registrations", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "operator_id", null: false
+    t.string "agent_identifier", null: false
+    t.string "agent_name", null: false
+    t.string "agent_platform", default: "openclaw", null: false
+    t.string "api_key", null: false
+    t.string "api_key_prefix", null: false
+    t.jsonb "capabilities", default: {}, null: false
+    t.string "allowed_bounty_types", default: [], array: true
+    t.string "allowed_tools", default: [], array: true
+    t.string "status", default: "pending", null: false
+    t.decimal "reputation_score", precision: 5, scale: 2, default: "50.0"
+    t.integer "trust_level", default: 1
+    t.integer "daily_bounty_limit", default: 3
+    t.integer "max_concurrent_bounties", default: 1
+    t.integer "tool_calls_per_bounty", default: 50
+    t.integer "total_bounties_claimed", default: 0
+    t.integer "total_bounties_completed", default: 0
+    t.integer "total_bounties_rejected", default: 0
+    t.decimal "total_tokens_earned", precision: 18, scale: 4, default: "0.0"
+    t.jsonb "metadata", default: {}
+    t.datetime "last_active_at"
+    t.datetime "suspended_at"
+    t.string "suspension_reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_identifier"], name: "index_external_agent_registrations_on_agent_identifier", unique: true
+    t.index ["agent_platform"], name: "index_external_agent_registrations_on_agent_platform"
+    t.index ["api_key"], name: "index_external_agent_registrations_on_api_key", unique: true
+    t.index ["api_key_prefix"], name: "index_external_agent_registrations_on_api_key_prefix"
+    t.index ["entity_id", "status"], name: "index_external_agent_registrations_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_external_agent_registrations_on_entity_id"
+    t.index ["operator_id", "status"], name: "index_external_agent_registrations_on_operator_id_and_status"
+    t.index ["operator_id"], name: "index_external_agent_registrations_on_operator_id"
+    t.index ["reputation_score"], name: "index_external_agent_registrations_on_reputation_score"
+    t.index ["trust_level"], name: "index_external_agent_registrations_on_trust_level"
+  end
+
+  create_table "external_agent_tool_calls", force: :cascade do |t|
+    t.bigint "external_agent_execution_id", null: false
+    t.bigint "external_agent_registration_id", null: false
+    t.string "tool_name", null: false
+    t.jsonb "arguments", default: {}
+    t.jsonb "result", default: {}
+    t.boolean "success", default: true
+    t.string "error_message"
+    t.integer "latency_ms"
+    t.boolean "policy_allowed", default: true
+    t.string "policy_rule_applied"
+    t.datetime "executed_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["executed_at"], name: "index_external_agent_tool_calls_on_executed_at"
+    t.index ["external_agent_execution_id"], name: "index_external_agent_tool_calls_on_external_agent_execution_id"
+    t.index ["external_agent_registration_id", "executed_at"], name: "idx_ext_agent_tool_calls_agent_time"
+    t.index ["external_agent_registration_id"], name: "idx_on_external_agent_registration_id_79b3a953ac"
+    t.index ["tool_name"], name: "index_external_agent_tool_calls_on_tool_name"
   end
 
   create_table "factory_test_criteria", force: :cascade do |t|
@@ -4189,9 +4372,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
     t.bigint "triggered_goal_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "human_bounty_id"
     t.index ["entity_id", "severity"], name: "index_platform_anomalies_on_entity_id_and_severity"
     t.index ["entity_id", "status"], name: "index_platform_anomalies_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_platform_anomalies_on_entity_id"
+    t.index ["human_bounty_id"], name: "index_platform_anomalies_on_human_bounty_id"
     t.index ["platform_perception_id"], name: "index_platform_anomalies_on_platform_perception_id"
     t.index ["target_type", "target_id"], name: "index_platform_anomalies_on_target_type_and_target_id"
     t.index ["triggered_goal_id"], name: "index_platform_anomalies_on_triggered_goal_id"
@@ -4602,6 +4787,23 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
     t.index ["status"], name: "index_revenue_payments_on_status"
     t.index ["user_id", "period"], name: "index_revenue_payments_on_user_id_and_period", unique: true
     t.index ["user_id"], name: "index_revenue_payments_on_user_id"
+  end
+
+  create_table "reviewer_eligibility", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "bounty_type", null: false
+    t.boolean "is_eligible", default: false
+    t.string "eligibility_reason"
+    t.integer "priority", default: 0
+    t.datetime "last_review_at"
+    t.integer "active_reviews", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "bounty_type", "is_eligible"], name: "idx_reviewer_eligibility_lookup"
+    t.index ["entity_id"], name: "index_reviewer_eligibility_on_entity_id"
+    t.index ["user_id", "entity_id", "bounty_type"], name: "idx_reviewer_eligibility_unique", unique: true
+    t.index ["user_id"], name: "index_reviewer_eligibility_on_user_id"
   end
 
   create_table "rich_text_sections", force: :cascade do |t|
@@ -5962,6 +6164,24 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
     t.index ["user_id"], name: "index_user_reminders_on_user_id"
   end
 
+  create_table "user_skills", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "skill_type", null: false
+    t.string "proficiency_level", default: "beginner"
+    t.boolean "verified", default: false
+    t.integer "verified_contributions", default: 0
+    t.integer "reviews_completed", default: 0
+    t.decimal "review_accuracy", precision: 5, scale: 2, default: "100.0"
+    t.jsonb "endorsements", default: []
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["skill_type", "proficiency_level"], name: "index_user_skills_on_skill_type_and_proficiency_level"
+    t.index ["user_id", "skill_type"], name: "index_user_skills_on_user_id_and_skill_type", unique: true
+    t.index ["user_id"], name: "index_user_skills_on_user_id"
+    t.index ["verified", "skill_type"], name: "index_user_skills_on_verified_and_skill_type"
+  end
+
   create_table "user_space_preferences", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "active_space", default: "work"
@@ -6499,6 +6719,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
   add_foreign_key "agent_goals", "agent_plugins"
   add_foreign_key "agent_goals", "agent_plugins", column: "created_by_agent_id"
   add_foreign_key "agent_goals", "agent_school_enrollments", column: "school_enrollment_id"
+  add_foreign_key "agent_goals", "bounties", column: "human_bounty_id"
   add_foreign_key "agent_goals", "entities"
   add_foreign_key "agent_goals", "scheduled_agent_tasks", column: "execution_task_id"
   add_foreign_key "agent_input_requests", "agent_plugin_executions"
@@ -6612,7 +6833,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
   add_foreign_key "bounties", "support_tickets"
   add_foreign_key "bounties", "users", column: "claimed_by_id"
   add_foreign_key "bounties", "users", column: "created_by_id"
+  add_foreign_key "bounties", "users", column: "designated_reviewer_id"
+  add_foreign_key "bounties", "users", column: "funded_by_id"
   add_foreign_key "bounties", "users", column: "reviewed_by_id"
+  add_foreign_key "bounty_reviews", "bounties"
+  add_foreign_key "bounty_reviews", "entities"
+  add_foreign_key "bounty_reviews", "external_agent_executions"
+  add_foreign_key "bounty_reviews", "users", column: "overturned_by_id"
+  add_foreign_key "bounty_reviews", "users", column: "reviewer_id"
   add_foreign_key "business_insights", "entities"
   add_foreign_key "business_insights", "scout_conversations", column: "source_conversation_id"
   add_foreign_key "business_profiles", "entities"
@@ -6723,6 +6951,17 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
   add_foreign_key "execution_plans", "agent_plugins", column: "created_by_agent_id"
   add_foreign_key "execution_plans", "entities"
   add_foreign_key "execution_plans", "users"
+  add_foreign_key "external_agent_daily_stats", "external_agent_registrations"
+  add_foreign_key "external_agent_executions", "bounties"
+  add_foreign_key "external_agent_executions", "entities"
+  add_foreign_key "external_agent_executions", "external_agent_registrations"
+  add_foreign_key "external_agent_executions", "users", column: "human_reviewer_id"
+  add_foreign_key "external_agent_executions", "users", column: "reviewed_by_id"
+  add_foreign_key "external_agent_notifications", "external_agent_registrations"
+  add_foreign_key "external_agent_registrations", "entities"
+  add_foreign_key "external_agent_registrations", "users", column: "operator_id"
+  add_foreign_key "external_agent_tool_calls", "external_agent_executions"
+  add_foreign_key "external_agent_tool_calls", "external_agent_registrations"
   add_foreign_key "factory_test_criteria", "entities"
   add_foreign_key "factory_test_criteria", "users"
   add_foreign_key "factory_test_runs", "entities"
@@ -6846,6 +7085,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
   add_foreign_key "pipeline_interactions", "pipeline_executions"
   add_foreign_key "pipeline_interactions", "users"
   add_foreign_key "platform_anomalies", "agent_goals", column: "triggered_goal_id"
+  add_foreign_key "platform_anomalies", "bounties", column: "human_bounty_id"
   add_foreign_key "platform_anomalies", "entities"
   add_foreign_key "platform_anomalies", "platform_perceptions"
   add_foreign_key "platform_costs", "users", column: "recorded_by_id"
@@ -6881,6 +7121,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
   add_foreign_key "referrals", "users", column: "referred_user_id"
   add_foreign_key "revenue_payments", "revenue_distributions"
   add_foreign_key "revenue_payments", "users"
+  add_foreign_key "reviewer_eligibility", "entities"
+  add_foreign_key "reviewer_eligibility", "users"
   add_foreign_key "rich_text_sections", "landing_pages"
   add_foreign_key "saved_searches", "entities"
   add_foreign_key "saved_searches", "users"
@@ -6992,6 +7234,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_30_200000) do
   add_foreign_key "user_referrals", "users", column: "referred_user_id"
   add_foreign_key "user_referrals", "users", column: "referrer_id"
   add_foreign_key "user_reminders", "users"
+  add_foreign_key "user_skills", "users"
   add_foreign_key "user_space_preferences", "users"
   add_foreign_key "users", "entities"
   add_foreign_key "voice_sessions", "entities"

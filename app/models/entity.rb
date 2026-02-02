@@ -5,6 +5,14 @@ class Entity < ApplicationRecord
   validates :slug, presence: true, uniqueness: true
   validates :status, presence: true, inclusion: { in: %w[active inactive archived] }
 
+  # Callbacks
+  after_create :create_default_policies
+
+  # Scopes
+  scope :active, -> { where(status: 'active') }
+  scope :inactive, -> { where(status: 'inactive') }
+  scope :archived, -> { where(status: 'archived') }
+
   # Relationships with users through join table
   has_many :entity_users, dependent: :destroy
   has_many :users, through: :entity_users
@@ -215,5 +223,12 @@ class Entity < ApplicationRecord
       self.slug = "#{base_slug}-#{counter}"
       counter += 1
     end
+  end
+
+  def create_default_policies
+    DefaultPoliciesService.create_for(self)
+  rescue => e
+    Rails.logger.warn "[Entity] Failed to create default policies: #{e.message}"
+    # Don't fail entity creation if policies fail
   end
 end
