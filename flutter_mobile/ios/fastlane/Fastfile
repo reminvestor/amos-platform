@@ -59,11 +59,14 @@ platform :ios do
     match(type: "appstore", readonly: true)
 
     # Update Xcode project to use manual signing with Match
+    # Use the profile name from Match (includes timestamp suffix)
+    profile_name = ENV["sigh_com.amoslabs.mobile_appstore_profile-name"] || "match AppStore com.amoslabs.mobile"
+
     update_code_signing_settings(
       use_automatic_signing: false,
       path: "Runner.xcodeproj",
       team_id: ENV["TEAM_ID"] || "65M4R87855",
-      profile_name: "match AppStore com.amoslabs.mobile",
+      profile_name: profile_name,
       code_sign_identity: "Apple Distribution"
     )
 
@@ -76,7 +79,7 @@ platform :ios do
       clean: true,
       export_options: {
         provisioningProfiles: {
-          "com.amoslabs.mobile" => "match AppStore com.amoslabs.mobile"
+          "com.amoslabs.mobile" => profile_name
         }
       }
     )
@@ -276,36 +279,36 @@ platform :ios do
 
   desc "Send Slack notification"
   private_lane :notify_slack do |options|
-    return unless ENV["SLACK_WEBHOOK_URL"]
+    if ENV["SLACK_WEBHOOK_URL"]
+      message = options[:message] || "Build completed"
+      success = options[:success].nil? ? true : options[:success]
 
-    message = options[:message] || "Build completed"
-    success = options[:success].nil? ? true : options[:success]
-
-    slack(
-      message: message,
-      success: success,
-      slack_url: ENV["SLACK_WEBHOOK_URL"],
-      default_payloads: [:git_branch, :git_author],
-      attachment_properties: {
-        fields: [
-          {
-            title: "App",
-            value: "AMOS Mobile",
-            short: true
-          },
-          {
-            title: "Version",
-            value: get_version_number(xcodeproj: "Runner.xcodeproj", target: "Runner"),
-            short: true
-          },
-          {
-            title: "Build",
-            value: get_build_number(xcodeproj: "Runner.xcodeproj"),
-            short: true
-          }
-        ]
-      }
-    )
+      slack(
+        message: message,
+        success: success,
+        slack_url: ENV["SLACK_WEBHOOK_URL"],
+        default_payloads: [:git_branch, :git_author],
+        attachment_properties: {
+          fields: [
+            {
+              title: "App",
+              value: "AMOS Mobile",
+              short: true
+            },
+            {
+              title: "Version",
+              value: get_version_number(xcodeproj: "Runner.xcodeproj", target: "Runner"),
+              short: true
+            },
+            {
+              title: "Build",
+              value: get_build_number(xcodeproj: "Runner.xcodeproj"),
+              short: true
+            }
+          ]
+        }
+      )
+    end
   end
 
   desc "Deploy to TestFlight with Slack notification"

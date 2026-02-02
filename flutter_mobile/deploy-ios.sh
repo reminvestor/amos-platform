@@ -83,13 +83,16 @@ while [[ $# -gt 0 ]]; do
             echo "  --screenshot-device    Capture on specific device (e.g. \"iPhone 16 Pro Max\")"
             echo "  --help                 Show this help message"
             echo ""
-            echo "Environment variables:"
+            echo "Environment variables (set in .env.production):"
+            echo "  API_BASE_URL                                Production API URL"
+            echo "  FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD  App-specific password (recommended)"
+            echo "  MATCH_PASSWORD                              Fastlane Match encryption password"
+            echo "  TESTFLIGHT_CHANGELOG                        What to Test notes (alternative to --notes)"
+            echo ""
+            echo "  Alternative auth (App Store Connect API Key):"
             echo "  ASC_KEY_ID             App Store Connect API Key ID"
             echo "  ASC_ISSUER_ID          App Store Connect Issuer ID"
             echo "  ASC_KEY_CONTENT        App Store Connect API Key (base64)"
-            echo "  APPLE_APP_ID           Apple App ID (numeric)"
-            echo "  API_BASE_URL           Production API URL"
-            echo "  TESTFLIGHT_CHANGELOG   What to Test notes (alternative to --notes)"
             echo ""
             echo "Examples:"
             echo "  ./deploy-ios.sh --notes \"Fixed time format, added notification sounds\""
@@ -133,6 +136,18 @@ if [ -f ios/fastlane/.env ]; then
     print_success "Loaded ios/fastlane/.env"
 fi
 
+# Load iOS .env for MATCH_PASSWORD
+if [ -f ios/.env ]; then
+    set -a
+    source ios/.env
+    set +a
+    print_success "Loaded ios/.env (Match credentials)"
+fi
+
+# Set locale for Ruby/Fastlane (critical for avoiding encoding errors)
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
 # Check required vars
 if [ -z "$API_BASE_URL" ]; then
     print_error "API_BASE_URL not set!"
@@ -140,10 +155,25 @@ if [ -z "$API_BASE_URL" ]; then
     exit 1
 fi
 
+# Check for authentication (app-specific password or API key)
+if [ -z "$FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD" ] && [ -z "$ASC_KEY_ID" ]; then
+    print_error "Authentication not configured!"
+    echo ""
+    echo "Set one of these in .env.production:"
+    echo "  FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD=xxxx-xxxx-xxxx-xxxx  (recommended)"
+    echo "  OR"
+    echo "  ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_CONTENT (API key)"
+    exit 1
+fi
+
 echo ""
 echo "Configuration:"
 echo "  API URL: $API_BASE_URL"
-echo "  ASC Key ID: ${ASC_KEY_ID:-not set}"
+if [ -n "$FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD" ]; then
+    echo "  Auth: App-Specific Password"
+else
+    echo "  Auth: App Store Connect API Key (${ASC_KEY_ID})"
+fi
 
 # ============================================
 # Step 2: App Store Screenshots (optional)

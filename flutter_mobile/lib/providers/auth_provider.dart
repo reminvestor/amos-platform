@@ -152,8 +152,9 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   /// Login using a trusted device token (bypasses MFA)
-  /// Returns true if login was successful, false if device token was invalid
-  Future<bool> loginWithDeviceToken(String email, String deviceToken) async {
+  /// Returns the new rotated device token if successful, null if failed.
+  /// SECURITY: Server rotates token on each use - caller MUST store the new token.
+  Future<String?> loginWithDeviceToken(String email, String deviceToken) async {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
@@ -171,16 +172,17 @@ class AuthNotifier extends Notifier<AuthState> {
         );
         // Register device for push notifications
         _registerForPushNotifications();
-        return true;
+        // Return the rotated token for storage
+        return result.newDeviceToken;
       }
 
       // Unexpected state
       state = state.copyWith(isLoading: false);
-      return false;
+      return null;
     } catch (e) {
       // Device token was invalid/expired - don't show error, let caller handle
       state = state.copyWith(isLoading: false);
-      return false;
+      return null;
     }
   }
 

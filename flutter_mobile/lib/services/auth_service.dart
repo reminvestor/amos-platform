@@ -127,6 +127,9 @@ class AuthService {
   /// Login with a trusted device token (bypasses MFA)
   /// This is used when the user has previously trusted this device and
   /// is using Face ID/biometrics to sign in.
+  ///
+  /// SECURITY: Server rotates the device token on each use.
+  /// The new token is returned and must be stored for the next login.
   Future<LoginResult> loginWithDeviceToken({
     required String email,
     required String deviceToken,
@@ -140,6 +143,9 @@ class AuthService {
     final user = User.fromJson(response['user']);
     final token = (response['api_key'] ?? response['token']) as String;
 
+    // SECURITY: Get the rotated device token for next login
+    final newDeviceToken = response['new_device_token'] as String?;
+
     // Set token directly on ApiClient
     ApiClient.instance.setAuthToken(token);
 
@@ -149,6 +155,7 @@ class AuthService {
 
     return LoginResult(
       authResult: AuthResult(user: user, token: token),
+      newDeviceToken: newDeviceToken,
     );
   }
 }

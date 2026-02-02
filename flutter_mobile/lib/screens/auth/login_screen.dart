@@ -120,13 +120,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
         if (deviceCreds != null) {
           AppLogger.debug('Biometric login with trusted device token');
 
-          final success = await ref.read(authStateProvider.notifier).loginWithDeviceToken(
+          // SECURITY: Server rotates token on each use - we get the new token back
+          final newDeviceToken = await ref.read(authStateProvider.notifier).loginWithDeviceToken(
                 deviceCreds.email,
                 deviceCreds.deviceToken,
               );
 
-          if (success && mounted) {
-            AppLogger.info('Trusted device login successful');
+          if (newDeviceToken != null && mounted) {
+            // SECURITY: Store the rotated token for next login
+            await _biometricService.storeTrustedDeviceToken(
+              token: newDeviceToken,
+              email: deviceCreds.email,
+            );
+            AppLogger.info('Trusted device login successful, token rotated');
             showSuccess(context, 'Welcome back!');
             context.go('/chat');
             return;
