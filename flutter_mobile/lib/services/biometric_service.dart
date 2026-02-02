@@ -1,7 +1,11 @@
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
+
+import 'package:amos_mobile/services/security_service.dart';
+import 'package:amos_mobile/utils/logger.dart';
 
 class BiometricService {
   final LocalAuthentication _localAuth = LocalAuthentication();
@@ -65,9 +69,19 @@ class BiometricService {
     return 'Biometric';
   }
 
-  /// Authenticate using biometrics
+  /// Authenticate using biometrics.
+  /// SECURITY: Also checks for jailbreak/root on production builds.
   Future<bool> authenticate({String? reason}) async {
     try {
+      // SECURITY: Check device security before allowing biometric
+      final securityService = SecurityService.instance;
+      final securityDecision = await securityService.shouldAllowBiometric();
+
+      if (!securityDecision.allowed) {
+        AppLogger.warning('🔐 Biometric blocked: ${securityDecision.reason}');
+        return false;
+      }
+
       final isAvailable = await isBiometricAvailable();
       if (!isAvailable) return false;
 
@@ -76,8 +90,36 @@ class BiometricService {
         biometricOnly: false,
       );
     } catch (e) {
+      AppLogger.error('Biometric authentication failed', error: e);
       return false;
     }
+  }
+
+  /// Check if biometric should be offered (considers security status).
+  Future<BiometricAvailability> checkBiometricAvailability() async {
+    final isAvailable = await isBiometricAvailable();
+    if (!isAvailable) {
+      return BiometricAvailability(
+        available: false,
+        reason: 'Biometric hardware not available or not enrolled',
+      );
+    }
+
+    final securityService = SecurityService.instance;
+    final securityDecision = await securityService.shouldAllowBiometric();
+
+    if (!securityDecision.allowed) {
+      return BiometricAvailability(
+        available: false,
+        reason: securityDecision.reason,
+        blockedForSecurity: true,
+      );
+    }
+
+    return BiometricAvailability(
+      available: true,
+      reason: 'Biometric available and secure',
+    );
   }
 
   /// Check if biometric login is enabled
@@ -129,37 +171,101 @@ class BiometricService {
 
   // ============ Trusted Device Token Methods ============
 
+  // SharedPreferences key to track if token was ever stored (survives secure storage issues)
+  static const _deviceTokenExistsKey = 'trusted_device_token_exists';
+
   /// Store a trusted device token for Face ID/biometric MFA bypass
   Future<void> storeTrustedDeviceToken({
     required String token,
     required String email,
   }) async {
-    await _storage.write(key: _deviceTokenKey, value: token);
-    await _storage.write(key: _deviceTokenEmailKey, value: email);
-    // Also mark biometric as enabled
-    await _storage.write(key: _biometricEnabledKey, value: 'true');
+    try {
+      await _storage.write(key: _deviceTokenKey, value: token);
+      await _storage.write(key: _deviceTokenEmailKey, value: email);
+      // Also mark biometric as enabled
+      await _storage.write(key: _biometricEnabledKey, value: 'true');
+
+      // Track in SharedPreferences as backup indicator (just a flag, no sensitive data)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_deviceTokenExistsKey, true);
+
+      AppLogger.info('✅ Trusted device token stored successfully for $email');
+    } catch (e, stackTrace) {
+      AppLogger.error('❌ Failed to store trusted device token', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
   }
 
   /// Get the stored trusted device token
   Future<String?> getTrustedDeviceToken() async {
-    return await _storage.read(key: _deviceTokenKey);
+    try {
+      final token = await _storage.read(key: _deviceTokenKey);
+      if (token != null && token.isNotEmpty) {
+        AppLogger.debug('Retrieved trusted device token');
+        return token;
+      }
+
+      // Check if we expected a token (iOS Simulator storage issue)
+      final prefs = await SharedPreferences.getInstance();
+      final expectedToken = prefs.getBool(_deviceTokenExistsKey) ?? false;
+      if (expectedToken) {
+        AppLogger.warning('⚠️ Trusted device token was expected but not found in secure storage (iOS Simulator issue)');
+      }
+
+      return null;
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to get trusted device token', error: e, stackTrace: stackTrace);
+      return null;
+    }
   }
 
   /// Get the email associated with the trusted device
   Future<String?> getTrustedDeviceEmail() async {
-    return await _storage.read(key: _deviceTokenEmailKey);
+    try {
+      return await _storage.read(key: _deviceTokenEmailKey);
+    } catch (e) {
+      return null;
+    }
   }
 
   /// Check if a trusted device token exists
   Future<bool> hasTrustedDeviceToken() async {
-    final token = await _storage.read(key: _deviceTokenKey);
-    return token != null && token.isNotEmpty;
+    try {
+      final token = await _storage.read(key: _deviceTokenKey);
+      final hasToken = token != null && token.isNotEmpty;
+
+      if (hasToken) {
+        AppLogger.debug('Has trusted device token: true');
+      } else {
+        // Check SharedPreferences to see if we expected one
+        final prefs = await SharedPreferences.getInstance();
+        final wasStored = prefs.getBool(_deviceTokenExistsKey) ?? false;
+        if (wasStored) {
+          AppLogger.warning('⚠️ Device was trusted but token lost (iOS Simulator storage issue - please re-trust device)');
+        }
+      }
+
+      return hasToken;
+    } catch (e) {
+      AppLogger.error('Error checking trusted device token', error: e);
+      return false;
+    }
   }
 
   /// Clear the trusted device token (when logging out or revoking trust)
   Future<void> clearTrustedDeviceToken() async {
-    await _storage.delete(key: _deviceTokenKey);
-    await _storage.delete(key: _deviceTokenEmailKey);
+    try {
+      await _storage.delete(key: _deviceTokenKey);
+      await _storage.delete(key: _deviceTokenEmailKey);
+
+      // Also clear the backup indicator
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_deviceTokenExistsKey);
+
+      AppLogger.info('Cleared trusted device token');
+    } catch (e) {
+      AppLogger.error('Error clearing trusted device token', error: e);
+    }
   }
 
   /// Authenticate with biometric and get device token for login
@@ -212,6 +318,7 @@ class BiometricService {
   Future<void> clearAllBiometricData() async {
     await disableBiometricLogin();
     await clearTrustedDeviceToken();
+    AppLogger.info('Cleared all biometric data');
   }
 }
 
@@ -244,5 +351,18 @@ class DeviceIdentity {
     required this.name,
     required this.identifier,
     required this.platform,
+  });
+}
+
+/// Result of biometric availability check including security status.
+class BiometricAvailability {
+  final bool available;
+  final String reason;
+  final bool blockedForSecurity;
+
+  const BiometricAvailability({
+    required this.available,
+    required this.reason,
+    this.blockedForSecurity = false,
   });
 }
