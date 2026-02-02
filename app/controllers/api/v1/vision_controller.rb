@@ -117,15 +117,16 @@ module Api
         image_data, mime_type = extract_image_from_request
         mode = normalize_scan_mode(params[:mode])
         # Use provided extracted_data if present (allows editing before save)
-        provided_data = params[:extracted_data]&.to_unsafe_h
+        # Note: params[:extracted_data] being an empty hash means user wants to save with placeholders
+        provided_data = params.key?(:extracted_data) ? (params[:extracted_data]&.to_unsafe_h || {}) : nil
 
         unless image_data.present?
           return render json: { success: false, error: "No image provided" }, status: :bad_request
         end
 
         begin
-          # Only instantiate service if we need to extract data (no provided_data)
-          service = provided_data.blank? ? GeminiVisionService.new : nil
+          # Only instantiate service if we need to extract data (no provided_data at all)
+          service = provided_data.nil? ? GeminiVisionService.new : nil
 
           case mode
           when :business_card
@@ -260,19 +261,25 @@ module Api
 
       def save_business_card(service, image_data, mime_type, provided_data = nil)
         # Use provided data (user-edited) or extract fresh from image
-        data = if provided_data.present?
+        # If provided_data is an empty hash, use placeholder values
+        data = if provided_data.is_a?(Hash)
                  provided_data.symbolize_keys
                else
                  service.extract_business_card(image_data, mime_type: mime_type)
                end
         return render json: { success: false, error: data[:error] }, status: :unprocessable_entity if data[:error]
 
+        # Generate placeholder values for empty/missing fields
+        first_name = data[:first_name] || data[:name]&.split&.first || "Unknown"
+        last_name = data[:last_name] || data[:name]&.split&.drop(1)&.join(" ") || "Contact"
+        email = data[:email].presence || "scan_#{SecureRandom.hex(8)}@placeholder.scan"
+
         contact = Contact.new(
           user_id: current_user.id,
           entity_id: current_user.entity.id,
-          email: data[:email],
-          first_name: data[:first_name] || data[:name]&.split&.first,
-          last_name: data[:last_name] || data[:name]&.split&.drop(1)&.join(" "),
+          email: email,
+          first_name: first_name,
+          last_name: last_name,
           status: "active",
           lead: true,
           metadata: {
