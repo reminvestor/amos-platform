@@ -439,6 +439,8 @@ class VisionScannerApiTest < ActionDispatch::IntegrationTest
   test "scan_and_save business_card handles completely empty extraction" do
     extracted_data = {}
 
+    # Use as: :json to preserve the empty hash in params
+    # (Rails form params omit empty hashes, but JSON preserves them)
     post "/api/v1/vision/scan_and_save",
          params: {
            mode: "business_card",
@@ -446,7 +448,8 @@ class VisionScannerApiTest < ActionDispatch::IntegrationTest
            mime_type: "image/png",
            extracted_data: extracted_data
          },
-         headers: @auth_headers
+         headers: @auth_headers,
+         as: :json
 
     assert_response :success
     json = JSON.parse(response.body)

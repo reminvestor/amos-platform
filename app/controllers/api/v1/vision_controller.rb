@@ -116,9 +116,12 @@ module Api
       def scan_and_save
         image_data, mime_type = extract_image_from_request
         mode = normalize_scan_mode(params[:mode])
-        # Use provided extracted_data if present (allows editing before save)
+        
+        # Check if extracted_data was provided (allows editing before save)
         # Note: params[:extracted_data] being an empty hash means user wants to save with placeholders
-        provided_data = params.key?(:extracted_data) ? (params[:extracted_data]&.to_unsafe_h || {}) : nil
+        # We check both symbol and string keys since Rails params can use either
+        has_extracted_data = params.key?(:extracted_data) || params.key?("extracted_data")
+        provided_data = has_extracted_data ? (params[:extracted_data]&.to_unsafe_h || {}) : nil
 
         unless image_data.present?
           return render json: { success: false, error: "No image provided" }, status: :bad_request
@@ -493,7 +496,9 @@ module Api
         lines << ""
         if data[:items].present?
           lines << "### Items"
-          data[:items].each { |item| lines << "- #{item}" }
+          # Handle items as either array or string
+          items = data[:items].is_a?(Array) ? data[:items] : [data[:items]]
+          items.each { |item| lines << "- #{item}" }
         end
         lines << ""
         lines << "**Category:** #{data[:category]}" if data[:category]
@@ -506,12 +511,16 @@ module Api
         lines << ""
         if data[:key_points].present?
           lines << "## Key Points"
-          data[:key_points].each { |point| lines << "- #{point}" }
+          # Handle key_points as either array or string
+          points = data[:key_points].is_a?(Array) ? data[:key_points] : [data[:key_points]]
+          points.each { |point| lines << "- #{point}" }
         end
         if data[:action_items].present?
           lines << ""
           lines << "## Action Items"
-          data[:action_items].each { |item| lines << "- [ ] #{item}" }
+          # Handle action_items as either array or string
+          items = data[:action_items].is_a?(Array) ? data[:action_items] : [data[:action_items]]
+          items.each { |item| lines << "- [ ] #{item}" }
         end
         lines << ""
         lines << "---"
