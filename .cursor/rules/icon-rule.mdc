@@ -1,5 +1,0 @@
----
-alwaysApply: true
-UI rule: always use Lucide Icons
-UI rule: this app supports both light and dark mode....all css updates must be made in scss files NEVER inline
----
