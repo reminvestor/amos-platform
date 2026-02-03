@@ -678,6 +678,221 @@ This creates a self-improving platform where the AI identifies needs and the com
 
 ---
 
+## 7.5 Trustless Revenue Distribution (On-Chain Treasury)
+
+### The Trust Problem
+
+Traditional platforms have a critical vulnerability: revenue distribution depends on promises.
+
+```
+TRADITIONAL MODEL (Requires Trust):
+Customer pays → Company holds money → Company decides payouts → Maybe you get paid
+
+POTENTIAL FAILURES:
+- Company changes the rules
+- Company goes bankrupt
+- Company gets hacked
+- Bad actor gains control
+```
+
+AMOS solves this with **on-chain, immutable revenue distribution**.
+
+### The Zero-Custody Architecture
+
+**Money never stops moving. No one holds the bag.**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ZERO CUSTODY REVENUE FLOW                                │
+│                                                                             │
+│  CUSTOMER         STRIPE          CIRCLE           SOLANA                   │
+│  ────────         ──────          ──────           ──────                   │
+│                                                                             │
+│  Pays $100 ──────► Receives ─────► Converts ──────► Treasury                │
+│  (instant)        (seconds)       (seconds)        Program                  │
+│                                                      │                      │
+│                                                      │ IMMEDIATE SPLIT      │
+│                                                      ▼                      │
+│                                               ┌──────────────┐              │
+│                                               │  $50 USDC    │              │
+│                                               │  Holder Pool │──► Claimable │
+│                                               ├──────────────┤              │
+│                                               │  $30 USDC    │              │
+│                                               │  R&D Multisig│──► Voted     │
+│                                               ├──────────────┤              │
+│                                               │  $10 USDC    │              │
+│                                               │  Ops Multisig│──► Budgeted  │
+│                                               ├──────────────┤              │
+│                                               │  $10 USDC    │              │
+│                                               │  Reserve PDA │──► Locked    │
+│                                               └──────────────┘              │
+│                                                                             │
+│  TIME FROM PAYMENT TO ON-CHAIN SPLIT: < 60 seconds                         │
+│  HUMAN CUSTODY TIME: 0 seconds                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Immutable Split Constants (Solana Program)
+
+The revenue allocation is **baked into deployed program code**:
+
+```rust
+// programs/amos_treasury/src/lib.rs
+// IMMUTABLE - Cannot be changed after deployment
+
+pub const HOLDER_SHARE: u64 = 50;      // 50% to token holders
+pub const RND_SHARE: u64 = 30;          // 30% to R&D multisig
+pub const OPS_SHARE: u64 = 10;          // 10% to operations
+pub const RESERVE_SHARE: u64 = 10;      // 10% to reserve
+
+pub const MIN_STAKE_DAYS: u64 = 30;     // Must hold 30 days for revenue
+pub const MIN_STAKE_AMOUNT: u64 = 100;  // Minimum 100 AMOS to qualify
+```
+
+**No admin key can change these values.** The only way to modify:
+1. Deploy a completely new program (new address)
+2. Migrate all users (they'd have to agree)
+3. Move liquidity (requires DAO supermajority vote)
+
+### Payment Options (Progressive Disclosure)
+
+Users can pay in multiple ways, with crypto rails invisible to those who want simplicity:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    TIERED PAYMENT OPTIONS                                   │
+│                                                                             │
+│  TIER 1: NORMIE MODE (Default)                                             │
+│  ─────────────────────────────                                              │
+│  • Pay in USD, see USD prices                                               │
+│  • Behind scenes: Auto-convert to USDC on-chain                            │
+│  • Customer never knows about crypto                                        │
+│  • Enterprise-friendly, no wallet required                                  │
+│                                                                             │
+│  TIER 2: CRYPTO-AWARE (Opt-in)                                             │
+│  ────────────────────────────                                               │
+│  • "Pay in USDC - Save 5%" option                                          │
+│  • "Pay in AMOS - Save 15%" option                                         │
+│  • Connect Solana wallet                                                    │
+│  • Direct crypto payments, skip Stripe fees                                │
+│                                                                             │
+│  TIER 3: BUILDER MODE (Advanced)                                           │
+│  ───────────────────────────────                                            │
+│  • API pricing in AMOS tokens                                               │
+│  • Programmatic access for developers                                       │
+│  • Stake AMOS to get API rate discounts                                    │
+│  • Maximum integration with token economy                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### AMOS Payment Flywheel
+
+When users pay directly in AMOS tokens:
+
+```
+Customer pays 10,000 AMOS
+        │
+        ▼
+┌───────────────────────────────┐
+│  AMOS PAYMENT PROCESSOR       │
+│  ─────────────────────────    │
+│                               │
+│  50% BURNED 🔥 (5,000 AMOS)  │
+│  └── Permanently removed      │
+│  └── Deflationary pressure    │
+│                               │
+│  25% to Holder Pool           │
+│  └── Distributed to stakers   │
+│                               │
+│  25% to Operations            │
+│  └── R&D and Ops multisigs    │
+└───────────────────────────────┘
+
+RESULT:
+• Constant buy pressure (users need AMOS)
+• Deflationary (50% of payments burned)
+• Higher holder rewards (get AMOS, not just USDC)
+```
+
+### Claim Mechanism
+
+Token holders claim their share of the holder pool:
+
+```rust
+/// Token holders claim their share of the holder pool
+/// Proportional to stake, fully automated
+pub fn claim_revenue(ctx: Context<ClaimRevenue>) -> Result<()> {
+    let holder = &ctx.accounts.holder;
+    let pool = &ctx.accounts.holder_pool;
+    
+    // Verify eligibility
+    require!(
+        holder.stake_amount >= MIN_STAKE_AMOUNT,
+        ErrorCode::InsufficientStake
+    );
+    require!(
+        holder.stake_start_date <= Clock::get()?.unix_timestamp - (MIN_STAKE_DAYS * 86400),
+        ErrorCode::StakeTooRecent
+    );
+
+    // Calculate share: (your_stake / total_stake) * pool_balance
+    let share_bps = (holder.stake_amount * 10000) / total_eligible_stake;
+    let payout = (pool.balance * share_bps) / 10000;
+
+    // Transfer USDC to holder's wallet - NO APPROVAL NEEDED
+    token::transfer(ctx.accounts.to_holder_wallet(), payout)?;
+    
+    Ok(())
+}
+```
+
+**Key properties:**
+- Claim anytime (no waiting for monthly distribution)
+- No human approval required
+- Proportional to stake
+- On-chain, verifiable, auditable
+
+### Multi-Sig Governance Wallets
+
+For funds that require human judgment:
+
+| Pool | Control | Time-Lock | Purpose |
+|------|---------|-----------|---------|
+| **Holder Pool** | Automatic | None | Direct claims by stakers |
+| **R&D Pool** | 3-of-5 multisig | 48 hours | Voted R&D proposals |
+| **Ops Pool** | 2-of-3 multisig | 24 hours | Monthly budgeted expenses |
+| **Reserve** | DAO vote (66%) | 7 days | Emergency fund |
+
+### Trust Guarantees
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    AMOS TRUST GUARANTEE                                     │
+│                                                                             │
+│  "Your revenue share is protected by math, not promises"                    │
+│                                                                             │
+│  ✓ 50% holder share is IMMUTABLE (in deployed program code)                │
+│  ✓ Money flows in < 60 seconds (no custody window)                         │
+│  ✓ All transactions on-chain (publicly auditable)                          │
+│  ✓ Claim anytime (no waiting for monthly distribution)                     │
+│  ✓ No admin keys can change the split                                       │
+│  ✓ Fork-proof (program address is unique to our deployment)                │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Remaining Trust Points (Unavoidable)
+
+Complete honesty about what you still must trust:
+
+| Trust Point | Why It Exists | Mitigation |
+|-------------|---------------|------------|
+| **Stripe** | Holds fiat before conversion | Immediate conversion, regulated |
+| **Circle** | USD → USDC conversion | Regulated, audited, transparent |
+| **Webhook Code** | Triggers the conversion | Open source, minimal logic |
+| **Multi-sig Signers** | Approve R&D/Ops spending | Elected by token holders, time-locks |
+
+---
+
 ## 8. Governance
 
 ### 8.1 Voting Power

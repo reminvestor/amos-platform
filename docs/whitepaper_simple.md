@@ -622,6 +622,170 @@ Ways tokens typically crash:
 
 ---
 
+## How Your Money is Protected (No Trust Required)
+
+### The Problem With Most Platforms
+
+When a company says "we'll share 50% of revenue with you," what's actually stopping them from changing that to 10%? Or 0%?
+
+**Answer: Nothing. You just have to trust them.**
+
+```
+TRADITIONAL PLATFORM:
+You → Pay the company → Company holds money → Maybe you get paid?
+
+WHAT COULD GO WRONG:
+❌ Company changes the rules
+❌ Company goes bankrupt
+❌ Company gets hacked
+❌ New management decides to keep more
+```
+
+### AMOS is Different: Math, Not Promises
+
+Your 50% revenue share is protected by **code on the blockchain that cannot be changed**.
+
+```
+AMOS PLATFORM:
+You → Pay → Instantly converted to crypto → Automatically split → You get your share
+
+WHAT HAPPENS:
+✓ Money flows in under 60 seconds
+✓ Split is automatic (50% to holders, 30% R&D, etc.)
+✓ No human touches it
+✓ No one can change the split
+✓ Claim your share anytime
+```
+
+### How It Actually Works
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                YOUR PAYMENT FLOW                                │
+│                                                                 │
+│  1. Customer pays $100 (credit card)                           │
+│     └── Stripe receives it                                      │
+│                                                                 │
+│  2. Automatically converts to USDC (digital dollars)           │
+│     └── Circle handles this                                     │
+│     └── Takes about 30 seconds                                  │
+│                                                                 │
+│  3. USDC arrives at Solana smart contract                      │
+│     └── This is code, not a company                            │
+│     └── It cannot be changed                                    │
+│                                                                 │
+│  4. Smart contract INSTANTLY splits:                           │
+│     ├── $50 → Token Holder Pool (YOU!)                         │
+│     ├── $30 → R&D (voted on by holders)                        │
+│     ├── $10 → Operations                                        │
+│     └── $10 → Emergency Reserve                                 │
+│                                                                 │
+│  5. You claim your share anytime                                │
+│     └── No approval needed                                      │
+│     └── It's already YOUR money                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### The Magic: It's Just Code
+
+The split percentages are written into the blockchain program itself:
+
+```
+HOLDER_SHARE = 50%   ← This is in the code
+RND_SHARE = 30%      ← Cannot be changed
+OPS_SHARE = 10%      ← Even we can't change it
+RESERVE = 10%        ← Locked forever
+```
+
+**The only way to change these numbers is to create a completely new system and convince everyone to move to it.** That's effectively impossible without community consent.
+
+### What About Forks?
+
+If someone copies our code and tries to compete:
+
+```
+WHAT THEY GET:
+✓ The source code (it's open source!)
+
+WHAT THEY DON'T GET:
+✗ The deployed smart contract (unique address)
+✗ The existing token holders
+✗ The liquidity pools
+✗ The customer base
+✗ The contributor community
+✗ Any of the revenue
+
+A fork starts with $0 and 0 users.
+```
+
+### Multiple Ways to Pay
+
+You can pay however you're comfortable:
+
+| How You Pay | Discount | What Happens Behind the Scenes |
+|-------------|----------|--------------------------------|
+| **Credit Card** | 0% | Stripe → USDC → On-chain split |
+| **USDC (crypto)** | 5% | Directly on-chain → Split |
+| **AMOS tokens** | 15% | 50% burned 🔥, rest distributed |
+
+**Most users will just use a credit card** and never know crypto is involved. That's fine! The protection works either way.
+
+### Paying in AMOS Tokens is Extra Powerful
+
+If you choose to pay directly in AMOS:
+
+```
+You pay 1,000 AMOS for compute
+        │
+        ▼
+┌───────────────────────────────────┐
+│  500 AMOS → BURNED FOREVER 🔥    │
+│  (removed from existence)         │
+│                                   │
+│  250 AMOS → Holder Pool           │
+│  (shared among all stakers)       │
+│                                   │
+│  250 AMOS → Operations            │
+│  (R&D and running costs)          │
+└───────────────────────────────────┘
+
+WHAT THIS MEANS:
+• You get 15% discount
+• Total supply decreases (good for holders)
+• Creates demand for AMOS tokens
+```
+
+### The Trust Guarantee
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│     "Your 50% share is protected by math, not promises."       │
+│                                                                 │
+│     ✓ Written into blockchain code (immutable)                 │
+│     ✓ Money flows in under 60 seconds                          │
+│     ✓ No human touches the funds                                │
+│     ✓ Claim anytime without approval                           │
+│     ✓ Publicly auditable by anyone                              │
+│     ✓ Fork-proof (can't steal the deployed contracts)          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### What We're Honest About
+
+Some things still require trust:
+
+| Who | What They Do | Why It's OK |
+|-----|--------------|-------------|
+| **Stripe** | Takes your credit card | Regulated company, instant conversion |
+| **Circle** | Converts USD to USDC | Regulated, audited, transparent |
+| **Multisig Signers** | Approve R&D spending | Elected by token holders, time-locked |
+
+**But the 50% split itself? That's in the code. No one can touch it.**
+
+---
+
 ## The Bigger Picture: AI + Humans Working Together
 
 ### Wait, Can AI Own Tokens?
