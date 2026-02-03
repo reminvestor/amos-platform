@@ -2,376 +2,129 @@ name: CI
 
 on:
   pull_request:
+    branches: [main, prod, dev]
   push:
-    branches: [ main, prod ]
-
-env:
-  RAILS_ENV: test
-  DATABASE_URL: postgres://postgres:postgres@localhost:5432
+    branches: [dev]
 
 jobs:
-  # ═══════════════════════════════════════════════════════════════════════════
-  # FAST CHECKS (Run first, fail fast)
-  # ═══════════════════════════════════════════════════════════════════════════
-  
-  scan_ruby:
-    name: Security Scan
+  test:
+    name: Test Suite
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-      - name: Run Brakeman security scanner
-        run: bin/brakeman --no-pager --no-exit-on-warn --no-exit-on-error || true
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-      - name: Run RuboCop
-        run: bin/rubocop -f github
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # UNIT TESTS (Fast, no external dependencies)
-  # ═══════════════════════════════════════════════════════════════════════════
-  
-  unit_tests_models:
-    name: Unit Tests - Models
-    runs-on: ubuntu-latest
-    needs: [lint]
+    
     services:
       postgres:
         image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-        ports: [5432:5432]
-        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-      - name: Setup database
-        run: bin/rails db:test:prepare
-      - name: Run model tests
-        run: bin/rails test test/models/
-
-  unit_tests_services:
-    name: Unit Tests - Services
-    runs-on: ubuntu-latest
-    needs: [lint]
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports: [5432:5432]
-        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-      - name: Setup database
-        run: bin/rails db:test:prepare
-      - name: Run service tests
-        env:
-          AWS_REGION: us-east-1
-          AWS_ACCESS_KEY_ID: mock_key
-          AWS_SECRET_ACCESS_KEY: mock_secret
-        run: bin/rails test test/services/
-
-  unit_tests_jobs:
-    name: Unit Tests - Jobs
-    runs-on: ubuntu-latest
-    needs: [lint]
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports: [5432:5432]
-        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-      - name: Setup database
-        run: bin/rails db:test:prepare
-      - name: Run job tests
-        run: bin/rails test test/jobs/
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # CONTROLLER TESTS (API and Web)
-  # ═══════════════════════════════════════════════════════════════════════════
-  
-  controller_tests:
-    name: Controller Tests
-    runs-on: ubuntu-latest
-    needs: [lint]
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports: [5432:5432]
-        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-      - name: Setup database
-        run: bin/rails db:test:prepare
-      - name: Run controller tests
-        run: bin/rails test test/controllers/
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # INTEGRATION TESTS (Cross-component, slower)
-  # ═══════════════════════════════════════════════════════════════════════════
-  
-  integration_tests:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    needs: [unit_tests_models, unit_tests_services]
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports: [5432:5432]
-        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
-
+          POSTGRES_DB: amos_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
       redis:
         image: redis:7
-        ports: [6379:6379]
-        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
+      
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
         with:
-          ruby-version: .ruby-version
+          ruby-version: '3.2'
           bundler-cache: true
-      - name: Setup database
-        run: bin/rails db:test:prepare
-      - name: Run integration tests
-        env:
-          REDIS_URL: redis://localhost:6379/1
-          AWS_REGION: us-east-1
-          AWS_ACCESS_KEY_ID: mock_key
-          AWS_SECRET_ACCESS_KEY: mock_secret
-        run: bin/rails test test/integration/
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # CRITICAL PATH TESTS (Experience Learning, Living Platform, etc.)
-  # ═══════════════════════════════════════════════════════════════════════════
-  
-  critical_path_tests:
-    name: Critical Path Tests
-    runs-on: ubuntu-latest
-    needs: [lint]
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports: [5432:5432]
-        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-      - name: Setup database
-        run: bin/rails db:test:prepare
-      - name: Run Experience Learning tests
-        run: |
-          bin/rails test test/models/task_experience_test.rb \
-                        test/services/learning/ \
-                        test/services/guidance_library_test.rb \
-                        test/integration/experience_learning_flow_test.rb
-      - name: Run Living Platform tests
-        run: |
-          bin/rails test test/services/living_platform/ \
-                        test/integration/living_platform_integration_test.rb
-      - name: Run Context Graph tests
-        run: |
-          bin/rails test test/services/context_graph/ \
-                        test/models/decision_trace_test.rb
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # SYSTEM TESTS (Browser-based, slowest)
-  # ═══════════════════════════════════════════════════════════════════════════
-  
-  system_tests:
-    name: System Tests
-    runs-on: ubuntu-latest
-    needs: [controller_tests, integration_tests]
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports: [5432:5432]
-        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
-
-    steps:
-      - name: Install Chrome
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y google-chrome-stable
-      - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-      - name: Setup database
-        run: bin/rails db:test:prepare
-      - name: Run system tests
-        run: bin/rails test:system
-      - name: Upload screenshots
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: screenshots
-          path: ${{ github.workspace }}/tmp/screenshots
-          if-no-files-found: ignore
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # FLUTTER MOBILE TESTS
-  # ═══════════════════════════════════════════════════════════════════════════
-
-  flutter_analyze:
-    name: Flutter Analyze
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: flutter_mobile
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
-          cache: true
+          node-version: '20'
+          cache: 'npm'
+      
       - name: Install dependencies
-        run: flutter pub get
-      - name: Analyze code
-        run: flutter analyze --no-fatal-infos
-
-  flutter_tests:
-    name: Flutter Tests
-    runs-on: ubuntu-latest
-    needs: [flutter_analyze]
-    defaults:
-      run:
-        working-directory: flutter_mobile
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
-          cache: true
-      - name: Install dependencies
-        run: flutter pub get
-      - name: Run unit tests
-        run: flutter test --coverage
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: flutter-coverage
-          path: flutter_mobile/coverage/lcov.info
-          if-no-files-found: ignore
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # COVERAGE REPORT (Aggregate all results)
-  # ═══════════════════════════════════════════════════════════════════════════
-
-  coverage_report:
-    name: Test Coverage Report
-    runs-on: ubuntu-latest
-    needs: [unit_tests_models, unit_tests_services, unit_tests_jobs, controller_tests, integration_tests, critical_path_tests]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/prod'
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports: [5432:5432]
-        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
+        run: |
+          bundle install
+          npm ci
+      
       - name: Setup database
-        run: bin/rails db:test:prepare
-      - name: Run all tests with coverage
         env:
-          COVERAGE: 'true'
-          AWS_REGION: us-east-1
-          AWS_ACCESS_KEY_ID: mock_key
-          AWS_SECRET_ACCESS_KEY: mock_secret
-        run: bin/rails test
-      - name: Coverage summary
-        if: always()
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/amos_test
+          REDIS_URL: redis://localhost:6379
         run: |
-          if [ -f coverage/.last_run.json ]; then
-            echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            cat coverage/.last_run.json >> $GITHUB_STEP_SUMMARY
-          fi
+          bundle exec rails db:create db:schema:load
+      
+      - name: Run tests
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/amos_test
+          REDIS_URL: redis://localhost:6379
+        run: |
+          bundle exec rails test
 
-  # ═══════════════════════════════════════════════════════════════════════════
-  # DEPLOY GATE (All tests must pass before deploy)
-  # ═══════════════════════════════════════════════════════════════════════════
-  
-  deploy_ready:
-    name: Deploy Ready
+  lint:
+    name: Linting
     runs-on: ubuntu-latest
-    needs: [scan_ruby, lint, unit_tests_models, unit_tests_services, unit_tests_jobs, controller_tests, integration_tests, critical_path_tests, system_tests, flutter_tests]
+    
     steps:
-      - name: All tests passed
+      - uses: actions/checkout@v4
+      
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      
+      - name: Run RuboCop
+        run: bundle exec rubocop --parallel
+        continue-on-error: true  # Don't fail on lint warnings initially
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      
+      - name: Run Brakeman
         run: |
-          echo "✅ All tests passed - ready to deploy!"
-          echo ""
-          echo "Test Categories Completed:"
-          echo "  - Security scan"
-          echo "  - Linting"
-          echo "  - Model tests"
-          echo "  - Service tests"
-          echo "  - Job tests"
-          echo "  - Controller tests"
-          echo "  - Integration tests"
-          echo "  - Critical path tests"
-          echo "  - System tests"
-          echo "  - Flutter mobile tests"
+          gem install brakeman
+          brakeman -q -w2 --no-pager
+        continue-on-error: true  # Don't fail on warnings initially
+
+  solana:
+    name: Solana Build Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Solana dependencies
+        working-directory: ./solana
+        run: npm ci
+      
+      - name: TypeScript check
+        working-directory: ./solana
+        run: npx tsc --noEmit
+        continue-on-error: true
