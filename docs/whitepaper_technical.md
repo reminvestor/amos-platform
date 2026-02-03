@@ -114,11 +114,79 @@ Unlike traditional token launches where founders receive a pre-allocation, AMOS 
 - **No dump risk**: No founder tokens to sell
 - **Regulatory clarity**: Entity pool is a company asset, not a distribution
 
-The Entity Pool (15%) belongs to AMOS Labs Inc. for:
-- Hiring and contractor compensation (in AMOS)
-- Strategic partnerships
-- Operational runway
-- Key employee vesting grants
+### 2.3 The AMOS Labs 10-Year Lockup
+
+The Entity Pool (15% = 15,000,000 AMOS) is subject to a **10-year smart contract lockup**:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    AMOS LABS LOCKUP COMMITMENT                              │
+│                                                                             │
+│  LOCKED: 15,000,000 AMOS (15% of total supply)                             │
+│  DURATION: 10 years from token launch                                      │
+│  DECAY: ZERO (lockup vault exemption)                                      │
+│  SELLABLE: NO - enforced by smart contract                                 │
+│                                                                             │
+│  CAN DO:                                                                    │
+│  ├── Stake immediately → Earn revenue share                                │
+│  ├── Vote in governance → Participate in decisions                        │
+│  └── Receive USDC payouts → Fund operations                               │
+│                                                                             │
+│  CANNOT DO:                                                                 │
+│  ├── Sell tokens                                                           │
+│  ├── Transfer tokens                                                       │
+│  ├── Withdraw from lockup                                                  │
+│  └── Unlock early (no admin override)                                     │
+│                                                                             │
+│  AFTER 10 YEARS:                                                            │
+│  └── Linear unlock over 2 years (12.5% every quarter)                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why This Matters:**
+
+| Traditional Token Launch | AMOS Labs Approach |
+|-------------------------|-------------------|
+| Founders get 15-20% unlocked | Founders get 0% personal allocation |
+| 1-4 year vesting | 10-year lockup + 2-year unlock |
+| Can sell after cliff | Cannot sell until Year 10 |
+| Incentive: Pump and exit | Incentive: Build revenue |
+| "Trust us" | "Verify on-chain" |
+
+**The Economic Reality:**
+
+AMOS Labs cannot profit from token price speculation. The ONLY way the company earns money:
+
+```
+Revenue Share Math:
+├── AMOS Labs stakes 15M AMOS
+├── Total staked (example): 50M AMOS
+├── AMOS Labs share: 15M / 50M = 30%
+├── Monthly revenue (example): $100,000
+├── Holder pool: $100,000 × 50% = $50,000
+├── AMOS Labs payout: $50,000 × 30% = $15,000/month
+│
+└── To pay ourselves, we MUST build a platform that generates revenue.
+    There is no other path to profitability.
+```
+
+**Smart Contract Enforcement:**
+
+```rust
+// programs/amos_treasury/src/constants.rs
+
+/// AMOS Labs lockup duration (10 years in seconds)
+pub const ENTITY_LOCKUP_DURATION: i64 = 10 * 365 * 24 * 60 * 60; // 315,360,000 seconds
+
+/// AMOS Labs unlock schedule (2 years linear after lockup)
+pub const ENTITY_UNLOCK_DURATION: i64 = 2 * 365 * 24 * 60 * 60;
+
+/// AMOS Labs allocation (15% of 100M = 15M)
+pub const ENTITY_ALLOCATION: u64 = 15_000_000;
+```
+
+The lockup is enforced at the protocol level. No admin key, no multisig, no governance vote can unlock these tokens early. The only way out is waiting 10 years.
 
 ### 2.3 Immutability
 
@@ -1250,6 +1318,65 @@ Pool State:
 price = USDC_reserve / AMOS_reserve
 k = USDC_reserve × AMOS_reserve (constant)
 ```
+
+#### LP Compensation Model
+
+Liquidity providers earn from multiple sources:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    LP REVENUE STREAMS                                       │
+│                                                                             │
+│  1. TRADING FEES (Ongoing)                                                 │
+│     ├── 0.25% of every swap goes to LP fee pool                           │
+│     ├── Distributed proportionally to LP share                            │
+│     └── Example: $100k daily volume = $250/day to LPs                     │
+│                                                                             │
+│  2. LP INCENTIVES (Year 1-3 Bootstrap)                                     │
+│     ├── 3,000,000 AMOS (3% of supply) allocated to LP rewards             │
+│     ├── Year 1: 1,500,000 AMOS (higher incentive to bootstrap)            │
+│     ├── Year 2: 1,000,000 AMOS                                            │
+│     ├── Year 3: 500,000 AMOS                                              │
+│     └── Distributed weekly to all LPs proportionally                      │
+│                                                                             │
+│  3. FOUNDER LP TIER (Special - One-time)                                  │
+│     ├── First $10k of liquidity = Founder LP status                       │
+│     ├── Permanent 0.05% fee share (even after LP withdrawal)              │
+│     ├── 2x governance weight for LP tokens                                │
+│     └── Priority on first 1M AMOS of LP incentives                       │
+│                                                                             │
+│  RISKS:                                                                     │
+│  └── Impermanent loss if AMOS price moves significantly                   │
+│  └── IL can exceed fee+incentive earnings in extreme moves                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Founder LP Math (AMOS Labs):**
+
+```
+AMOS Labs provides $10k initial liquidity ($5k USDC + 500k AMOS)
+
+Year 1 Earnings:
+├── Trading fees: ~$3,000-15,000 (depends on volume)
+├── LP incentives: ~1,500,000 AMOS (if only LP initially)
+├── At $0.01/AMOS: $15,000 in AMOS incentives
+└── Total: $18,000-30,000 return on $10k (180-300% APY)
+
+As more LPs join:
+├── Incentives dilute across all LPs
+├── But trading volume typically increases
+├── And Founder LP keeps permanent 0.05% fee share
+```
+
+**Impermanent Loss Consideration:**
+
+If AMOS 10x from $0.01 to $0.10:
+- Just holding: $55,000 value
+- As LP: ~$31,600 value (after IL)
+- BUT with fees + incentives: ~$50,000+ total
+
+The incentive program is designed to offset IL for early LPs.
 
 ### 11.3 Sell Pressure Scenarios
 

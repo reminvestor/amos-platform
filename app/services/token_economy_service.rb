@@ -52,6 +52,28 @@ class TokenEconomyService
     decay_portion: 0.10      # 10% of decay burned (rest recycled)
   }.freeze
 
+  # AMOS Labs entity lockup parameters
+  # The company's 15% allocation is locked for 10 years with NO decay
+  # This signals long-term commitment and eliminates dump risk
+  ENTITY_LOCKUP = {
+    allocation: 15_000_000,        # 15M AMOS (15% of supply)
+    lockup_years: 10,              # 10 years locked
+    unlock_years: 2,               # 2 years linear unlock after lockup
+    decay_rate: 0.0,               # NO decay while locked
+    can_stake: true,               # CAN stake for revenue share
+    can_vote: true                 # CAN vote in governance
+  }.freeze
+
+  # LP incentive program (to bootstrap liquidity)
+  LP_INCENTIVES = {
+    total_allocation: 3_000_000,   # 3M AMOS (3% of supply) for LP rewards
+    year_1: 1_500_000,             # 1.5M AMOS Year 1 (bootstrap incentive)
+    year_2: 1_000_000,             # 1M AMOS Year 2
+    year_3: 500_000,               # 500k AMOS Year 3
+    trading_fee_bps: 25,           # 0.25% trading fee to LPs
+    founder_lp_fee_bps: 5          # 0.05% permanent fee to founder LP
+  }.freeze
+
   # Stake multipliers for different activities (pre-halving base amounts)
   DISTRIBUTION_MULTIPLIERS = {
     affiliate_sale: 100,        # 100 tokens per $1 of sale
