@@ -271,10 +271,15 @@ pub fn graduate_research(
     _research_proposal_id: u64,
     feature_bounty: u64,
 ) -> Result<()> {
-    let research = &mut ctx.accounts.research_proposal;
-    let governance = &mut ctx.accounts.governance_config;
-    let feature = &mut ctx.accounts.feature_proposal;
     let clock = Clock::get()?;
+    
+    // Get values we need before mutable borrows
+    let governance_bump = ctx.accounts.governance_config.bump;
+    let success_multiplier = ctx.accounts.governance_config.params.research_success_multiplier_bps;
+    let feature_id = ctx.accounts.governance_config.total_proposals;
+    let governance_info = ctx.accounts.governance_config.to_account_info();
+
+    let research = &mut ctx.accounts.research_proposal;
 
     require!(
         research.status == ResearchStatus::Completed,
@@ -291,12 +296,12 @@ pub fn graduate_research(
         .ok_or(GovernanceError::ArithmeticOverflow)?;
 
     let success_bonus = remaining_stipend
-        .checked_mul(governance.params.research_success_multiplier_bps as u64)
+        .checked_mul(success_multiplier as u64)
         .ok_or(GovernanceError::ArithmeticOverflow)?
         .checked_div(BPS_DENOMINATOR)
         .ok_or(GovernanceError::ArithmeticOverflow)?;
 
-    let seeds = &[seeds::GOVERNANCE_CONFIG, &[governance.bump]];
+    let seeds = &[seeds::GOVERNANCE_CONFIG, &[governance_bump]];
     let signer_seeds = &[&seeds[..]];
 
     anchor_spl::token::transfer(
@@ -305,7 +310,7 @@ pub fn graduate_research(
             anchor_spl::token::Transfer {
                 from: ctx.accounts.treasury.to_account_info(),
                 to: ctx.accounts.researcher_token_account.to_account_info(),
-                authority: ctx.accounts.governance_config.to_account_info(),
+                authority: governance_info,
             },
             signer_seeds,
         ),
@@ -317,7 +322,8 @@ pub fn graduate_research(
         .ok_or(GovernanceError::ArithmeticOverflow)?;
 
     // Create the feature proposal
-    let feature_id = governance.total_proposals;
+    let feature = &mut ctx.accounts.feature_proposal;
+    let governance = &mut ctx.accounts.governance_config;
     
     feature.id = feature_id;
     feature.proposer = research.researcher;
