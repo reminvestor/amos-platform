@@ -8,8 +8,8 @@ Welcome! AMOS is an open-source AI automation platform where **contributors are 
 
 ### 1. Fork & Clone
 ```bash
-git clone https://github.com/YOUR_USERNAME/agent_marketing.git
-cd agent_marketing
+git clone https://github.com/YOUR_USERNAME/amos-platform.git
+cd amos-platform
 ```
 
 ### 2. Setup
@@ -38,21 +38,43 @@ Open a Pull Request against `main`. Describe what you did and why.
 
 ## How You Get Paid (In Ownership)
 
-Every approved contribution earns AMOS tokens. This isn't play money—it's real ownership:
+Every approved contribution earns **points** that translate to AMOS tokens. Each day, a pool of tokens is distributed proportionally based on your share of total platform points.
 
-| Contribution Type | Typical Tokens | Revenue Share | Governance |
+### How Points Work
+
+| Contribution Type | Typical Points | Revenue Share | Governance |
 |-------------------|----------------|---------------|------------|
-| Major Feature | ~500 AMOS | ✅ | ✅ |
-| Bug Fix | ~100 AMOS | ✅ | ✅ |
-| Security Fix | ~300 AMOS | ✅ | ✅ |
-| Documentation | ~50 AMOS | ✅ | ✅ |
-| Code Review | ~25 AMOS | ✅ | ✅ |
+| Major Feature | 300-500 points | ✅ | ✅ |
+| Bug Fix | 50-150 points | ✅ | ✅ |
+| Security Fix | 200-400 points | ✅ | ✅ |
+| Documentation | 50-150 points | ✅ | ✅ |
+| Code Review | 25-75 points | ✅ | ✅ |
+| Referrals | 5-50 points/action | ✅ | ✅ |
+| AI Work Review | 10% of bounty | ✅ | ✅ |
+
+### Daily Token Pool
+
+```
+Your Daily AMOS = (Your Points / Total Platform Points) × Daily Pool
+
+Daily Pool starts at 16,000 AMOS and halves every 2 years:
+- Years 0-2: 16,000/day
+- Years 2-4: 8,000/day
+- Years 4-6: 4,000/day
+- And so on...
+```
+
+**Why points instead of fixed tokens?**
+- Fairer distribution based on relative contribution
+- No gaming the system for easy tokens
+- Late joiners still earn meaningful shares
+- Platform economics stay balanced
 
 **What this means:**
 - 50% of platform revenue goes to token holders
 - Your tokens = your share of that 50%
 - You can vote on platform decisions
-- You can trade tokens on crypto exchanges
+- You can trade tokens on Solana DEXs
 
 Read the [Token Whitepaper](docs/whitepaper_simple.md) for full details.
 

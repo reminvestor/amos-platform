@@ -122,7 +122,7 @@ AMOS is a full-featured AI automation platform:
 
 ```bash
 # Clone the repository
-git clone https://github.com/amoslabs/amos-platform.git
+git clone https://github.com/amos-labs/amos-platform.git
 cd amos-platform
 
 # Install dependencies
