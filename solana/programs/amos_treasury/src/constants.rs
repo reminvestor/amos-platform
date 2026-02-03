@@ -95,6 +95,83 @@ pub const ENTITY_CAN_STAKE: bool = true;
 pub const ENTITY_CAN_VOTE: bool = true;
 
 /// ═══════════════════════════════════════════════════════════════════════════
+/// LP INCENTIVE PROGRAM
+/// ═══════════════════════════════════════════════════════════════════════════
+/// 
+/// Liquidity providers earn from trading fees (via AMM) plus AMOS incentives.
+/// Incentives are vested to prevent farm-and-dump attacks.
+/// Early LPs get multipliers to reward bootstrapping.
+/// ═══════════════════════════════════════════════════════════════════════════
+
+/// Total AMOS allocated to LP incentives (3% of supply)
+pub const LP_INCENTIVE_ALLOCATION: u64 = 3_000_000;
+
+/// Year 1 LP incentive distribution
+pub const LP_INCENTIVE_YEAR_1: u64 = 1_500_000;
+
+/// Year 2 LP incentive distribution
+pub const LP_INCENTIVE_YEAR_2: u64 = 1_000_000;
+
+/// Year 3 LP incentive distribution
+pub const LP_INCENTIVE_YEAR_3: u64 = 500_000;
+
+/// LP reward vesting period (30 days in seconds)
+/// LPs must stay for full period to claim all rewards
+pub const LP_VESTING_SECONDS: i64 = 30 * 24 * 60 * 60; // 2,592,000
+
+/// Early withdrawal penalty (forfeited rewards go back to pool)
+/// Day 1-7: 100% forfeit, Day 8-14: 75%, Day 15-21: 50%, Day 22-30: 25%
+pub const LP_EARLY_WITHDRAW_PENALTY_BPS: [u64; 4] = [10000, 7500, 5000, 2500];
+
+/// ═══════════════════════════════════════════════════════════════════════════
+/// FOUNDER LP PERMANENT FEE
+/// ═══════════════════════════════════════════════════════════════════════════
+/// 
+/// The first LP (Founder LP) receives a permanent fee share as reward for
+/// bootstrapping the market. This fee is ADDITIONAL to normal LP fees.
+/// ═══════════════════════════════════════════════════════════════════════════
+
+/// Founder LP permanent fee share (0.05% of all trades forever)
+/// This is separate from the 0.25% AMM fee that goes to all LPs
+pub const FOUNDER_LP_FEE_BPS: u64 = 5; // 0.05%
+
+/// Founder LP threshold - first LP up to this amount gets Founder status
+pub const FOUNDER_LP_THRESHOLD: u64 = 10_000; // $10,000 USD equivalent
+
+/// Founder LP is permanent - cannot be revoked even if LP withdrawn
+pub const FOUNDER_LP_PERMANENT: bool = true;
+
+/// ═══════════════════════════════════════════════════════════════════════════
+/// TIME-WEIGHTED LP MULTIPLIERS
+/// ═══════════════════════════════════════════════════════════════════════════
+/// 
+/// Early LPs get bonus multipliers on their incentive rewards.
+/// Rewards long-term commitment and early risk-taking.
+/// ═══════════════════════════════════════════════════════════════════════════
+
+/// Week 1 LP multiplier (2x rewards)
+pub const LP_WEEK_1_MULTIPLIER: u64 = 200; // 2.0x in basis points / 100
+
+/// Week 2-4 LP multiplier (1.5x rewards)
+pub const LP_WEEK_2_4_MULTIPLIER: u64 = 150; // 1.5x
+
+/// Month 2+ LP multiplier (1x rewards - baseline)
+pub const LP_BASELINE_MULTIPLIER: u64 = 100; // 1.0x
+
+/// ═══════════════════════════════════════════════════════════════════════════
+/// LP LOCKUP BONUSES
+/// ═══════════════════════════════════════════════════════════════════════════
+
+/// 30-day LP lock bonus
+pub const LP_LOCK_30_DAY_BONUS_BPS: u64 = 2000; // +20%
+
+/// 90-day LP lock bonus  
+pub const LP_LOCK_90_DAY_BONUS_BPS: u64 = 5000; // +50%
+
+/// 1-year LP lock bonus
+pub const LP_LOCK_1_YEAR_BONUS_BPS: u64 = 10000; // +100%
+
+/// ═══════════════════════════════════════════════════════════════════════════
 /// PAYMENT DISCOUNTS
 /// ═══════════════════════════════════════════════════════════════════════════
 
@@ -168,5 +245,25 @@ mod tests {
     #[test]
     fn amos_burn_is_50_percent() {
         assert_eq!(AMOS_BURN_BPS, 5000, "AMOS burn must be 50%");
+    }
+
+    #[test]
+    fn lp_incentives_add_up() {
+        assert_eq!(
+            LP_INCENTIVE_YEAR_1 + LP_INCENTIVE_YEAR_2 + LP_INCENTIVE_YEAR_3,
+            LP_INCENTIVE_ALLOCATION,
+            "LP incentives must equal total allocation"
+        );
+    }
+
+    #[test]
+    fn entity_lockup_is_10_years() {
+        let ten_years_seconds = 10 * 365 * 24 * 60 * 60;
+        assert_eq!(ENTITY_LOCKUP_SECONDS, ten_years_seconds, "Entity lockup must be 10 years");
+    }
+
+    #[test]
+    fn founder_lp_fee_is_point_05_percent() {
+        assert_eq!(FOUNDER_LP_FEE_BPS, 5, "Founder LP fee must be 0.05%");
     }
 }

@@ -74,6 +74,31 @@ class TokenEconomyService
     founder_lp_fee_bps: 5          # 0.05% permanent fee to founder LP
   }.freeze
 
+  # LP vesting and anti-dump mechanics
+  LP_VESTING = {
+    vesting_days: 30,              # Full vest after 30 days
+    early_penalties: {             # Forfeited rewards return to pool
+      week_1: 1.00,                # 100% forfeit if withdraw Day 1-7
+      week_2: 0.75,                # 75% forfeit if withdraw Day 8-14
+      week_3: 0.50,                # 50% forfeit if withdraw Day 15-21
+      week_4: 0.25                 # 25% forfeit if withdraw Day 22-30
+    }
+  }.freeze
+
+  # LP time-weighted multipliers (reward early LPs)
+  LP_MULTIPLIERS = {
+    week_1: 2.0,                   # 2x rewards for Week 1 LPs
+    week_2_4: 1.5,                 # 1.5x rewards for Week 2-4 LPs
+    baseline: 1.0                  # 1x rewards after Month 1
+  }.freeze
+
+  # LP lockup bonuses
+  LP_LOCKUP_BONUSES = {
+    days_30: 0.20,                 # +20% for 30-day lock
+    days_90: 0.50,                 # +50% for 90-day lock
+    days_365: 1.00                 # +100% for 1-year lock
+  }.freeze
+
   # Stake multipliers for different activities (pre-halving base amounts)
   DISTRIBUTION_MULTIPLIERS = {
     affiliate_sale: 100,        # 100 tokens per $1 of sale

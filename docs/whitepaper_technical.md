@@ -1378,6 +1378,159 @@ If AMOS 10x from $0.01 to $0.10:
 
 The incentive program is designed to offset IL for early LPs.
 
+#### Liquidity Bootstrapping Strategy
+
+**Recommended Approach: Start Medium, Reserve for Defense**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    LIQUIDITY BOOTSTRAPPING PLAYBOOK                         │
+│                                                                             │
+│  PHASE 1: INITIAL POOL ($5k of $10k budget)                                │
+│  ══════════════════════════════════════════                                 │
+│  Day 1:                                                                     │
+│  ├── Create pool: $2,500 USDC + 125,000 AMOS                              │
+│  ├── Starting price: $0.02/AMOS (not $0.01 - too cheap)                   │
+│  ├── Lock in Founder LP status immediately                                │
+│  └── Reserve $5k for price defense                                         │
+│                                                                             │
+│  WHY $0.02 NOT $0.01:                                                      │
+│  ├── $0.01 invites whales to scoop cheap                                  │
+│  ├── $0.02 is still 100x upside to $2.00                                  │
+│  ├── Less AMOS needed: 125k instead of 250k                               │
+│  └── Better price discovery (room to go up AND down)                      │
+│                                                                             │
+│  PHASE 2: RESPOND TO MARKET (Weeks 1-4)                                    │
+│  ═════════════════════════════════════════                                  │
+│  IF price rises to $0.05:                                                  │
+│  ├── Add $2k more at $0.05                                                │
+│  ├── You deploy fewer AMOS at higher price                                │
+│  └── Better average entry                                                  │
+│                                                                             │
+│  IF price drops to $0.01:                                                  │
+│  ├── Add $2k to stabilize and show confidence                             │
+│  ├── You accumulate more AMOS at lower price                              │
+│  └── Signal: "We believe in this"                                          │
+│                                                                             │
+│  IF price stable:                                                          │
+│  ├── Wait - no need to rush                                                │
+│  ├── Let market find equilibrium                                           │
+│  └── Add when there's clear demand                                         │
+│                                                                             │
+│  PHASE 3: DEEPEN FOR STABILITY (Month 2+)                                  │
+│  ════════════════════════════════════════                                   │
+│  Once price stabilizes:                                                    │
+│  ├── Add remaining liquidity to deepen pool                               │
+│  ├── Deeper pool = less volatility = more traders                        │
+│  └── Goal: $50k+ total liquidity for healthy market                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Defending Against Whale Attacks
+
+Thin initial liquidity naturally protects against whales:
+
+```
+ATTACK: Whale wants to buy 1M AMOS cheap
+═══════════════════════════════════════
+
+THIN POOL: $5k / 125k AMOS at $0.02
+
+Whale buys with $10k:
+├── Can extract: ~71k AMOS (57% of pool!)
+├── Price moves: $0.02 → $0.14 (7x!)
+├── Whale paid avg: $0.14 per AMOS
+├── Expected cheap buy: $0.02, Actual: $0.14
+└── Whale overpaid 7x due to slippage
+
+RESULT: AMM curve punishes aggressive buying.
+        You can now add liquidity at $0.14!
+
+DEEP POOL: $50k / 1.25M AMOS at $0.02
+
+Whale buys with $10k:
+├── Can extract: ~500k AMOS (40% of pool)
+├── Price moves: $0.02 → $0.033 (1.65x)
+├── Whale paid avg: $0.02 per AMOS
+└── Whale got exactly what they wanted
+
+LESSON: Start thin to force price discovery,
+        deepen after market finds equilibrium.
+```
+
+#### LP Anti-Dump Mechanics (On-Chain Enforcement)
+
+```rust
+// programs/amos_treasury/src/constants.rs
+
+// LP reward vesting: 30 days to claim full rewards
+pub const LP_VESTING_SECONDS: i64 = 30 * 24 * 60 * 60;
+
+// Early withdrawal penalties (forfeited rewards return to pool)
+pub const LP_EARLY_WITHDRAW_PENALTY_BPS: [u64; 4] = [
+    10000,  // Day 1-7:   100% forfeit
+    7500,   // Day 8-14:  75% forfeit
+    5000,   // Day 15-21: 50% forfeit
+    2500    // Day 22-30: 25% forfeit
+];
+
+// Time-weighted multipliers (reward early LPs)
+pub const LP_WEEK_1_MULTIPLIER: u64 = 200;    // 2.0x
+pub const LP_WEEK_2_4_MULTIPLIER: u64 = 150;  // 1.5x
+pub const LP_BASELINE_MULTIPLIER: u64 = 100;  // 1.0x
+
+// Lockup bonuses
+pub const LP_LOCK_30_DAY_BONUS_BPS: u64 = 2000;   // +20%
+pub const LP_LOCK_90_DAY_BONUS_BPS: u64 = 5000;   // +50%
+pub const LP_LOCK_1_YEAR_BONUS_BPS: u64 = 10000;  // +100%
+```
+
+**Enforcement Logic:**
+
+```
+FARM-AND-DUMP ATTEMPT:
+├── LP deposits $10k on Day 1
+├── Earns 100 AMOS in incentives over 7 days
+├── Tries to withdraw on Day 7
+│
+├── Penalty: 100% forfeit (Day 1-7 window)
+├── LP gets: 0 AMOS incentives
+├── Forfeited 100 AMOS: Returns to incentive pool
+│
+└── RESULT: Dumper gets nothing, patient LPs get more
+
+COMMITTED LP:
+├── LP deposits $10k on Day 1
+├── Earns 100 AMOS in incentives over 30 days
+├── Withdraws on Day 30
+│
+├── Penalty: 0% (full vest complete)
+├── LP gets: 100 AMOS + trading fees
+│
+└── RESULT: Patient LPs are rewarded
+```
+
+#### Why Other LPs Joining is GOOD
+
+```
+CONCERN: "What if other LPs flood in and dilute me?"
+
+REALITY:
+├── More LPs = Deeper liquidity
+├── Deeper liquidity = More trading
+├── More trading = More fees for everyone
+│
+├── Your Founder LP 0.05% fee is PERMANENT
+├── It does NOT dilute when others join
+├── You want a liquid, active market
+│
+└── A $1M pool with 1% share beats
+    a $10k pool with 100% share
+
+THE GOAL: Healthy market, not LP monopoly
+```
+
 ### 11.3 Sell Pressure Scenarios
 
 #### Scenario A: Moderate Selling (10% of distributed tokens)
