@@ -357,6 +357,246 @@ class VisionScannerApiTest < ActionDispatch::IntegrationTest
     assert_match /whiteboard.*saved/i, json["message"]
   end
 
+  # === Business Card Fallback Tests ===
+  # Tests for when OCR extraction is incomplete
+
+  test "scan_and_save business_card uses fallback for missing first_name" do
+    extracted_data = {
+      last_name: "Smith",
+      email: "smith@example.com"
+    }
+
+    post "/api/v1/vision/scan_and_save",
+         params: {
+           mode: "business_card",
+           image: test_image_base64,
+           mime_type: "image/png",
+           extracted_data: extracted_data
+         },
+         headers: @auth_headers
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert_equal true, json["success"]
+
+    contact = Contact.find(json["id"])
+    assert_equal "Unknown", contact.first_name, "Should use 'Unknown' as fallback for missing first_name"
+    assert_equal "Smith", contact.last_name
+  end
+
+  test "scan_and_save business_card uses fallback for missing last_name" do
+    extracted_data = {
+      first_name: "John",
+      email: "john@example.com"
+    }
+
+    post "/api/v1/vision/scan_and_save",
+         params: {
+           mode: "business_card",
+           image: test_image_base64,
+           mime_type: "image/png",
+           extracted_data: extracted_data
+         },
+         headers: @auth_headers
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert_equal true, json["success"]
+
+    contact = Contact.find(json["id"])
+    assert_equal "John", contact.first_name
+    assert_equal "Contact", contact.last_name, "Should use 'Contact' as fallback for missing last_name"
+  end
+
+  test "scan_and_save business_card generates placeholder email when missing" do
+    extracted_data = {
+      first_name: "Jane",
+      last_name: "Doe",
+      company: "Acme Corp"
+    }
+
+    post "/api/v1/vision/scan_and_save",
+         params: {
+           mode: "business_card",
+           image: test_image_base64,
+           mime_type: "image/png",
+           extracted_data: extracted_data
+         },
+         headers: @auth_headers
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert_equal true, json["success"]
+
+    contact = Contact.find(json["id"])
+    assert_equal "Jane", contact.first_name
+    assert_equal "Doe", contact.last_name
+    assert_match /@placeholder\.scan$/, contact.email, "Should generate placeholder email"
+    assert_match /jane.*doe.*acme/i, contact.email, "Placeholder should include name/company"
+    assert contact.metadata["placeholder_email"], "Should mark as placeholder email in metadata"
+  end
+
+  test "scan_and_save business_card handles completely empty extraction" do
+    extracted_data = {}
+
+    post "/api/v1/vision/scan_and_save",
+         params: {
+           mode: "business_card",
+           image: test_image_base64,
+           mime_type: "image/png",
+           extracted_data: extracted_data
+         },
+         headers: @auth_headers
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert_equal true, json["success"]
+
+    contact = Contact.find(json["id"])
+    assert_equal "Unknown", contact.first_name
+    assert_equal "Contact", contact.last_name
+    assert_match /@placeholder\.scan$/, contact.email
+  end
+
+  test "scan_and_save business_card extracts name parts from full name field" do
+    extracted_data = {
+      name: "Robert James Wilson",
+      email: "rwilson@example.com"
+    }
+
+    post "/api/v1/vision/scan_and_save",
+         params: {
+           mode: "business_card",
+           image: test_image_base64,
+           mime_type: "image/png",
+           extracted_data: extracted_data
+         },
+         headers: @auth_headers
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert_equal true, json["success"]
+
+    contact = Contact.find(json["id"])
+    assert_equal "Robert", contact.first_name, "Should extract first name from full name"
+    assert_equal "James Wilson", contact.last_name, "Should extract remaining as last name"
+  end
+
+  # === String vs Array Handling Tests ===
+  # Tests for when Gemini returns strings instead of arrays
+
+  test "scan_and_save whiteboard handles key_points as string" do
+    extracted_data = {
+      title: "Meeting Notes",
+      summary: "Important discussion",
+      key_points: "Single key point returned as string",
+      text: "Raw content"
+    }
+
+    assert_difference "HubThread.count", 1 do
+      post "/api/v1/vision/scan_and_save",
+           params: {
+             mode: "whiteboard",
+             image: test_image_base64,
+             mime_type: "image/png",
+             extracted_data: extracted_data
+           },
+           headers: @auth_headers
+    end
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert_equal true, json["success"], "Should handle key_points as string without error"
+
+    thread = HubThread.find(json["id"])
+    assert_match /Single key point/, thread.metadata["content"]
+  end
+
+  test "scan_and_save whiteboard handles action_items as string" do
+    extracted_data = {
+      title: "Action Items",
+      summary: "Tasks from meeting",
+      action_items: "Follow up with client",
+      text: "Raw content"
+    }
+
+    assert_difference "HubThread.count", 1 do
+      post "/api/v1/vision/scan_and_save",
+           params: {
+             mode: "whiteboard",
+             image: test_image_base64,
+             mime_type: "image/png",
+             extracted_data: extracted_data
+           },
+           headers: @auth_headers
+    end
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert_equal true, json["success"], "Should handle action_items as string without error"
+
+    thread = HubThread.find(json["id"])
+    assert_match /Follow up with client/, thread.metadata["content"]
+  end
+
+  test "scan_and_save receipt handles items as string" do
+    extracted_data = {
+      merchant: "Store Name",
+      date: "2024-01-15",
+      total: "$25.00",
+      items: "Coffee $5, Sandwich $20"
+    }
+
+    assert_difference "HubThread.count", 1 do
+      post "/api/v1/vision/scan_and_save",
+           params: {
+             mode: "receipt",
+             image: test_image_base64,
+             mime_type: "image/png",
+             extracted_data: extracted_data
+           },
+           headers: @auth_headers
+    end
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert_equal true, json["success"], "Should handle items as string without error"
+
+    thread = HubThread.find(json["id"])
+    assert_match /Coffee.*Sandwich/i, thread.metadata["content"]
+  end
+
+  test "scan_and_save whiteboard handles mixed string and array data" do
+    extracted_data = {
+      title: "Mixed Data Test",
+      summary: "Testing mixed types",
+      key_points: "String point",
+      action_items: ["Array item 1", "Array item 2"],
+      text: "Raw content"
+    }
+
+    assert_difference "HubThread.count", 1 do
+      post "/api/v1/vision/scan_and_save",
+           params: {
+             mode: "whiteboard",
+             image: test_image_base64,
+             mime_type: "image/png",
+             extracted_data: extracted_data
+           },
+           headers: @auth_headers
+    end
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert_equal true, json["success"]
+
+    thread = HubThread.find(json["id"])
+    content = thread.metadata["content"]
+    assert_match /String point/, content
+    assert_match /Array item 1/, content
+    assert_match /Array item 2/, content
+  end
+
   private
 
   # Small 1x1 white pixel PNG for testing

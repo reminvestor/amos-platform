@@ -271,8 +271,19 @@ module Api
 
         # Generate placeholder values for empty/missing fields
         first_name = data[:first_name] || data[:name]&.split&.first || "Unknown"
-        last_name = data[:last_name] || data[:name]&.split&.drop(1)&.join(" ") || "Contact"
-        email = data[:email].presence || "scan_#{SecureRandom.hex(8)}@placeholder.scan"
+        last_name = data[:last_name] || data[:name]&.split&.drop(1)&.join(" ")
+        last_name = "Contact" if last_name.blank?
+        
+        # Generate placeholder email if missing - include name/company for traceability
+        is_placeholder_email = data[:email].blank?
+        email = if data[:email].present?
+                  data[:email]
+                else
+                  name_part = [first_name, last_name].reject(&:blank?).join("_").downcase.gsub(/[^a-z0-9_]/, "")
+                  company_part = data[:company].to_s.downcase.gsub(/[^a-z0-9]/, "")
+                  identifier = [name_part, company_part].reject(&:blank?).join("_").presence || "scan_#{SecureRandom.hex(4)}"
+                  "#{identifier}@placeholder.scan"
+                end
 
         contact = Contact.new(
           user_id: current_user.id,
@@ -287,7 +298,8 @@ module Api
             company: data[:company], title: data[:title], website: data[:website],
             address: data[:address], linkedin: data[:linkedin], twitter: data[:twitter],
             notes: data[:notes], source: "scan", scanned_at: Time.current.iso8601,
-            user_edited: provided_data.present?
+            user_edited: provided_data.is_a?(Hash),
+            placeholder_email: is_placeholder_email
           }.compact
         )
 
@@ -312,7 +324,8 @@ module Api
 
       def save_receipt(service, image_data, mime_type, provided_data = nil)
         # Use provided data (user-edited) or extract fresh from image
-        data = if provided_data.present?
+        # provided_data.is_a?(Hash) handles both filled and empty hashes
+        data = if provided_data.is_a?(Hash)
                  provided_data.symbolize_keys
                else
                  service.extract_receipt(image_data, mime_type: mime_type)
@@ -324,11 +337,11 @@ module Api
         note = current_user.entity.hub_threads.create!(
           started_by: current_user,
           thread_type: HubThread::WORK_STREAM,
-          subject: "Receipt: #{data[:merchant] || 'Unknown'}",
+          subject: "Receipt: #{data[:merchant].presence || 'Unknown'}",
           metadata: {
             source: "receipt_scan",
             receipt_data: data,
-            user_edited: provided_data.present?,
+            user_edited: provided_data.is_a?(Hash),
             content: format_receipt_note(data)
           }
         )
@@ -350,7 +363,8 @@ module Api
 
       def save_document(service, image_data, mime_type, provided_data = nil)
         # Use provided data (user-edited) or extract fresh from image
-        data = if provided_data.present?
+        # provided_data.is_a?(Hash) handles both filled and empty hashes
+        data = if provided_data.is_a?(Hash)
                  provided_data.symbolize_keys
                else
                  service.extract_document(image_data, mime_type: mime_type)
@@ -435,7 +449,8 @@ module Api
 
       def save_whiteboard(service, image_data, mime_type, provided_data = nil)
         # Use provided data (user-edited) or extract fresh from image
-        data = if provided_data.present?
+        # provided_data.is_a?(Hash) handles both filled and empty hashes
+        data = if provided_data.is_a?(Hash)
                  provided_data.symbolize_keys
                else
                  service.extract_whiteboard(image_data, mime_type: mime_type)
@@ -443,7 +458,7 @@ module Api
         return render json: { success: false, error: data[:error] }, status: :unprocessable_entity if data[:error]
 
         # Create a note with the whiteboard content
-        title = data[:title] || "Whiteboard Notes"
+        title = data[:title].presence || "Whiteboard Notes"
         note = current_user.entity.hub_threads.create!(
           started_by: current_user,
           thread_type: HubThread::WORK_STREAM,
@@ -451,7 +466,7 @@ module Api
           metadata: {
             source: "whiteboard_scan",
             whiteboard_data: data,
-            user_edited: provided_data.present?,
+            user_edited: provided_data.is_a?(Hash),
             content: format_whiteboard_note(data)
           }
         )
