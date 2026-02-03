@@ -797,6 +797,58 @@ WHAT THIS MEANS:
 **Why doesn't AMOS go to R&D and Ops?**
 R&D and Ops need real money (USDC) to pay lawyers, accountants, and vendors. They get their share from credit card payments. AMOS payments maximize value to token holders.
 
+### How Liquidity Works
+
+**What is liquidity?** It's the pool of tokens that lets people buy and sell AMOS.
+
+```
+THE POOL:
+├── USDC (dollars) on one side
+├── AMOS tokens on the other side
+└── Anyone can swap between them
+
+LIQUIDITY PROVIDERS (LPs):
+├── Put both USDC and AMOS into the pool
+├── Earn 0.25% of every trade
+├── Plus bonus AMOS incentives
+└── Risk: "Impermanent loss" if prices move a lot
+```
+
+**LP Rewards (To Encourage Participation):**
+
+| Benefit | Amount |
+|---------|--------|
+| Trading fees | 0.25% of all swaps |
+| Year 1 incentives | 1.5M AMOS to LPs |
+| Founder LP bonus | 0.05% of trades forever |
+| 90-day lockup bonus | +50% extra rewards |
+
+**LP Protection (Prevent Farm-and-Dump):**
+
+```
+30-DAY VESTING:
+├── LP rewards vest over 30 days
+├── Withdraw early = forfeit unvested rewards
+├── Day 7 withdrawal = lose 100% of rewards
+├── Day 30 withdrawal = keep 100% of rewards
+└── Discourages: deposit, farm, dump
+```
+
+**Why Start With Less Liquidity?**
+
+```
+LESS LIQUIDITY AT START:
+├── Bigger price moves per trade
+├── Whales can't scoop cheap tokens
+├── Better price discovery
+├── We add more as demand grows
+
+MORE LIQUIDITY LATER:
+├── Stable prices
+├── Attracts more traders
+├── Healthy market
+```
+
 ### Practical Questions Answered
 
 **What if no one is staking at launch?**
