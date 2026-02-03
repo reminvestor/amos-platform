@@ -468,6 +468,29 @@ Founders: 0% ← We start at zero and earn like everyone else
 - No dump risk: No founder tokens to sell
 - Perfect alignment: We succeed only if the platform succeeds
 
+### The AMOS Labs 10-Year Lockup
+
+The company's 15% allocation is **locked for 10 years**:
+
+```
+AMOS LABS COMMITMENT:
+├── 15,000,000 AMOS locked in smart contract
+├── Cannot sell for 10 years (enforced by code)
+├── Zero decay (tokens preserve value)
+├── CAN stake for revenue share
+└── CAN vote in governance
+
+WHAT THIS MEANS:
+• We can't dump on you - literally impossible
+• We only make money if the platform makes money
+• Our incentive: Build revenue, not pump price
+• "Trust us" → "Verify on-chain"
+```
+
+**After 10 years:** Gradual 2-year unlock (12.5% per quarter).
+
+This is the ultimate "skin in the game" - we can't exit, even if we wanted to.
+
 ### Revenue Distribution
 
 The platform charges a 20% markup on all compute. That markup is distributed:

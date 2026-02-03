@@ -59,6 +59,42 @@ pub const MIN_STAKE_DAYS: u64 = 30;
 pub const MIN_STAKE_AMOUNT: u64 = 100;
 
 /// ═══════════════════════════════════════════════════════════════════════════
+/// AMOS LABS ENTITY LOCKUP (10-Year Commitment)
+/// ═══════════════════════════════════════════════════════════════════════════
+/// 
+/// The AMOS Labs entity pool is subject to a 10-year lockup with NO decay.
+/// This signals long-term commitment and eliminates dump risk.
+/// The company can only profit through revenue share, not token sales.
+/// ═══════════════════════════════════════════════════════════════════════════
+
+/// AMOS Labs entity allocation: 15% of total supply
+/// 15,000,000 AMOS locked in smart contract
+pub const ENTITY_ALLOCATION: u64 = 15_000_000;
+
+/// Entity lockup duration: 10 years (in seconds)
+/// Tokens cannot be transferred or sold during this period
+pub const ENTITY_LOCKUP_SECONDS: i64 = 10 * 365 * 24 * 60 * 60; // 315,360,000
+
+/// Entity unlock schedule: 2 years linear unlock after lockup ends
+/// 12.5% unlocked every quarter (8 tranches)
+pub const ENTITY_UNLOCK_SECONDS: i64 = 2 * 365 * 24 * 60 * 60; // 63,072,000
+
+/// Number of unlock tranches after lockup
+pub const ENTITY_UNLOCK_TRANCHES: u64 = 8;
+
+/// Entity lockup decay exemption
+/// Locked tokens do NOT decay (0% annual decay)
+pub const ENTITY_LOCKUP_DECAY_BPS: u64 = 0;
+
+/// Entity CAN stake for revenue share despite lockup
+/// This is the ONLY way AMOS Labs earns from the tokens
+pub const ENTITY_CAN_STAKE: bool = true;
+
+/// Entity CAN vote in governance despite lockup
+/// Skin in the game = voting rights
+pub const ENTITY_CAN_VOTE: bool = true;
+
+/// ═══════════════════════════════════════════════════════════════════════════
 /// PAYMENT DISCOUNTS
 /// ═══════════════════════════════════════════════════════════════════════════
 
