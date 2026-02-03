@@ -97,12 +97,49 @@ Total Supply: 100,000,000 AMOS
 ┌────────────────────────────────────────────────────────────────────────────┐
 │  Treasury (60%)          │ 60,000,000 │ Ongoing contributor rewards       │
 │  Entity Pool (15%)       │ 15,000,000 │ AMOS Labs Inc. (runway/strategic) │
-│  Investor Pool (10%)     │ 10,000,000 │ Future raises if needed           │
+│  Investor Pool (10%)     │ 10,000,000 │ Capital investments (Series Seed+)│
 │  Community Pool (10%)    │ 10,000,000 │ Grants, airdrops, ecosystem       │
 │  Reserve (5%)            │  5,000,000 │ Emergency (DAO-locked)            │
 ├────────────────────────────────────────────────────────────────────────────┤
 │  Founders                │          0 │ Start at zero, earn like everyone │
 └────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.2.1 Pool Purpose Clarification
+
+| Pool | Purpose | Example Uses |
+|------|---------|--------------|
+| **Treasury (60M)** | Contributor rewards | Bounties, affiliate commissions, grants for work |
+| **Entity Pool (15M)** | Company operations | Hiring, contractor pay, partnerships, strategic |
+| **Investor Pool (10M)** | Capital investment | Series Seed, angels, VCs - money IN for tokens |
+| **Community (10M)** | Ecosystem building | Airdrops, community grants, hackathons |
+| **Reserve (5M)** | Emergency | DAO-controlled, black swan events |
+
+**Key Distinction:**
+- **Entity Pool** = Company SPENDS for operations (hiring, partnerships)
+- **Investor Pool** = Outside capital COMES IN for tokens (investments)
+
+### 2.2.2 Initial Liquidity Source
+
+The initial LP pool is funded from the **Investor Pool**, not Entity Pool:
+
+```
+SERIES SEED INVESTMENT (Founder):
+├── Investment: $10,000 USD
+├── Token allocation: 500,000 AMOS @ $0.02
+├── Source: Investor Pool (10M)
+├── Remaining: 9,500,000 AMOS for future rounds
+│
+├── LP Usage: 250,000 AMOS + $5,000 USDC
+├── Personal holding: 250,000 AMOS
+└── Founder LP status: Permanent 0.05% fee
+
+WHY INVESTOR POOL (not Entity):
+├── Founder is putting money IN → That's an investment
+├── Entity Pool preserved for operations (hiring, partnerships)
+├── Clean audit trail for future fundraising
+├── Consistent with how future investors will participate
+└── "Series Seed at $0.02" is clear documentation
 ```
 
 **Key Design Decision: Founders Start at Zero**
