@@ -454,13 +454,22 @@ Example: If platform base rate is 10%:
 100,000,000 AMOS tokens total (forever)
 
 Distribution:
-├── 60% Treasury (ongoing contributor rewards)
-├── 15% AMOS Labs Inc. (company runway and strategic)
-├── 10% Future investors (if needed)
-├── 10% Community (grants and airdrops)
+├── 60% Treasury (ongoing contributor rewards - you EARN these)
+├── 15% AMOS Labs Inc. (company operations - hiring, partnerships)
+├── 10% Investors (capital investments - money IN for tokens)
+├── 10% Community (grants and airdrops - ecosystem building)
 └── 5%  Emergency reserve (DAO-locked)
 
 Founders: 0% ← We start at zero and earn like everyone else
+```
+
+**Where does initial liquidity come from?**
+```
+Investor Pool (not Entity Pool)
+├── Founder invests $10k at $0.02/token
+├── Receives 500k AMOS from Investor Pool
+├── Uses half for LP, keeps half
+└── This is "Series Seed" - first investment round
 ```
 
 **Why do founders get zero?**
