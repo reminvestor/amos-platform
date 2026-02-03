@@ -4,7 +4,6 @@ use crate::{ProposalStatus, GateType, GovernanceConfigParams};
 /// Global governance configuration account
 /// PDA: ["governance_config"]
 #[account]
-#[derive(Default)]
 pub struct GovernanceConfig {
     /// Authority that can update governance params (multi-sig)
     pub authority: Pubkey,
@@ -25,7 +24,24 @@ pub struct GovernanceConfig {
     /// Bump seed for PDA
     pub bump: u8,
     /// Reserved for future use
-    pub _reserved: [u8; 64],
+    pub _reserved: [u8; 32],
+}
+
+impl Default for GovernanceConfig {
+    fn default() -> Self {
+        Self {
+            authority: Pubkey::default(),
+            oracle_authority: Pubkey::default(),
+            amos_mint: Pubkey::default(),
+            treasury: Pubkey::default(),
+            params: StoredGovernanceParams::default(),
+            total_proposals: 0,
+            total_research_proposals: 0,
+            total_rewards_distributed: 0,
+            bump: 0,
+            _reserved: [0u8; 32],
+        }
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]

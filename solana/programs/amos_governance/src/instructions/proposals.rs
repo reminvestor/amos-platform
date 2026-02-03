@@ -236,7 +236,7 @@ pub fn withdraw_vote(
     let vote_amount = vote_record.vote_amount;
 
     // Transfer tokens back from escrow
-    let governance_key = ctx.accounts.governance_config.key();
+    let _governance_key = ctx.accounts.governance_config.key();
     let seeds = &[seeds::GOVERNANCE_CONFIG, &[ctx.accounts.governance_config.bump]];
     let signer_seeds = &[&seeds[..]];
 

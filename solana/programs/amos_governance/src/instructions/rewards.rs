@@ -49,14 +49,19 @@ pub fn claim_bounty_reward(
     _proposal_id: u64,
     gate_type: GateType,
 ) -> Result<()> {
-    let proposal = &mut ctx.accounts.proposal;
     let governance = &ctx.accounts.governance_config;
-
+    
+    // Get values we need before mutable borrows
+    let bounty_amount = ctx.accounts.proposal.bounty_amount;
+    let builder_key = ctx.accounts.builder.key();
+    
     // Verify builder is assigned to this proposal
     require!(
-        proposal.builder == Some(ctx.accounts.builder.key()),
+        ctx.accounts.proposal.builder == Some(builder_key),
         GovernanceError::Unauthorized
     );
+
+    let proposal = &mut ctx.accounts.proposal;
 
     // Get the gate result and calculate reward
     let (gate, reward_bps) = match gate_type {
@@ -84,7 +89,7 @@ pub fn claim_bounty_reward(
     require!(!gate.reward_claimed, GovernanceError::RewardAlreadyClaimed);
 
     // Calculate reward amount
-    let reward_amount = proposal.bounty_amount
+    let reward_amount = bounty_amount
         .checked_mul(reward_bps as u64)
         .ok_or(GovernanceError::ArithmeticOverflow)?
         .checked_div(BPS_DENOMINATOR)

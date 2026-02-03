@@ -225,7 +225,7 @@ pub mod amos_governance {
 // SHARED TYPES
 // ============================================
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ProposalStatus {
     Draft,
     Submitted,
@@ -240,7 +240,7 @@ pub enum ProposalStatus {
     Cancelled,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum GateType {
     Benchmark,
     AbTest,
