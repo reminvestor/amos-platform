@@ -1,0 +1,10 @@
+/Users/rickbarkley/SW_Projects/ai_co/agent_marketing/solana/target/debug/deps/anchor_spl-45eca543b722b764.d: /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/lib.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/associated_token.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/mint.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/token.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/token_2022.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/token_interface.rs
+
+/Users/rickbarkley/SW_Projects/ai_co/agent_marketing/solana/target/debug/deps/libanchor_spl-45eca543b722b764.rmeta: /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/lib.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/associated_token.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/mint.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/token.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/token_2022.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/token_interface.rs
+
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/lib.rs:
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/associated_token.rs:
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/mint.rs:
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/token.rs:
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/token_2022.rs:
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anchor-spl-0.29.0/src/token_interface.rs:
