@@ -358,6 +358,19 @@ This creates **organic equilibrium** - the token economy self-balances based on 
 
 [See the complete math →](docs/token_economy_equations.md)
 
+### Official Solana Program IDs
+
+These are the **only official** AMOS smart contracts. Verify before interacting:
+
+| Program | Network | Address |
+|---------|---------|---------|
+| **AMOS Treasury** | Devnet | `3p2MqHiQVLWfvvfU7psLyEsLLVzbGwqa3bSG7avKqiYP` |
+| **AMOS Governance** | Devnet | `AQEf6P1qhKC2dCTMhqRh2rmKNpcQsR4ahwT1MvSoSehu` |
+| **AMOS Treasury** | Mainnet | *Coming soon* |
+| **AMOS Governance** | Mainnet | *Coming soon* |
+
+> ⚠️ **Security**: Only interact with these addresses. Forks or copies with different program IDs are NOT official AMOS.
+
 ---
 
 ## 🌐 Links
