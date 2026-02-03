@@ -217,7 +217,7 @@ This means:
 
 - **Discord**: [Join our community](#) (link TBD)
 - **Issues**: Open a GitHub issue
-- **Email**: contribute@amoslabs.io
+- **Email**: contribute@amoslabs.com
 
 ---
 
