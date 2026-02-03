@@ -7,7 +7,7 @@ pub mod state;
 
 use instructions::*;
 
-declare_id!("AmosTreas111111111111111111111111111111111");
+declare_id!("6d3oWMePD7newkpZSmGBWS2qAFWQmrapsLwoPnMva55G");
 
 /// AMOS Treasury Program
 /// 

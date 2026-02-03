@@ -187,9 +187,11 @@ pub fn receive_revenue(
 /// Receive AMOS token payment
 /// 
 /// When users pay directly in AMOS:
-/// - 50% is BURNED (permanently removed from supply)
-/// - 25% goes to holder pool
-/// - 25% goes to operations
+/// - 50% is BURNED (permanently removed from supply) - benefits ALL holders
+/// - 50% goes to holder pool (stakers can claim)
+/// 
+/// Note: R&D and Ops need USDC, so AMOS payments don't fund them.
+/// The burn benefits everyone by reducing supply.
 pub fn receive_amos_payment(
     ctx: Context<ReceiveAmosPayment>,
     amount: u64,
@@ -198,23 +200,16 @@ pub fn receive_amos_payment(
     require!(amount > 0, TreasuryError::InvalidAmount);
     require!(payment_reference.len() <= 64, TreasuryError::PaymentReferenceTooLong);
     
-    // Calculate splits
+    // Calculate splits: 50% burn, 50% holders
     let burn_amount = amount
         .checked_mul(AMOS_BURN_BPS)
         .ok_or(TreasuryError::ArithmeticOverflow)?
         .checked_div(BPS_DENOMINATOR)
         .ok_or(TreasuryError::ArithmeticOverflow)?;
     
+    // Holder gets the remainder (handles any rounding)
     let holder_amount = amount
-        .checked_mul(AMOS_HOLDER_BPS)
-        .ok_or(TreasuryError::ArithmeticOverflow)?
-        .checked_div(BPS_DENOMINATOR)
-        .ok_or(TreasuryError::ArithmeticOverflow)?;
-    
-    let ops_amount = amount
         .checked_sub(burn_amount)
-        .ok_or(TreasuryError::ArithmeticOverflow)?
-        .checked_sub(holder_amount)
         .ok_or(TreasuryError::ArithmeticOverflow)?;
     
     let treasury_seeds = &[
@@ -224,6 +219,7 @@ pub fn receive_amos_payment(
     let signer_seeds = &[&treasury_seeds[..]];
     
     // BURN 50% - permanently removed from existence
+    // This benefits ALL holders (staked or not) by reducing supply
     token::burn(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
@@ -237,7 +233,7 @@ pub fn receive_amos_payment(
         burn_amount,
     )?;
     
-    // Transfer to holder pool
+    // Transfer 50% to holder pool (stakers can claim)
     token::transfer(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
@@ -251,20 +247,6 @@ pub fn receive_amos_payment(
         holder_amount,
     )?;
     
-    // Transfer to operations
-    token::transfer(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.amos_source.to_account_info(),
-                to: ctx.accounts.amos_ops.to_account_info(),
-                authority: ctx.accounts.treasury_config.to_account_info(),
-            },
-            signer_seeds,
-        ),
-        ops_amount,
-    )?;
-    
     // Update state
     let treasury = &mut ctx.accounts.treasury_config;
     treasury.total_amos_burned = treasury.total_amos_burned
@@ -276,9 +258,8 @@ pub fn receive_amos_payment(
     
     msg!("=== AMOS PAYMENT RECEIVED ===");
     msg!("Amount: {} AMOS", amount);
-    msg!("BURNED: {} (50%)", burn_amount);
-    msg!("Holder Pool: {} (25%)", holder_amount);
-    msg!("Operations: {} (25%)", ops_amount);
+    msg!("BURNED: {} (50%) - benefits all holders", burn_amount);
+    msg!("Holder Pool: {} (50%) - claimable by stakers", holder_amount);
     msg!("Reference: {}", payment_reference);
     
     Ok(())
@@ -364,12 +345,9 @@ pub struct ReceiveAmosPayment<'info> {
     pub amos_source: Account<'info, TokenAccount>,
     
     /// AMOS holder pool token account
+    /// 50% of AMOS payments go here (stakers can claim)
     #[account(mut)]
     pub amos_holder_pool: Account<'info, TokenAccount>,
-    
-    /// AMOS operations token account
-    #[account(mut)]
-    pub amos_ops: Account<'info, TokenAccount>,
     
     /// Token program
     pub token_program: Program<'info, Token>,

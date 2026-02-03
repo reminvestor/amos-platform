@@ -14,33 +14,37 @@
 
 /// Token holder share: 50% of all revenue
 /// This goes to the holder pool, claimable proportionally by stakers
+/// THE core value proposition - immutable and trustless
 pub const HOLDER_SHARE_BPS: u64 = 5000;
 
-/// R&D share: 30% of all revenue
-/// This goes to a multi-sig wallet, spent via governance votes
-pub const RND_SHARE_BPS: u64 = 3000;
+/// R&D share: 40% of all revenue
+/// This goes to a multi-sig wallet (R&D Council), spent via governance votes
+/// Covers: software development, infrastructure, research grants, AI self-work
+pub const RND_SHARE_BPS: u64 = 4000;
 
-/// Operations share: 10% of all revenue
-/// This goes to a multi-sig wallet for day-to-day expenses
-pub const OPS_SHARE_BPS: u64 = 1000;
+/// Operations share: 5% of all revenue
+/// This goes to a multi-sig wallet for required USD expenses only
+/// Covers: accounting, legal, minimal hosting/SaaS
+pub const OPS_SHARE_BPS: u64 = 500;
 
-/// Reserve share: 10% of all revenue
-/// This goes to a PDA (program-controlled), accessible only via DAO vote
-pub const RESERVE_SHARE_BPS: u64 = 1000;
+/// Treasury/Reserve share: 5% of all revenue
+/// Emergency fund - accessible only via DAO supermajority vote
+/// Covers: black swan events, refund buffer, acquisition defense
+pub const RESERVE_SHARE_BPS: u64 = 500;
 
 /// ═══════════════════════════════════════════════════════════════════════════
 /// AMOS TOKEN PAYMENT SPLIT (When paying directly in AMOS)
 /// ═══════════════════════════════════════════════════════════════════════════
 
 /// AMOS burn percentage: 50% of AMOS payments are burned
-/// This creates deflationary pressure and rewards all holders
+/// This creates deflationary pressure and rewards ALL holders (staked or not)
+/// The burn benefits everyone by reducing supply
 pub const AMOS_BURN_BPS: u64 = 5000;
 
-/// AMOS holder share: 25% of AMOS payments go to holder pool
-pub const AMOS_HOLDER_BPS: u64 = 2500;
-
-/// AMOS operations share: 25% of AMOS payments go to operations
-pub const AMOS_OPS_BPS: u64 = 2500;
+/// AMOS holder share: 50% of AMOS payments go to holder pool
+/// Stakers can claim this proportionally
+/// Note: R&D/Ops need USDC, so AMOS payments don't fund them directly
+pub const AMOS_HOLDER_BPS: u64 = 5000;
 
 /// ═══════════════════════════════════════════════════════════════════════════
 /// ELIGIBILITY REQUIREMENTS
@@ -114,7 +118,7 @@ mod tests {
     #[test]
     fn amos_splits_add_to_100_percent() {
         assert_eq!(
-            AMOS_BURN_BPS + AMOS_HOLDER_BPS + AMOS_OPS_BPS,
+            AMOS_BURN_BPS + AMOS_HOLDER_BPS,
             BPS_DENOMINATOR,
             "AMOS splits must add to 100%"
         );

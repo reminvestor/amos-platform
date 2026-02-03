@@ -239,10 +239,10 @@ P_bounty = Bounty Value (in AMOS)
 ### Revenue Allocation
 
 ```
-Token Holders:  50% of Revenue
-R&D:            30% of Revenue
-Operations:     10% of Revenue
-Treasury:       10% of Revenue
+Token Holders:  50% of Revenue (immutable on-chain)
+R&D:            40% of Revenue (software, infrastructure, research, AI work)
+Treasury:        5% of Revenue (emergency fund, DAO-controlled)
+Operations:      5% of Revenue (accounting, legal only)
 ```
 
 ### Your Payout

@@ -29,19 +29,20 @@ class TokenEconomyService
   
   # Allocation percentages
   TOKEN_ALLOCATION = {
-    treasury: 0.60,     # 60M - For ongoing distribution
-    founding: 0.15,     # 15M - Founders (earned, same rules)
-    investors: 0.10,    # 10M - Future investors
-    community: 0.10,    # 10M - Airdrops, bounties, grants
-    reserve: 0.05       # 5M  - Emergency/unforeseen
+    treasury: 0.60,     # 60M - For ongoing contributor rewards
+    entity: 0.15,       # 15M - AMOS Labs Inc. (company runway/strategic)
+    investors: 0.10,    # 10M - Future investment rounds (if needed)
+    community: 0.10,    # 10M - Grants, airdrops, ecosystem
+    reserve: 0.05       # 5M  - Emergency (DAO-locked)
+    # Founders: 0 - Start at zero, earn like everyone else
   }.freeze
 
   # Revenue allocation percentages (from 20% compute markup)
   REVENUE_ALLOCATION = {
-    token_holders: 0.50,    # 50% to token stake holders
-    r_and_d: 0.30,          # 30% to R&D (voted by token holders)
-    operations: 0.10,       # 10% to operations (third-party tools only)
-    treasury: 0.10          # 10% to treasury/reserves
+    token_holders: 0.50,    # 50% to token stake holders - immutable on-chain
+    r_and_d: 0.40,          # 40% to R&D (software, infra, research, AI work)
+    treasury: 0.05,         # 5% to emergency treasury (DAO-controlled)
+    operations: 0.05        # 5% to operations (accounting, legal only)
   }.freeze
 
   # Burn rates for deflation

@@ -25,12 +25,12 @@ class PlatformEconomicsService
   # How much decay adjusts per unit of profit/loss ratio
   DECAY_SENSITIVITY = 0.05
   
-  # Revenue allocation (must match TokenEconomyService)
+  # Revenue allocation (must match TokenEconomyService and Solana constants)
   REVENUE_ALLOCATION = {
-    token_holders: 0.50,  # 50% to stakers
-    r_and_d: 0.30,        # 30% to development
-    operations: 0.10,     # 10% to third-party tools
-    treasury: 0.10        # 10% to emergency fund
+    token_holders: 0.50,  # 50% to stakers - immutable on-chain
+    r_and_d: 0.40,        # 40% to R&D (software, infra, research, AI work)
+    treasury: 0.05,       # 5% to emergency fund (DAO-controlled)
+    operations: 0.05      # 5% to accounting, legal only
   }.freeze
 
   class << self

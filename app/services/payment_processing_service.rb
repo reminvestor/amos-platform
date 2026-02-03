@@ -207,30 +207,32 @@ class PaymentProcessingService
       #   payment_reference: payment_reference
       # )
 
+      # Revenue split: 50% holders, 40% R&D, 5% treasury, 5% ops
       {
         success: true,
         tx_signature: "tx_#{SecureRandom.hex(32)}",
         holder_share: amount_usdc * 0.50,
-        rnd_share: amount_usdc * 0.30,
-        ops_share: amount_usdc * 0.10,
-        reserve_share: amount_usdc * 0.10
+        rnd_share: amount_usdc * 0.40,
+        treasury_share: amount_usdc * 0.05,
+        ops_share: amount_usdc * 0.05
       }
     end
 
     # Send AMOS to the on-chain treasury (with 50% burn)
+    # AMOS payments: 50% burned, 50% to holder pool
+    # Note: R&D/Ops need USDC, so AMOS payments don't fund them directly
+    # The burn benefits ALL holders by reducing supply
     def send_amos_to_treasury(amount_amos:, payment_reference:)
       Rails.logger.info "[Payment] Sending #{amount_amos} AMOS to treasury - 50% will be BURNED"
 
       burn_amount = amount_amos * 0.50
-      holder_share = amount_amos * 0.25
-      ops_share = amount_amos * 0.25
+      holder_share = amount_amos * 0.50
 
       {
         success: true,
         tx_signature: "tx_#{SecureRandom.hex(32)}",
         tokens_burned: burn_amount,
-        holder_share: holder_share,
-        ops_share: ops_share
+        holder_share: holder_share
       }
     end
 
