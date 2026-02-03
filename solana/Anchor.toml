@@ -4,12 +4,15 @@ skip-lint = false
 
 [programs.localnet]
 amos_governance = "AmosGov111111111111111111111111111111111111"
+amos_treasury = "AmosTreas111111111111111111111111111111111"
 
 [programs.devnet]
 amos_governance = "AmosGov111111111111111111111111111111111111"
+amos_treasury = "AmosTreas111111111111111111111111111111111"
 
 [programs.mainnet]
 amos_governance = "AmosGov111111111111111111111111111111111111"
+amos_treasury = "AmosTreas111111111111111111111111111111111"
 
 [registry]
 url = "https://api.apr.dev"
