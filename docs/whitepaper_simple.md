@@ -454,12 +454,19 @@ Example: If platform base rate is 10%:
 100,000,000 AMOS tokens total (forever)
 
 Distribution:
-├── 60% for ongoing rewards (contributors, affiliates)
-├── 15% founding team (same decay rules as everyone)
-├── 10% future investors
-├── 10% community grants and airdrops
-└── 5% emergency reserve
+├── 60% Treasury (ongoing contributor rewards)
+├── 15% AMOS Labs Inc. (company runway and strategic)
+├── 10% Future investors (if needed)
+├── 10% Community (grants and airdrops)
+└── 5%  Emergency reserve (DAO-locked)
+
+Founders: 0% ← We start at zero and earn like everyone else
 ```
+
+**Why do founders get zero?**
+- Maximum credibility: "We built this - we earn like you"
+- No dump risk: No founder tokens to sell
+- Perfect alignment: We succeed only if the platform succeeds
 
 ### Revenue Distribution
 
@@ -468,10 +475,20 @@ The platform charges a 20% markup on all compute. That markup is distributed:
 ```
 Platform Revenue (the 20% markup)
 ├── 50% → Token holders (your share!)
-├── 30% → R&D (you vote on this!)
-├── 10% → Operations (third-party tools only - people paid in AMOS)
-└── 10% → Treasury reserves
+├── 40% → R&D (software, infrastructure, research, AI self-work)
+├── 5%  → Treasury (emergency fund)
+└── 5%  → Operations (accounting and legal only)
 ```
+
+**Why so little to Operations?**
+- Team is paid in AMOS from R&D, not USD
+- Only true USD expenses: accountants, lawyers, minimal hosting
+- No bloated corporate overhead
+
+**Why so much to R&D?**
+- Covers software development AND infrastructure
+- As we grow, R&D builds our own GPU clusters, data centers
+- Includes research grants and AI self-improvement
 
 ---
 
@@ -651,7 +668,7 @@ You → Pay → Instantly converted to crypto → Automatically split → You ge
 
 WHAT HAPPENS:
 ✓ Money flows in under 60 seconds
-✓ Split is automatic (50% to holders, 30% R&D, etc.)
+✓ Split is automatic (50% holders, 40% R&D, 5% treasury, 5% ops)
 ✓ No human touches it
 ✓ No one can change the split
 ✓ Claim your share anytime
@@ -676,9 +693,9 @@ WHAT HAPPENS:
 │                                                                 │
 │  4. Smart contract INSTANTLY splits:                           │
 │     ├── $50 → Token Holder Pool (YOU!)                         │
-│     ├── $30 → R&D (voted on by holders)                        │
-│     ├── $10 → Operations                                        │
-│     └── $10 → Emergency Reserve                                 │
+│     ├── $40 → R&D (software, infrastructure, research)        │
+│     ├── $5  → Emergency Reserve                                 │
+│     └── $5  → Operations (accounting, legal only)              │
 │                                                                 │
 │  5. You claim your share anytime                                │
 │     └── No approval needed                                      │
@@ -692,9 +709,9 @@ The split percentages are written into the blockchain program itself:
 
 ```
 HOLDER_SHARE = 50%   ← This is in the code
-RND_SHARE = 30%      ← Cannot be changed
-OPS_SHARE = 10%      ← Even we can't change it
-RESERVE = 10%        ← Locked forever
+RND_SHARE = 40%      ← Cannot be changed
+RESERVE = 5%         ← Locked forever
+OPS_SHARE = 5%       ← Even we can't change it
 ```
 
 **The only way to change these numbers is to create a completely new system and convince everyone to move to it.** That's effectively impossible without community consent.
@@ -741,18 +758,51 @@ You pay 1,000 AMOS for compute
 ┌───────────────────────────────────┐
 │  500 AMOS → BURNED FOREVER 🔥    │
 │  (removed from existence)         │
+│  (benefits ALL token holders)     │
 │                                   │
-│  250 AMOS → Holder Pool           │
+│  500 AMOS → Holder Pool           │
 │  (shared among all stakers)       │
-│                                   │
-│  250 AMOS → Operations            │
-│  (R&D and running costs)          │
 └───────────────────────────────────┘
 
 WHAT THIS MEANS:
 • You get 15% discount
-• Total supply decreases (good for holders)
-• Creates demand for AMOS tokens
+• Total supply decreases (good for ALL holders)
+• Stakers get both USDC revenue AND AMOS distributions
+• Creates constant demand for AMOS tokens
+```
+
+**Why doesn't AMOS go to R&D and Ops?**
+R&D and Ops need real money (USDC) to pay lawyers, accountants, and vendors. They get their share from credit card payments. AMOS payments maximize value to token holders.
+
+### Practical Questions Answered
+
+**What if no one is staking at launch?**
+```
+The holder pool ACCUMULATES. First person to stake gets 
+all the accumulated rewards! This creates a strong incentive 
+to stake early. No revenue is ever lost or redirected.
+```
+
+**What about refunds?**
+```
+We wait 7 days before sending money on-chain. This matches 
+the normal refund window. If you get a refund, the money 
+never went on-chain in the first place.
+
+If a refund happens after 7 days? That's what the 5% 
+emergency reserve is for.
+```
+
+**Who decides how R&D money is spent?**
+```
+A 7-person "R&D Council" elected by stakers:
+• You vote for council members (need to stake AMOS)
+• Council proposes how to spend R&D funds
+• 5 of 7 must agree
+• 48-hour delay before any spending (in case of emergency veto)
+• All votes are public on-chain
+
+This is like a board of directors, but elected by token holders.
 ```
 
 ### The Trust Guarantee

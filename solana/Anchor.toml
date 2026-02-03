@@ -1,18 +1,21 @@
+[toolchain]
+anchor_version = "0.29.0"
+
 [features]
 seeds = false
 skip-lint = false
 
 [programs.localnet]
 amos_governance = "AmosGov111111111111111111111111111111111111"
-amos_treasury = "AmosTreas111111111111111111111111111111111"
+amos_treasury = "6d3oWMePD7newkpZSmGBWS2qAFWQmrapsLwoPnMva55G"
 
 [programs.devnet]
 amos_governance = "AmosGov111111111111111111111111111111111111"
-amos_treasury = "AmosTreas111111111111111111111111111111111"
+amos_treasury = "6d3oWMePD7newkpZSmGBWS2qAFWQmrapsLwoPnMva55G"
 
 [programs.mainnet]
 amos_governance = "AmosGov111111111111111111111111111111111111"
-amos_treasury = "AmosTreas111111111111111111111111111111111"
+amos_treasury = "6d3oWMePD7newkpZSmGBWS2qAFWQmrapsLwoPnMva55G"
 
 [registry]
 url = "https://api.apr.dev"

@@ -94,14 +94,31 @@ AMOS Token introduces:
 ```
 Total Supply: 100,000,000 AMOS
 
-┌────────────────────────────────────────────────────────────┐
-│  Treasury (60%)          │ 60,000,000 │ Ongoing rewards   │
-│  Founding Pool (15%)     │ 15,000,000 │ Core team         │
-│  Investor Pool (10%)     │ 10,000,000 │ Future investors  │
-│  Community Pool (10%)    │ 10,000,000 │ Airdrops/grants   │
-│  Reserve (5%)            │  5,000,000 │ Emergency/ops     │
-└────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│  Treasury (60%)          │ 60,000,000 │ Ongoing contributor rewards       │
+│  Entity Pool (15%)       │ 15,000,000 │ AMOS Labs Inc. (runway/strategic) │
+│  Investor Pool (10%)     │ 10,000,000 │ Future raises if needed           │
+│  Community Pool (10%)    │ 10,000,000 │ Grants, airdrops, ecosystem       │
+│  Reserve (5%)            │  5,000,000 │ Emergency (DAO-locked)            │
+├────────────────────────────────────────────────────────────────────────────┤
+│  Founders                │          0 │ Start at zero, earn like everyone │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Key Design Decision: Founders Start at Zero**
+
+Unlike traditional token launches where founders receive a pre-allocation, AMOS founders begin with zero tokens and earn through contribution like everyone else. This provides:
+
+- **Maximum credibility**: "We built this - we earn like you"
+- **Perfect alignment**: Founders succeed only if the platform succeeds
+- **No dump risk**: No founder tokens to sell
+- **Regulatory clarity**: Entity pool is a company asset, not a distribution
+
+The Entity Pool (15%) belongs to AMOS Labs Inc. for:
+- Hiring and contractor compensation (in AMOS)
+- Strategic partnerships
+- Operational runway
+- Key employee vesting grants
 
 ### 2.3 Immutability
 
@@ -138,13 +155,28 @@ The 20% markup is distributed as follows:
 ```ruby
 REVENUE_ALLOCATION = {
   token_holders: 0.50,    # Distributed proportionally to stakers
-  r_and_d: 0.30,          # R&D pool (voted by token holders)
-  operations: 0.10,       # Third-party tools & services (USD)
-  treasury: 0.10          # Emergency reserves
+  r_and_d: 0.40,          # R&D pool (voted by R&D Council)
+  treasury: 0.05,         # Emergency reserves (DAO-controlled)
+  operations: 0.05        # Accounting, legal, minimal hosting
 }
 ```
 
-**Note:** Contributors and team members are compensated in AMOS tokens, not USD. This keeps operations costs low (only third-party SaaS, legal, etc.) and allows 80% of revenue to flow to value creation.
+**Why These Percentages:**
+
+| Pool | % | Rationale |
+|------|---|-----------|
+| **Holders** | 50% | The core value proposition - immutable |
+| **R&D** | 40% | Maximum build speed - software, infrastructure, research, AI self-work |
+| **Treasury** | 5% | Emergency buffer - black swan, refunds, acquisition defense |
+| **Operations** | 5% | Minimal overhead - accounting, legal only. Team paid in AMOS. |
+
+**R&D Pool Scope:**
+- Software development (bounties, grants)
+- Infrastructure (GPU clusters, data centers over time)
+- Research grants (academic partnerships, novel AI)
+- AMOS self-work (AI improving the platform)
+
+**Note:** Contributors and team members are compensated in AMOS tokens from R&D pool, not USD. This keeps operations costs minimal (only true USD-required expenses like legal and accounting).
 
 ### 3.4 Value Accrual
 
@@ -717,14 +749,14 @@ AMOS solves this with **on-chain, immutable revenue distribution**.
 │                                               │  $50 USDC    │              │
 │                                               │  Holder Pool │──► Claimable │
 │                                               ├──────────────┤              │
-│                                               │  $30 USDC    │              │
+│                                               │  $40 USDC    │              │
 │                                               │  R&D Multisig│──► Voted     │
 │                                               ├──────────────┤              │
-│                                               │  $10 USDC    │              │
-│                                               │  Ops Multisig│──► Budgeted  │
-│                                               ├──────────────┤              │
-│                                               │  $10 USDC    │              │
+│                                               │   $5 USDC    │              │
 │                                               │  Reserve PDA │──► Locked    │
+│                                               ├──────────────┤              │
+│                                               │   $5 USDC    │              │
+│                                               │  Ops Multisig│──► Budgeted  │
 │                                               └──────────────┘              │
 │                                                                             │
 │  TIME FROM PAYMENT TO ON-CHAIN SPLIT: < 60 seconds                         │
@@ -737,16 +769,16 @@ AMOS solves this with **on-chain, immutable revenue distribution**.
 The revenue allocation is **baked into deployed program code**:
 
 ```rust
-// programs/amos_treasury/src/lib.rs
+// programs/amos_treasury/src/constants.rs
 // IMMUTABLE - Cannot be changed after deployment
 
-pub const HOLDER_SHARE: u64 = 50;      // 50% to token holders
-pub const RND_SHARE: u64 = 30;          // 30% to R&D multisig
-pub const OPS_SHARE: u64 = 10;          // 10% to operations
-pub const RESERVE_SHARE: u64 = 10;      // 10% to reserve
+pub const HOLDER_SHARE_BPS: u64 = 5000;   // 50% to token holders
+pub const RND_SHARE_BPS: u64 = 4000;       // 40% to R&D multisig
+pub const RESERVE_SHARE_BPS: u64 = 500;    // 5% to emergency reserve
+pub const OPS_SHARE_BPS: u64 = 500;        // 5% to operations
 
-pub const MIN_STAKE_DAYS: u64 = 30;     // Must hold 30 days for revenue
-pub const MIN_STAKE_AMOUNT: u64 = 100;  // Minimum 100 AMOS to qualify
+pub const MIN_STAKE_DAYS: i64 = 30;        // Must hold 30 days for revenue
+pub const MIN_STAKE_AMOUNT: u64 = 100;     // Minimum 100 AMOS to qualify
 ```
 
 **No admin key can change these values.** The only way to modify:
@@ -800,19 +832,26 @@ Customer pays 10,000 AMOS
 │  50% BURNED 🔥 (5,000 AMOS)  │
 │  └── Permanently removed      │
 │  └── Deflationary pressure    │
+│  └── Benefits ALL holders     │
 │                               │
-│  25% to Holder Pool           │
+│  50% to Holder Pool           │
 │  └── Distributed to stakers   │
-│                               │
-│  25% to Operations            │
-│  └── R&D and Ops multisigs    │
+│  └── Additional to USDC share │
 └───────────────────────────────┘
 
 RESULT:
 • Constant buy pressure (users need AMOS)
-• Deflationary (50% of payments burned)
-• Higher holder rewards (get AMOS, not just USDC)
+• Maximum deflationary pressure (50% of payments burned)
+• Double holder benefit: USDC revenue + AMOS holder pool
+• R&D/Ops funded via USDC flow (need real currency for vendors)
 ```
+
+**Why 50/50 instead of 50/25/25?**
+
+R&D and Ops need USDC to pay vendors (lawyers, accountants, AWS). AMOS tokens can't pay these bills. So:
+- USDC payments fund all four pools (50/40/5/5)
+- AMOS payments maximize holder value (50% burn, 50% holder)
+- The burn benefits ALL holders, not just stakers
 
 ### Claim Mechanism
 
@@ -858,10 +897,117 @@ For funds that require human judgment:
 
 | Pool | Control | Time-Lock | Purpose |
 |------|---------|-----------|---------|
-| **Holder Pool** | Automatic | None | Direct claims by stakers |
-| **R&D Pool** | 3-of-5 multisig | 48 hours | Voted R&D proposals |
-| **Ops Pool** | 2-of-3 multisig | 24 hours | Monthly budgeted expenses |
-| **Reserve** | DAO vote (66%) | 7 days | Emergency fund |
+| **Holder Pool** (50%) | Automatic | None | Direct claims by stakers |
+| **R&D Pool** (40%) | 5-of-7 multisig (R&D Council) | 48 hours | Software, infra, research, AI work |
+| **Ops Pool** (5%) | 2-of-3 multisig | 24 hours | Accounting, legal only |
+| **Reserve** (5%) | DAO vote (66%+30% quorum) | 7 days | Emergency fund |
+
+### R&D Council Structure
+
+The R&D Pool (40% of revenue) is controlled by an elected council:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    R&D COUNCIL GOVERNANCE                                   │
+│                                                                             │
+│  COMPOSITION:                                                               │
+│  • 7 members elected by token stakers                                      │
+│  • 2-year staggered terms (3-4 seats up each year)                        │
+│  • Must be stakers themselves (minimum 1,000 AMOS)                         │
+│  • Can be recalled with 66% staker vote                                    │
+│                                                                             │
+│  APPROVAL PROCESS:                                                          │
+│  1. Proposal submitted (bounty, grant, infrastructure purchase)           │
+│  2. 5-day discussion period                                                 │
+│  3. Council votes (5-of-7 required to approve)                             │
+│  4. 48-hour time-lock (allows emergency veto by DAO)                       │
+│  5. Execution                                                               │
+│                                                                             │
+│  SCOPE:                                                                     │
+│  • Software development bounties and grants                                │
+│  • Infrastructure purchases (GPU clusters, data centers)                  │
+│  • Research partnerships and academic grants                               │
+│  • AMOS self-improvement work (AI building AI features)                   │
+│  • Team compensation (in AMOS tokens)                                      │
+│                                                                             │
+│  TRANSPARENCY:                                                              │
+│  • All proposals public on-chain before voting                             │
+│  • All votes recorded permanently                                          │
+│  • Monthly spend reports published                                          │
+│  • Quarterly town halls with stakers                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Bootstrap Scenario: No Stakers Yet
+
+**What happens if no one is staking at launch?**
+
+```
+Week 1: Platform launches
+├── Revenue: $10,000
+├── Holder Pool: $5,000 (50%)
+├── Stakers: 0
+└── Result: Pool ACCUMULATES
+
+Week 2: First staker joins
+├── Accumulated Pool: $10,000 (two weeks of revenue)
+├── Staker with 10,000 AMOS: Can claim $10,000!
+└── Result: Early stakers get accumulated rewards
+
+DESIGN RATIONALE:
+• Creates strong incentive to stake early
+• No "lost" revenue - it's always claimable
+• First movers are rewarded for taking the risk
+• Aligns incentives: stake early, earn more
+```
+
+### Settlement Delay and Refund Handling
+
+Revenue doesn't flow on-chain instantly to handle refunds:
+
+```
+Day 0:   Customer pays $100
+         ├── $80 reserved for AWS (bank account)
+         └── $20 held in PENDING pool (not yet on-chain)
+
+Day 1-7: Refund window open
+         └── If refund: Cancel pending, refund from bank
+
+Day 7:   No refund?
+         └── $20 → Circle → USDC → Solana Treasury → Instant split
+
+WEEKLY DISTRIBUTION:
+• Every Monday, 7-day-old payments go on-chain
+• Batch processing reduces transaction costs
+• Matches Stripe chargeback window
+
+POST-SETTLEMENT REFUND:
+• Already distributed? Absorb from Treasury (5% buffer)
+• This is what the emergency reserve is for
+```
+
+### Cost Reconciliation
+
+The 80% compute pass-through is ACTUAL cost, not estimated:
+
+```
+PRICING MODEL:
+Customer Price = Actual AWS Cost × 1.20
+
+Example:
+├── User runs workflow
+├── Bedrock cost: $8.34 (metered by AWS)
+├── Customer pays: $8.34 × 1.20 = $10.01
+└── Revenue: $1.67 (exactly 20% of cost)
+
+MONTHLY RECONCILIATION:
+├── Track: Sum all metered costs
+├── Verify: Match against AWS invoice
+├── If variance > 5%: Alert ops team
+└── Adjust: Next month's reserve if needed
+
+The 5% Ops budget includes buffer for any variance.
+```
 
 ### Trust Guarantees
 
