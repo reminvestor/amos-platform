@@ -71,16 +71,40 @@ Thumbs.db
 /rag_sources/system/integrations/**/*
 !/rag_sources/system/integrations/**/.gitkeep
 
-# Terraform
+# Terraform (entire infrastructure directories - keep infra private)
+/terraform/
+/aws/terraform/
 **/.terraform/*
 *.tfstate
 *.tfstate.*
 terraform.tfvars
+*.tfvars
 *.auto.tfvars
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+*.plan
+
+# AWS deployment scripts and configs (operational - keep private)
+/aws/
+
+# Production database scripts
+copy-prod-db-to-dev.sh
+restore-prod-snapshot-to-dev*.sh
+ecs_diagnostics.sh
+check_ecs_workers.sh
+add-https-listener.sh
+enable-pgvector-rds.sh
+
+# Claude Code internal configs (keep workflows private)
+/.claude/
+
+# Collaboration AWS scripts
+/scripts/collaboration/
+
+# Mobile apps (React Native - keep separate)
+/mobile/
 tmp/create_admin.rb
 tmp/reset_passwords.rb
 tmp/reset_all_passwords.rb
