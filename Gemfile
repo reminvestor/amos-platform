@@ -37,7 +37,7 @@ gem "rqrcode", "~> 2.2"   # QR code generation for MFA setup
 gem "rack-cors"
 
 # Background processing
-gem "sidekiq", "~> 7.2"
+gem "sidekiq", "~> 8.1"
 
 # Environment variables management
 gem "dotenv-rails", "~> 3.0"
