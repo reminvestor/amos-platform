@@ -6276,20 +6276,21 @@ function buildSectionCard(section, idx, pageIndex) {
   var loadExistingAppBtn = document.getElementById('load-existing-app-btn');
   if (loadExistingAppBtn) {
     loadExistingAppBtn.addEventListener('click', function() {
-      console.log('📂 Opening My Creations to load existing project...');
+      console.log('📂 Opening My Creations filtered to apps...');
       
-      // Load the My Creations canvas filtered to apps/designs
+      // Load the My Creations canvas filtered to app_modules
+      // The 'type' parameter is used by my_creations to pre-select the filter tab
       if (window.Stimulus && window.Stimulus.getControllerForElementAndIdentifier) {
         var scoutEl = document.querySelector('[data-controller~="scout"]');
         var scoutController = window.Stimulus.getControllerForElementAndIdentifier(scoutEl, 'scout');
         if (scoutController && scoutController.loadScoutCanvas) {
-          scoutController.loadScoutCanvas('my_creations', { filter: 'apps' });
+          scoutController.loadScoutCanvas('my_creations', { type: 'app_module' });
           return;
         }
       }
       // Fallback: dispatch custom event
       document.dispatchEvent(new CustomEvent('scout:load-canvas', { 
-        detail: { canvas: 'my_creations', data: { filter: 'apps' } }
+        detail: { canvas: 'my_creations', data: { type: 'app_module' } }
       }));
     });
   }

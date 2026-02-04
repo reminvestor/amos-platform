@@ -1068,8 +1068,18 @@
     
     console.log('🎨 Initializing My Creations canvas:', containerId);
   
-  let currentTypeFilter = 'all';
-  let currentStatusFilter = 'all';
+  // Initialize filters from canvas data (allows pre-filtering when opened from workflow/app designer)
+  let currentTypeFilter = '<%= filter_type %>';
+  let currentStatusFilter = '<%= filter_status %>';
+  
+  // Apply initial filter if not 'all' (pre-filter on load)
+  if (currentTypeFilter !== 'all' || currentStatusFilter !== 'all') {
+    console.log('🔍 Pre-filtering to type:', currentTypeFilter, 'status:', currentStatusFilter);
+    // Delay slightly to ensure DOM is ready
+    setTimeout(() => {
+      applyFilters();
+    }, 100);
+  }
   
   // Helper to load a canvas via event
   function loadCanvas(canvasType, canvasData = {}) {

@@ -1060,6 +1060,9 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
     color: #a0a0a0;
     z-index: 50;
@@ -1075,34 +1078,36 @@
     pointer-events: none;
   }
   
-  .empty-state-divider {
+  .canvas-empty-state .empty-state-divider {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin: 16px 0;
+    margin: 20px 0 16px;
     pointer-events: none;
+    width: 100%;
+    max-width: 300px;
   }
   
-  .empty-state-divider::before,
-  .empty-state-divider::after {
+  .canvas-empty-state .empty-state-divider::before,
+  .canvas-empty-state .empty-state-divider::after {
     content: '';
     flex: 1;
     height: 1px;
-    background: rgba(139, 92, 246, 0.2);
+    background: rgba(139, 92, 246, 0.3);
   }
   
-  .empty-state-divider span {
+  .canvas-empty-state .empty-state-divider span {
     font-size: 11px;
-    color: #6b7280;
+    color: #8b8b9f;
     text-transform: uppercase;
     letter-spacing: 1px;
   }
   
-  .btn-load-existing {
+  .canvas-empty-state .btn-load-existing {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 20px;
+    padding: 12px 24px;
     border: 1px dashed rgba(139, 92, 246, 0.4);
     border-radius: 8px;
     background: rgba(139, 92, 246, 0.05);
@@ -1113,7 +1118,7 @@
     pointer-events: auto;
   }
   
-  .btn-load-existing:hover {
+  .canvas-empty-state .btn-load-existing:hover {
     border-color: #8b5cf6;
     background: rgba(139, 92, 246, 0.15);
     color: #c4b5fd;
@@ -3620,20 +3625,21 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
   const loadExistingBtn = document.getElementById('load-existing-workflow-btn');
   if (loadExistingBtn) {
     loadExistingBtn.addEventListener('click', function() {
-      console.log('📂 Opening My Creations to load workflow...');
+      console.log('📂 Opening My Creations filtered to workflows...');
       
       // Load the My Creations canvas filtered to workflows
+      // The 'type' parameter is used by my_creations to pre-select the filter tab
       if (window.Stimulus && window.Stimulus.getControllerForElementAndIdentifier) {
         const scoutEl = document.querySelector('[data-controller~="scout"]');
         const scoutController = window.Stimulus.getControllerForElementAndIdentifier(scoutEl, 'scout');
         if (scoutController && scoutController.loadScoutCanvas) {
-          scoutController.loadScoutCanvas('my_creations', { filter: 'workflows' });
+          scoutController.loadScoutCanvas('my_creations', { type: 'workflow' });
           return;
         }
       }
       // Fallback: dispatch custom event
       document.dispatchEvent(new CustomEvent('scout:load-canvas', { 
-        detail: { canvas: 'my_creations', data: { filter: 'workflows' } }
+        detail: { canvas: 'my_creations', data: { type: 'workflow' } }
       }));
     });
   }
