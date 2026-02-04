@@ -83,7 +83,7 @@ gem "counter_culture", "~> 3.5"
 gem "neighbor", "~> 0.5"
 
 # AWS SDK for Bedrock integration
-gem "aws-sdk-bedrockruntime", "~> 1.0"
+gem "aws-sdk-bedrockruntime", "~> 1.73"
 gem "aws-sdk-bedrockagent", "~> 1.0"
 gem "aws-sdk-bedrockagentruntime", "~> 1.0"
 gem "aws-sdk-s3", "~> 1.0"
