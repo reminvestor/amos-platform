@@ -233,7 +233,10 @@
     <div class="designer-header-left">
       <i data-lucide="git-branch" class="designer-icon"></i>
       <div>
-        <h4 class="designer-title" id="workflow-title" contenteditable="true" spellcheck="false" title="Click to edit workflow name"><%= data[:workflow_name] || 'Untitled Workflow' %> <span class="beta-badge">Beta</span></h4>
+        <div class="designer-title-row">
+          <h4 class="designer-title" id="workflow-title" contenteditable="true" spellcheck="false" title="Click to edit workflow name"><%= data[:workflow_name] || 'Untitled Workflow' %></h4>
+          <span class="beta-badge">Beta</span>
+        </div>
         <p class="designer-subtitle">Build automations visually</p>
       </div>
     </div>
@@ -668,6 +671,12 @@
     width: 20px;
     height: 20px;
     color: #8b5cf6;
+  }
+  
+  .designer-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   
   .designer-title {

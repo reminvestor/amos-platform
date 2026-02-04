@@ -1489,13 +1489,21 @@ class ScoutGenericToolsServiceV2
   end
 
   def build_system_prompt(current_canvas = nil)
+    # ═══════════════════════════════════════════════════════════════
+    # TIERED CONTEXT LOADING - Use preprocessor classification
+    # ═══════════════════════════════════════════════════════════════
+    # fast_path = simple conversational messages → minimal context
+    # full_path = action requests → full context
+    is_fast_path = @preprocess_result&.dig(:classification_method) == :fast_path
+    
     # Use AmosIdentity core identity as the foundation
     # Pass the intent mode for seamless role adaptation (if set)
     space_definition = @user&.active_space_definition
     ai_identity = AmosIdentity.build_system_prompt(
       user: @user,
       mode: @intent_mode,  # Mode from intent analysis: :personal, :ideate, :operate, :create
-      space_definition: space_definition
+      space_definition: space_definition,
+      compact: is_fast_path  # Hint to AmosIdentity to use shorter version
     )
 
     # Current date/time in user's timezone (default to Pacific)
@@ -1503,6 +1511,32 @@ class ScoutGenericToolsServiceV2
     current_datetime = current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")
 
     available_models = ScoutDataRegistry.available_object_types
+    
+    # ═══════════════════════════════════════════════════════════════
+    # FAST PATH: Minimal context for simple conversational messages
+    # Saves ~4000-6000 tokens on "hi", "thanks", casual questions
+    # ═══════════════════════════════════════════════════════════════
+    if is_fast_path
+      Rails.logger.info "⚡ [Context] FAST PATH: Using minimal system prompt for simple message"
+      
+      # Only load essentials: user name, personality, learned behaviors (core preferences)
+      user_name = @user&.full_name || @user&.first_name || "User"
+      scout_personality = format_scout_personality_for_prompt
+      learned_behaviors = format_learned_behaviors_for_prompt
+      
+      return build_compact_system_prompt(
+        ai_identity: ai_identity,
+        current_datetime: current_datetime,
+        user_name: user_name,
+        scout_personality: scout_personality,
+        learned_behaviors: learned_behaviors
+      )
+    end
+    
+    # ═══════════════════════════════════════════════════════════════
+    # FULL PATH: Complete context for action requests
+    # ═══════════════════════════════════════════════════════════════
+    Rails.logger.info "📚 [Context] FULL PATH: Loading complete system prompt for action request"
     
     # Load business context
     business_context = format_business_context_for_prompt
@@ -1628,11 +1662,6 @@ class ScoutGenericToolsServiceV2
       • If you fetched Stripe customers, display Stripe customers (not CRM contacts)
       • If uncertain about data source, clarify with user
       
-      🚨 DON'T FABRICATE DATA 🚨
-      NEVER make up data. If you don't know, say so.
-      "I don't have that information" is always better than inventing something.
-      Use tools to fetch real data.
-      
       🔄 FRESH START AWARENESS:
       When user does a "Fresh Start", their mental state has reset.
       Past context = REFERENCE MATERIAL only, not active requests.
@@ -1752,7 +1781,9 @@ class ScoutGenericToolsServiceV2
       ✅ Answer first, then offer follow-ups
       
       ❌ NEVER fabricate data. If you don't have it, say so or fetch it.
-      ❌ NEVER answer real-time questions from memory (weather, stocks, etc.)
+      ❌ NEVER say "I don't have real-time data" - USE web_search!
+      
+      🔍 web_search for: weather, stocks, crypto, news, "latest", "current", "today"
 
       ═══════════════════════════════════════════════════════════════
       🔴 DECISION FRAMEWORK - CLASSIFY FIRST, THEN ACT
@@ -1840,22 +1871,6 @@ class ScoutGenericToolsServiceV2
       → Understand context - don't ask again!
 
       ═══════════════════════════════════════════════════════════════
-      🔴 WEB SEARCH - USE IT PROACTIVELY
-      ═══════════════════════════════════════════════════════════════
-      
-      ALWAYS USE web_search FOR:
-      • Stock prices, exchange rates, crypto prices
-      • Weather forecasts
-      • Current news and events
-      • Competitor research
-      • Product comparisons and pricing
-      • Any "current", "latest", "today" questions
-      • Any factual question you're not 100% certain about
-      
-      NEVER say "I don't have real-time data" - you DO via web_search!
-      NEVER say "My training data is from..." - SEARCH for current info!
-
-      ═══════════════════════════════════════════════════════════════
       📄 DOCUMENTS - SEARCH AND SHOW
       ═══════════════════════════════════════════════════════════════
 
@@ -1941,6 +1956,52 @@ class ScoutGenericToolsServiceV2
     end
 
     prompt
+  end
+  
+  # ═══════════════════════════════════════════════════════════════
+  # COMPACT SYSTEM PROMPT - For fast_path (simple conversational messages)
+  # ═══════════════════════════════════════════════════════════════
+  # Saves ~4000-6000 tokens by skipping:
+  # - Full business context
+  # - User memories  
+  # - Scout learnings
+  # - Conversation summaries
+  # - Session focus
+  # - AI rulesets
+  # - Team roster
+  # - Detailed tool instructions
+  #
+  # Keeps:
+  # - Core AI identity
+  # - User name
+  # - Personality (how to respond)
+  # - Learned behaviors (critical preferences)
+  # - Essential tool info (memory recall)
+  def build_compact_system_prompt(ai_identity:, current_datetime:, user_name:, scout_personality:, learned_behaviors:)
+    <<~PROMPT
+      #{ai_identity}
+
+      📅 CURRENT DATE/TIME: #{current_datetime}
+      
+      👤 USER: #{user_name}
+      
+      #{scout_personality}
+      
+      #{learned_behaviors}
+      
+      ═══════════════════════════════════════════════════════════════
+      💡 QUICK MODE - Conversational Response
+      ═══════════════════════════════════════════════════════════════
+      
+      This is a simple conversational message. Respond naturally and concisely.
+      
+      If the user asks you to DO something (show data, create, build, search):
+      • You have tools available - just say what you'd need to know
+      • For real-time info (weather, stocks, news) → use web_search
+      • To recall past conversations → use search_memory
+      
+      Be warm, helpful, and get to the point. No need for long explanations.
+    PROMPT
   end
   
   # Model-specific prompt addendums

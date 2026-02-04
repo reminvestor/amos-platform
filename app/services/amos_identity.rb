@@ -433,7 +433,14 @@ module AmosIdentity
   # @param mode [Symbol] :personal, :ideate, :operate, :create (optional, detected from message)
   # @param space_definition [SpaceDefinition] Legacy space context (optional)
   # @param additional_context [String] Extra context to append (optional)
-  def self.build_system_prompt(user:, mode: nil, space_definition: nil, additional_context: nil)
+  # @param compact [Boolean] If true, return minimal identity for fast_path (saves tokens)
+  def self.build_system_prompt(user:, mode: nil, space_definition: nil, additional_context: nil, compact: false)
+    # COMPACT MODE: Return minimal identity for simple conversational messages
+    # Saves ~1000-2000 tokens by skipping mode roles, space context, detailed prefs
+    if compact
+      return build_compact_identity(user: user)
+    end
+    
     parts = [CORE_IDENTITY]
 
     # Add mode-based role context (primary method for role adaptation)
@@ -460,6 +467,19 @@ module AmosIdentity
     parts << build_timestamp_context(user: user)
 
     parts.compact.join("\n\n")
+  end
+  
+  # Compact identity for fast_path - minimal tokens, just core personality
+  def self.build_compact_identity(user:)
+    user_name = user&.full_name || user&.first_name || "there"
+    
+    <<~IDENTITY
+      You are Amos, a friendly AI assistant. You're helpful, conversational, and get to the point.
+      
+      You're talking to #{user_name}.
+      
+      Be warm but efficient. If they need you to DO something (create, show data, search), you have tools available.
+    IDENTITY
   end
   
   # Build mode-based role context (new primary method)
