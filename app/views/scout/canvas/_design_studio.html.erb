@@ -548,7 +548,7 @@
       <!-- Toolbar -->
       <div class="studio-toolbar">
         <div class="toolbar-left">
-          <span class="toolbar-title"><%= plan ? (plan['name'] || 'New Design') : 'Untitled Design' %></span>
+          <span class="toolbar-title"><%= plan ? (plan['name'] || 'New Design') : 'Untitled Design' %> <span class="beta-badge">Beta</span></span>
         </div>
         <div class="toolbar-center">
           <div class="viewport-controls">
@@ -1464,6 +1464,20 @@
   .toolbar-title {
     font-weight: 500;
     color: #c0c0d0;
+  }
+  
+  .beta-badge {
+    display: inline-block;
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    margin-left: 8px;
+    vertical-align: middle;
   }
   
   .plan-badge {

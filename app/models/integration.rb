@@ -153,6 +153,39 @@ class Integration < ApplicationRecord
     global? || is_public? || entity_id == entity.id
   end
 
+  # Status helpers for display purposes
+  # Status can be: 'available' (default), 'coming_soon', 'beta', 'deprecated'
+  def status
+    metadata&.dig('status') || 'available'
+  end
+
+  def coming_soon?
+    status == 'coming_soon'
+  end
+
+  def beta?
+    status == 'beta'
+  end
+
+  def mark_as_coming_soon!
+    update!(metadata: (metadata || {}).merge('status' => 'coming_soon'))
+  end
+
+  def mark_as_beta!
+    update!(metadata: (metadata || {}).merge('status' => 'beta'))
+  end
+
+  def mark_as_available!
+    new_metadata = (metadata || {}).dup
+    new_metadata.delete('status')
+    update!(metadata: new_metadata)
+  end
+
+  # Scopes for status filtering
+  scope :coming_soon, -> { where("metadata->>'status' = ?", 'coming_soon') }
+  scope :beta, -> { where("metadata->>'status' = ?", 'beta') }
+  scope :available, -> { where("metadata->>'status' IS NULL OR metadata->>'status' = ?", 'available') }
+
   # Find the entity-specific version of this integration, or self if already entity-specific
   # Prefer entity-owned integrations over globals for actual use
   def self.find_for_use(identifier, entity)
