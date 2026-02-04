@@ -61,7 +61,7 @@ Here's what makes AMOS different: **tokens decay over time if you're not active*
 - Late joiners can still earn meaningful ownership
 - 12-month grace period for new stakes
 
-[Read the full whitepaper →](docs/whitepaper_simple.md)
+[Read the full whitepaper →](docs/whitepaper_technical.md)
 
 ---
 

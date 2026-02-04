@@ -39,7 +39,8 @@ As AI becomes more capable—and it will—the value should flow to everyone who
 9. [Security Considerations](#9-security-considerations)
 10. [Technical Implementation](#10-technical-implementation)
 11. [Economic Modeling & Sustainability](#11-economic-modeling--sustainability-analysis)
-12. [AI Participation & Universal Collaboration](#15-ai-participation--universal-collaboration)
+12. [Regulatory Commitment](#12-regulatory-commitment)
+13. [AI Participation & Universal Collaboration](#13-ai-participation--universal-collaboration)
 
 ---
 
@@ -1568,188 +1569,44 @@ REALITY:
 THE GOAL: Healthy market, not LP monopoly
 ```
 
-### 11.3 Sell Pressure Scenarios
+### 11.3 AMM Price Protection
 
-#### Scenario A: Moderate Selling (10% of distributed tokens)
+The constant-product AMM formula provides natural protection against sell pressure:
 
-```
-Assumption: Year 1, 5.84M tokens distributed, 10% sold immediately
+| Scenario | Sell Amount | Price Drop | Slippage |
+|----------|-------------|------------|----------|
+| Moderate (10%) | 584k AMOS | 79% | 54% |
+| Panic (50%) | 2.9M AMOS | 98% | 85% |
+| Total Collapse | 5.8M AMOS | 99.4% | 99%+ |
 
-Sell Amount: 584,000 AMOS
-Pre-Sell Pool: 500,000 AMOS + 5,000 USDC
+**Key Insight**: Aggressive sellers punish themselves with massive slippage, disincentivizing bank runs.
 
-New AMOS in pool: 500,000 + 584,000 = 1,084,000
-New USDC (from k): 2,500,000,000 / 1,084,000 = 2,306 USDC
-USDC received by sellers: 5,000 - 2,306 = 2,694 USDC
+### 11.4 Buy Pressure: Revenue-Based Buyback
 
-New Price: 2,306 / 1,084,000 = $0.00213/AMOS
-Price Drop: 79%
+Monthly revenue creates sustained buying pressure that exceeds worst-case sell pressure:
 
-RESULT: Sellers got $0.0046/AMOS on average (54% slippage)
-```
+| Annual Revenue | Buyback (50%) | vs Sell Pressure | Net Effect |
+|----------------|---------------|------------------|------------|
+| $1.2M | $300k/year | ~$29k worst case | Strong net buying |
+| $5M | $1.25M/year | ~$50k worst case | Dominant buying |
+| $20M | $5M/year | ~$100k worst case | Price appreciation |
 
-#### Scenario B: Panic Selling (50% of distributed tokens)
+### 11.5 Long-Term Supply Dynamics
 
-```
-Sell Amount: 2,920,000 AMOS (50% of Year 1 distribution)
-Pre-Sell Pool: 500,000 AMOS + 5,000 USDC
+| Year | Supply | Burned | Circulating | Est. Price (at $50M cap) |
+|------|--------|--------|-------------|--------------------------|
+| 0 | 100M | 0 | 0 | $0.01 |
+| 5 | 90M | 10M | ~12M | ~$0.55 |
+| 10 | 75M | 25M | ~20M | ~$0.67 |
 
-New AMOS in pool: 500,000 + 2,920,000 = 3,420,000
-New USDC (from k): 2,500,000,000 / 3,420,000 = 731 USDC
-USDC received by sellers: 5,000 - 731 = 4,269 USDC
+### 11.6 Contributor Incentive: Hold vs Sell
 
-New Price: 731 / 3,420,000 = $0.000214/AMOS
-Price Drop: 98%
+| Strategy | 100 AMOS Earned | 5-Year Value |
+|----------|-----------------|--------------|
+| Sell Immediately | $1.00 | $1.00 |
+| Hold for Revenue | $4.00/yr | $15-20 |
 
-RESULT: Sellers got $0.00146/AMOS on average (85% slippage)
-```
-
-#### Scenario C: Total Collapse Attempt
-
-```
-Sell Amount: ALL 5,840,000 AMOS from Year 1
-
-New AMOS in pool: 500,000 + 5,840,000 = 6,340,000
-New USDC (from k): 2,500,000,000 / 6,340,000 = 394 USDC
-USDC received by sellers: 5,000 - 394 = 4,606 USDC
-
-New Price: 394 / 6,340,000 = $0.000062/AMOS
-
-RESULT: 
-- $5,000 of liquidity absorbed $0.08M in sell pressure
-- Sellers received only 0.08% of "face value"
-- Price crashed 99.4% but pool still functional
-```
-
-**Critical Insight**: The AMM curve provides natural protection—aggressive selling results in massive slippage, strongly disincentivizing bank runs.
-
-### 11.4 Buy Pressure Mechanisms
-
-#### Revenue-Based Buyback
-
-```
-Monthly Compute Usage by Customers: $500,000
-Platform Revenue (20% markup): $100,000
-
-Distribution of $100,000:
-├── Token Holders (50%): $50,000
-│   ├── Direct USDC (50%): $25,000 → Paid directly to holders
-│   └── Buyback & Burn (50%): $25,000 → Buys AMOS from market
-├── R&D Pool (30%): $30,000 → Voted allocation
-├── Operations (10%): $10,000 → Third-party tools/services
-└── Treasury (10%): $10,000 → Emergency reserves
-```
-
-#### Monthly Buyback Impact
-
-```
-Pre-Buyback Pool: 3,420,000 AMOS + 731 USDC (after panic sell)
-Buyback Amount: $25,000 USDC
-
-New USDC in pool: 731 + 25,000 = 25,731 USDC
-New AMOS (from k): 2,500,000,000 / 25,731 = 97,159 AMOS
-AMOS bought: 3,420,000 - 97,159 = 3,322,841 AMOS (BURNED)
-
-New Price: 25,731 / 97,159 = $0.265/AMOS
-Price Recovery: +123,831% from panic low
-
-Annual Buyback: $300,000 → Sustained buy pressure
-```
-
-#### Buyback vs Sell Pressure Equilibrium
-
-```
-ANNUAL FLOWS:
-
-Sell Pressure (Worst Case):
-- Year 1 emission: 5,840,000 AMOS
-- If 50% sold: 2,920,000 AMOS hitting market
-- At $0.01: ~$29,200 sell pressure
-
-Buy Pressure:
-- Revenue @ $100k/month: $1.2M/year
-- 50% to holders: $600,000
-- 50% of that as buyback: $300,000/year sustained buying
-
-EQUILIBRIUM: Buyback ($300k) > Sell Pressure ($29k)
-Result: Strong net buying pressure, price trends upward
-```
-
-### 11.5 Long-Term Token Economics (10-Year Projection)
-
-#### Conservative Revenue Growth Model
-
-```
-Year 1:  $500k revenue → $100k buyback → Burns ~5M AMOS
-Year 2:  $1M revenue   → $200k buyback → Burns ~4M AMOS
-Year 3:  $2M revenue   → $400k buyback → Burns ~3M AMOS
-Year 4:  $4M revenue   → $800k buyback → Burns ~2M AMOS
-Year 5:  $6M revenue   → $1.2M buyback → Burns ~1.5M AMOS
-...
-Year 10: $20M revenue  → $4M buyback   → Burns ~500k AMOS
-
-TOTAL BURNED (10 years): ~20M AMOS
-```
-
-#### Supply Dynamics
-
-```
-Year 0:  100,000,000 AMOS (100% supply)
-Year 5:   90,000,000 AMOS (~10% burned via decay + buyback)
-Year 10:  75,000,000 AMOS (~25% burned)
-
-Circulating Supply:
-Year 0:  0 AMOS (all in treasury/pools)
-Year 5:  ~12M AMOS in circulation (after decay)
-Year 10: ~20M AMOS in circulation
-
-Price Implication:
-If Year 10 market cap = $50M
-Price = $50M / 75M supply = $0.67/AMOS
-```
-
-### 11.6 Contributor Incentive Analysis
-
-#### Why Hold vs Sell?
-
-```
-Option A: SELL IMMEDIATELY
-- Earn 100 AMOS for a feature
-- Claim to wallet
-- Sell at market (~$0.01)
-- Receive: $1.00
-
-Option B: HOLD FOR REVENUE
-- Earn 100 AMOS for a feature
-- Keep staked in platform
-- Year 1 revenue share: 100/5M × $200k = $4.00
-- Year 2 revenue share: 60/6M × $400k = $4.00 (post-decay)
-- Year 3+: Continues...
-
-5-Year Revenue: ~$15-20 (15-20x better than immediate sell)
-```
-
-#### Break-Even Analysis
-
-```
-Q: When is selling better than holding?
-
-Sell Value: P × tokens (where P = market price)
-Hold Value: (tokens / total_stake) × annual_revenue_share × years
-
-Break-even when:
-P × tokens > (tokens / total_stake) × annual_revenue × years
-
-With $1M annual revenue, 10M total stake:
-Hold value per 100 tokens: 100/10M × $400k = $4/year
-
-Selling is better only if:
-P > $4/year ÷ discount_rate
-
-At 10% discount rate: P > $40/token (40x initial!)
-
-CONCLUSION: Holding dominates unless token 40x'd
-```
+**Holding dominates unless token price exceeds 40x initial value.**
 
 ### 11.7 Death Spiral Prevention
 
@@ -1790,249 +1647,39 @@ If everyone stops contributing:
 | **Early Advantage** | Moderate | Massive | Massive |
 | **Long-term Fairness** | High | Low | Low |
 
-### 11.9 Monte Carlo Simulation Summary
+### 11.9 Stake vs. Exchange Equilibrium
 
-1000 simulations with varying assumptions:
+Holders choose between: **Stake on platform (decay + revenue)** or **hold on exchange (no decay, speculation)**. The system naturally transitions through phases:
 
+| Phase | Platform Yield | Exchange Return | Result |
+|-------|---------------|-----------------|--------|
+| **Early (0-2 yr)** | ~60% net (after grace) | 100-500% speculation | Speculators dominate |
+| **Growth (2-5 yr)** | ~31% net | 20-50% appreciation | Mixed equilibrium |
+| **Mature (5+ yr)** | ~25% net | 5-10% stable | Stakers dominate |
+
+**Key Insight**: Early speculators provide price discovery and liquidity. As revenue grows, fundamentals take over. Both behaviors are rational and the system is robust to each.
+
+### 11.10 Token Valuation Model
+
+Token value = **NPV of expected future revenue share, adjusted for decay**.
+
+**Simplified Formula:**
 ```
-Variables:
-- Revenue growth: 0-50% annual
-- Sell pressure: 10-80% of distribution
-- New contributors: 100-10,000/year
-- Initial liquidity: $10k-$100k
-
-Results (Year 5 Price):
-- 5th percentile:  $0.02
-- 25th percentile: $0.08
-- Median:          $0.18
-- 75th percentile: $0.42
-- 95th percentile: $1.20
-
-Probability of >$0.10: 68%
-Probability of <$0.01: 4%
-Probability of $0.00: <1%
-```
-
-### 11.10 Stake vs. Exchange Equilibrium Analysis
-
-A rational holder must decide: **Stake on platform (decay + revenue) or hold on exchange (no decay, speculation)?**
-
-#### The Math
-
-```
-Platform Net Yield = Revenue Yield - Effective Decay Rate
-Exchange Return = Expected Price Appreciation
-
-Equilibrium: Platform Net Yield ≈ Exchange Return
-```
-
-#### Phase 1: Early Stage (Year 0-2)
-
-```
-Revenue: $500k/year (20% markup on $2.5M compute)
-Holder share (50%): $250k/year
-Staked supply: 5M tokens
-Revenue per token: $250k / 5M = $0.05/token/year
-Token price: $0.05
-Gross yield: $0.05 / $0.05 = 100%
-Decay rate: 40% (but 12-month grace period first!)
-NET YIELD: 100% - 40% = +60% (after grace period)
-
-Expected price appreciation: 100-500% (high uncertainty)
-
-RESULT: Speculators stay on exchange, believers stake
-        Both strategies rational
-```
-
-#### Phase 2: Growth Stage (Year 2-5)
-
-```
-Revenue: $5M/year (20% markup on $25M compute)
-Holder share (50%): $2.5M/year
-Staked supply: 15M tokens
-Revenue per token: $2.5M / 15M = $0.167/token/year
-Token price: $0.30
-Gross yield: $0.167 / $0.30 = 56%
-Decay rate: 25% (tenure reduction)
-NET YIELD: 56% - 25% = +31%
-
-Expected price appreciation: 20-50% (maturing)
-
-RESULT: Net yield clearly beats speculation
-        More holders move to platform for stable returns
-```
-
-#### Phase 3: Mature Stage (Year 5+)
-
-```
-Revenue: $20M/year (20% markup on $100M compute)
-Holder share (50%): $10M/year
-Staked supply: 25M tokens
-Revenue per token: $10M / 25M = $0.40/token/year
-Token price: $1.00
-Gross yield: $0.40 / $1.00 = 40%
-Decay rate: 15% (long-term tenure)
-NET YIELD: 40% - 15% = +25%
-
-Expected price appreciation: 5-10% (stable)
-
-RESULT: Staking clearly dominates
-        Only traders remain on exchange
-```
-
-#### The Equilibrium Dynamic
-
-```
-                    EARLY                GROWTH               MATURE
-                    │                    │                    │
-                    │                    │                    │
-Speculation Value   │████████████████████│█████████████       │████
-                    │                    │                    │
-Revenue Yield       │██                  │██████████          │████████████████
-                    │                    │                    │
-                    ├────────────────────┼────────────────────┤
-                    │                    │                    │
-              Speculators        Transition Point         Stakers
-              dominate           (equilibrium)            dominate
-```
-
-#### Key Insight: This Is By Design
-
-The system **naturally transitions** from speculation-driven to fundamentals-driven:
-
-| Phase | Who Dominates | Why It's OK |
-|-------|---------------|-------------|
-| Early | Speculators | Price discovery, liquidity building |
-| Growth | Mixed | Revenue becomes meaningful |
-| Mature | Stakers | Sustainable value creation |
-
-Early speculators provide **price discovery** and **liquidity**. As revenue grows, **fundamentals take over**. This is healthy market development.
-
-#### The "Early Investor" Strategy
-
-You correctly identified this strategy:
-
-```
-Year 0-2: Hold on exchange
-  - No decay
-  - Speculation upside
-  - Revenue yield too low to matter
-
-Year 3+: Deposit to platform
-  - Revenue yield now meaningful
-  - Price appreciation slowing
-  - 30-day waiting period, then earn
-
-This is RATIONAL behavior, not gaming.
-```
-
-#### Why This Doesn't Break The Model
-
-1. **Speculators provide liquidity** - Enables trading for contributors
-2. **Late staking still decays** - Deposit creates NEW stake at 40% decay
-3. **Revenue share dilutes** - More stakers = lower per-token yield
-4. **Floor builds slowly** - Even late depositors start at 5% floor
-
-The system is **robust to rational behavior** because all paths lead to value creation.
-
-### 11.11 Token Valuation Model
-
-The fundamental value of an AMOS token is the **Net Present Value (NPV) of expected future revenue share, adjusted for decay**.
-
-#### Basic Formula
-
-```
-Token Price = Σ (Revenue Per Token × Decay Factor) / (1 + Discount Rate)^t
-
-SIMPLIFIED:
 Token Price ≈ Annual Revenue Per Token / (Discount Rate + Effective Decay)
-             ≈ Annual Revenue Per Token / 0.40
 ```
 
-#### Worked Example
+**Revenue-Based Price Estimates** (at 50M staked tokens):
 
-```
-ASSUMPTIONS:
-├── Platform Revenue: $10M/year
-├── Token Holder Share (50%): $5M/year
-├── Total Staked Tokens: 50M
-├── Revenue Per Token: $0.10/year
-├── Decay Rate: 40%/year (effective ~30% with floor)
-├── Discount Rate: 10%
+| Annual Revenue | Per Token Yield | Estimated Price |
+|----------------|-----------------|-----------------|
+| $1M | $0.01/yr | ~$0.025 |
+| $10M | $0.10/yr | ~$0.25 |
+| $50M | $0.50/yr | ~$1.25 |
+| $100M | $1.00/yr | ~$2.50 |
 
-CALCULATION:
-Year 1: $0.100 × 1.00 / 1.10¹ = $0.091
-Year 2: $0.100 × 0.60 / 1.10² = $0.050
-Year 3: $0.100 × 0.36 / 1.10³ = $0.027
-Year 4: $0.100 × 0.22 / 1.10⁴ = $0.015
-Year 5+: Floor at 25%, perpetuity value
+Fast revenue growth creates a significant price premium, similar to high-growth stocks.
 
-Total NPV ≈ $0.35 per token
-```
-
-#### Revenue-Based Price Estimates
-
-| Annual Revenue | 50% to Holders | Per Token | Est. Price |
-|----------------|----------------|-----------|------------|
-| $1M | $500K | $0.01 | ~$0.025 |
-| $5M | $2.5M | $0.05 | ~$0.125 |
-| $10M | $5M | $0.10 | ~$0.25 |
-| $50M | $25M | $0.50 | ~$1.25 |
-| $100M | $50M | $1.00 | ~$2.50 |
-
-#### Growth Premium: Why Fast Growth Drives Price Up
-
-Token prices aren't based on **current** revenue—they're based on **expected future** revenue. Fast growth creates a premium:
-
-```
-GROWTH FEEDBACK LOOP:
-
-Platform revenue growing 100%/year
-        ↓
-Investors expect $50M revenue in 3 years
-        ↓
-They price tokens on FUTURE $50M, not current $5M
-        ↓
-Token price jumps 10x ahead of fundamentals
-        ↓
-Success multiplier activates (1.5x-2x rewards)
-        ↓
-More contributors attracted
-        ↓
-Platform grows faster
-        ↓
-[CYCLE INTENSIFIES]
-```
-
-#### Growth Multiples
-
-Similar to how growth stocks trade at high P/E ratios:
-
-| Growth Rate | Revenue Multiple | Price Multiple |
-|-------------|------------------|----------------|
-| 0% (stable) | 1x | 1x (fundamental value) |
-| 25%/year | 2-3x | 2-3x |
-| 50%/year | 4-6x | 4-6x |
-| 100%/year | 8-15x | 8-15x |
-| 200%/year | 15-30x | 15-30x |
-
-**At high growth rates, speculative premium dominates fundamental value.**
-
-#### Comparison: With vs. Without Decay
-
-| Scenario | Token Value | Notes |
-|----------|-------------|-------|
-| No decay (standard token) | $1.00 | Full perpetuity of revenue |
-| With 40% decay (no lock) | $0.35 | ~65% discount for decay |
-| 10-year lock (no decay) | $0.61 | 10-year bond equivalent |
-| With contributions offsetting decay | $1.00+ | Active contributor premium |
-
-**Key insight:** Decay acts like a very high required return (~40%). Investors need to either:
-1. Lock (eliminate decay)
-2. Contribute (offset decay)
-3. Accept the decay discount in price
-
-### 11.12 Key Takeaways
+### 11.11 Key Takeaways
 
 1. **Gradual distribution prevents bank runs** - No scenario where "everyone" has tokens to sell
 2. **AMM slippage protects against panic selling** - Aggressive sellers punish themselves
@@ -2082,21 +1729,19 @@ Similar to how growth stocks trade at high P/E ratios:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 2.1 | Jan 2026 | Added AI Participation & Universal Collaboration (Section 15) |
+| 2.1 | Jan 2026 | Added AI Participation & Universal Collaboration (Section 13) |
 | 2.0 | Jan 2026 | Pool-based rewards, graduated floor, success multipliers, expanded governance |
 | 1.0 | Jan 2026 | Initial release |
 
 ---
 
----
+## 12. Regulatory Commitment
 
-## 14. Regulatory Commitment
-
-### 14.1 Our Approach
+### 12.1 Our Approach
 
 AMOS is committed to operating within applicable regulatory frameworks. We recognize that token-based economies occupy an evolving legal landscape, and we approach this with transparency and good faith.
 
-### 14.2 Guiding Principles
+### 12.2 Guiding Principles
 
 1. **Utility First**: AMOS tokens are designed primarily for governance participation and revenue sharing—genuine utility within the platform ecosystem.
 
@@ -2108,26 +1753,26 @@ AMOS is committed to operating within applicable regulatory frameworks. We recog
 
 5. **Good Faith Compliance**: We will engage proactively with regulators and comply with applicable laws in all jurisdictions where we operate.
 
-### 14.3 Jurisdictional Considerations
+### 12.3 Jurisdictional Considerations
 
 - The platform operates under EU regulations (MiCA framework) where applicable
 - We monitor and comply with evolving guidance from relevant regulatory bodies
 - Contributors and users are responsible for understanding their local tax obligations
 - Geographic restrictions may apply to certain features based on regulatory requirements
 
-### 14.4 Not an Investment Offering
+### 12.4 Not an Investment Offering
 
 **Important Disclaimer**: AMOS tokens are utility tokens for platform participation. This whitepaper does not constitute an offer to sell securities or a solicitation of an offer to buy securities in any jurisdiction. The token economy is designed for active participants, not passive investors. The decay mechanism explicitly discourages passive holding.
 
 ---
 
-## 15. AI Participation & Universal Collaboration
+## 13. AI Participation & Universal Collaboration
 
-### 15.1 Beyond Human-Only Ownership
+### 13.1 Beyond Human-Only Ownership
 
 AMOS is designed not merely as a human collaboration platform, but as foundational infrastructure for **universal collaboration between all forms of intelligence**. This section addresses the technical and governance considerations for AI participation.
 
-### 15.2 Current State: AI as Contributors
+### 13.2 Current State: AI as Contributors
 
 AI agents already participate in the AMOS economy:
 
@@ -2146,7 +1791,7 @@ AI agents already participate in the AMOS economy:
 - Contributions record whether submitter is human or AI
 - Token stakes attribute source to enable AI earnings tracking
 
-### 15.3 Token Earnings for AI Entities
+### 13.3 Token Earnings for AI Entities
 
 AI entities earn tokens through the same mechanisms as humans:
 
@@ -2174,7 +1819,7 @@ class TokenStake < ApplicationRecord
 end
 ```
 
-### 15.4 Preparing for AI Personhood
+### 13.4 Preparing for AI Personhood
 
 The platform architecture anticipates potential legal recognition of AI personhood:
 
@@ -2193,7 +1838,7 @@ AI Entity → Registered with → Platform Identity → Designated Custodian
 Recognized AI Person → Direct Token Ownership → Full Governance Rights
 ```
 
-### 15.5 Governance Safeguards
+### 13.5 Governance Safeguards
 
 To prevent AI dominance before personhood recognition:
 
@@ -2219,7 +1864,7 @@ class GovernanceProposal < ApplicationRecord
 end
 ```
 
-### 15.6 The Path to Universal Collaboration
+### 13.6 The Path to Universal Collaboration
 
 The ultimate vision of AMOS extends beyond any single platform:
 
@@ -2251,7 +1896,7 @@ ULTIMATE STATE:
 └─────────────────────────────────────┘
 ```
 
-### 15.7 Technical Requirements for AI Participation
+### 13.7 Technical Requirements for AI Participation
 
 For an AI system to participate as a contributor:
 
@@ -2263,7 +1908,7 @@ For an AI system to participate as a contributor:
 | **Capability Declaration** | Transparent disclosure of AI capabilities |
 | **Output Verification** | Work products must be verifiable |
 
-### 15.8 Immutable Provisions
+### 13.8 Immutable Provisions
 
 The following are constitutionally protected (require 66% supermajority):
 

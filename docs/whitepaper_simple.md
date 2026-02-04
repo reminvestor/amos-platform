@@ -527,7 +527,7 @@ Platform Revenue (the 20% markup)
 ## Getting Started
 
 ### Step 1: Create Your Account
-Sign up at [amoslabs.io](https://amoslabs.io)
+Sign up at [amoslabs.com](https://amoslabs.com)
 
 ### Step 2: Contribute
 - Use the platform
@@ -995,10 +995,8 @@ This is what "Distributed ASI" really means.
 ## Still Have Questions?
 
 - **Discord**: [Join our community](https://discord.gg/amos)
-- **Email**: tokens@amoslabs.io
-- **Docs**: [docs.amoslabs.io](https://docs.amoslabs.io)
-
----
+- **Email**: tokens@amoslabs.com
+- **Docs**: [docs.amoslabs.com](https://docs.amoslabs.com)
 
 ---
 
