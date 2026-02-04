@@ -37,13 +37,14 @@ module Tools
       log_execution(args)
       
       entity = @entity
-      module_name = get_arg(args, :module_name)
-      user_description = get_arg(args, :user_description)
+      # Support both naming conventions (name/module_name, description/user_description)
+      module_name = get_arg(args, :module_name) || get_arg(args, :name)
+      user_description = get_arg(args, :user_description) || get_arg(args, :description) || ''
       initial_questions = get_arg(args, :initial_questions) || default_questions(user_description)
       
-      # Validate required args
-      if error = validate_required_args(args, [:module_name, :user_description])
-        return error
+      # Validate we have the minimum required info
+      if module_name.blank?
+        return { success: false, error: "Module name is required. Please provide 'module_name' or 'name'." }
       end
       
       # Check for existing active session
@@ -84,7 +85,7 @@ module Tools
       questions = []
       
       # Analyze description to generate relevant questions
-      desc_lower = description.downcase
+      desc_lower = (description || '').downcase
       
       # Data structure questions
       questions << "What are the main items or records you want to track?"
