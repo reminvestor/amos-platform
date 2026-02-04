@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_01_000004) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_04_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2272,6 +2272,90 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_01_000004) do
     t.index ["token"], name: "index_device_tokens_on_token", unique: true
     t.index ["user_id", "platform", "active"], name: "index_device_tokens_on_user_id_and_platform_and_active"
     t.index ["user_id"], name: "index_device_tokens_on_user_id"
+  end
+
+  create_table "doc_categories", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.string "icon"
+    t.boolean "capability_docs", default: false
+    t.integer "position", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["capability_docs"], name: "index_doc_categories_on_capability_docs"
+    t.index ["slug"], name: "index_doc_categories_on_slug", unique: true
+  end
+
+  create_table "doc_page_relations", force: :cascade do |t|
+    t.bigint "doc_page_id", null: false
+    t.bigint "related_page_id", null: false
+    t.string "relation_type", default: "related"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["doc_page_id", "related_page_id"], name: "index_doc_page_relations_on_doc_page_id_and_related_page_id", unique: true
+    t.index ["doc_page_id"], name: "index_doc_page_relations_on_doc_page_id"
+    t.index ["related_page_id"], name: "index_doc_page_relations_on_related_page_id"
+  end
+
+  create_table "doc_page_revisions", force: :cascade do |t|
+    t.bigint "doc_page_id", null: false
+    t.bigint "user_id"
+    t.text "content"
+    t.text "previous_content"
+    t.string "action"
+    t.string "summary"
+    t.string "ai_generated_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["doc_page_id", "created_at"], name: "index_doc_page_revisions_on_doc_page_id_and_created_at"
+    t.index ["doc_page_id"], name: "index_doc_page_revisions_on_doc_page_id"
+    t.index ["user_id"], name: "index_doc_page_revisions_on_user_id"
+  end
+
+  create_table "doc_pages", force: :cascade do |t|
+    t.string "title", null: false
+    t.string "slug", null: false
+    t.text "content"
+    t.text "summary"
+    t.bigint "doc_category_id"
+    t.bigint "created_by_id"
+    t.bigint "last_edited_by_id"
+    t.boolean "featured", default: false
+    t.boolean "published", default: true
+    t.integer "view_count", default: 0
+    t.string "keywords", default: [], array: true
+    t.jsonb "examples", default: []
+    t.jsonb "parameters", default: {}
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_doc_pages_on_created_by_id"
+    t.index ["doc_category_id"], name: "index_doc_pages_on_doc_category_id"
+    t.index ["featured"], name: "index_doc_pages_on_featured"
+    t.index ["keywords"], name: "index_doc_pages_on_keywords", using: :gin
+    t.index ["last_edited_by_id"], name: "index_doc_pages_on_last_edited_by_id"
+    t.index ["published"], name: "index_doc_pages_on_published"
+    t.index ["slug"], name: "index_doc_pages_on_slug", unique: true
+  end
+
+  create_table "doc_suggestions", force: :cascade do |t|
+    t.bigint "doc_page_id"
+    t.string "suggested_by"
+    t.string "suggestion_type"
+    t.string "title"
+    t.text "content"
+    t.text "rationale"
+    t.string "source"
+    t.string "status", default: "pending"
+    t.bigint "reviewed_by_id"
+    t.datetime "reviewed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["doc_page_id"], name: "index_doc_suggestions_on_doc_page_id"
+    t.index ["reviewed_by_id"], name: "index_doc_suggestions_on_reviewed_by_id"
+    t.index ["status"], name: "index_doc_suggestions_on_status"
+    t.index ["suggested_by"], name: "index_doc_suggestions_on_suggested_by"
   end
 
   create_table "document_analytics", force: :cascade do |t|
@@ -6909,6 +6993,15 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_01_000004) do
   add_foreign_key "design_plans", "websites"
   add_foreign_key "device_tokens", "entities"
   add_foreign_key "device_tokens", "users"
+  add_foreign_key "doc_page_relations", "doc_pages"
+  add_foreign_key "doc_page_relations", "doc_pages", column: "related_page_id"
+  add_foreign_key "doc_page_revisions", "doc_pages"
+  add_foreign_key "doc_page_revisions", "users"
+  add_foreign_key "doc_pages", "doc_categories"
+  add_foreign_key "doc_pages", "users", column: "created_by_id"
+  add_foreign_key "doc_pages", "users", column: "last_edited_by_id"
+  add_foreign_key "doc_suggestions", "doc_pages"
+  add_foreign_key "doc_suggestions", "users", column: "reviewed_by_id"
   add_foreign_key "document_analytics", "rag_documents"
   add_foreign_key "document_annotations", "rag_documents"
   add_foreign_key "document_annotations", "users"

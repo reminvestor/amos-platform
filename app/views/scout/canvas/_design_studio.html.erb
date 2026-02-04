@@ -564,12 +564,26 @@
           </div>
         </div>
         <div class="toolbar-right">
-          <%# Build: Only show when plan exists but not yet built %>
+          <%# Phase indicator for apps/canvases %>
+          <% if is_app_or_canvas %>
+            <span class="phase-indicator design-phase" id="phase-indicator">
+              <i data-lucide="pencil-ruler" style="width: 12px; height: 12px;"></i>
+              <span>Design Phase</span>
+            </span>
+          <% end %>
+          
+          <%# Save button - always visible for design phase %>
+          <button class="btn-save" id="save-design-btn" title="Save your design">
+            <i data-lucide="save" style="width: 14px; height: 14px;"></i>
+            Save
+          </button>
+          
+          <%# Build: Only show when plan/design exists but not yet built %>
           <% has_plan = plan.present? %>
           <% is_built = landing_page_id.present? || website_id.present? %>
           
           <% if has_plan && !is_built %>
-          <button class="btn-build" id="build-from-plan-btn" title="Build this design into a page">
+          <button class="btn-build" id="build-from-plan-btn" title="Build this design into a working app">
             <i data-lucide="hammer" style="width: 14px; height: 14px;"></i>
             Build
           </button>
@@ -1563,6 +1577,57 @@
   .build-status-close:hover { opacity: 1; }
   .build-status-close i { width: 14px; height: 14px; }
   
+  /* Phase Indicator */
+  .phase-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 8px;
+  }
+  .phase-indicator.design-phase {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+  .phase-indicator.build-phase {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .phase-indicator.live-phase {
+    background: rgba(99, 102, 241, 0.15);
+    color: #6366f1;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+  }
+
+  /* Save Button */
+  .btn-save {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid #6b7280;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+    color: #e0e0e0;
+  }
+  .btn-save:hover { 
+    background: rgba(255, 255, 255, 0.05); 
+    border-color: #9ca3af;
+  }
+  [data-theme="light"] .btn-save { color: #374151; }
+  [data-theme="light"] .btn-save:hover { background: rgba(0, 0, 0, 0.05); }
+
   /* Publish Button */
   .btn-publish {
     display: flex;
@@ -2624,6 +2689,59 @@
   [data-theme="light"] .save-indicator { color: #9ca3af; }
   [data-theme="light"] .save-indicator.success { color: #059669; }
   [data-theme="light"] .save-indicator.error { color: #dc2626; }
+
+  /* Click-to-configure hint styling */
+  .component-config-hint {
+    cursor: pointer;
+    color: #818cf8;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 8px 16px;
+    border: 2px dashed rgba(99, 102, 241, 0.3);
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    background: rgba(99, 102, 241, 0.05);
+  }
+  .component-config-hint:hover {
+    border-color: #6366f1;
+    background: rgba(99, 102, 241, 0.1);
+    color: #6366f1;
+  }
+  .component-config-hint::before {
+    content: '⚙️';
+  }
+  [data-theme="light"] .component-config-hint {
+    color: #6366f1;
+    border-color: rgba(99, 102, 241, 0.3);
+  }
+
+  /* Drag handle for grid components */
+  .dashboard-component.grid-item {
+    cursor: move;
+  }
+  .dashboard-component.grid-item .component-header {
+    cursor: grab;
+  }
+  .dashboard-component.grid-item .component-header:active {
+    cursor: grabbing;
+  }
+  .dashboard-component.grid-item.dragging {
+    opacity: 0.5;
+    transform: scale(0.98);
+  }
+
+  /* Free positioning mode */
+  .canvas-freeform-area.free-position-mode {
+    display: block !important;
+    position: relative;
+  }
+  .canvas-freeform-area.free-position-mode .dashboard-component {
+    position: absolute;
+    margin: 0;
+  }
   
   /* Light mode - App Placeholders */
   [data-theme="light"] .app-placeholder-item { 
@@ -7117,6 +7235,43 @@ function buildSectionCard(section, idx, pageIndex) {
       if (typeof lucide !== 'undefined') lucide.createIcons();
     });
   }
+  
+  // Save button
+  var saveBtn = container.querySelector('#save-design-btn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function() {
+      console.log('💾 Saving design...');
+      autoSaveDesign();
+      
+      // Visual feedback
+      var originalHtml = this.innerHTML;
+      this.innerHTML = '<i data-lucide="check" style="width: 14px; height: 14px;"></i> Saved!';
+      this.disabled = true;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      
+      setTimeout(function() {
+        saveBtn.innerHTML = originalHtml;
+        saveBtn.disabled = false;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }, 2000);
+    });
+  }
+  
+  // Click-to-configure on component placeholder
+  container.addEventListener('click', function(e) {
+    var configHint = e.target.closest('.component-config-hint');
+    var placeholder = e.target.closest('.component-placeholder');
+    
+    if (configHint || (placeholder && !e.target.closest('.component-action-btn'))) {
+      var component = (configHint || placeholder).closest('.dashboard-component');
+      if (component) {
+        var componentType = component.dataset.componentType;
+        var label = component.querySelector('.component-label')?.textContent || componentType;
+        console.log('🖱️ Click-to-configure triggered:', componentType);
+        configureComponent(component, componentType, label);
+      }
+    }
+  });
   
   // Init icons
   if (typeof lucide !== 'undefined') {
