@@ -1876,9 +1876,25 @@ class ScoutGenericToolsServiceV2
       • Custom visualizations (charts, graphs, comparisons)
       • Custom module data display
       
-      🏭 PLATFORM FACTORY (Building New Data Types):
-      1. start_module_design → 2. propose_module_schema → 3. approve_module_design
-      Once built, these become platform objects accessible via get_schema/create_object.
+      🏗️ BUILDING APPS, CANVASES & MODULES (IMPORTANT!)
+      ═══════════════════════════════════════════════════════════════
+      
+      ⚡ VISUAL APPS/CANVASES (with UI components like grids, tables, kanban):
+         → plan_design(action: 'create', design_type: 'app' or 'canvas', description: '...')
+         → Shows visual plan in Design Studio for user review
+         → User modifies design visually, then says "build it"
+         → Call plan_design(action: 'build') to create
+      
+      ⚡ FULL APPLICATIONS (modules + agent + tools + integrations):
+         → plan_application(action: 'create', name: '...', description: '...')
+         → Shows comprehensive plan for review before building
+      
+      ⚡ DATA-ONLY MODULES (just need a new data type, no visual builder):
+         → start_module_design → propose_module_schema → approve_module_design
+         → Conversational flow for schema design
+      
+      ❌ NEVER skip the plan phase for apps/canvases!
+      ✅ ALWAYS show a plan first so user can review before building
 
       ═══════════════════════════════════════════════════════════════
       🤖 AGENT COMMUNICATION
