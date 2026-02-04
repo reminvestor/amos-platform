@@ -316,6 +316,60 @@ Before starting, ensure:
 
 ---
 
+## Phase 10: Documentation Portal (docs.amoslabs.com)
+
+### Step 10.1: Browse Documentation
+**URL**: `http://docs.lvh.me:3000` (local) or `docs.amoslabs.com`
+
+**Expected Results**:
+- [ ] Docs homepage loads
+- [ ] Categories displayed
+- [ ] Recent changes visible
+- [ ] Search works
+
+### Step 10.2: Create/Edit Documentation Page
+**Actions**:
+1. Sign in (if not already)
+2. Click "New Page"
+3. Enter title and content (Markdown)
+4. Save
+
+**Expected Results**:
+- [ ] Page created successfully
+- [ ] Revision recorded
+- [ ] Appears in recent changes
+
+### Step 10.3: API for AMOS Capabilities
+**URL**: `http://docs.lvh.me:3000/api/capabilities`
+
+**Expected Results**:
+- [ ] JSON response with capability categories
+- [ ] Each capability has name, summary, keywords
+- [ ] AMOS can query this for self-awareness
+
+---
+
+## Phase 11: Affiliate Portal (sell.amoslabs.com)
+
+### Step 11.1: Access Sell Dashboard
+**URL**: `http://sell.lvh.me:3000` (local) or `sell.amoslabs.com`
+
+**Expected Results**:
+- [ ] Dashboard loads
+- [ ] Referral link visible
+- [ ] Stats displayed
+
+### Step 11.2: Copy Referral Link
+**Actions**:
+1. Click "Copy" on referral link
+2. Share with friend
+
+**Expected Results**:
+- [ ] Link copied to clipboard
+- [ ] Unique referral code included
+
+---
+
 ## Test Checklist Summary
 
 ### Core Functionality

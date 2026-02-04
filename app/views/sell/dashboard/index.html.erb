@@ -1,0 +1,191 @@
+<% content_for :title, "Dashboard - AMOS Sell" %>
+
+<div class="row mb-4">
+  <div class="col">
+    <h1 class="display-5 fw-bold mb-2">
+      Welcome back, <%= current_user.first_name || current_user.email.split('@').first %>!
+    </h1>
+    <p class="text-muted lead">
+      Track your referrals, earnings, and grow your affiliate business.
+    </p>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-4 mb-5">
+  <div class="col-md-4 col-lg-2">
+    <div class="stat-card">
+      <div class="stat-value"><%= @stats[:total_referrals] %></div>
+      <div class="stat-label">Total Referrals</div>
+    </div>
+  </div>
+  <div class="col-md-4 col-lg-2">
+    <div class="stat-card">
+      <div class="stat-value"><%= @stats[:active_referrals] %></div>
+      <div class="stat-label">Active</div>
+    </div>
+  </div>
+  <div class="col-md-4 col-lg-2">
+    <div class="stat-card">
+      <div class="stat-value"><%= @stats[:conversion_rate] %>%</div>
+      <div class="stat-label">Conversion</div>
+    </div>
+  </div>
+  <div class="col-md-4 col-lg-2">
+    <div class="stat-card">
+      <div class="stat-value"><%= @stats[:this_month_referrals] %></div>
+      <div class="stat-label">This Month</div>
+    </div>
+  </div>
+  <div class="col-md-4 col-lg-2">
+    <div class="stat-card">
+      <div class="stat-value">$<%= number_with_delimiter(@stats[:total_earnings]) %></div>
+      <div class="stat-label">Total Earned</div>
+    </div>
+  </div>
+  <div class="col-md-4 col-lg-2">
+    <div class="stat-card">
+      <div class="stat-value">$<%= number_with_delimiter(@stats[:pending_payout]) %></div>
+      <div class="stat-label">Pending</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Referral Link Card -->
+  <div class="col-lg-6">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="bi bi-link-45deg me-2"></i>Your Referral Link</h5>
+      </div>
+      <div class="card-body">
+        <div class="input-group mb-3">
+          <input type="text" class="form-control" id="referral-link" 
+                 value="<%= "#{request.base_url}?ref=#{current_user.referral_code || 'YOURCODE'}" %>" readonly>
+          <button class="btn btn-success" onclick="copyReferralLink()">
+            <i class="bi bi-clipboard"></i> Copy
+          </button>
+        </div>
+        <p class="text-muted small mb-0">
+          Share this link to earn commissions when people sign up and subscribe.
+        </p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Quick Actions -->
+  <div class="col-lg-6">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
+      </div>
+      <div class="card-body">
+        <div class="d-grid gap-2">
+          <%= link_to sell_materials_path, class: "btn btn-outline-success" do %>
+            <i class="bi bi-folder me-2"></i>Download Marketing Materials
+          <% end %>
+          <%= link_to link_sell_referrals_path, class: "btn btn-outline-light" do %>
+            <i class="bi bi-qr-code me-2"></i>Generate QR Code
+          <% end %>
+          <%= link_to sell_leaderboard_path, class: "btn btn-outline-light" do %>
+            <i class="bi bi-trophy me-2"></i>View Leaderboard
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Referrals -->
+<div class="row mt-4">
+  <div class="col">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-people me-2"></i>Recent Referrals</h5>
+        <%= link_to "View All", sell_referrals_path, class: "btn btn-sm btn-outline-success" %>
+      </div>
+      <div class="card-body">
+        <% if @recent_referrals.any? %>
+          <table class="table table-dark table-hover">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Signed Up</th>
+                <th>Earnings</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @recent_referrals.each do |referral| %>
+                <tr>
+                  <td><%= referral.email rescue 'N/A' %></td>
+                  <td>
+                    <span class="badge <%= referral.status == 'active' ? 'bg-success' : 'bg-secondary' %>">
+                      <%= referral.status rescue 'pending' %>
+                    </span>
+                  </td>
+                  <td><%= referral.created_at.strftime('%b %d, %Y') rescue 'N/A' %></td>
+                  <td class="text-success">$<%= referral.commission_earned rescue 0 %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% else %>
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-people display-4 d-block mb-3"></i>
+            <h5>No referrals yet</h5>
+            <p class="mb-0">Share your referral link to start earning!</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Commission Structure -->
+<div class="row mt-4">
+  <div class="col">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-currency-dollar me-2"></i>Commission Structure</h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-4">
+          <div class="col-md-4 text-center">
+            <div class="display-6 text-success fw-bold">20%</div>
+            <div class="text-muted">First Month</div>
+            <small class="text-secondary">On all new subscriptions</small>
+          </div>
+          <div class="col-md-4 text-center">
+            <div class="display-6 text-success fw-bold">10%</div>
+            <div class="text-muted">Recurring</div>
+            <small class="text-secondary">For 12 months</small>
+          </div>
+          <div class="col-md-4 text-center">
+            <div class="display-6 text-success fw-bold">$50</div>
+            <div class="text-muted">Min Payout</div>
+            <small class="text-secondary">Monthly payments</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyReferralLink() {
+  const input = document.getElementById('referral-link');
+  input.select();
+  document.execCommand('copy');
+  
+  // Show feedback
+  const btn = event.target.closest('button');
+  const originalHtml = btn.innerHTML;
+  btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+  btn.classList.add('btn-success');
+  
+  setTimeout(() => {
+    btn.innerHTML = originalHtml;
+  }, 2000);
+}
+</script>

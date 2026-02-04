@@ -1,0 +1,158 @@
+<% content_for :title, "#{@page.title} - AMOS Docs" %>
+<% @page.increment_view! if @page.persisted? %>
+
+<div class="row">
+  <!-- Main Content -->
+  <div class="col-lg-9">
+    <div class="docs-content">
+      <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Docs", docs_root_path %></li>
+          <% if @page.doc_category %>
+            <li class="breadcrumb-item"><%= link_to @page.doc_category.name, docs_category_path(@page.doc_category.slug) %></li>
+          <% end %>
+          <li class="breadcrumb-item active"><%= truncate(@page.title, length: 30) %></li>
+        </ol>
+      </nav>
+      
+      <article class="docs-article">
+        <header class="mb-4 pb-4 border-bottom border-secondary">
+          <h1><%= @page.title %></h1>
+          
+          <% if @page.summary.present? %>
+            <p class="lead text-muted"><%= @page.summary %></p>
+          <% end %>
+          
+          <div class="d-flex flex-wrap gap-3 text-muted small mt-3">
+            <span>
+              <i class="bi bi-clock me-1"></i>
+              Updated <%= time_ago_in_words(@page.updated_at) %> ago
+            </span>
+            <span>
+              <i class="bi bi-person me-1"></i>
+              <% if @page.last_edited_by %>
+                <%= @page.last_edited_by.full_name || @page.last_edited_by.email.split('@').first %>
+              <% else %>
+                AMOS
+              <% end %>
+            </span>
+            <span>
+              <i class="bi bi-eye me-1"></i>
+              <%= number_with_delimiter(@page.view_count) %> views
+            </span>
+            <% if @page.keywords.present? %>
+              <span>
+                <i class="bi bi-tags me-1"></i>
+                <% @page.keywords.first(3).each do |keyword| %>
+                  <span class="badge bg-secondary"><%= keyword %></span>
+                <% end %>
+              </span>
+            <% end %>
+          </div>
+        </header>
+        
+        <!-- Content -->
+        <div class="docs-content-body">
+          <%= markdown(@page.content) %>
+        </div>
+        
+        <!-- Examples (if capability doc) -->
+        <% if @page.examples.present? && @page.examples.any? %>
+          <div class="mt-5 pt-4 border-top border-secondary">
+            <h2>Examples</h2>
+            <% @page.examples.each do |example| %>
+              <div class="mb-4">
+                <h5><%= example['title'] %></h5>
+                <pre><code><%= example['code'] %></code></pre>
+                <% if example['description'] %>
+                  <p class="text-muted small"><%= example['description'] %></p>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        
+        <!-- Related Pages -->
+        <% if @related_pages.any? %>
+          <div class="mt-5 pt-4 border-top border-secondary">
+            <h2>Related Documentation</h2>
+            <ul>
+              <% @related_pages.each do |related| %>
+                <li>
+                  <%= link_to related.title, docs_page_path(related), class: "text-primary" %>
+                  <% if related.summary.present? %>
+                    - <span class="text-muted"><%= truncate(related.summary, length: 60) %></span>
+                  <% end %>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+      </article>
+      
+      <!-- Actions -->
+      <div class="d-flex justify-content-between align-items-center mt-4 pt-4 border-top border-secondary">
+        <div>
+          <%= link_to history_docs_page_path(@page), class: "text-muted" do %>
+            <i class="bi bi-clock-history me-1"></i>View History
+          <% end %>
+        </div>
+        
+        <% if can_edit? %>
+          <div class="d-flex gap-2">
+            <%= link_to edit_docs_page_path(@page), class: "btn btn-outline-primary" do %>
+              <i class="bi bi-pencil me-1"></i>Edit Page
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Right Sidebar - TOC -->
+  <div class="col-lg-3 d-none d-lg-block">
+    <div class="docs-toc p-4">
+      <h6 class="text-muted text-uppercase small mb-3">On This Page</h6>
+      <nav id="toc">
+        <!-- Populated by JavaScript -->
+        <div class="text-muted small">Loading...</div>
+      </nav>
+      
+      <hr class="border-secondary my-4">
+      
+      <% if can_edit? %>
+        <%= link_to edit_docs_page_path(@page), class: "btn btn-outline-primary btn-sm w-100 mb-2" do %>
+          <i class="bi bi-pencil me-1"></i>Edit This Page
+        <% end %>
+      <% end %>
+      
+      <a href="https://github.com/amos-labs/amos-platform" target="_blank" class="btn btn-outline-secondary btn-sm w-100">
+        <i class="bi bi-github me-1"></i>View on GitHub
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Build table of contents from headings
+  const content = document.querySelector('.docs-content-body');
+  const toc = document.getElementById('toc');
+  const headings = content.querySelectorAll('h2, h3');
+  
+  if (headings.length === 0) {
+    toc.innerHTML = '<div class="text-muted small">No sections</div>';
+    return;
+  }
+  
+  let html = '';
+  headings.forEach((heading, index) => {
+    const id = 'section-' + index;
+    heading.id = id;
+    const level = heading.tagName === 'H2' ? '' : 'ms-3';
+    html += `<a href="#${id}" class="docs-toc-link ${level}">${heading.textContent}</a>`;
+  });
+  
+  toc.innerHTML = html;
+});
+</script>

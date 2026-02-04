@@ -1,0 +1,59 @@
+<% content_for :title, "Search: #{@query} - AMOS Docs" %>
+
+<div class="docs-content mx-auto">
+  <h1 class="mb-4">
+    <i class="bi bi-search me-2"></i>Search Results
+  </h1>
+  
+  <form action="<%= docs_search_path %>" method="get" class="mb-4">
+    <div class="input-group input-group-lg">
+      <input type="search" name="q" class="form-control search-box" 
+             placeholder="Search documentation..." value="<%= @query %>">
+      <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+  </form>
+  
+  <% if @query.present? %>
+    <p class="text-muted mb-4">
+      Found <%= @total %> result<%= @total == 1 ? '' : 's' %> for "<strong><%= @query %></strong>"
+    </p>
+    
+    <% if @results.any? %>
+      <div class="docs-article">
+        <% @results.each do |page| %>
+          <div class="mb-4 pb-4 border-bottom border-secondary">
+            <h4>
+              <%= link_to page.title, docs_page_path(page), class: "text-primary" %>
+            </h4>
+            <% if page.doc_category %>
+              <span class="badge bg-secondary mb-2"><%= page.doc_category.name %></span>
+            <% end %>
+            <% if page.summary.present? %>
+              <p class="text-muted mb-1"><%= truncate(page.summary, length: 200) %></p>
+            <% elsif page.content.present? %>
+              <p class="text-muted mb-1"><%= truncate(strip_tags(page.content), length: 200) %></p>
+            <% end %>
+            <small class="text-muted">
+              Updated <%= time_ago_in_words(page.updated_at) %> ago
+            </small>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="docs-article text-center py-5">
+        <i class="bi bi-search display-4 d-block mb-3 text-muted"></i>
+        <h4>No results found</h4>
+        <p class="text-muted">Try different keywords or browse categories</p>
+        <%= link_to docs_categories_path, class: "btn btn-outline-primary" do %>
+          <i class="bi bi-folder me-1"></i>Browse Categories
+        <% end %>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="docs-article text-center py-5">
+      <i class="bi bi-search display-4 d-block mb-3 text-muted"></i>
+      <h4>Enter a search term</h4>
+      <p class="text-muted">Search across all documentation</p>
+    </div>
+  <% end %>
+</div>

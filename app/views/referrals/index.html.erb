@@ -1,0 +1,229 @@
+<% content_for :title, "Referrals" %>
+
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      
+      <h1 class="display-5 fw-bold mb-2">
+        <i class="bi bi-people me-2 text-primary"></i>Invite & Earn
+      </h1>
+      <p class="text-muted lead mb-4">
+        Invite friends to AMOS and earn points when they join and become active.
+      </p>
+      
+      <!-- Stats Row -->
+      <div class="row g-4 mb-5">
+        <div class="col-md-3">
+          <div class="card bg-dark text-center py-3">
+            <div class="display-6 fw-bold text-primary"><%= @stats[:total] %></div>
+            <div class="text-muted">Invites Sent</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-dark text-center py-3">
+            <div class="display-6 fw-bold text-warning"><%= @stats[:pending] %></div>
+            <div class="text-muted">Pending</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-dark text-center py-3">
+            <div class="display-6 fw-bold text-success"><%= @stats[:signed_up] %></div>
+            <div class="text-muted">Signed Up</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-dark text-center py-3">
+            <div class="display-6 fw-bold text-info"><%= number_with_delimiter(@stats[:tokens_earned]) %></div>
+            <div class="text-muted">Points Earned</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Invite Form -->
+      <div class="card bg-dark border-primary mb-4">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0"><i class="bi bi-envelope me-2"></i>Send Invitations</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">
+            Enter up to 5 email addresses to invite. You have <strong><%= @stats[:remaining_slots] %></strong> invite slots remaining.
+          </p>
+          
+          <form id="referral-form">
+            <div id="email-inputs">
+              <div class="input-group mb-2">
+                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                <input type="email" name="emails[]" class="form-control" placeholder="friend@example.com">
+              </div>
+            </div>
+            
+            <div class="d-flex justify-content-between mb-3">
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="add-email" <%= 'disabled' if @stats[:remaining_slots] <= 0 %>>
+                <i class="bi bi-plus me-1"></i>Add Another
+              </button>
+              <span class="text-muted small">Earn 10 points per invite, 50 more on signup!</span>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-lg w-100" id="send-btn" <%= 'disabled' if @stats[:remaining_slots] <= 0 %>>
+              <i class="bi bi-send me-2"></i>Send Invitations
+            </button>
+          </form>
+          
+          <div id="result-message" class="mt-3" style="display: none;"></div>
+        </div>
+      </div>
+      
+      <!-- Referral History -->
+      <div class="card bg-dark">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Your Referrals</h5>
+        </div>
+        <div class="card-body">
+          <% if @referrals.any? %>
+            <table class="table table-dark table-hover">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Status</th>
+                  <th>Sent</th>
+                  <th>Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @referrals.each do |referral| %>
+                  <tr>
+                    <td><%= referral.referred_email %></td>
+                    <td>
+                      <span class="badge bg-<%= referral_status_badge(referral.status) %>">
+                        <%= referral.status.titleize %>
+                      </span>
+                    </td>
+                    <td><%= time_ago_in_words(referral.created_at) %> ago</td>
+                    <td class="text-success">
+                      +<%= referral.tokens_awarded + UserReferral::TOKENS_ON_INVITE %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% else %>
+            <div class="text-center py-4 text-muted">
+              <i class="bi bi-envelope display-4 d-block mb-3"></i>
+              <h5>No referrals yet</h5>
+              <p class="mb-0">Start inviting friends to earn points!</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+      
+      <!-- Point Structure -->
+      <div class="card bg-dark mt-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-star me-2"></i>How Points Work</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-4 text-center">
+            <div class="col-md-4">
+              <div class="display-6 text-primary fw-bold">10</div>
+              <div class="text-muted">Points per invite sent</div>
+            </div>
+            <div class="col-md-4">
+              <div class="display-6 text-success fw-bold">50</div>
+              <div class="text-muted">Points when they sign up</div>
+            </div>
+            <div class="col-md-4">
+              <div class="display-6 text-warning fw-bold">100</div>
+              <div class="text-muted">Points when they subscribe</div>
+            </div>
+          </div>
+          <p class="text-muted text-center mt-3 mb-0">
+            Points contribute to your daily AMOS token reward from the community pool.
+          </p>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('referral-form');
+  const addBtn = document.getElementById('add-email');
+  const emailInputs = document.getElementById('email-inputs');
+  let emailCount = 1;
+  
+  addBtn.addEventListener('click', function() {
+    if (emailCount < 5) {
+      const div = document.createElement('div');
+      div.className = 'input-group mb-2';
+      div.innerHTML = `
+        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+        <input type="email" name="emails[]" class="form-control" placeholder="friend@example.com">
+        <button type="button" class="btn btn-outline-danger remove-email"><i class="bi bi-x"></i></button>
+      `;
+      emailInputs.appendChild(div);
+      emailCount++;
+      
+      if (emailCount >= 5) addBtn.disabled = true;
+      
+      div.querySelector('.remove-email').addEventListener('click', function() {
+        div.remove();
+        emailCount--;
+        addBtn.disabled = false;
+      });
+    }
+  });
+  
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const emails = Array.from(form.querySelectorAll('input[name="emails[]"]'))
+      .map(input => input.value.trim())
+      .filter(email => email);
+    
+    if (emails.length === 0) {
+      showResult('Please enter at least one email address', 'danger');
+      return;
+    }
+    
+    const btn = document.getElementById('send-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
+    
+    try {
+      const response = await fetch('/referrals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ emails: emails })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        showResult(`${data.message} You earned ${data.tokens_earned} points!`, 'success');
+        // Clear inputs
+        form.querySelectorAll('input[name="emails[]"]').forEach(input => input.value = '');
+        // Reload after 2 seconds to show updated list
+        setTimeout(() => location.reload(), 2000);
+      } else {
+        showResult(data.error, 'danger');
+      }
+    } catch (error) {
+      showResult('An error occurred. Please try again.', 'danger');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-send me-2"></i>Send Invitations';
+    }
+  });
+  
+  function showResult(message, type) {
+    const resultDiv = document.getElementById('result-message');
+    resultDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+    resultDiv.style.display = 'block';
+  }
+});
+</script>

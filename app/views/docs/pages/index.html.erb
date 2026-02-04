@@ -1,0 +1,156 @@
+<% content_for :title, "AMOS Documentation" %>
+
+<div class="docs-content mx-auto">
+  <!-- Hero -->
+  <div class="text-center py-5">
+    <h1 class="display-4 fw-bold mb-3">
+      <i class="bi bi-book text-primary me-3"></i>AMOS Documentation
+    </h1>
+    <p class="lead text-muted mb-4">
+      Community-maintained documentation for the Autonomous Management Operating System
+    </p>
+    
+    <form action="<%= docs_search_path %>" method="get" class="mx-auto" style="max-width: 500px;">
+      <div class="input-group input-group-lg">
+        <input type="search" name="q" class="form-control search-box" 
+               placeholder="Search documentation...">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-search"></i>
+        </button>
+      </div>
+    </form>
+  </div>
+  
+  <!-- Stats -->
+  <div class="row g-4 mb-5">
+    <div class="col-md-4">
+      <div class="text-center p-3 rounded bg-dark">
+        <div class="display-6 fw-bold text-primary"><%= @stats[:total_pages] %></div>
+        <div class="text-muted">Documentation Pages</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="text-center p-3 rounded bg-dark">
+        <div class="display-6 fw-bold text-success"><%= @stats[:total_contributors] %></div>
+        <div class="text-muted">Contributors</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="text-center p-3 rounded bg-dark">
+        <div class="display-6 fw-bold text-info"><%= @stats[:recent_edits] %></div>
+        <div class="text-muted">Edits This Week</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Featured Pages -->
+  <% if @featured_pages.any? %>
+    <h2 class="mb-4"><i class="bi bi-star me-2 text-warning"></i>Featured</h2>
+    <div class="row g-4 mb-5">
+      <% @featured_pages.each do |page| %>
+        <div class="col-md-4">
+          <%= link_to docs_page_path(page), class: "text-decoration-none" do %>
+            <div class="category-card p-4 h-100">
+              <h5 class="text-white mb-2"><%= page.title %></h5>
+              <p class="text-muted small mb-0"><%= truncate(page.summary, length: 100) %></p>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+  
+  <!-- Categories -->
+  <h2 class="mb-4"><i class="bi bi-folder me-2"></i>Browse by Category</h2>
+  <div class="row g-4 mb-5">
+    <% @categories.each do |category| %>
+      <div class="col-md-4">
+        <%= link_to docs_category_path(category.slug), class: "text-decoration-none" do %>
+          <div class="category-card p-4 h-100">
+            <div class="d-flex align-items-center mb-3">
+              <i class="bi bi-<%= category.icon || 'folder' %> fs-3 text-primary me-3"></i>
+              <div>
+                <h5 class="text-white mb-0"><%= category.name %></h5>
+                <small class="text-muted"><%= category.doc_pages.count %> pages</small>
+              </div>
+            </div>
+            <p class="text-muted small mb-0"><%= truncate(category.description, length: 80) %></p>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+    
+    <% if @categories.empty? %>
+      <div class="col-12">
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-folder-x display-4 d-block mb-3"></i>
+          <p>No categories yet. Be the first to create documentation!</p>
+          <% if can_edit? %>
+            <%= link_to new_docs_page_path, class: "btn btn-primary" do %>
+              <i class="bi bi-plus-circle me-2"></i>Create First Page
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+  
+  <!-- Recent Pages -->
+  <h2 class="mb-4"><i class="bi bi-clock me-2"></i>Recently Updated</h2>
+  <div class="docs-article">
+    <% if @recent_pages.any? %>
+      <table class="table table-dark table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Page</th>
+            <th>Category</th>
+            <th>Updated</th>
+            <th>By</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @recent_pages.each do |page| %>
+            <tr>
+              <td>
+                <%= link_to page.title, docs_page_path(page), class: "text-primary" %>
+              </td>
+              <td><%= page.doc_category&.name || 'Uncategorized' %></td>
+              <td><%= time_ago_in_words(page.updated_at) %> ago</td>
+              <td>
+                <% if page.last_edited_by %>
+                  <%= page.last_edited_by.full_name || page.last_edited_by.email.split('@').first %>
+                <% else %>
+                  <span class="ai-badge"><i class="bi bi-robot"></i> AMOS</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="text-center py-4 text-muted">
+        <p class="mb-0">No pages yet. Start contributing!</p>
+      </div>
+    <% end %>
+  </div>
+  
+  <!-- Contribute CTA -->
+  <div class="text-center py-5 mt-5">
+    <div class="docs-article mx-auto" style="max-width: 600px;">
+      <h3 class="mb-3">📝 Contribute to Documentation</h3>
+      <p class="text-muted mb-4">
+        AMOS Docs is community-maintained. Anyone can contribute - just like Wikipedia!
+        AMOS also helps maintain and improve documentation automatically.
+      </p>
+      <% if user_signed_in? && can_edit? %>
+        <%= link_to new_docs_page_path, class: "btn btn-primary btn-lg me-2" do %>
+          <i class="bi bi-plus-circle me-2"></i>Create New Page
+        <% end %>
+      <% else %>
+        <%= link_to new_user_session_path, class: "btn btn-primary btn-lg" do %>
+          <i class="bi bi-box-arrow-in-right me-2"></i>Sign In to Contribute
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

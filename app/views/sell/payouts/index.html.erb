@@ -1,0 +1,74 @@
+<% content_for :title, "Payouts - AMOS Sell" %>
+
+<h2 class="mb-4"><i class="bi bi-wallet2 me-2"></i>Payouts</h2>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-6">
+    <div class="card bg-dark border-secondary">
+      <div class="card-body">
+        <h5 class="card-title">Available Balance</h5>
+        <div class="display-4 text-success fw-bold mb-3">
+          $<%= number_with_delimiter(@pending_amount) %>
+        </div>
+        <% if @pending_amount >= @minimum_payout %>
+          <%= link_to "Request Payout", "#", class: "btn btn-success btn-lg w-100" %>
+        <% else %>
+          <button class="btn btn-secondary btn-lg w-100" disabled>
+            Minimum $<%= @minimum_payout %> required
+          </button>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-6">
+    <div class="card bg-dark border-secondary">
+      <div class="card-body">
+        <h5 class="card-title">Payment Method</h5>
+        <div class="text-muted mb-3">
+          <i class="bi bi-credit-card display-6 d-block mb-2"></i>
+          No payment method configured
+        </div>
+        <%= link_to sell_profile_path, class: "btn btn-outline-success" do %>
+          <i class="bi bi-gear me-2"></i>Configure Payment
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card bg-dark border-secondary">
+  <div class="card-header">
+    <h5 class="mb-0">Payout History</h5>
+  </div>
+  <div class="card-body">
+    <% if @payouts.any? %>
+      <table class="table table-dark table-hover">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @payouts.each do |payout| %>
+            <tr>
+              <td><%= payout[:date] %></td>
+              <td>$<%= payout[:amount] %></td>
+              <td><%= payout[:method] %></td>
+              <td><span class="badge bg-success"><%= payout[:status] %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-wallet2 display-4 d-block mb-3"></i>
+        <h5>No payouts yet</h5>
+        <p class="mb-0">Once you reach the minimum threshold, you can request a payout.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

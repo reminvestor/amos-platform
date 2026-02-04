@@ -1,0 +1,72 @@
+<% content_for :title, "Edit: #{@page.title} - AMOS Docs" %>
+
+<div class="docs-content mx-auto" style="max-width: 900px;">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><%= link_to "Docs", docs_root_path %></li>
+      <li class="breadcrumb-item"><%= link_to @page.title, docs_page_path(@page) %></li>
+      <li class="breadcrumb-item active">Edit</li>
+    </ol>
+  </nav>
+  
+  <div class="docs-article">
+    <h1 class="mb-4"><i class="bi bi-pencil me-2"></i>Edit: <%= @page.title %></h1>
+    
+    <%= form_with model: @page, url: docs_page_path(@page), method: :patch, local: true do |f| %>
+      <div class="mb-4">
+        <label class="form-label">Title</label>
+        <%= f.text_field :title, class: "form-control form-control-lg" %>
+      </div>
+      
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <label class="form-label">Slug (URL)</label>
+          <%= f.text_field :slug, class: "form-control" %>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Category</label>
+          <%= f.collection_select :category_id, @categories, :id, :name, 
+              { include_blank: "-- Uncategorized --" }, 
+              { class: "form-select" } %>
+        </div>
+      </div>
+      
+      <div class="mb-4">
+        <label class="form-label">Summary</label>
+        <%= f.text_area :summary, class: "form-control", rows: 2 %>
+      </div>
+      
+      <div class="mb-4">
+        <label class="form-label">Content (Markdown)</label>
+        <%= f.text_area :content, class: "form-control font-monospace", rows: 20 %>
+        <div class="form-text">
+          Supports Markdown. 
+          <a href="https://www.markdownguide.org/basic-syntax/" target="_blank">Syntax guide</a>
+        </div>
+      </div>
+      
+      <div class="mb-4">
+        <label class="form-label">Edit Summary</label>
+        <%= text_field_tag :edit_summary, nil, class: "form-control",
+            placeholder: "Briefly describe your changes" %>
+      </div>
+      
+      <div class="form-check mb-4">
+        <%= f.check_box :featured, class: "form-check-input" %>
+        <label class="form-check-label">Feature on homepage</label>
+      </div>
+      
+      <div class="d-flex justify-content-between">
+        <%= link_to "Cancel", docs_page_path(@page), class: "btn btn-outline-secondary" %>
+        <div>
+          <%= link_to history_docs_page_path(@page), class: "btn btn-outline-info me-2" do %>
+            <i class="bi bi-clock-history me-1"></i>View History
+          <% end %>
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-check-circle me-2"></i>Save Changes
+          </button>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

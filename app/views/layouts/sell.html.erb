@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= content_for?(:title) ? yield(:title) : "AMOS Sell Portal" %></title>
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
+  
+  <style>
+    :root {
+      --sell-primary: #10b981;
+      --sell-secondary: #059669;
+      --sell-accent: #34d399;
+    }
+    
+    .sell-sidebar {
+      background: linear-gradient(180deg, #064e3b 0%, #047857 100%);
+      min-height: 100vh;
+      width: 260px;
+      position: fixed;
+      left: 0;
+      top: 0;
+    }
+    
+    .sell-main {
+      margin-left: 260px;
+      padding: 2rem;
+      min-height: 100vh;
+      background: #111827;
+    }
+    
+    .sell-nav-link {
+      color: rgba(255,255,255,0.8);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    
+    .sell-nav-link:hover, .sell-nav-link.active {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border-left-color: var(--sell-accent);
+    }
+    
+    .stat-card {
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border: 1px solid #374151;
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+    }
+    
+    .stat-card .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--sell-accent);
+    }
+    
+    .stat-card .stat-label {
+      color: #9ca3af;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+    
+    .earnings-badge {
+      background: var(--sell-primary);
+      color: #fff;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-weight: 600;
+    }
+    
+    @media (max-width: 992px) {
+      .sell-sidebar {
+        width: 100%;
+        position: relative;
+        min-height: auto;
+      }
+      .sell-main {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    <nav class="sell-sidebar d-flex flex-column">
+      <div class="p-4 text-center border-bottom border-success">
+        <h4 class="mb-0 text-white fw-bold">
+          <i class="bi bi-graph-up-arrow me-2"></i>AMOS Sell
+        </h4>
+        <small class="text-success-emphasis">Affiliate Portal</small>
+      </div>
+      
+      <div class="flex-grow-1 py-3">
+        <%= link_to sell_root_path, class: "sell-nav-link #{'active' if controller_name == 'dashboard'}" do %>
+          <i class="bi bi-house"></i>
+          <span>Dashboard</span>
+        <% end %>
+        
+        <%= link_to sell_referrals_path, class: "sell-nav-link #{'active' if controller_name == 'referrals'}" do %>
+          <i class="bi bi-people"></i>
+          <span>My Referrals</span>
+        <% end %>
+        
+        <%= link_to sell_earnings_path, class: "sell-nav-link #{'active' if controller_name == 'earnings'}" do %>
+          <i class="bi bi-currency-dollar"></i>
+          <span>Earnings</span>
+        <% end %>
+        
+        <%= link_to sell_payouts_path, class: "sell-nav-link #{'active' if controller_name == 'payouts'}" do %>
+          <i class="bi bi-wallet2"></i>
+          <span>Payouts</span>
+        <% end %>
+        
+        <%= link_to sell_materials_path, class: "sell-nav-link #{'active' if controller_name == 'materials'}" do %>
+          <i class="bi bi-folder"></i>
+          <span>Marketing Materials</span>
+        <% end %>
+        
+        <hr class="border-success mx-3 my-3">
+        
+        <%= link_to sell_leaderboard_path, class: "sell-nav-link" do %>
+          <i class="bi bi-trophy"></i>
+          <span>Leaderboard</span>
+        <% end %>
+        
+        <%= link_to sell_profile_path, class: "sell-nav-link" do %>
+          <i class="bi bi-person-gear"></i>
+          <span>Profile</span>
+        <% end %>
+      </div>
+      
+      <!-- User Info -->
+      <div class="p-3 border-top border-success">
+        <div class="d-flex align-items-center gap-2 text-white">
+          <div class="rounded-circle bg-success d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+            <%= current_user.email[0].upcase %>
+          </div>
+          <div class="flex-grow-1 small">
+            <div class="fw-semibold"><%= current_user.email.split('@').first %></div>
+            <div class="text-success-emphasis">Affiliate</div>
+          </div>
+          <%= link_to root_path, class: "text-white" do %>
+            <i class="bi bi-box-arrow-right"></i>
+          <% end %>
+        </div>
+      </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <main class="sell-main flex-grow-1">
+      <% if flash[:notice] %>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+          <%= flash[:notice] %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% end %>
+      
+      <% if flash[:alert] %>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          <%= flash[:alert] %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% end %>
+      
+      <%= yield %>
+    </main>
+  </div>
+</body>
+</html>

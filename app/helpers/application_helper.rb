@@ -334,4 +334,51 @@ module ApplicationHelper
       "bg-light text-dark" # Default/unknown status
     end
   end
+  
+  # Helper for bounty status colors
+  def bounty_status_color(status)
+    case status.to_s
+    when "open"
+      "success"
+    when "claimed", "in_progress"
+      "warning"
+    when "pending_review"
+      "info"
+    when "completed", "approved"
+      "primary"
+    when "rejected", "expired"
+      "danger"
+    else
+      "secondary"
+    end
+  end
+  
+  # Helper for referral status badges
+  def referral_status_badge(status)
+    case status.to_s
+    when "pending"
+      "warning"
+    when "signed_up", "active"
+      "success"
+    when "converted"
+      "primary"
+    when "expired"
+      "secondary"
+    else
+      "secondary"
+    end
+  end
+  
+  # Helper to check if wallet is connected (for gov/build portals)
+  def wallet_connected?
+    session[:solana_wallet].present?
+  end
+  
+  # Helper to get AMOS balance
+  def amos_balance
+    return 0 unless current_user&.token_stake.present?
+    current_user.token_stake.current_balance
+  rescue
+    0
+  end
 end

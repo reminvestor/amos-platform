@@ -1103,6 +1103,91 @@ Rails.application.routes.draw do
     end
   end
 
+  # ========================================
+  # Sell/Affiliate Portal (sell.amoslabs.com)
+  # For affiliates: dashboard, earnings, marketing materials
+  # ========================================
+  constraints(lambda { |req| SubdomainConfig.sell_subdomain?(req.subdomain) }) do
+    scope module: 'sell' do
+      root to: 'dashboard#index', as: :sell_root
+      
+      get 'dashboard', to: 'dashboard#index'
+      
+      resources :referrals, only: [:index, :show] do
+        collection do
+          get :stats
+          get :link
+        end
+      end
+      
+      resources :earnings, only: [:index] do
+        collection do
+          get :pending
+          get :history
+        end
+      end
+      
+      resources :payouts, only: [:index, :show, :create] do
+        member do
+          get :status
+        end
+      end
+      
+      resources :materials, only: [:index, :show] do
+        member do
+          get :download
+        end
+      end
+      
+      get 'profile', to: 'profile#show'
+      patch 'profile', to: 'profile#update'
+      get 'leaderboard', to: 'leaderboard#index'
+    end
+  end
+
+  # ========================================
+  # Documentation Portal (docs.amoslabs.com)
+  # Wiki-style documentation - AI-maintained, queryable
+  # ========================================
+  constraints(lambda { |req| SubdomainConfig.docs_subdomain?(req.subdomain) }) do
+    scope module: 'docs' do
+      root to: 'pages#index', as: :docs_root
+      
+      # Search across all docs
+      get 'search', to: 'search#index', as: :docs_search
+      
+      # API for AMOS to query capabilities
+      namespace :api do
+        get 'capabilities', to: 'capabilities#index'
+        get 'capabilities/:category', to: 'capabilities#show'
+        post 'suggest_update', to: 'capabilities#suggest_update'
+      end
+      
+      # Documentation pages (wiki-style)
+      resources :pages, path: '', except: [:index] do
+        member do
+          get :history
+          get :revision, path: 'revision/:revision_id'
+          post :revert, path: 'revert/:revision_id'
+        end
+        collection do
+          get :recent
+          get :categories
+        end
+      end
+      
+      # Categories
+      resources :categories, only: [:index, :show]
+      
+      # Contributors
+      get 'contributors', to: 'contributors#index'
+      get 'contributors/:id', to: 'contributors#show', as: :contributor
+      
+      # My contributions (authenticated)
+      get 'my-contributions', to: 'contributions#index'
+    end
+  end
+
   # Debug routes for troubleshooting
   get "debug", to: "debug#index"
   get "debug/status", to: "debug#status"

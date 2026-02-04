@@ -1,0 +1,62 @@
+<% content_for :title, "New Proposal - AMOS Governance" %>
+
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><%= link_to "Governance", gov_root_path %></li>
+    <li class="breadcrumb-item"><%= link_to "Proposals", gov_proposals_path %></li>
+    <li class="breadcrumb-item active">New Proposal</li>
+  </ol>
+</nav>
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header">
+        <h4 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Create Governance Proposal</h4>
+      </div>
+      <div class="card-body">
+        <%= form_with url: gov_proposals_path, method: :post, local: true do |f| %>
+          <div class="mb-4">
+            <label class="form-label">Proposal Title</label>
+            <input type="text" name="title" class="form-control form-control-lg" 
+                   placeholder="e.g., Increase R&D allocation to 45%">
+          </div>
+          
+          <div class="mb-4">
+            <label class="form-label">Category</label>
+            <select name="category" class="form-select">
+              <option value="parameter">Parameter Change</option>
+              <option value="feature">Feature Proposal</option>
+              <option value="treasury">Treasury Allocation</option>
+              <option value="governance">Governance Change</option>
+            </select>
+          </div>
+          
+          <div class="mb-4">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="6" 
+                      placeholder="Describe your proposal in detail..."></textarea>
+          </div>
+          
+          <div class="mb-4">
+            <label class="form-label">Rationale</label>
+            <textarea name="rationale" class="form-control" rows="4" 
+                      placeholder="Why should this proposal pass?"></textarea>
+          </div>
+          
+          <div class="alert alert-info mb-4">
+            <i class="bi bi-info-circle me-2"></i>
+            Creating a proposal requires staking 1,000 AMOS tokens. This stake will be 
+            returned if the proposal reaches quorum, regardless of the outcome.
+          </div>
+          
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="bi bi-send me-2"></i>Submit Proposal
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

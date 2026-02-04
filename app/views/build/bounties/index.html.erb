@@ -1,0 +1,89 @@
+<% content_for :title, "Bounties - AMOS Build" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="display-6 fw-bold mb-1">
+      <i class="bi bi-trophy me-2 text-warning"></i>Bounty Board
+    </h1>
+    <p class="text-muted mb-0">
+      Earn AMOS tokens by completing development tasks
+    </p>
+  </div>
+  <div class="text-end">
+    <div class="display-6 text-success fw-bold"><%= number_with_delimiter(@total_rewards) %></div>
+    <small class="text-muted">AMOS Available</small>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card bg-dark border-secondary mb-4">
+  <div class="card-body py-2">
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <span class="text-muted me-2">Filter:</span>
+      <%= link_to "All", build_bounties_path, class: "btn btn-sm #{params[:category].blank? ? 'btn-primary' : 'btn-outline-secondary'}" %>
+      <% @categories.each do |category| %>
+        <%= link_to category.titleize, build_bounties_path(category: category), 
+            class: "btn btn-sm #{params[:category] == category ? 'btn-primary' : 'btn-outline-secondary'}" %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<!-- Bounty List -->
+<div class="row g-4">
+  <% if @bounties.respond_to?(:any?) && @bounties.any? %>
+    <% @bounties.each do |bounty| %>
+      <div class="col-lg-6">
+        <div class="card bg-dark border-secondary h-100 hover-shadow">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <span class="badge bg-<%= bounty_status_color(bounty.status) %>">
+                <%= bounty.status.titleize %>
+              </span>
+              <span class="badge bg-warning text-dark fs-6">
+                <%= number_with_delimiter(bounty.token_reward) %> AMOS
+              </span>
+            </div>
+            
+            <h5 class="card-title mb-2"><%= bounty.title %></h5>
+            <p class="card-text text-muted small mb-3">
+              <%= truncate(bounty.description, length: 150) %>
+            </p>
+            
+            <div class="d-flex flex-wrap gap-2 mb-3">
+              <% Array(bounty.tags).first(3).each do |tag| %>
+                <span class="badge bg-secondary"><%= tag %></span>
+              <% end %>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center">
+              <small class="text-muted">
+                <i class="bi bi-clock me-1"></i>
+                Posted <%= time_ago_in_words(bounty.created_at) %> ago
+              </small>
+              <%= link_to build_bounty_path(bounty), class: "btn btn-sm btn-outline-primary" do %>
+                View Details <i class="bi bi-arrow-right ms-1"></i>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="col-12">
+      <div class="card bg-dark border-secondary">
+        <div class="card-body text-center py-5">
+          <i class="bi bi-inbox display-4 d-block mb-3 text-muted"></i>
+          <h5>No bounties available</h5>
+          <p class="text-muted mb-0">Check back soon for new opportunities!</p>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<% if @bounties.respond_to?(:total_pages) && @bounties.total_pages > 1 %>
+  <div class="d-flex justify-content-center mt-4">
+    <%= paginate @bounties %>
+  </div>
+<% end %>

@@ -27,9 +27,21 @@ module SubdomainConfig
     subdomain == "gov"
   end
   
+  # Sell/Affiliate portal subdomain (sell.amoslabs.com)
+  # For affiliates: dashboard, earnings, marketing materials
+  def self.sell_subdomain?(subdomain)
+    subdomain == "sell"
+  end
+  
+  # Docs/Wiki portal subdomain (docs.amoslabs.com)
+  # For documentation: wiki-style docs, AI-maintained, queryable by AMOS
+  def self.docs_subdomain?(subdomain)
+    subdomain == "docs"
+  end
+  
   # All platform subdomains (excludes landing pages)
   def self.platform_subdomains
-    ["app", "dev", "build", "gov"]
+    ["app", "dev", "build", "gov", "sell", "docs"]
   end
 
   # Get the host for landing page subdomains

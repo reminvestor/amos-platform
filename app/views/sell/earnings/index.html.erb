@@ -1,0 +1,69 @@
+<% content_for :title, "Earnings - AMOS Sell" %>
+
+<h2 class="mb-4"><i class="bi bi-currency-dollar me-2"></i>Earnings</h2>
+
+<!-- Summary Cards -->
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-value">$<%= number_with_delimiter(@summary[:total]) %></div>
+      <div class="stat-label">Total Earned</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-value">$<%= number_with_delimiter(@summary[:pending]) %></div>
+      <div class="stat-label">Pending</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-value">$<%= number_with_delimiter(@summary[:paid]) %></div>
+      <div class="stat-label">Paid Out</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-value">$<%= number_with_delimiter(@summary[:this_month]) %></div>
+      <div class="stat-label">This Month</div>
+    </div>
+  </div>
+</div>
+
+<div class="card bg-dark border-secondary">
+  <div class="card-header">
+    <h5 class="mb-0">Earnings History</h5>
+  </div>
+  <div class="card-body">
+    <% if @earnings.any? %>
+      <table class="table table-dark table-hover">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Referral</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @earnings.each do |earning| %>
+            <tr>
+              <td><%= earning[:date] %></td>
+              <td><%= earning[:referral] %></td>
+              <td><%= earning[:type] %></td>
+              <td class="text-success">$<%= earning[:amount] %></td>
+              <td><span class="badge bg-success"><%= earning[:status] %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-currency-dollar display-4 d-block mb-3"></i>
+        <h5>No earnings yet</h5>
+        <p class="mb-0">Start referring users to earn commissions!</p>
+      </div>
+    <% end %>
+  </div>
+</div>

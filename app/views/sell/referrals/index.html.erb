@@ -1,0 +1,50 @@
+<% content_for :title, "My Referrals - AMOS Sell" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2><i class="bi bi-people me-2"></i>My Referrals</h2>
+  <%= link_to link_sell_referrals_path, class: "btn btn-success" do %>
+    <i class="bi bi-link-45deg me-2"></i>Get Referral Link
+  <% end %>
+</div>
+
+<div class="card bg-dark border-secondary">
+  <div class="card-body">
+    <% if @referrals.respond_to?(:any?) && @referrals.any? %>
+      <table class="table table-dark table-hover">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Status</th>
+            <th>Signed Up</th>
+            <th>Plan</th>
+            <th>Commission</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @referrals.each do |referral| %>
+            <tr>
+              <td><%= referral.email rescue 'N/A' %></td>
+              <td>
+                <span class="badge bg-<%= referral.status == 'active' ? 'success' : 'secondary' %>">
+                  <%= referral.status rescue 'pending' %>
+                </span>
+              </td>
+              <td><%= referral.created_at.strftime('%b %d, %Y') rescue 'N/A' %></td>
+              <td><%= referral.plan rescue 'N/A' %></td>
+              <td class="text-success">$<%= referral.commission_earned rescue 0 %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-people display-4 d-block mb-3"></i>
+        <h5>No referrals yet</h5>
+        <p class="mb-3">Share your referral link to start earning!</p>
+        <%= link_to link_sell_referrals_path, class: "btn btn-success" do %>
+          <i class="bi bi-link-45deg me-2"></i>Get Your Link
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,152 @@
+<% content_for :title, "#{@bounty.title} - AMOS Build" %>
+
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><%= link_to "Build", build_root_path %></li>
+    <li class="breadcrumb-item"><%= link_to "Bounties", build_bounties_path %></li>
+    <li class="breadcrumb-item active"><%= truncate(@bounty.title, length: 30) %></li>
+  </ol>
+</nav>
+
+<div class="row g-4">
+  <!-- Main Content -->
+  <div class="col-lg-8">
+    <div class="card bg-dark border-secondary mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="badge bg-<%= bounty_status_color(@bounty.status) %> fs-6">
+          <%= @bounty.status.titleize %>
+        </span>
+        <span class="badge bg-warning text-dark fs-5">
+          <i class="bi bi-coin me-1"></i><%= number_with_delimiter(@bounty.token_reward) %> AMOS
+        </span>
+      </div>
+      <div class="card-body">
+        <h2 class="card-title mb-4"><%= @bounty.title %></h2>
+        
+        <div class="mb-4">
+          <h6 class="text-muted mb-2">Description</h6>
+          <div class="bg-secondary bg-opacity-25 rounded p-3">
+            <%= simple_format(@bounty.description) %>
+          </div>
+        </div>
+        
+        <% if @bounty.requirements.present? %>
+          <div class="mb-4">
+            <h6 class="text-muted mb-2">Requirements</h6>
+            <ul class="list-unstyled">
+              <% Array(@bounty.requirements).each do |req| %>
+                <li class="mb-2">
+                  <i class="bi bi-check-circle text-success me-2"></i><%= req %>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+        
+        <% if @bounty.acceptance_criteria.present? %>
+          <div class="mb-4">
+            <h6 class="text-muted mb-2">Acceptance Criteria</h6>
+            <div class="bg-secondary bg-opacity-25 rounded p-3">
+              <%= simple_format(@bounty.acceptance_criteria) %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    
+    <!-- Submit Work Form (only if claimed by current user) -->
+    <% if @bounty.claimed_by == current_user && @bounty.status == 'claimed' %>
+      <div class="card bg-dark border-success mb-4">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0"><i class="bi bi-upload me-2"></i>Submit Your Work</h5>
+        </div>
+        <div class="card-body">
+          <%= form_with url: submit_work_build_bounty_path(@bounty), method: :post, local: true do |f| %>
+            <div class="mb-3">
+              <label class="form-label">Work Evidence</label>
+              <textarea name="work_evidence" class="form-control bg-secondary" rows="5" 
+                        placeholder="Describe what you completed, include PR links, screenshots, etc."></textarea>
+            </div>
+            <button type="submit" class="btn btn-success btn-lg w-100">
+              <i class="bi bi-send me-2"></i>Submit for Review
+            </button>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+  
+  <!-- Sidebar -->
+  <div class="col-lg-4">
+    <!-- Actions Card -->
+    <div class="card bg-dark border-secondary mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Actions</h5>
+      </div>
+      <div class="card-body">
+        <% if @bounty.status == 'open' && @can_claim %>
+          <%= link_to claim_build_bounty_path(@bounty), method: :post, class: "btn btn-success btn-lg w-100 mb-3",
+              data: { confirm: "Are you sure you want to claim this bounty? You'll have 7 days to complete it." } do %>
+            <i class="bi bi-hand-index me-2"></i>Claim Bounty
+          <% end %>
+        <% elsif @bounty.status == 'claimed' && @bounty.claimed_by == current_user %>
+          <div class="alert alert-success mb-0">
+            <i class="bi bi-check-circle me-2"></i>You've claimed this bounty!
+            <br><small>Submit your work above when ready.</small>
+          </div>
+        <% elsif @bounty.status == 'claimed' %>
+          <div class="alert alert-warning mb-0">
+            <i class="bi bi-hourglass-split me-2"></i>Already claimed
+          </div>
+        <% else %>
+          <div class="alert alert-secondary mb-0">
+            Status: <%= @bounty.status.titleize %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    
+    <!-- Info Card -->
+    <div class="card bg-dark border-secondary mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Details</h5>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-5 text-muted">Category</dt>
+          <dd class="col-7"><%= @bounty.category&.titleize || 'General' %></dd>
+          
+          <dt class="col-5 text-muted">Difficulty</dt>
+          <dd class="col-7"><%= @bounty.difficulty&.titleize || 'Medium' %></dd>
+          
+          <dt class="col-5 text-muted">Deadline</dt>
+          <dd class="col-7">7 days after claim</dd>
+          
+          <dt class="col-5 text-muted">Posted</dt>
+          <dd class="col-7"><%= @bounty.created_at.strftime('%b %d, %Y') %></dd>
+          
+          <% if @bounty.external_reference.present? %>
+            <dt class="col-5 text-muted">GitHub</dt>
+            <dd class="col-7">
+              <%= link_to "View Issue", @bounty.external_reference, target: "_blank", class: "text-primary" %>
+            </dd>
+          <% end %>
+        </dl>
+      </div>
+    </div>
+    
+    <!-- Tags -->
+    <% if @bounty.tags.present? %>
+      <div class="card bg-dark border-secondary">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-tags me-2"></i>Tags</h5>
+        </div>
+        <div class="card-body">
+          <% Array(@bounty.tags).each do |tag| %>
+            <span class="badge bg-secondary me-1 mb-1"><%= tag %></span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

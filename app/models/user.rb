@@ -84,6 +84,11 @@ class User < ApplicationRecord
 
   # External Agent Protocol - agents registered by this user
   has_many :external_agent_registrations, foreign_key: :operator_id, dependent: :destroy
+  
+  # Documentation contributions
+  has_many :doc_pages_created, class_name: 'DocPage', foreign_key: :created_by_id, dependent: :nullify
+  has_many :doc_pages_edited, class_name: 'DocPage', foreign_key: :last_edited_by_id, dependent: :nullify
+  has_many :doc_page_revisions, dependent: :nullify
 
   # Skills and review eligibility
   has_many :user_skills, dependent: :destroy

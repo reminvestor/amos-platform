@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= content_for?(:title) ? yield(:title) : "AMOS Docs" %></title>
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
+  
+  <style>
+    :root {
+      --docs-primary: #3b82f6;
+      --docs-secondary: #1d4ed8;
+      --docs-accent: #60a5fa;
+      --docs-bg: #0f172a;
+      --docs-sidebar: #1e293b;
+    }
+    
+    body {
+      background: var(--docs-bg);
+    }
+    
+    .docs-header {
+      background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 1px solid #334155;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    
+    .docs-sidebar {
+      background: var(--docs-sidebar);
+      min-height: calc(100vh - 70px);
+      position: sticky;
+      top: 70px;
+      overflow-y: auto;
+      max-height: calc(100vh - 70px);
+    }
+    
+    .docs-nav-link {
+      color: rgba(255,255,255,0.7);
+      padding: 0.5rem 1rem;
+      display: block;
+      text-decoration: none;
+      border-radius: 6px;
+      margin: 2px 8px;
+      transition: all 0.2s;
+    }
+    
+    .docs-nav-link:hover {
+      background: rgba(59, 130, 246, 0.2);
+      color: var(--docs-accent);
+    }
+    
+    .docs-nav-link.active {
+      background: var(--docs-primary);
+      color: #fff;
+    }
+    
+    .docs-content {
+      padding: 2rem;
+      max-width: 900px;
+    }
+    
+    .docs-article {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 2rem;
+    }
+    
+    .docs-article h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+    .docs-article h2 { font-size: 1.75rem; margin-top: 2rem; margin-bottom: 1rem; color: var(--docs-accent); }
+    .docs-article h3 { font-size: 1.25rem; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+    
+    .docs-article pre {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 1rem;
+      overflow-x: auto;
+    }
+    
+    .docs-article code {
+      background: rgba(59, 130, 246, 0.2);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    
+    .docs-article pre code {
+      background: none;
+      padding: 0;
+    }
+    
+    .docs-toc {
+      position: sticky;
+      top: 90px;
+    }
+    
+    .docs-toc-link {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.875rem;
+      text-decoration: none;
+      display: block;
+      padding: 0.25rem 0;
+      border-left: 2px solid transparent;
+      padding-left: 1rem;
+    }
+    
+    .docs-toc-link:hover {
+      color: var(--docs-accent);
+      border-left-color: var(--docs-accent);
+    }
+    
+    .search-box {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+    }
+    
+    .search-box:focus {
+      border-color: var(--docs-primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+    
+    .category-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      transition: all 0.2s;
+    }
+    
+    .category-card:hover {
+      border-color: var(--docs-primary);
+      transform: translateY(-2px);
+    }
+    
+    .ai-badge {
+      background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="docs-header py-3">
+    <div class="container-fluid px-4">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-4">
+          <%= link_to docs_root_path, class: "text-white text-decoration-none d-flex align-items-center gap-2" do %>
+            <i class="bi bi-book fs-4"></i>
+            <span class="fw-bold fs-5">AMOS Docs</span>
+          <% end %>
+          
+          <form action="<%= docs_search_path %>" method="get" class="d-none d-md-block">
+            <input type="search" name="q" class="form-control search-box" 
+                   placeholder="Search documentation..." style="width: 300px;"
+                   value="<%= params[:q] %>">
+          </form>
+        </div>
+        
+        <nav class="d-flex align-items-center gap-3">
+          <%= link_to "Categories", docs_categories_path, class: "text-white-50 text-decoration-none" %>
+          <%= link_to "Contributors", docs_contributors_path, class: "text-white-50 text-decoration-none" %>
+          <% if user_signed_in? %>
+            <%= link_to "My Contributions", docs_my_contributions_path, class: "text-white-50 text-decoration-none" %>
+            <% if can_edit? %>
+              <%= link_to new_docs_page_path, class: "btn btn-primary btn-sm" do %>
+                <i class="bi bi-plus-circle me-1"></i>New Page
+              <% end %>
+            <% end %>
+          <% else %>
+            <%= link_to "Sign In", new_user_session_path, class: "btn btn-outline-light btn-sm" %>
+          <% end %>
+        </nav>
+      </div>
+    </div>
+  </header>
+  
+  <div class="container-fluid px-0">
+    <div class="row g-0">
+      <!-- Sidebar -->
+      <aside class="col-lg-2 docs-sidebar d-none d-lg-block">
+        <div class="py-4">
+          <h6 class="text-muted px-3 mb-3 text-uppercase small">Quick Links</h6>
+          
+          <%= link_to docs_root_path, class: "docs-nav-link #{'active' if controller_name == 'pages' && action_name == 'index'}" do %>
+            <i class="bi bi-house me-2"></i>Home
+          <% end %>
+          
+          <%= link_to recent_docs_pages_path, class: "docs-nav-link" do %>
+            <i class="bi bi-clock me-2"></i>Recent Changes
+          <% end %>
+          
+          <%= link_to docs_categories_path, class: "docs-nav-link" do %>
+            <i class="bi bi-folder me-2"></i>All Categories
+          <% end %>
+          
+          <hr class="border-secondary mx-3 my-3">
+          
+          <h6 class="text-muted px-3 mb-3 text-uppercase small">Categories</h6>
+          
+          <% (DocCategory.ordered.limit(10) rescue []).each do |category| %>
+            <%= link_to docs_category_path(category.slug), class: "docs-nav-link" do %>
+              <i class="bi bi-<%= category.icon || 'folder' %> me-2"></i><%= category.name %>
+            <% end %>
+          <% end %>
+          
+          <hr class="border-secondary mx-3 my-3">
+          
+          <h6 class="text-muted px-3 mb-3 text-uppercase small">For AMOS</h6>
+          
+          <%= link_to "/api/capabilities", class: "docs-nav-link", target: "_blank" do %>
+            <i class="bi bi-code-slash me-2"></i>Capabilities API
+          <% end %>
+        </div>
+      </aside>
+      
+      <!-- Main Content -->
+      <main class="col-lg-10">
+        <% if flash[:notice] %>
+          <div class="alert alert-success alert-dismissible fade show m-3" role="alert">
+            <%= flash[:notice] %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        <% end %>
+        
+        <% if flash[:alert] %>
+          <div class="alert alert-danger alert-dismissible fade show m-3" role="alert">
+            <%= flash[:alert] %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        <% end %>
+        
+        <%= yield %>
+      </main>
+    </div>
+  </div>
+  
+  <!-- Footer -->
+  <footer class="py-4 border-top border-secondary mt-5">
+    <div class="container text-center text-muted">
+      <p class="mb-1">
+        AMOS Docs is community-maintained and AI-assisted.
+        <span class="ai-badge ms-2">
+          <i class="bi bi-robot me-1"></i>AI-Enhanced
+        </span>
+      </p>
+      <small>
+        © <%= Date.current.year %> AMOS Labs. All rights reserved.
+        <a href="https://amoslabs.com" class="text-muted">amoslabs.com</a>
+      </small>
+    </div>
+  </footer>
+</body>
+</html>

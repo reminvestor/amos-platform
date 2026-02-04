@@ -1,0 +1,68 @@
+<% content_for :title, "Proposals - AMOS Governance" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="display-6 fw-bold mb-1">
+      <i class="bi bi-clipboard-check me-2 text-primary"></i>Governance Proposals
+    </h1>
+    <p class="text-muted mb-0">
+      Vote on proposals to shape the future of AMOS
+    </p>
+  </div>
+  <%= link_to new_gov_proposal_path, class: "btn btn-primary btn-lg" do %>
+    <i class="bi bi-plus-circle me-2"></i>Create Proposal
+  <% end %>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4">
+  <li class="nav-item">
+    <%= link_to "All", gov_proposals_path, class: "nav-link #{action_name == 'index' ? 'active' : ''}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "Active", active_gov_proposals_path, class: "nav-link #{action_name == 'active' ? 'active' : ''}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "Passed", passed_gov_proposals_path, class: "nav-link #{action_name == 'passed' ? 'active' : ''}" %>
+  </li>
+</ul>
+
+<!-- Proposals List -->
+<% if @proposals.any? %>
+  <% @proposals.each do |proposal| %>
+    <div class="card bg-dark border-secondary mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <h5 class="card-title mb-2"><%= proposal[:title] %></h5>
+            <p class="card-text text-muted"><%= truncate(proposal[:description], length: 200) %></p>
+          </div>
+          <span class="badge bg-primary fs-6">Active</span>
+        </div>
+        
+        <div class="progress mb-3" style="height: 8px;">
+          <div class="progress-bar bg-success" style="width: 65%"></div>
+          <div class="progress-bar bg-danger" style="width: 35%"></div>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center">
+          <small class="text-muted">
+            <i class="bi bi-clock me-1"></i>Ends in 3 days
+          </small>
+          <%= link_to "View & Vote", "#", class: "btn btn-sm btn-outline-primary" %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% else %>
+  <div class="card bg-dark border-secondary">
+    <div class="card-body text-center py-5">
+      <i class="bi bi-inbox display-4 d-block mb-3 text-muted"></i>
+      <h5>No proposals yet</h5>
+      <p class="text-muted mb-3">Be the first to create a governance proposal!</p>
+      <%= link_to new_gov_proposal_path, class: "btn btn-primary" do %>
+        <i class="bi bi-plus-circle me-2"></i>Create Proposal
+      <% end %>
+    </div>
+  </div>
+<% end %>
