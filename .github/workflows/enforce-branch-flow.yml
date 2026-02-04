@@ -1,0 +1,41 @@
+name: Enforce Branch Flow
+
+on:
+  pull_request:
+    branches: [prod, main]
+
+jobs:
+  check-source-branch:
+    name: Validate Source Branch
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check PR source branch
+        run: |
+          echo "PR from: ${{ github.head_ref }}"
+          echo "PR to: ${{ github.base_ref }}"
+          
+          # For PRs to prod, must come from dev or main
+          if [[ "${{ github.base_ref }}" == "prod" ]]; then
+            if [[ "${{ github.head_ref }}" != "dev" && "${{ github.head_ref }}" != "main" ]]; then
+              echo "❌ ERROR: PRs to 'prod' must come from 'dev' or 'main' branch"
+              echo ""
+              echo "Workflow:"
+              echo "  feature/* → dev → main → prod"
+              echo ""
+              echo "Please:"
+              echo "  1. Merge your changes to 'dev' first"
+              echo "  2. Then create a PR from 'dev' to 'prod'"
+              exit 1
+            fi
+          fi
+          
+          # For PRs to main, must come from dev or a feature branch
+          if [[ "${{ github.base_ref }}" == "main" ]]; then
+            if [[ "${{ github.head_ref }}" == "prod" ]]; then
+              echo "❌ ERROR: Cannot merge 'prod' back into 'main'"
+              exit 1
+            fi
+          fi
+          
+          echo "✅ Branch flow is valid"

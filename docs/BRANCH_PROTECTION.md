@@ -14,7 +14,7 @@ Go to: **Settings → Branches → Add branch protection rule**
 | **Require review from code owners** | ✅ Enabled |
 | **Require status checks to pass** | ✅ Enabled |
 | **Require branches to be up to date** | ✅ Enabled |
-| **Required checks** | `test`, `lint`, `security` |
+| **Required checks** | `test`, `lint`, `security`, `check-source-branch` |
 | **Require conversation resolution** | ✅ Enabled |
 | **Require signed commits** | Optional (recommended) |
 | **Include administrators** | ✅ Enabled (even admins need PRs) |
