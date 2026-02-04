@@ -192,23 +192,25 @@ class UnifiedPreprocessorService
   def build_fast_path_result(quick_classification, start_time)
     latency_ms = ((Time.current - start_time) * 1000).round
     
-    # ESSENTIAL_TOOLS that Amos always needs - prevents fallback to random 25
-    essential_tools = %w[
-      ask_user get_data get_schema load_canvas web_search view_web_page
-      create_object update_object discover_tools create_tool list_tools
-      create_scheduled_task list_scheduled_tasks generate_ai_landing_page
-      create_freeform_canvas
+    # ULTRA-MINIMAL tools for conversational messages
+    # discover_tools is the escape hatch - Amos can find more tools on-demand
+    # web_search handles real-time questions
+    # search_memory handles "what did we discuss" questions
+    minimal_tools = %w[
+      web_search
+      discover_tools
+      search_memory
     ]
     
     {
       canvas: :keep_current,
       canvas_delegate: false,
       suggested_model: quick_classification[:model] || 'qwen3-next-80b',
-      suggested_thinking_depth: :standard, # Simple messages don't need deep thinking
+      suggested_thinking_depth: :minimal, # Simple messages get fastest thinking
       llm_thinking_depth_hint: nil,
       design_intent: nil,
-      tools: essential_tools, # Always include essential tools to prevent fallback
-      tool_categories: [:general],
+      tools: minimal_tools, # Ultra-minimal - discover_tools is the escape hatch
+      tool_categories: [:conversational],
       suggested_agents: [],
       delegate_first: false,
       delegation_target: nil,
@@ -640,14 +642,76 @@ class UnifiedPreprocessorService
     { canvas: :keep_current, delegate_to_amos: false }
   end
   
-  # Tool preloading (uses existing TieredDiscoveryService)
+  # ═══════════════════════════════════════════════════════════════
+  # INTENT-BASED TOOL SELECTION
+  # ═══════════════════════════════════════════════════════════════
+  # Maps intent to a focused toolset. Much faster than RAG for known intents.
+  # discover_tools is ALWAYS included as the escape hatch for unexpected needs.
+  #
+  INTENT_TOOLS = {
+    view: %w[
+      get_data load_canvas create_freeform_canvas discover_tools
+    ],
+    create_data: %w[
+      get_schema create_object update_object get_data discover_tools
+    ],
+    build: %w[
+      plan_design plan_application start_module_design discover_tools load_canvas
+    ],
+    integration: %w[
+      execute_integration list_operations list_integrations create_freeform_canvas discover_tools
+    ],
+    module: %w[
+      get_schema create_object update_object get_data start_module_design discover_tools
+    ],
+    reasoning: %w[
+      web_search get_data search_memory query_document_content discover_tools create_freeform_canvas
+    ],
+    unknown: %w[
+      web_search get_data discover_tools load_canvas search_memory
+    ]
+  }.freeze
+  
+  # Tool preloading - now uses INTENT-BASED selection first, RAG as fallback
   def preload_tools(message, classification)
-    # Use TieredDiscoveryService for RAG-based discovery
+    intent = classification[:intent]
+    
+    # FAST PATH: Use intent-based tools if we know the intent
+    if intent && intent != :unknown && INTENT_TOOLS[intent]
+      tool_names = INTENT_TOOLS[intent].dup
+      
+      # Add integration-specific tools if integrations were mentioned
+      if classification[:mentioned_integrations]&.any?
+        tool_names += %w[execute_integration list_operations]
+      end
+      
+      # Add module tools if modules were mentioned  
+      if classification[:mentioned_modules]&.any?
+        tool_names += %w[get_schema create_object update_object]
+      end
+      
+      tool_names.uniq!
+      
+      Rails.logger.info "[Preprocessor] ⚡ Intent-based tools for :#{intent}: #{tool_names.join(', ')}"
+      
+      return {
+        tool_names: tool_names,
+        categories: [intent],
+        count: tool_names.size,
+        source: :intent_based
+      }
+    end
+    
+    # FALLBACK: Use RAG-based discovery for unknown intents
+    Rails.logger.info "[Preprocessor] 🔍 Using RAG discovery for unknown intent"
     discovery = TieredDiscoveryService.new(user: @user, entity: @entity, prompt: message)
     discovered = discovery.discover_tools(prompt: message, include_core: true)
     
     # Map to tool names
     tool_names = discovered.map { |t| t[:name] }
+    
+    # Ensure discover_tools is always present
+    tool_names << 'discover_tools' unless tool_names.include?('discover_tools')
     
     # Determine categories from discovered tools
     categories = infer_categories_from_tools(tool_names, classification)
@@ -655,11 +719,13 @@ class UnifiedPreprocessorService
     {
       tool_names: tool_names,
       categories: categories,
-      count: tool_names.size
+      count: tool_names.size,
+      source: :rag_discovery
     }
   rescue => e
     Rails.logger.warn "[Preprocessor] Tool preload failed: #{e.message}"
-    { tool_names: TieredDiscoveryService::CORE_TOOLS, categories: [:general] }
+    # Minimal fallback - discover_tools lets Amos find what it needs
+    { tool_names: %w[web_search get_data discover_tools load_canvas], categories: [:general], source: :fallback }
   end
   
   # Agent preloading - DISABLED

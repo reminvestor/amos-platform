@@ -370,20 +370,21 @@ class ScoutGenericToolsServiceV2
         tools = []
         Rails.logger.info "🧠 Using DeepSeek R1 for reasoning (no tools)"
       else
-        # Use pre-discovered tools from UnifiedPreprocessor (parallel RAG search)
-        # Lower threshold to 5 tools to prefer the focused toolset
-        if @preprocess_result[:tools].present? && @preprocess_result[:tools].length >= 5
-          # Preprocessor found enough relevant tools - use them
+        # Use pre-discovered tools from UnifiedPreprocessor (intent-based or RAG)
+        # Trust the preprocessor's toolset - even 1 tool is valid (fast_path has 3)
+        if @preprocess_result[:tools].present? && @preprocess_result[:tools].any?
+          # Preprocessor found relevant tools - use them (could be 3 for fast_path, or 4-6 for intent-based)
           tools = build_tools_from_preloaded(@preprocess_result[:tools])
           tool_names = tools.map { |t| t[:name] || t["name"] }
+          source = @preprocess_result.dig(:tools, :source) || "preprocessor"
           has_integration_tools = tool_names.include?("execute_integration")
-          Rails.logger.info "⚡ Using #{tools.length} preloaded tools (integration tools: #{has_integration_tools}): #{tool_names.first(8).join(', ')}..."
+          Rails.logger.info "⚡ Using #{tools.length} #{source} tools: #{tool_names.join(', ')}"
         else
           # Fallback to traditional discovery (handles edge cases)
           tools = get_filtered_tools(prompt: user_message)
           tool_names = tools.map { |t| t[:name] || t["name"] }
           has_integration_tools = tool_names.include?("execute_integration")
-          Rails.logger.info "🔧 Fallback: #{tools.length} tools (integration tools: #{has_integration_tools}): #{tool_names.first(8).join(', ')}..."
+          Rails.logger.info "🔧 Fallback: #{tools.length} tools: #{tool_names.first(8).join(', ')}..."
         end
         
         # 🔌 PLUGIN INJECTION: Merge in plugin-specific tools
@@ -2145,27 +2146,53 @@ class ScoutGenericToolsServiceV2
     end
   end
   
-  # Format Scout personality for system prompt
+  # Format Scout personality for system prompt (cached in Redis)
   def format_scout_personality_for_prompt
     return "" unless @entity.present?
     return "" unless defined?(ScoutPersonality)
     
     begin
+      # Cache for 5 minutes - personality rarely changes
+      cache_key = "scout:personality:prompt:#{@entity.id}"
+      cached = $redis.get(cache_key) rescue nil
+      
+      if cached
+        Rails.logger.debug "🚀 [Cache] Scout personality from Redis"
+        return cached
+      end
+      
       personality = ScoutPersonality.for_entity(@entity)
-      personality&.to_prompt || ""
+      result = personality&.to_prompt || ""
+      
+      # Cache for 5 minutes
+      $redis.setex(cache_key, 300, result) rescue nil
+      result
     rescue => e
       Rails.logger.debug "Could not load Scout personality: #{e.message}"
       ""
     end
   end
   
-  # Format Scout's own learnings for system prompt
+  # Format Scout's own learnings for system prompt (cached in Redis)
   def format_scout_learnings_for_prompt
     return "" unless @entity.present?
     return "" unless defined?(ScoutLearning)
     
     begin
-      ScoutLearning.for_prompt(entity: @entity, limit: 8)
+      # Cache for 2 minutes - learnings change more frequently
+      cache_key = "scout:learnings:prompt:#{@entity.id}"
+      cached = $redis.get(cache_key) rescue nil
+      
+      if cached
+        Rails.logger.debug "🚀 [Cache] Scout learnings from Redis"
+        return cached
+      end
+      
+      result = ScoutLearning.for_prompt(entity: @entity, limit: 8)
+      
+      # Cache for 2 minutes
+      $redis.setex(cache_key, 120, result) rescue nil if result.present?
+      result
     rescue => e
       Rails.logger.debug "Could not load Scout learnings: #{e.message}"
       ""
