@@ -138,7 +138,17 @@ class UnifiedPreprocessorService
       latency_ms: latency_ms,
       classification_method: quick_classification[:method],
       threads_completed: results[:completed_count],
-      timestamp: Time.current
+      timestamp: Time.current,
+      
+      # PROMPT SECTIONS: Which sections to include in system prompt
+      # This drives modular prompt assembly - only load what's needed!
+      prompt_sections: recommend_prompt_sections(
+        intent: quick_classification[:intent],
+        mode: results[:canvas][:mode],
+        design_intent: results[:canvas][:design_intent],
+        integration_context: results[:integrations] || {},
+        delegate_first: results[:agents][:delegate_first] || false
+      )
     }
   end
   
@@ -210,8 +220,112 @@ class UnifiedPreprocessorService
       latency_ms: latency_ms,
       classification_method: :fast_path,
       threads_completed: 0,
-      timestamp: Time.current
+      timestamp: Time.current,
+      
+      # PROMPT SECTIONS: Minimal for fast path (conversational)
+      prompt_sections: [:core_identity_compact, :user_profile, :learned_behaviors]
     }
+  end
+  
+  # ═══════════════════════════════════════════════════════════════
+  # PROMPT SECTION RECOMMENDATION
+  # ═══════════════════════════════════════════════════════════════
+  # Maps intent/mode to which prompt sections should be included.
+  # This drives modular prompt assembly in ScoutGenericToolsServiceV2.
+  #
+  # Available sections:
+  #   :core_identity        - Full AI identity and role
+  #   :core_identity_compact - Minimal identity for simple messages
+  #   :user_profile         - User name, role, email
+  #   :business_context     - Business profile, industry, stats
+  #   :integrations         - Connected integrations + API syntax
+  #   :integration_context  - PRELOADED from preprocessor (no re-query!)
+  #   :modules              - Custom modules and schemas
+  #   :data_operations      - How to query/create platform data
+  #   :design_workflow      - Plan → Build workflow for creative work
+  #   :team_roster          - Available agents for delegation
+  #   :delegation_rules     - Async agent communication rules
+  #   :memory_tools         - How to search/recall memories
+  #   :user_memories        - User's remembered preferences
+  #   :conversation_summaries - Past conversation context
+  #   :learned_behaviors    - Learned corrections/preferences
+  #   :ai_rulesets          - Business-defined rules
+  #   :documents            - Document handling
+  #   :canvas_rules         - Freeform canvas usage
+  #   :web_search           - Real-time data via web search
+  #   :tool_execution       - Core tool execution rules
+  #
+  def recommend_prompt_sections(intent:, mode:, design_intent:, integration_context:, delegate_first:)
+    sections = [:core_identity, :user_profile, :tool_execution]
+    
+    # Mode-based additions
+    case mode
+    when :personal
+      # Personal space: skip business context
+      sections << :learned_behaviors
+      sections << :memory_tools
+    when :create
+      # Creating something: need design workflow
+      sections << :design_workflow
+      sections << :team_roster if delegate_first
+    when :operate
+      # Operating: need data operations
+      sections << :business_context
+      sections << :data_operations
+    when :ideate
+      # Ideating: need memory and creative tools
+      sections << :memory_tools
+      sections << :learned_behaviors
+    end
+    
+    # Intent-based additions
+    case intent
+    when :view
+      sections << :data_operations unless sections.include?(:data_operations)
+      sections << :canvas_rules
+    when :create_data
+      sections << :data_operations unless sections.include?(:data_operations)
+      sections << :modules if @entity&.app_modules&.any?
+    when :build
+      sections << :design_workflow unless sections.include?(:design_workflow)
+      sections << :team_roster unless sections.include?(:team_roster)
+      sections << :delegation_rules
+    when :integration
+      # Use PRELOADED context from preprocessor - key optimization!
+      sections << :integration_context  # NOT :integrations (which re-queries)
+      sections << :canvas_rules
+    when :module
+      sections << :modules
+      sections << :data_operations unless sections.include?(:data_operations)
+    when :reasoning
+      # Deep thinking: include more context
+      sections << :business_context unless sections.include?(:business_context)
+      sections << :conversation_summaries
+      sections << :learned_behaviors unless sections.include?(:learned_behaviors)
+    end
+    
+    # Design intent additions
+    case design_intent
+    when :landing_page, :email, :app
+      sections << :design_workflow unless sections.include?(:design_workflow)
+    when :workflow
+      sections << :team_roster unless sections.include?(:team_roster)
+    when :integration
+      sections << :integration_context unless sections.include?(:integration_context)
+    end
+    
+    # If integrations were mentioned, include integration context
+    if integration_context[:connected]&.any? || integration_context[:tool_usage]&.any?
+      sections << :integration_context unless sections.include?(:integration_context)
+    end
+    
+    # If delegation is recommended, ensure team roster is included
+    if delegate_first
+      sections << :team_roster unless sections.include?(:team_roster)
+      sections << :delegation_rules unless sections.include?(:delegation_rules)
+    end
+    
+    sections.uniq
   end
   
   # ═══════════════════════════════════════════════════════════════
