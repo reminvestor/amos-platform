@@ -1282,6 +1282,15 @@
               <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
               <span>Or just tell Amos what you need: <em>"Create a landing page for my law firm"</em></span>
             </div>
+            
+            <div class="empty-state-divider">
+              <span>or continue where you left off</span>
+            </div>
+            
+            <button type="button" class="btn-load-existing" id="load-existing-app-btn">
+              <i data-lucide="folder-open" style="width: 16px; height: 16px;"></i>
+              Load Existing Project
+            </button>
           </div>
           <% end %>
         </div>
@@ -2274,6 +2283,63 @@
   
   .ai-prompt-hint i { color: #818cf8; }
   .ai-prompt-hint em { color: #a5b4fc; font-style: normal; }
+  
+  /* Empty State Divider & Load Button */
+  .canvas-empty-state .empty-state-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 24px 0 16px;
+    width: 100%;
+    max-width: 400px;
+  }
+  
+  .canvas-empty-state .empty-state-divider::before,
+  .canvas-empty-state .empty-state-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(99, 102, 241, 0.2);
+  }
+  
+  .canvas-empty-state .empty-state-divider span {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  
+  .canvas-empty-state .btn-load-existing {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 24px;
+    border: 1px dashed rgba(99, 102, 241, 0.4);
+    border-radius: 10px;
+    background: rgba(99, 102, 241, 0.05);
+    color: #818cf8;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .canvas-empty-state .btn-load-existing:hover {
+    border-color: #6366f1;
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+  }
+  
+  [data-theme="light"] .canvas-empty-state .btn-load-existing {
+    background: rgba(99, 102, 241, 0.05);
+    border-color: rgba(99, 102, 241, 0.3);
+    color: #6366f1;
+  }
+  
+  [data-theme="light"] .canvas-empty-state .btn-load-existing:hover {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: #6366f1;
+  }
   
   /* Blank Workspace - Page-based (Landing Page, Website, App) */
   .blank-page-workspace, .blank-canvas-workspace {
@@ -6205,6 +6271,28 @@ function buildSectionCard(section, idx, pageIndex) {
       }
     });
   });
+  
+  // Load Existing Project button
+  var loadExistingAppBtn = document.getElementById('load-existing-app-btn');
+  if (loadExistingAppBtn) {
+    loadExistingAppBtn.addEventListener('click', function() {
+      console.log('📂 Opening My Creations to load existing project...');
+      
+      // Load the My Creations canvas filtered to apps/designs
+      if (window.Stimulus && window.Stimulus.getControllerForElementAndIdentifier) {
+        var scoutEl = document.querySelector('[data-controller~="scout"]');
+        var scoutController = window.Stimulus.getControllerForElementAndIdentifier(scoutEl, 'scout');
+        if (scoutController && scoutController.loadScoutCanvas) {
+          scoutController.loadScoutCanvas('my_creations', { filter: 'apps' });
+          return;
+        }
+      }
+      // Fallback: dispatch custom event
+      document.dispatchEvent(new CustomEvent('scout:load-canvas', { 
+        detail: { canvas: 'my_creations', data: { filter: 'apps' } }
+      }));
+    });
+  }
   
   // Show data sources dropdown (not a sidebar)
   function showDataSourcesDropdown(button) {

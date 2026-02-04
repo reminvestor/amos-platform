@@ -317,6 +317,13 @@
           Event
         </button>
       </div>
+      <div class="empty-state-divider">
+        <span>or</span>
+      </div>
+      <button type="button" class="btn-load-existing" id="load-existing-workflow-btn">
+        <i data-lucide="folder-open" style="width: 16px; height: 16px;"></i>
+        Load Existing Workflow
+      </button>
     </div>
     
     <!-- Transform container for pan/zoom -->
@@ -1068,6 +1075,50 @@
     pointer-events: none;
   }
   
+  .empty-state-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+    pointer-events: none;
+  }
+  
+  .empty-state-divider::before,
+  .empty-state-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(139, 92, 246, 0.2);
+  }
+  
+  .empty-state-divider span {
+    font-size: 11px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  
+  .btn-load-existing {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: 1px dashed rgba(139, 92, 246, 0.4);
+    border-radius: 8px;
+    background: rgba(139, 92, 246, 0.05);
+    color: #a78bfa;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    pointer-events: auto;
+  }
+  
+  .btn-load-existing:hover {
+    border-color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.15);
+    color: #c4b5fd;
+  }
+  
   .empty-icon {
     margin-bottom: 0.75rem;
   }
@@ -1733,7 +1784,15 @@
   
   // Load on init if workflow_id exists
   if (currentWorkflowId) {
-    loadWorkflow(currentWorkflowId);
+    loadWorkflow(currentWorkflowId).then(() => {
+      // Clear URL params after loading to prevent re-loading on refresh
+      const url = new URL(window.location);
+      if (url.searchParams.has('workflow_id')) {
+        url.searchParams.delete('workflow_id');
+        window.history.replaceState({}, '', url);
+        console.log('🧹 Cleared workflow_id from URL after loading');
+      }
+    });
   }
   
   // ========== Auto-Save Functionality ==========
@@ -3556,6 +3615,28 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
       }, centerX, centerY);
     });
   });
+  
+  // ========== Load Existing Workflow Button ==========
+  const loadExistingBtn = document.getElementById('load-existing-workflow-btn');
+  if (loadExistingBtn) {
+    loadExistingBtn.addEventListener('click', function() {
+      console.log('📂 Opening My Creations to load workflow...');
+      
+      // Load the My Creations canvas filtered to workflows
+      if (window.Stimulus && window.Stimulus.getControllerForElementAndIdentifier) {
+        const scoutEl = document.querySelector('[data-controller~="scout"]');
+        const scoutController = window.Stimulus.getControllerForElementAndIdentifier(scoutEl, 'scout');
+        if (scoutController && scoutController.loadScoutCanvas) {
+          scoutController.loadScoutCanvas('my_creations', { filter: 'workflows' });
+          return;
+        }
+      }
+      // Fallback: dispatch custom event
+      document.dispatchEvent(new CustomEvent('scout:load-canvas', { 
+        detail: { canvas: 'my_creations', data: { filter: 'workflows' } }
+      }));
+    });
+  }
   
   // ========== Component Search ==========
   if (componentSearch) {
