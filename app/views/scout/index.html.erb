@@ -3219,13 +3219,13 @@ document.addEventListener('turbo:load', function() {
                 console.log('📝 Content chunk received:', data.content?.substring(0, 50) + '...');
                 if (streamingMessage && data.content) {
                   streamingContent += data.content;
-                  const messageContent = streamingMessage.querySelector('.message-content');
-                  if (messageContent) {
-                    messageContent.innerHTML = parseMarkdown(streamingContent);
+                  const messageBubble = streamingMessage.querySelector('.message-bubble');
+                  if (messageBubble) {
+                    messageBubble.innerHTML = parseSimpleMarkdown(streamingContent);
                     scrollToBottom();
                     console.log('✅ Updated streaming message with', streamingContent.length, 'chars');
                   } else {
-                    console.error('❌ No message-content element found in streaming message');
+                    console.error('❌ No message-bubble element found in streaming message');
                   }
                 } else {
                   console.warn('⚠️ No streaming message element or no content:', { streamingMessage: !!streamingMessage, content: !!data.content });
