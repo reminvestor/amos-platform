@@ -1509,24 +1509,18 @@ class ScoutGenericToolsServiceV2
       compact: is_fast_path  # Hint to AmosIdentity to use shorter version
     )
 
-    # User location and timezone from IP geolocation (preprocessor) or business profile
+    # User location and timezone from IP geolocation (preprocessor)
     geo = @preprocess_result&.dig(:geolocation) || {}
     
-    # Get business profile safely (User has_one :business_profile)
-    bp = @user&.business_profile rescue nil
-    
-    # Priority: IP geo timezone > business profile > default Pacific
-    user_tz = geo[:timezone].presence || 
-              bp&.timezone.presence ||
-              'America/Los_Angeles'
+    # IP geolocation is primary source for timezone (most accurate)
+    # Falls back to Pacific if no geo data
+    user_tz = geo[:timezone].presence || 'America/Los_Angeles'
     
     current_time = Time.current.in_time_zone(user_tz)
     current_datetime = current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")
     
-    # Location: prefer IP geo, fall back to business profile
+    # Location from IP geo, or infer from timezone
     user_location = geo[:formatted].presence || 
-                    bp&.city.presence || 
-                    bp&.state.presence || 
                     user_tz.split('/').last&.gsub('_', ' ')
 
     available_models = ScoutDataRegistry.available_object_types
