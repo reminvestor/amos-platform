@@ -38,14 +38,15 @@ class UnifiedPreprocessorService
   # Minimum tools to always include (safety net)
   MINIMUM_TOOLS = 10
   
-  attr_reader :user, :entity, :current_canvas, :session_id, :conversation_history
+  attr_reader :user, :entity, :current_canvas, :session_id, :conversation_history, :client_ip
   
-  def initialize(user:, entity:, current_canvas: nil, session_id: nil, conversation_history: nil)
+  def initialize(user:, entity:, current_canvas: nil, session_id: nil, conversation_history: nil, client_ip: nil)
     @user = user
     @entity = entity
     @current_canvas = current_canvas
     @session_id = session_id
     @conversation_history = conversation_history || []
+    @client_ip = client_ip
   end
   
   # ═══════════════════════════════════════════════════════════════
@@ -145,6 +146,9 @@ class UnifiedPreprocessorService
       integration_context: results[:integrations],
       module_context: results[:modules],
       
+      # User geolocation (from IP lookup, runs in parallel)
+      geolocation: results[:geolocation] || {},
+      
       # Compact injection for prompt
       context_inject: context_inject,
       
@@ -219,6 +223,9 @@ class UnifiedPreprocessorService
       search_memory
     ]
     
+    # Still do geolocation lookup (fast, cached) even in fast path
+    geo = @client_ip.present? ? preload_geolocation : {}
+    
     {
       canvas: :keep_current,
       canvas_delegate: false,
@@ -235,6 +242,7 @@ class UnifiedPreprocessorService
       delegation_reason: nil,
       integration_context: { connected: [], knowledge: [] },
       module_context: { active: [], mentioned: [] },
+      geolocation: geo,
       context_inject: "",
       llm_context_topic: nil,
       latency_ms: latency_ms,
@@ -473,7 +481,8 @@ class UnifiedPreprocessorService
       tools: Thread.new { preload_tools(message, classification) },
       agents: Thread.new { preload_agents(message, classification) },
       integrations: Thread.new { preload_integrations(message, classification) },
-      modules: Thread.new { preload_modules(message, classification) }
+      modules: Thread.new { preload_modules(message, classification) },
+      geolocation: Thread.new { preload_geolocation }
     }
     
     # ═══════════════════════════════════════════════════════════════
@@ -1084,6 +1093,22 @@ class UnifiedPreprocessorService
   rescue => e
     Rails.logger.warn "[Preprocessor] Module preload failed: #{e.message}"
     { active: [], mentioned: [], schemas: {} }
+  end
+  
+  # IP-based geolocation lookup (runs in parallel, ~50-100ms, cached 24hrs)
+  def preload_geolocation
+    return {} unless @client_ip.present?
+    
+    geo = IpGeolocationService.lookup(@client_ip)
+    
+    # Format a compact location string
+    location_parts = [geo[:city], geo[:region], geo[:country]].compact
+    geo[:formatted] = location_parts.first(2).join(', ') if location_parts.any?
+    
+    geo
+  rescue => e
+    Rails.logger.warn "[Preprocessor] Geolocation failed: #{e.message}"
+    {}
   end
   
   # ═══════════════════════════════════════════════════════════════

@@ -129,7 +129,8 @@ class ScoutController < ApplicationController
         current_entity,
         session[:scout_session_id],
         agent_loadout: main_chat_loadout,
-        fresh_start_at: fresh_start_time
+        fresh_start_at: fresh_start_time,
+        client_ip: request.remote_ip
       )
 
       # Apply model mode from user preference (auto, fast, balanced, powerful)

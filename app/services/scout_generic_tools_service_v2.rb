@@ -8,7 +8,7 @@ class ScoutGenericToolsServiceV2
   attr_reader :user, :entity, :session_id, :agent_loadout, :model, :fresh_start_at
   attr_accessor :suggested_canvas, :canvas_data, :intent_mode
 
-  def initialize(user, entity, session_id, agent_loadout: nil, model: nil, fresh_start_at: nil, intent_mode: nil)
+  def initialize(user, entity, session_id, agent_loadout: nil, model: nil, fresh_start_at: nil, intent_mode: nil, client_ip: nil)
     @user = user
     @entity = entity
     @session_id = session_id
@@ -16,6 +16,7 @@ class ScoutGenericToolsServiceV2
     @model = model # Model to use (defaults to ENV['BEDROCK_DEFAULT_MODEL'] or 'claude-sonnet-4-5')
     @user_selected_model = model.present? # Track if user explicitly selected a model
     @fresh_start_at = fresh_start_at # Filter memory to only after this time
+    @client_ip = client_ip # For IP-based geolocation
     @ai_service = BedrockService.new(user: user, entity: entity)
     @ai_provider_name = Rails.application.config.ai_service.to_s.capitalize
     @tool_catalog = Tools::ToolCatalog.instance
@@ -91,7 +92,8 @@ class ScoutGenericToolsServiceV2
       user: @user,
       current_canvas: current_canvas,
       session_id: @session_id,
-      conversation_history: conversation_history
+      conversation_history: conversation_history,
+      client_ip: @client_ip
     )
 
     result = preprocessor.preprocess(message: user_message)
@@ -1512,9 +1514,13 @@ class ScoutGenericToolsServiceV2
     current_time = Time.current.in_time_zone(user_tz)
     current_datetime = current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")
     
-    # User location from business profile or infer from timezone
+    # User location: prefer IP geolocation (from preprocessor), fall back to business profile
+    geo = @preprocess_result&.dig(:geolocation) || {}
     bp = @entity&.business_profile || @user&.business_profile
-    user_location = bp&.city.presence || bp&.state.presence || user_tz.split('/').last&.gsub('_', ' ')
+    user_location = geo[:formatted].presence || 
+                    bp&.city.presence || 
+                    bp&.state.presence || 
+                    user_tz.split('/').last&.gsub('_', ' ')
 
     available_models = ScoutDataRegistry.available_object_types
     
