@@ -1342,6 +1342,11 @@ class ScoutController < ApplicationController
         end
       end
       
+      # Log what's being saved for debugging
+      Rails.logger.info "[DesignPlan] 💾 Saving plan #{design_plan.id}"
+      Rails.logger.info "[DesignPlan] 🎨 Colors: #{plan_data[:color_scheme].inspect}"
+      Rails.logger.info "[DesignPlan] 📐 Sections: #{plan_data[:sections]&.map { |s| "#{s[:type] || s['type']}: #{s[:layout_hint] || s['layout_hint']}" }.inspect}"
+      
       design_plan.update!(plan_data: plan_data)
       
       render json: { 

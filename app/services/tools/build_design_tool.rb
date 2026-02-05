@@ -119,6 +119,11 @@ module Tools
 
       # Convert plan to generation args
       plan_data = design_plan.plan_data
+      
+      # Debug: Log the plan data being used
+      Rails.logger.info "[BuildDesign] 📋 Plan ID: #{design_plan.id}"
+      Rails.logger.info "[BuildDesign] 🎨 Color scheme from plan: #{plan_data['color_scheme'].inspect}"
+      Rails.logger.info "[BuildDesign] 📐 Sections with layouts: #{plan_data['sections']&.map { |s| "#{s['type']}: #{s['layout_hint']}" }.inspect}"
       design_reference_url = plan_data['design_reference_url'] || plan_data['reference_image_url']
 
       generation_args = {

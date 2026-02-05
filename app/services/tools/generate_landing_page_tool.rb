@@ -644,11 +644,39 @@ module Tools
           content_guidance = s[:content_guidance] || s["content_guidance"]
           image_style = s[:image_style] || s["image_style"]
           
+          # Build layout instructions based on section type
+          layout_instruction = case layout_hint
+          when 'centered'
+            "⚙️ LAYOUT: CENTERED - Text centered, full width, NO side images"
+          when 'split', 'split-image', 'split-left'
+            "⚙️ LAYOUT: SPLIT - Text on left (col-lg-6), image on right (col-lg-6)"
+          when 'split-right'
+            "⚙️ LAYOUT: SPLIT - Image on left (col-lg-6), text on right (col-lg-6)"
+          when 'split-video'
+            "⚙️ LAYOUT: SPLIT WITH VIDEO - Text on left, video embed on right"
+          when 'split-form'
+            "⚙️ LAYOUT: SPLIT WITH FORM - Text on left, signup form on right"
+          when 'video-background'
+            "⚙️ LAYOUT: VIDEO BACKGROUND - Full-width with video as background"
+          when '3-column'
+            "⚙️ LAYOUT: 3-COLUMN GRID - Three equal columns (col-lg-4)"
+          when '2-column'
+            "⚙️ LAYOUT: 2-COLUMN GRID - Two equal columns (col-lg-6)"
+          when 'icon-grid'
+            "⚙️ LAYOUT: ICON GRID - Grid of icon + text pairs"
+          when 'carousel'
+            "⚙️ LAYOUT: CAROUSEL - Bootstrap carousel for multiple items"
+          when 'cards'
+            "⚙️ LAYOUT: CARDS - Card-style boxes for each item"
+          else
+            layout_hint.present? ? "⚙️ LAYOUT: #{layout_hint.upcase}" : ""
+          end
+          
           section_block = <<~SECTION_ITEM
             
             ▸ SECTION: #{section_name.to_s.titleize} (type: #{section_type})
               Background Style: #{background.upcase}
-              #{layout_hint.present? ? "Layout: #{layout_hint}" : ""}
+              #{layout_instruction}
           #{content_lines.join("\n")}
           #{visual_description.present? ? "\n    🎨 VISUAL STYLE (user-specified): #{visual_description}" : ""}
           #{content_guidance.present? ? "\n    📝 CONTENT GUIDANCE (user-specified): #{content_guidance}" : ""}
