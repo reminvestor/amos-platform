@@ -1510,7 +1510,10 @@ class ScoutGenericToolsServiceV2
     )
 
     # Current date/time in user's timezone (default to Pacific)
-    user_tz = @user&.timezone.presence || 'America/Los_Angeles'
+    # Check for timezone in user or business profile
+    user_tz = (@user.respond_to?(:timezone) && @user.timezone.presence) || 
+              @user&.business_profile&.timezone.presence ||
+              'America/Los_Angeles'
     current_time = Time.current.in_time_zone(user_tz)
     current_datetime = current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")
     
