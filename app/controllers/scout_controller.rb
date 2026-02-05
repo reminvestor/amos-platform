@@ -1284,7 +1284,12 @@ class ScoutController < ApplicationController
           end
           
           # Apply other section updates
-          section = section.merge(section_updates.except(:add_item, :remove_item, :update_item))
+          # Map 'layout' to 'layout_hint' for consistency (canvas reads layout_hint)
+          mapped_updates = section_updates.except(:add_item, :remove_item, :update_item)
+          if mapped_updates[:layout].present? && mapped_updates[:layout_hint].blank?
+            mapped_updates[:layout_hint] = mapped_updates.delete(:layout)
+          end
+          section = section.merge(mapped_updates)
           sections[section_idx] = section
           plan_data[:sections] = sections
         end

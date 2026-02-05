@@ -4608,8 +4608,9 @@ function changeSectionLayout(sectionIdx, newLayout) {
   var planId = planEl ? planEl.dataset.planId : null;
   var sectionName = card.dataset.sectionName || card.dataset.sectionType;
   if (planId) {
+    // Use layout_hint to match how the canvas reads it
     updatePlanDirectly(planId, {
-      update_section: { name: sectionName, layout: newLayout }
+      update_section: { name: sectionName, layout_hint: newLayout }
     });
   }
 }
