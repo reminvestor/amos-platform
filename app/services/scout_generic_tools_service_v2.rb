@@ -1508,8 +1508,13 @@ class ScoutGenericToolsServiceV2
     )
 
     # Current date/time in user's timezone (default to Pacific)
-    current_time = Time.current.in_time_zone('America/Los_Angeles')
+    user_tz = @user&.timezone.presence || 'America/Los_Angeles'
+    current_time = Time.current.in_time_zone(user_tz)
     current_datetime = current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")
+    
+    # User location from business profile or infer from timezone
+    bp = @entity&.business_profile || @user&.business_profile
+    user_location = bp&.city.presence || bp&.state.presence || user_tz.split('/').last&.gsub('_', ' ')
 
     available_models = ScoutDataRegistry.available_object_types
     
@@ -1528,6 +1533,7 @@ class ScoutGenericToolsServiceV2
       return build_compact_system_prompt(
         ai_identity: ai_identity,
         current_datetime: current_datetime,
+        user_location: user_location,
         user_name: user_name,
         scout_personality: scout_personality,
         learned_behaviors: learned_behaviors
@@ -1543,9 +1549,9 @@ class ScoutGenericToolsServiceV2
     # Build prompt by assembling only the needed sections
     prompt_parts = []
     
-    # Always include identity and datetime
+    # Always include identity, datetime, and location
     prompt_parts << ai_identity
-    prompt_parts << "📅 CURRENT DATE/TIME: #{current_datetime}"
+    prompt_parts << "📅 #{current_datetime} | 📍 #{user_location}"
     
     # Load sections based on preprocessor recommendation
     prompt_parts << format_scout_personality_for_prompt if sections.include?(:core_identity) || sections.include?(:user_profile)
@@ -1622,11 +1628,11 @@ class ScoutGenericToolsServiceV2
   # - Personality (how to respond)
   # - Learned behaviors (critical preferences)
   # - Essential tool info (memory recall)
-  def build_compact_system_prompt(ai_identity:, current_datetime:, user_name:, scout_personality:, learned_behaviors:)
+  def build_compact_system_prompt(ai_identity:, current_datetime:, user_location:, user_name:, scout_personality:, learned_behaviors:)
     <<~PROMPT
       #{ai_identity}
 
-      📅 CURRENT DATE/TIME: #{current_datetime}
+      📅 #{current_datetime} | 📍 #{user_location}
       
       👤 USER: #{user_name}
       
