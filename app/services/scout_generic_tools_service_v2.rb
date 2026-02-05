@@ -376,7 +376,7 @@ class ScoutGenericToolsServiceV2
           # Preprocessor found relevant tools - use them (could be 3 for fast_path, or 4-6 for intent-based)
           tools = build_tools_from_preloaded(@preprocess_result[:tools])
           tool_names = tools.map { |t| t[:name] || t["name"] }
-          source = @preprocess_result.dig(:tools, :source) || "preprocessor"
+          source = @preprocess_result[:tools_source] || "preprocessor"
           has_integration_tools = tool_names.include?("execute_integration")
           Rails.logger.info "⚡ Using #{tools.length} #{source} tools: #{tool_names.join(', ')}"
         else

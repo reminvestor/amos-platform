@@ -128,6 +128,7 @@ class UnifiedPreprocessorService
       # Pre-discovered resources
       tools: results[:tools][:tool_names] || [],
       tool_categories: results[:tools][:categories] || [],
+      tools_source: results[:tools][:source] || :unknown,
       suggested_agents: results[:agents][:agents] || [],
       
       # Team-first: delegation recommendations
@@ -227,6 +228,7 @@ class UnifiedPreprocessorService
       design_intent: nil,
       tools: minimal_tools, # Ultra-minimal - discover_tools is the escape hatch
       tool_categories: [:conversational],
+      tools_source: :fast_path,
       suggested_agents: [],
       delegate_first: false,
       delegation_target: nil,
