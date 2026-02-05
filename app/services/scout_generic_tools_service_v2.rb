@@ -1511,7 +1511,9 @@ class ScoutGenericToolsServiceV2
 
     # User location and timezone from IP geolocation (preprocessor) or business profile
     geo = @preprocess_result&.dig(:geolocation) || {}
-    bp = @entity&.business_profile || @user&.business_profile
+    
+    # Get business profile safely (User has_one :business_profile)
+    bp = @user&.business_profile rescue nil
     
     # Priority: IP geo timezone > business profile > default Pacific
     user_tz = geo[:timezone].presence || 
