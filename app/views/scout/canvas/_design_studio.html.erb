@@ -548,18 +548,19 @@
       <!-- Toolbar -->
       <div class="studio-toolbar">
         <div class="toolbar-left">
-          <div class="toolbar-title-row">
-            <span class="toolbar-title" contenteditable="true" 
-                  id="design-title-input"
-                  data-placeholder="Untitled Design"
-                  onblur="updateDesignTitle(this.textContent.trim())"
-                  ><%= plan ? (plan['name'] || plan['title'] || 'Untitled Design') : 'Untitled Design' %></span>
-            <span class="beta-badge">Beta</span>
+          <i data-lucide="layout" class="designer-icon" style="width: 20px; height: 20px; color: #8b5cf6;"></i>
+          <div>
+            <div class="toolbar-title-row">
+              <span class="toolbar-title" contenteditable="true" 
+                    id="design-title-input"
+                    data-placeholder="Untitled Design"
+                    spellcheck="false"
+                    onblur="updateDesignTitle(this.textContent.trim())"
+                    ><%= plan ? (plan['name'] || plan['title'] || 'Untitled Design') : 'Untitled Design' %></span>
+              <span class="beta-badge">Beta</span>
+            </div>
+            <p class="designer-subtitle" style="margin: 0; font-size: 0.6875rem; color: #a0a0a0;">Design and build pages visually</p>
           </div>
-          <!-- Design description/theme toggle -->
-          <button class="btn-toggle-description" onclick="toggleDesignDescription()" title="Add design description">
-            <i data-lucide="file-text" style="width: 12px; height: 12px;"></i>
-          </button>
         </div>
         <div class="toolbar-center">
           <div class="viewport-controls">
@@ -611,25 +612,6 @@
             Publish
           </button>
           <% end %>
-        </div>
-      </div>
-      
-      <!-- Design Description Panel (hidden by default) -->
-      <div class="design-description-panel" id="design-description-panel" style="display: none;">
-        <div class="description-panel-content">
-          <textarea 
-            id="design-description-input" 
-            class="design-description-textarea"
-            placeholder="Describe your design vision, theme, and goals. For example: 'A modern, professional landing page for a tech startup with a dark theme, gradient accents, and emphasis on social proof. Target audience is enterprise clients.'"
-            onblur="saveDesignDescription(this.value)"
-          ><%= plan ? (plan['description'] || plan[:description] || '') : '' %></textarea>
-          <div class="description-actions">
-            <button class="btn-apply-description" onclick="applyDescriptionToDesign()">
-              <i data-lucide="wand-2" style="width: 12px; height: 12px;"></i>
-              Apply with Amos
-            </button>
-            <span class="description-tip">Tip: Describe colors, style, mood, target audience, or reference competitors</span>
-          </div>
         </div>
       </div>
       
@@ -891,13 +873,25 @@
                     <% if design_reference_url.present? %>
                       <span class="reference-badge">✓</span>
                     <% end %>
-              </button>
+                  </button>
                 </div>
-                
-                <!-- Save to Profile -->
-                <button class="btn-save-to-profile" onclick="saveDesignToProfile()" title="Save as default style">
-                  <i data-lucide="save" style="width: 14px; height: 14px;"></i>
-              </button>
+              </div>
+              
+              <!-- Design Description - Inline below colors -->
+              <div class="design-description-row">
+                <div class="description-icon">
+                  <i data-lucide="message-square-text" style="width: 14px; height: 14px;"></i>
+                </div>
+                <textarea 
+                  id="design-description-input" 
+                  class="design-description-inline"
+                  placeholder="Describe your design vision, theme, target audience... (e.g., 'Modern dark theme with gradient accents for enterprise clients')"
+                  onblur="saveDesignDescription(this.value)"
+                  rows="1"
+                ><%= plan ? (plan['description'] || plan[:description] || '') : '' %></textarea>
+                <button class="btn-apply-description-inline" onclick="applyDescriptionToDesign()" title="Apply design vision with Amos">
+                  <i data-lucide="wand-2" style="width: 14px; height: 14px;"></i>
+                </button>
               </div>
               
               <!-- Design Reference Panel (hidden by default) -->
@@ -1552,101 +1546,78 @@
     color: #666;
   }
   
-  .btn-toggle-description {
+  
+  /* Inline Design Description Row */
+  .design-description-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(139, 92, 246, 0.05);
+    border-top: 1px solid rgba(139, 92, 246, 0.15);
+    margin-top: 8px;
+    border-radius: 0 0 8px 8px;
+  }
+  
+  .description-icon {
+    color: #8b5cf6;
+    flex-shrink: 0;
+  }
+  
+  .design-description-inline {
+    flex: 1;
+    min-height: 24px;
+    max-height: 60px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    color: #e0e0e0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    resize: none;
+    transition: all 0.15s;
+    overflow: hidden;
+  }
+  
+  .design-description-inline::placeholder {
+    color: #888;
+    font-style: italic;
+  }
+  
+  .design-description-inline:hover {
+    background: rgba(0, 0, 0, 0.2);
+    border-color: rgba(139, 92, 246, 0.2);
+  }
+  
+  .design-description-inline:focus {
+    outline: none;
+    background: rgba(0, 0, 0, 0.3);
+    border-color: #8b5cf6;
+    max-height: 80px;
+    overflow: auto;
+  }
+  
+  .btn-apply-description-inline {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     padding: 0;
-    border: 1px solid #2d2d44;
-    background: transparent;
-    color: #888;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  
-  .btn-toggle-description:hover {
-    border-color: var(--bs-primary);
-    color: var(--bs-primary);
-    background: rgba(99, 102, 241, 0.1);
-  }
-  
-  .btn-toggle-description.active {
-    border-color: var(--bs-primary);
-    color: var(--bs-primary);
-    background: rgba(99, 102, 241, 0.15);
-  }
-  
-  /* Design Description Panel */
-  .design-description-panel {
-    padding: 12px 16px;
-    background: #1a1a30;
-    border-bottom: 1px solid #2d2d44;
-  }
-  
-  .description-panel-content {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .design-description-textarea {
-    width: 100%;
-    min-height: 60px;
-    max-height: 120px;
-    padding: 10px 12px;
-    font-size: 0.85rem;
-    color: #e0e0e0;
-    background: #12121f;
-    border: 1px solid #2d2d44;
+    color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.3);
     border-radius: 6px;
-    resize: vertical;
-    transition: border-color 0.15s;
-  }
-  
-  .design-description-textarea::placeholder {
-    color: #666;
-    font-style: italic;
-  }
-  
-  .design-description-textarea:focus {
-    outline: none;
-    border-color: var(--bs-primary);
-  }
-  
-  .description-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  
-  .btn-apply-description {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: white;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    border: none;
-    border-radius: 4px;
     cursor: pointer;
     transition: all 0.15s;
+    flex-shrink: 0;
   }
   
-  .btn-apply-description:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-  }
-  
-  .description-tip {
-    font-size: 0.7rem;
-    color: #666;
-    font-style: italic;
+  .btn-apply-description-inline:hover {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    border-color: transparent;
+    transform: scale(1.05);
   }
   
   .beta-badge {
@@ -4252,12 +4223,11 @@
   [data-theme="light"] .toolbar-title { color: #1a1a2e; }
   [data-theme="light"] .toolbar-title:hover { border-color: rgba(0,0,0,0.1); background: rgba(0,0,0,0.02); }
   [data-theme="light"] .toolbar-title:focus { border-color: var(--bs-primary); background: rgba(99, 102, 241, 0.05); }
-  [data-theme="light"] .btn-toggle-description { border-color: #e5e7eb; color: #9ca3af; }
-  [data-theme="light"] .btn-toggle-description:hover { border-color: var(--bs-primary); color: var(--bs-primary); }
-  [data-theme="light"] .design-description-panel { background: #f9fafb; border-color: #e5e7eb; }
-  [data-theme="light"] .design-description-textarea { background: #fff; border-color: #e5e7eb; color: #1a1a2e; }
-  [data-theme="light"] .design-description-textarea::placeholder { color: #9ca3af; }
-  [data-theme="light"] .description-tip { color: #9ca3af; }
+  [data-theme="light"] .design-description-row { background: rgba(139, 92, 246, 0.03); border-color: rgba(139, 92, 246, 0.1); }
+  [data-theme="light"] .design-description-inline { color: #1a1a2e; }
+  [data-theme="light"] .design-description-inline::placeholder { color: #9ca3af; }
+  [data-theme="light"] .design-description-inline:hover { background: rgba(0, 0, 0, 0.03); }
+  [data-theme="light"] .design-description-inline:focus { background: rgba(0, 0, 0, 0.05); }
   [data-theme="light"] .viewport-controls { background: #f3f4f6; }
   [data-theme="light"] .viewport-btn { color: #6b7280; }
   [data-theme="light"] .viewport-btn:hover { color: #1a1a2e; }
@@ -5123,22 +5093,6 @@ function toggleReferenceUpload() {
 }
 
 // Design Description Functions
-function toggleDesignDescription() {
-  var panel = document.getElementById('design-description-panel');
-  var btn = document.querySelector('.btn-toggle-description');
-  if (panel) {
-    var isHidden = panel.style.display === 'none';
-    panel.style.display = isHidden ? 'block' : 'none';
-    if (btn) btn.classList.toggle('active', isHidden);
-    if (isHidden) {
-      // Focus on textarea when opening
-      var textarea = document.getElementById('design-description-input');
-      if (textarea) textarea.focus();
-    }
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-  }
-}
-
 function saveDesignDescription(description) {
   var planEl = document.querySelector('.plan-visualization-enhanced') || document.querySelector('.design-studio-canvas');
   var planId = planEl ? (planEl.dataset.planId || planEl.getAttribute('data-plan-id')) : null;
@@ -5152,7 +5106,8 @@ function applyDescriptionToDesign() {
   var textarea = document.getElementById('design-description-input');
   var description = textarea ? textarea.value.trim() : '';
   if (!description) {
-    alert('Please enter a design description first.');
+    // Focus on the textarea to prompt user
+    if (textarea) textarea.focus();
     return;
   }
   
@@ -5161,6 +5116,12 @@ function applyDescriptionToDesign() {
   var designTitle = document.getElementById('design-title-input');
   var title = designTitle ? designTitle.textContent.trim() : 'Untitled Design';
   
+  // Visual feedback on button
+  var btn = document.querySelector('.btn-apply-description-inline');
+  if (btn) {
+    btn.innerHTML = '<div class="spinner-border spinner-border-sm"></div>';
+  }
+  
   // Send to Amos to apply the description
   var message = 'Update my design "' + title + '" based on this description: ' + description;
   if (planId) {
@@ -5168,8 +5129,13 @@ function applyDescriptionToDesign() {
   }
   sendToAmos(message);
   
-  // Close the panel
-  toggleDesignDescription();
+  // Restore button after a moment
+  setTimeout(function() {
+    if (btn) {
+      btn.innerHTML = '<i data-lucide="wand-2" style="width: 14px; height: 14px;"></i>';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  }, 2000);
 }
 
 function updateDesignTitle(newTitle) {
