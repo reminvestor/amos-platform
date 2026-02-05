@@ -1,13 +1,14 @@
 # Manages conversation state and context for Amos
 module Amos
   class ConversationContext
-    attr_reader :session_id, :messages, :job_results, :user, :entity, :fresh_start_at
+    attr_reader :session_id, :messages, :job_results, :user, :entity, :fresh_start_at, :client_ip
     
-    def initialize(session_id, user, entity, fresh_start_at: nil)
+    def initialize(session_id, user, entity, fresh_start_at: nil, client_ip: nil)
       @session_id = session_id
       @user = user
       @entity = entity
       @fresh_start_at = fresh_start_at  # Filter memory to only after this time
+      @client_ip = client_ip  # For IP-based geolocation
       @messages = []
       @job_results = {}
       @active_workflows = {}

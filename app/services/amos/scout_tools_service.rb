@@ -181,6 +181,7 @@ module Amos
       # Pass fresh_start_at from context to filter memory (excludes old messages from before Fresh Start)
       # Pass intent_mode for seamless role adaptation
       # Pass model from user's explicit selection (brain icon dropdown)
+      # Pass client_ip for geolocation (from context)
       service = ScoutGenericToolsServiceV2.new(
         @user,
         @entity,
@@ -188,7 +189,8 @@ module Amos
         agent_loadout: main_chat_loadout,
         model: model_preference, # User's explicit model selection (nil means auto-select)
         fresh_start_at: @context.respond_to?(:fresh_start_at) ? @context.fresh_start_at : nil,
-        intent_mode: @intent_mode
+        intent_mode: @intent_mode,
+        client_ip: @context.respond_to?(:client_ip) ? @context.client_ip : nil
       )
       
       # Apply the user's selected thinking depth mode

@@ -11,7 +11,8 @@ module Amos
       @session_id = session_id
       @fresh_start_at = options[:fresh_start_at]  # Filter memory to only after this time
       @current_space = options[:current_space]  # Track which space user is in (personal, work, design)
-      @context = ConversationContext.new(session_id, user, entity, fresh_start_at: @fresh_start_at)
+      @client_ip = options[:client_ip]  # For IP-based geolocation
+      @context = ConversationContext.new(session_id, user, entity, fresh_start_at: @fresh_start_at, client_ip: @client_ip)
       @job_manager = JobManager.new
       @response_buffer = ResponseBuffer.new
       @active_jobs = {}

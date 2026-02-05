@@ -6403,12 +6403,14 @@ class ScoutController < ApplicationController
     # Create or retrieve Amos orchestrator for this session
     # Pass the actual request host so callbacks work correctly
     # Pass fresh_start_at to filter out old messages from before "Fresh Start"
+    # Pass client_ip for geolocation
     fresh_start_time = session[:scout_fresh_start_at].present? ? 
       (Time.parse(session[:scout_fresh_start_at]) rescue nil) : nil
     
     Amos::Orchestrator.new(current_user, current_entity, @session_id, 
       request_host: request.host_with_port,
-      fresh_start_at: fresh_start_time
+      fresh_start_at: fresh_start_time,
+      client_ip: real_client_ip
     )
   end
   
