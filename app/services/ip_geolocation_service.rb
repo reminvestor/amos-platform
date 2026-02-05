@@ -33,10 +33,13 @@ class IpGeolocationService
       
       cache_key = "ip_geo:#{ip_address}"
       
-      Rails.cache.fetch(cache_key, expires_in: CACHE_TTL) do
-        Rails.logger.info "[IpGeo] Looking up public IP: #{ip_address}"
+      result = Rails.cache.fetch(cache_key, expires_in: CACHE_TTL) do
+        Rails.logger.info "[IpGeo] Cache MISS - Looking up public IP: #{ip_address}"
         fetch_location(ip_address)
       end
+      
+      Rails.logger.info "[IpGeo] Result for #{ip_address}: #{result[:city]}, #{result[:region]} (tz: #{result[:timezone]}, source: #{result[:source]})"
+      result
     rescue => e
       Rails.logger.warn "[IpGeo] Lookup failed for #{ip_address}: #{e.message}"
       default_location

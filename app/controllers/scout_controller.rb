@@ -3247,18 +3247,29 @@ class ScoutController < ApplicationController
   def real_client_ip
     # Check X-Forwarded-For first (set by proxies/load balancers)
     forwarded_for = request.headers['X-Forwarded-For']
+    x_real_ip = request.headers['X-Real-IP']
+    remote_ip = request.remote_ip
+    
+    Rails.logger.info "[ClientIP] Headers: X-Forwarded-For=#{forwarded_for.inspect}, X-Real-IP=#{x_real_ip.inspect}, remote_ip=#{remote_ip}"
+    
     if forwarded_for.present?
       # Take the first IP (original client) from comma-separated list
       real_ip = forwarded_for.split(',').first&.strip
-      return real_ip if real_ip.present?
+      if real_ip.present?
+        Rails.logger.info "[ClientIP] Using X-Forwarded-For first IP: #{real_ip}"
+        return real_ip
+      end
     end
     
     # Check X-Real-IP (nginx style)
-    real_ip = request.headers['X-Real-IP']
-    return real_ip if real_ip.present?
+    if x_real_ip.present?
+      Rails.logger.info "[ClientIP] Using X-Real-IP: #{x_real_ip}"
+      return x_real_ip
+    end
     
     # Fall back to remote_ip (may be Docker internal IP in dev)
-    request.remote_ip
+    Rails.logger.info "[ClientIP] Falling back to remote_ip: #{remote_ip}"
+    remote_ip
   end
 
   # Load Hub data for Team Space view
