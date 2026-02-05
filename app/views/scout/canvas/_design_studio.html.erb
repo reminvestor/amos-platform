@@ -548,7 +548,18 @@
       <!-- Toolbar -->
       <div class="studio-toolbar">
         <div class="toolbar-left">
-          <span class="toolbar-title"><%= plan ? (plan['name'] || 'New Design') : 'Untitled Design' %> <span class="beta-badge">Beta</span></span>
+          <div class="toolbar-title-row">
+            <span class="toolbar-title" contenteditable="true" 
+                  id="design-title-input"
+                  data-placeholder="Untitled Design"
+                  onblur="updateDesignTitle(this.textContent.trim())"
+                  ><%= plan ? (plan['name'] || plan['title'] || 'Untitled Design') : 'Untitled Design' %></span>
+            <span class="beta-badge">Beta</span>
+          </div>
+          <!-- Design description/theme toggle -->
+          <button class="btn-toggle-description" onclick="toggleDesignDescription()" title="Add design description">
+            <i data-lucide="file-text" style="width: 12px; height: 12px;"></i>
+          </button>
         </div>
         <div class="toolbar-center">
           <div class="viewport-controls">
@@ -600,6 +611,25 @@
             Publish
           </button>
           <% end %>
+        </div>
+      </div>
+      
+      <!-- Design Description Panel (hidden by default) -->
+      <div class="design-description-panel" id="design-description-panel" style="display: none;">
+        <div class="description-panel-content">
+          <textarea 
+            id="design-description-input" 
+            class="design-description-textarea"
+            placeholder="Describe your design vision, theme, and goals. For example: 'A modern, professional landing page for a tech startup with a dark theme, gradient accents, and emphasis on social proof. Target audience is enterprise clients.'"
+            onblur="saveDesignDescription(this.value)"
+          ><%= plan ? (plan['description'] || plan[:description] || '') : '' %></textarea>
+          <div class="description-actions">
+            <button class="btn-apply-description" onclick="applyDescriptionToDesign()">
+              <i data-lucide="wand-2" style="width: 12px; height: 12px;"></i>
+              Apply with Amos
+            </button>
+            <span class="description-tip">Tip: Describe colors, style, mood, target audience, or reference competitors</span>
+          </div>
         </div>
       </div>
       
@@ -1484,9 +1514,139 @@
     border-bottom: 1px solid #2d2d44;
   }
   
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .toolbar-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
   .toolbar-title {
     font-weight: 500;
     color: #c0c0d0;
+    min-width: 50px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+  
+  .toolbar-title:hover {
+    border-color: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.05);
+  }
+  
+  .toolbar-title:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    background: rgba(99, 102, 241, 0.1);
+  }
+  
+  .toolbar-title:empty:before {
+    content: attr(data-placeholder);
+    color: #666;
+  }
+  
+  .btn-toggle-description {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid #2d2d44;
+    background: transparent;
+    color: #888;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .btn-toggle-description:hover {
+    border-color: var(--bs-primary);
+    color: var(--bs-primary);
+    background: rgba(99, 102, 241, 0.1);
+  }
+  
+  .btn-toggle-description.active {
+    border-color: var(--bs-primary);
+    color: var(--bs-primary);
+    background: rgba(99, 102, 241, 0.15);
+  }
+  
+  /* Design Description Panel */
+  .design-description-panel {
+    padding: 12px 16px;
+    background: #1a1a30;
+    border-bottom: 1px solid #2d2d44;
+  }
+  
+  .description-panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .design-description-textarea {
+    width: 100%;
+    min-height: 60px;
+    max-height: 120px;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    color: #e0e0e0;
+    background: #12121f;
+    border: 1px solid #2d2d44;
+    border-radius: 6px;
+    resize: vertical;
+    transition: border-color 0.15s;
+  }
+  
+  .design-description-textarea::placeholder {
+    color: #666;
+    font-style: italic;
+  }
+  
+  .design-description-textarea:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+  }
+  
+  .description-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  
+  .btn-apply-description {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .btn-apply-description:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  }
+  
+  .description-tip {
+    font-size: 0.7rem;
+    color: #666;
+    font-style: italic;
   }
   
   .beta-badge {
@@ -4090,6 +4250,14 @@
   [data-theme="light"] .studio-component:hover .component-preview { background: #c7d2fe; color: #4f46e5; }
   [data-theme="light"] .studio-toolbar { background: #fff; border-color: #e5e7eb; }
   [data-theme="light"] .toolbar-title { color: #1a1a2e; }
+  [data-theme="light"] .toolbar-title:hover { border-color: rgba(0,0,0,0.1); background: rgba(0,0,0,0.02); }
+  [data-theme="light"] .toolbar-title:focus { border-color: var(--bs-primary); background: rgba(99, 102, 241, 0.05); }
+  [data-theme="light"] .btn-toggle-description { border-color: #e5e7eb; color: #9ca3af; }
+  [data-theme="light"] .btn-toggle-description:hover { border-color: var(--bs-primary); color: var(--bs-primary); }
+  [data-theme="light"] .design-description-panel { background: #f9fafb; border-color: #e5e7eb; }
+  [data-theme="light"] .design-description-textarea { background: #fff; border-color: #e5e7eb; color: #1a1a2e; }
+  [data-theme="light"] .design-description-textarea::placeholder { color: #9ca3af; }
+  [data-theme="light"] .description-tip { color: #9ca3af; }
   [data-theme="light"] .viewport-controls { background: #f3f4f6; }
   [data-theme="light"] .viewport-btn { color: #6b7280; }
   [data-theme="light"] .viewport-btn:hover { color: #1a1a2e; }
@@ -4954,6 +5122,67 @@ function toggleReferenceUpload() {
   }
 }
 
+// Design Description Functions
+function toggleDesignDescription() {
+  var panel = document.getElementById('design-description-panel');
+  var btn = document.querySelector('.btn-toggle-description');
+  if (panel) {
+    var isHidden = panel.style.display === 'none';
+    panel.style.display = isHidden ? 'block' : 'none';
+    if (btn) btn.classList.toggle('active', isHidden);
+    if (isHidden) {
+      // Focus on textarea when opening
+      var textarea = document.getElementById('design-description-input');
+      if (textarea) textarea.focus();
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+}
+
+function saveDesignDescription(description) {
+  var planEl = document.querySelector('.plan-visualization-enhanced') || document.querySelector('.design-studio-canvas');
+  var planId = planEl ? (planEl.dataset.planId || planEl.getAttribute('data-plan-id')) : null;
+  if (planId && description.trim()) {
+    updatePlanDirectly(planId, { description: description.trim() });
+    console.log('[Design Studio] Saved description for plan', planId);
+  }
+}
+
+function applyDescriptionToDesign() {
+  var textarea = document.getElementById('design-description-input');
+  var description = textarea ? textarea.value.trim() : '';
+  if (!description) {
+    alert('Please enter a design description first.');
+    return;
+  }
+  
+  var planEl = document.querySelector('.plan-visualization-enhanced') || document.querySelector('.design-studio-canvas');
+  var planId = planEl ? (planEl.dataset.planId || planEl.getAttribute('data-plan-id')) : null;
+  var designTitle = document.getElementById('design-title-input');
+  var title = designTitle ? designTitle.textContent.trim() : 'Untitled Design';
+  
+  // Send to Amos to apply the description
+  var message = 'Update my design "' + title + '" based on this description: ' + description;
+  if (planId) {
+    message += ' (Plan ID: ' + planId + ')';
+  }
+  sendToAmos(message);
+  
+  // Close the panel
+  toggleDesignDescription();
+}
+
+function updateDesignTitle(newTitle) {
+  if (!newTitle || newTitle === 'Untitled Design') return;
+  
+  var planEl = document.querySelector('.plan-visualization-enhanced') || document.querySelector('.design-studio-canvas');
+  var planId = planEl ? (planEl.dataset.planId || planEl.getAttribute('data-plan-id')) : null;
+  if (planId) {
+    updatePlanDirectly(planId, { name: newTitle, title: newTitle });
+    console.log('[Design Studio] Updated title to:', newTitle);
+  }
+}
+
 function handleReferenceUpload(input) {
   if (!input.files || !input.files[0]) return;
   
@@ -4962,6 +5191,8 @@ function handleReferenceUpload(input) {
     alert('File too large. Maximum 5MB allowed.');
     return;
   }
+  
+  console.log('[Reference Upload] Starting upload for:', file.name, 'size:', file.size);
   
   // Show preview immediately
   var zone = document.getElementById('reference-upload-zone');
@@ -4974,32 +5205,50 @@ function handleReferenceUpload(input) {
   formData.append('files[0]', file);
   formData.append('storage_type', 'long-term');
   
+  // Create abort controller for timeout
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() {
+    controller.abort();
+  }, 30000); // 30 second timeout
+  
   // Upload to server using existing upload_files endpoint
   fetch('/scout/upload_files', {
     method: 'POST',
     headers: {
       'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
     },
-    body: formData
+    body: formData,
+    signal: controller.signal
   })
-  .then(function(response) { return response.json(); })
+  .then(function(response) { 
+    clearTimeout(timeoutId);
+    console.log('[Reference Upload] Response status:', response.status);
+    if (!response.ok) {
+      throw new Error('Server returned ' + response.status);
+    }
+    return response.json(); 
+  })
   .then(function(data) {
+    console.log('[Reference Upload] Response data:', data);
     if (data.success && data.urls && data.urls.length > 0) {
       var imageUrl = data.urls[0];
       
       // Show the uploaded image
       var panel = document.getElementById('design-reference-panel');
       if (panel) {
-        panel.querySelector('.reference-panel-content').innerHTML = 
-          '<div class="reference-preview">' +
-          '<img src="' + imageUrl + '" alt="Design reference" id="reference-image">' +
-          '<button class="btn-remove-reference" onclick="removeDesignReference()">' +
-          '<i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Remove</button>' +
-          '</div>' +
-          '<p class="reference-tip">' +
-          '<i data-lucide="lightbulb" style="width: 12px; height: 12px;"></i>' +
-          'Upload a screenshot of a design you like. Amos will use it as inspiration when building your page.</p>';
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+        var contentEl = panel.querySelector('.reference-panel-content');
+        if (contentEl) {
+          contentEl.innerHTML = 
+            '<div class="reference-preview">' +
+            '<img src="' + imageUrl + '" alt="Design reference" id="reference-image">' +
+            '<button class="btn-remove-reference" onclick="removeDesignReference()">' +
+            '<i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Remove</button>' +
+            '</div>' +
+            '<p class="reference-tip">' +
+            '<i data-lucide="lightbulb" style="width: 12px; height: 12px;"></i>' +
+            'Upload a screenshot of a design you like. Amos will use it as inspiration when building your page.</p>';
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
       }
       
       // Update reference badge
@@ -5021,14 +5270,35 @@ function handleReferenceUpload(input) {
       if (planId) {
         sendToAmos('I uploaded a design reference image for plan ' + planId + '. Please use this as inspiration when building: ' + imageUrl);
       }
+      
+      console.log('[Reference Upload] Success! Image URL:', imageUrl);
     } else {
-      alert('Upload failed: ' + (data.error || 'Unknown error'));
+      console.error('[Reference Upload] Failed:', data);
+      resetReferenceUploadZone('Upload failed: ' + (data.error || 'Unknown error'));
     }
   })
   .catch(function(error) {
-    console.error('Upload error:', error);
-    alert('Upload failed. Please try again.');
+    clearTimeout(timeoutId);
+    console.error('[Reference Upload] Error:', error);
+    var errorMsg = error.name === 'AbortError' 
+      ? 'Upload timed out. Please try again.' 
+      : 'Upload failed: ' + error.message;
+    resetReferenceUploadZone(errorMsg);
   });
+}
+
+function resetReferenceUploadZone(errorMsg) {
+  var zone = document.getElementById('reference-upload-zone');
+  if (zone) {
+    zone.innerHTML = 
+      '<i data-lucide="upload-cloud" style="width: 32px; height: 32px;"></i>' +
+      '<p>Click or drag to upload a design reference</p>' +
+      '<span class="upload-hint">PNG, JPG up to 5MB</span>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+  if (errorMsg) {
+    alert(errorMsg);
+  }
 }
 
 function removeDesignReference() {
