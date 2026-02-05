@@ -71,6 +71,22 @@ class UnifiedPreprocessorService
     # Wait for threads with timeout
     results = collect_thread_results(threads)
     
+    # PHASE 2.5: REFINE TOOLS using LLM mode/design_intent (post-parallel)
+    # The tools thread used regex, but now we have LLM results from canvas router
+    # Use LLM classification to get better tools if regex intent was weak
+    llm_mode = results[:canvas][:mode]
+    llm_design_intent = results[:canvas][:design_intent]
+    
+    if llm_mode.present? || llm_design_intent.present?
+      refined_tools = refine_tools_with_llm_classification(
+        current_tools: results[:tools],
+        regex_intent: quick_classification[:intent],
+        llm_mode: llm_mode,
+        llm_design_intent: llm_design_intent
+      )
+      results[:tools] = refined_tools if refined_tools
+    end
+    
     # PHASE 3: Plugin injection selection
     # Based on canvas context, select the most relevant plugin to inject into Amos
     plugin_injection = select_plugin_for_injection(
@@ -726,6 +742,70 @@ class UnifiedPreprocessorService
     Rails.logger.warn "[Preprocessor] Tool preload failed: #{e.message}"
     # Minimal fallback - discover_tools lets Amos find what it needs
     { tool_names: %w[web_search get_data discover_tools load_canvas], categories: [:general], source: :fallback }
+  end
+  
+  # ═══════════════════════════════════════════════════════════════
+  # LLM-BASED TOOL REFINEMENT (post-parallel)
+  # ═══════════════════════════════════════════════════════════════
+  # The tools thread used regex-based intent, but now we have LLM
+  # classification from the canvas router. Use it to refine tools!
+  #
+  # LLM mode: :personal, :ideate, :operate, :create
+  # LLM design_intent: :module, :app, :landing_page, :email, :workflow, :integration, :agent
+  #
+  LLM_DESIGN_INTENT_TOOLS = {
+    landing_page: %w[plan_design load_canvas discover_tools],
+    app: %w[plan_design plan_application load_canvas discover_tools],
+    module: %w[start_module_design propose_module_schema get_schema discover_tools],
+    email: %w[plan_design get_schema create_object discover_tools],
+    workflow: %w[plan_design load_canvas discover_tools],
+    integration: %w[execute_integration list_operations list_integrations create_freeform_canvas discover_tools],
+    agent: %w[discover_tools load_canvas]
+  }.freeze
+  
+  LLM_MODE_TOOLS = {
+    personal: %w[web_search search_memory discover_tools],
+    ideate: %w[web_search search_memory create_freeform_canvas discover_tools],
+    operate: %w[get_data get_schema create_object update_object load_canvas discover_tools],
+    create: %w[plan_design plan_application start_module_design discover_tools load_canvas]
+  }.freeze
+  
+  def refine_tools_with_llm_classification(current_tools:, regex_intent:, llm_mode:, llm_design_intent:)
+    # If regex intent was confident (not :unknown), keep current tools
+    # LLM refinement is for when regex was unsure
+    return nil if regex_intent && regex_intent != :unknown && current_tools[:source] == :intent_based
+    
+    tool_names = []
+    source = nil
+    
+    # Priority 1: design_intent is most specific
+    if llm_design_intent.present? && LLM_DESIGN_INTENT_TOOLS[llm_design_intent.to_sym]
+      tool_names = LLM_DESIGN_INTENT_TOOLS[llm_design_intent.to_sym].dup
+      source = :llm_design_intent
+      Rails.logger.info "[Preprocessor] 🧠 LLM design_intent refinement (#{llm_design_intent}): #{tool_names.join(', ')}"
+    # Priority 2: mode is less specific but still better than regex :unknown
+    elsif llm_mode.present? && LLM_MODE_TOOLS[llm_mode.to_sym]
+      tool_names = LLM_MODE_TOOLS[llm_mode.to_sym].dup
+      source = :llm_mode
+      Rails.logger.info "[Preprocessor] 🧠 LLM mode refinement (#{llm_mode}): #{tool_names.join(', ')}"
+    else
+      # No LLM guidance, keep current
+      return nil
+    end
+    
+    # Merge with any integration-specific tools from regex detection
+    if current_tools[:tool_names]&.include?('execute_integration')
+      tool_names += %w[execute_integration list_operations]
+    end
+    
+    tool_names.uniq!
+    
+    {
+      tool_names: tool_names,
+      categories: [source],
+      count: tool_names.size,
+      source: source
+    }
   end
   
   # Agent preloading - DISABLED
