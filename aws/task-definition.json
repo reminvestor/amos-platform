@@ -40,7 +40,7 @@
         },
         {
           "name": "RAILS_HOSTS",
-          "value": ".amazonaws.com,.elb.amazonaws.com,cruxmarketing.ai"
+          "value": ".amazonaws.com,.elb.amazonaws.com,cruxmarketing.ai,.amoslabs.com"
         },
         {
           "name": "AI_PROVIDER",
