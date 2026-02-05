@@ -3,7 +3,7 @@
 ## What Was Created
 
 ### 1. V2 Workflow Template ✅
-**File**: `/Users/ryan/Documents/agent_marketing/app/workflow_templates/email_sequence_v2.yml`
+**File**: `./app/workflow_templates/email_sequence_v2.yml`
 
 **Trigger Keywords**:
 - "email sequence"
@@ -335,9 +335,9 @@ sequence.sequence_enrollments.active.pluck(:next_send_at)
 ## Files Reference
 
 ### Created
-- `/Users/ryan/Documents/agent_marketing/app/workflow_templates/email_sequence_v2.yml`
-- `/Users/ryan/Documents/agent_marketing/EMAIL_SEQUENCE_IMPLEMENTATION.md` (detailed guide)
-- `/Users/ryan/Documents/agent_marketing/EMAIL_SEQUENCE_QUICK_REFERENCE.md` (this file)
+- `./app/workflow_templates/email_sequence_v2.yml`
+- `./EMAIL_SEQUENCE_IMPLEMENTATION.md` (detailed guide)
+- `./EMAIL_SEQUENCE_QUICK_REFERENCE.md` (this file)
 
 ### To Create (Implementation)
 - `app/models/email_sequence.rb`
