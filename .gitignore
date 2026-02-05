@@ -86,8 +86,9 @@ override.tf.json
 *_override.tf.json
 *.plan
 
-# AWS deployment scripts and configs (operational - keep private)
-/aws/
+# AWS deployment scripts and configs (ignore all except task-definition.json for CI/CD)
+/aws/*
+!/aws/task-definition.json
 
 # Production database scripts
 copy-prod-db-to-dev.sh
