@@ -1520,8 +1520,14 @@ class ScoutGenericToolsServiceV2
     current_datetime = current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")
     
     # Location from IP geo, or infer from timezone
-    user_location = geo[:formatted].presence || 
-                    user_tz.split('/').last&.gsub('_', ' ')
+    user_location = if geo[:city].present?
+                      [geo[:city], geo[:region]].compact.join(', ')
+                    else
+                      user_tz.split('/').last&.gsub('_', ' ')
+                    end
+    
+    Rails.logger.debug "[Context] 📍 Geolocation: #{geo.inspect}"
+    Rails.logger.debug "[Context] 🕐 Timezone: #{user_tz}, Location: #{user_location}"
 
     available_models = ScoutDataRegistry.available_object_types
     

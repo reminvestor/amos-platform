@@ -21,11 +21,20 @@ class IpGeolocationService
   
   class << self
     def lookup(ip_address)
-      return default_location if ip_address.blank? || private_ip?(ip_address)
+      if ip_address.blank?
+        Rails.logger.debug "[IpGeo] No IP provided, using default"
+        return default_location
+      end
+      
+      if private_ip?(ip_address)
+        Rails.logger.debug "[IpGeo] Private IP detected (#{ip_address}), using default"
+        return default_location
+      end
       
       cache_key = "ip_geo:#{ip_address}"
       
       Rails.cache.fetch(cache_key, expires_in: CACHE_TTL) do
+        Rails.logger.info "[IpGeo] Looking up public IP: #{ip_address}"
         fetch_location(ip_address)
       end
     rescue => e

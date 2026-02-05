@@ -130,7 +130,7 @@ class ScoutController < ApplicationController
         session[:scout_session_id],
         agent_loadout: main_chat_loadout,
         fresh_start_at: fresh_start_time,
-        client_ip: request.remote_ip
+        client_ip: real_client_ip
       )
 
       # Apply model mode from user preference (auto, fast, balanced, powerful)
@@ -3242,6 +3242,24 @@ class ScoutController < ApplicationController
   end
 
   private
+
+  # Get the real client IP, checking proxy headers for Docker/reverse proxy setups
+  def real_client_ip
+    # Check X-Forwarded-For first (set by proxies/load balancers)
+    forwarded_for = request.headers['X-Forwarded-For']
+    if forwarded_for.present?
+      # Take the first IP (original client) from comma-separated list
+      real_ip = forwarded_for.split(',').first&.strip
+      return real_ip if real_ip.present?
+    end
+    
+    # Check X-Real-IP (nginx style)
+    real_ip = request.headers['X-Real-IP']
+    return real_ip if real_ip.present?
+    
+    # Fall back to remote_ip (may be Docker internal IP in dev)
+    request.remote_ip
+  end
 
   # Load Hub data for Team Space view
   def load_hub_data

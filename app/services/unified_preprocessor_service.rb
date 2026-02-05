@@ -1105,14 +1105,19 @@ class UnifiedPreprocessorService
   
   # IP-based geolocation lookup (runs in parallel, ~50-100ms, cached 24hrs)
   def preload_geolocation
-    return {} unless @client_ip.present?
+    unless @client_ip.present?
+      Rails.logger.debug "[Preprocessor] No client IP provided for geolocation"
+      return {}
+    end
     
+    Rails.logger.debug "[Preprocessor] 📍 Looking up geolocation for IP: #{@client_ip}"
     geo = IpGeolocationService.lookup(@client_ip)
     
     # Format a compact location string
     location_parts = [geo[:city], geo[:region], geo[:country]].compact
     geo[:formatted] = location_parts.first(2).join(', ') if location_parts.any?
     
+    Rails.logger.info "[Preprocessor] 📍 Geolocation result: #{geo[:formatted] || 'default (private IP)'}"
     geo
   rescue => e
     Rails.logger.warn "[Preprocessor] Geolocation failed: #{e.message}"
