@@ -1509,17 +1509,19 @@ class ScoutGenericToolsServiceV2
       compact: is_fast_path  # Hint to AmosIdentity to use shorter version
     )
 
-    # Current date/time in user's timezone (default to Pacific)
-    # Check for timezone in user or business profile
-    user_tz = (@user.respond_to?(:timezone) && @user.timezone.presence) || 
-              @user&.business_profile&.timezone.presence ||
+    # User location and timezone from IP geolocation (preprocessor) or business profile
+    geo = @preprocess_result&.dig(:geolocation) || {}
+    bp = @entity&.business_profile || @user&.business_profile
+    
+    # Priority: IP geo timezone > business profile > default Pacific
+    user_tz = geo[:timezone].presence || 
+              bp&.timezone.presence ||
               'America/Los_Angeles'
+    
     current_time = Time.current.in_time_zone(user_tz)
     current_datetime = current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")
     
-    # User location: prefer IP geolocation (from preprocessor), fall back to business profile
-    geo = @preprocess_result&.dig(:geolocation) || {}
-    bp = @entity&.business_profile || @user&.business_profile
+    # Location: prefer IP geo, fall back to business profile
     user_location = geo[:formatted].presence || 
                     bp&.city.presence || 
                     bp&.state.presence || 
