@@ -937,21 +937,24 @@ class UnifiedPreprocessorService
     mentioned = classification[:mentioned_integrations] || []
     return { connected: [], knowledge: [], tool_usage: [] } if mentioned.empty?
     
-    # Get connection status for mentioned integrations
-    connections = Connection.includes(:integration, integration: :integration_operations)
-                           .where(user: @user, entity: @entity, status: 'connected')
-                           .joins(:integration)
-                           .where(integrations: { slug: mentioned })
-    
-    connected = connections.map do |conn|
-      ops = conn.integration.integration_operations.where(is_enabled: true).limit(10)
-      {
-        slug: conn.integration.slug,
-        name: conn.integration.name,
-        connection_id: conn.id,
-        operations: ops.pluck(:name).first(5)
-      }
+    # CACHED: User's connected integrations (5 min TTL)
+    # This rarely changes during a session
+    all_connected = Rails.cache.fetch("preproc:connections:#{@user.id}:#{@entity.id}", expires_in: 5.minutes) do
+      Connection.includes(:integration, integration: :integration_operations)
+                .where(user: @user, entity: @entity, status: 'connected')
+                .map do |conn|
+                  ops = conn.integration.integration_operations.where(is_enabled: true).limit(10)
+                  {
+                    slug: conn.integration.slug,
+                    name: conn.integration.name,
+                    connection_id: conn.id,
+                    operations: ops.pluck(:name).first(5)
+                  }
+                end
     end
+    
+    # Filter to only mentioned integrations
+    connected = all_connected.select { |c| mentioned.include?(c[:slug]) }
     
     # Pre-fetch integration knowledge hints
     knowledge = fetch_integration_knowledge(mentioned)
@@ -1074,14 +1077,19 @@ class UnifiedPreprocessorService
   def preload_modules(message, classification)
     mentioned = classification[:mentioned_modules] || []
     
-    # Get active modules
-    active = @entity.app_modules.active.pluck(:name, :slug)
+    # CACHED: Active modules list (changes rarely, 5 min TTL)
+    active = Rails.cache.fetch("preproc:modules:#{@entity.id}", expires_in: 5.minutes) do
+      @entity.app_modules.active.pluck(:name, :slug)
+    end
     
-    # If specific modules mentioned, get their schemas
+    # If specific modules mentioned, get their schemas (cached per module, 10 min)
     schemas = {}
     if mentioned.any?
-      @entity.app_modules.where(slug: mentioned).each do |mod|
-        schemas[mod.slug] = mod.object_schemas.pluck(:name)
+      mentioned.each do |slug|
+        schemas[slug] = Rails.cache.fetch("preproc:module_schema:#{@entity.id}:#{slug}", expires_in: 10.minutes) do
+          mod = @entity.app_modules.find_by(slug: slug)
+          mod&.object_schemas&.pluck(:name) || []
+        end
       end
     end
     
