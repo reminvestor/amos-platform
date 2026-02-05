@@ -154,14 +154,11 @@ Rails.application.configure do
   # Allow Heroku app domain
   config.hosts << "nuvola-marketing-agent-86aa0618d72d.herokuapp.com"
 
-  # Allow amoslabs.com domains
+  # Allow amoslabs.com and ALL subdomains (*.amoslabs.com)
   config.hosts << "amoslabs.com"
-  config.hosts << "www.amoslabs.com"
-  config.hosts << "app.amoslabs.com"
-  config.hosts << "dev.amoslabs.com"
+  config.hosts << /.*\.amoslabs\.com$/
 
-  # Allow landing page subdomains (*.lp.amoslabs.com)
-  config.hosts << "lp.amoslabs.com"
+  # Allow landing page subdomains (*.lp.amoslabs.com) - covered by above regex but kept for clarity
   config.hosts << /.*\.lp\.amoslabs\.com$/
 
   # Legacy everloom.ai domains (for migration period)
