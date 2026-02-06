@@ -1,7 +1,5 @@
 class DebugController < ApplicationController
-  # Skip all authentication and redirect checks for debugging
-  skip_before_action :authenticate_user!, only: [ :status ]
-  skip_before_action :check_onboarding_status, only: [ :status ]
+  before_action :require_development_or_admin!
 
   def index
     # Simple debug page
@@ -35,36 +33,23 @@ class DebugController < ApplicationController
   end
 
   def status
-    if user_signed_in?
-      render json: {
-        success: true,
-        user_id: current_user.id,
-        user_email: current_user.email,
-        onboarded: current_user.onboarded?,
-        entities_count: current_user.entity ? 1 : 0,
-        entity_names: current_user.entity ? [ current_user.entity.name ] : [],
-        current_entity_id: session[:entity_id],
-        current_entity_name: current_entity&.name,
-        has_business_profile: current_user.business_profile.present?,
-        subdomain: request.subdomain,
-        domain: request.domain,
-        path: request.path,
-        referer: request.referer,
-        timestamp: Time.current.iso8601
-      }
-    else
-      render json: {
-        success: false,
-        message: "User not signed in",
-        subdomain: request.subdomain,
-        domain: request.domain,
-        path: request.path,
-        timestamp: Time.current.iso8601
-      }
-    end
+    render json: {
+      success: true,
+      user_id: current_user.id,
+      onboarded: current_user.onboarded?,
+      has_entity: current_user.entity.present?,
+      has_business_profile: current_user.business_profile.present?,
+      timestamp: Time.current.iso8601
+    }
   end
 
   private
+
+  def require_development_or_admin!
+    unless Rails.env.development? || Rails.env.test? || current_user&.admin?
+      render json: { error: "Not found" }, status: :not_found
+    end
+  end
 
   def current_entity
     @current_entity ||= current_user&.entity_users&.first&.entity

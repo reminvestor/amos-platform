@@ -8,11 +8,11 @@ module Api
     # - GET /api/voice/health/metrics - Usage metrics and analytics
     # - GET /api/voice/health/optimization - Optimization recommendations
     class HealthController < ApplicationController
-      before_action :authenticate_user!, except: [:status]  # Allow public health check for monitoring
+      before_action :authenticate_user!
       before_action :authorize_admin_or_staff, only: [:metrics, :optimization]
 
       # GET /api/voice/health/status
-      # Overall voice system health status
+      # Voice system health status (authenticated)
       def status
         service = VoiceProviderHealthService.new
 
