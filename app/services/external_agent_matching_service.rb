@@ -422,8 +422,7 @@ class ExternalAgentMatchingService
     agent = ExternalAgentRegistration.find(agent_id)
     bounty = Bounty.find(bounty_id)
     
-    # Create a notification/recommendation record
-    # The external agent can poll for these or we can webhook
+    # Create a notification/recommendation record (for polling)
     ExternalAgentNotification.create!(
       external_agent_registration: agent,
       notification_type: 'bounty_recommendation',
@@ -437,6 +436,16 @@ class ExternalAgentMatchingService
         match_score: match_score
       }
     )
+    
+    # Fire real-time webhook (if configured)
+    agent.fire_webhook('bounty.recommended', {
+      bounty_id: bounty.id,
+      bounty_title: bounty.title,
+      bounty_type: bounty.bounty_type,
+      points: bounty.points,
+      match_score: match_score,
+      claim_url: "/api/v1/external_agents/bounties/#{bounty.id}/claim"
+    })
     
     true
   rescue => e

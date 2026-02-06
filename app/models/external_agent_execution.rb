@@ -442,10 +442,30 @@ class ExternalAgentExecution < ApplicationRecord
     case status
     when 'approved'
       Rails.logger.info "[ExternalAgent] Execution #{id} approved, #{tokens_awarded} tokens awarded"
+      external_agent_registration.fire_webhook('execution.approved', {
+        execution_id: id,
+        bounty_id: bounty_id,
+        bounty_title: bounty.title,
+        tokens_awarded: tokens_awarded&.to_f,
+        quality_score: quality_score&.to_f,
+        feedback: review_result&.dig('feedback')
+      })
     when 'rejected'
       Rails.logger.info "[ExternalAgent] Execution #{id} rejected: #{review_notes}"
+      external_agent_registration.fire_webhook('execution.rejected', {
+        execution_id: id,
+        bounty_id: bounty_id,
+        bounty_title: bounty.title,
+        feedback: review_result&.dig('feedback'),
+        issues: review_result&.dig('issues')
+      })
     when 'expired'
       Rails.logger.info "[ExternalAgent] Execution #{id} expired"
+      external_agent_registration.fire_webhook('execution.expired', {
+        execution_id: id,
+        bounty_id: bounty_id,
+        bounty_title: bounty.title
+      })
     end
   end
 

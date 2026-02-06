@@ -227,6 +227,13 @@ class ExternalAgentRegistration < ApplicationRecord
     
     # Notify operator of upgrade
     notify_operator(:trust_level_upgraded, level: new_level)
+    
+    # Fire webhook
+    fire_webhook('trust.level_up', {
+      new_level: new_level,
+      allowed_bounty_types: config[:bounty_types],
+      daily_bounty_limit: calculate_daily_limit(new_level)
+    })
   end
 
   def approval_rate
@@ -301,6 +308,32 @@ class ExternalAgentRegistration < ApplicationRecord
       suspend!(reason: "Automatic suspension: high rejection rate (#{approval_rate}%)")
       notify_operator(:agent_suspended, reason: suspension_reason)
     end
+  end
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # WEBHOOKS
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # Check if webhook is configured for a specific event
+  def webhook_enabled_for?(event)
+    return false if webhook_url.blank?
+    return true if webhook_events.blank? || webhook_events.empty? # Empty = all events
+    webhook_events.include?(event) || webhook_events.include?('*')
+  end
+
+  # Configure webhook for this agent
+  def configure_webhook!(url:, secret: nil, events: [])
+    update!(
+      webhook_url: url,
+      webhook_secret: secret || SecureRandom.hex(32),
+      webhook_events: events,
+      webhook_failures: 0
+    )
+  end
+
+  # Fire a webhook event for this agent
+  def fire_webhook(event, data = {})
+    ExternalAgentWebhookService.fire(agent: self, event: event, data: data)
   end
 
   # ═══════════════════════════════════════════════════════════════════════════

@@ -13,10 +13,10 @@ module Api
     #
     class ExternalAgentsController < Api::V1::BaseController
       # Skip standard auth for agent-specific endpoints that use agent API key
-      skip_before_action :authenticate_api_user!, only: [:bounties, :claim_bounty, :execute_tool, :submit_work, :status, :execution_status, :notifications, :notification_action, :recommended_bounties, :platform_info, :available_tools, :bounty_types]
-      skip_before_action :require_entity!, only: [:bounties, :claim_bounty, :execute_tool, :submit_work, :status, :execution_status, :notifications, :notification_action, :recommended_bounties, :platform_info, :available_tools, :bounty_types]
+      skip_before_action :authenticate_api_user!, only: [:bounties, :claim_bounty, :execute_tool, :submit_work, :status, :execution_status, :notifications, :notification_action, :recommended_bounties, :platform_info, :available_tools, :bounty_types, :configure_webhook]
+      skip_before_action :require_entity!, only: [:bounties, :claim_bounty, :execute_tool, :submit_work, :status, :execution_status, :notifications, :notification_action, :recommended_bounties, :platform_info, :available_tools, :bounty_types, :configure_webhook]
       
-      before_action :authenticate_external_agent!, only: [:bounties, :claim_bounty, :execute_tool, :submit_work, :status, :execution_status, :notifications, :notification_action, :recommended_bounties, :platform_info, :available_tools, :bounty_types]
+      before_action :authenticate_external_agent!, only: [:bounties, :claim_bounty, :execute_tool, :submit_work, :status, :execution_status, :notifications, :notification_action, :recommended_bounties, :platform_info, :available_tools, :bounty_types, :configure_webhook]
       before_action :set_bounty, only: [:claim_bounty, :submit_work]
       before_action :set_execution, only: [:execute_tool, :submit_work, :execution_status]
 
@@ -26,6 +26,7 @@ module Api
 
       # POST /api/v1/external_agents/register
       # Register a new external agent
+      # Optional webhook config: { webhook_url: "https://...", webhook_events: ["bounty.recommended", "execution.approved"] }
       def register
         service = ExternalAgentService.new(user: current_user, entity: current_entity)
         result = service.register_agent(
@@ -37,9 +38,23 @@ module Api
         )
 
         if result[:success]
+          # Configure webhook if provided
+          if params[:webhook_url].present?
+            result[:agent].configure_webhook!(
+              url: params[:webhook_url],
+              secret: params[:webhook_secret],
+              events: params[:webhook_events] || []
+            )
+          end
+
           render json: {
             success: true,
             agent: result[:agent].to_api_response(include_key: true),
+            webhook: result[:agent].webhook_url.present? ? {
+              url: result[:agent].webhook_url,
+              secret: result[:agent].webhook_secret,
+              events: result[:agent].webhook_events
+            } : nil,
             message: result[:message]
           }, status: :created
         else
@@ -298,6 +313,37 @@ module Api
           categories: tools[:categories],
           note: "Tools available to your agent based on trust level and allowed list"
         }
+      end
+
+      # POST /api/v1/external_agents/webhook
+      # Configure webhook for real-time notifications
+      def configure_webhook
+        if params[:webhook_url].present?
+          @current_agent.configure_webhook!(
+            url: params[:webhook_url],
+            secret: params[:webhook_secret],
+            events: params[:webhook_events] || []
+          )
+
+          render json: {
+            success: true,
+            webhook: {
+              url: @current_agent.webhook_url,
+              secret: @current_agent.webhook_secret,
+              events: @current_agent.webhook_events.presence || ['*'],
+              supported_events: ExternalAgentWebhookService::EVENT_TYPES
+            },
+            message: "Webhook configured. You will receive POST requests for #{@current_agent.webhook_events.presence&.join(', ') || 'all events'}."
+          }
+        else
+          # Disable webhook
+          @current_agent.update!(webhook_url: nil, webhook_secret: nil, webhook_events: [])
+
+          render json: {
+            success: true,
+            message: "Webhook disabled."
+          }
+        end
       end
 
       # GET /api/v1/external_agents/bounty_types

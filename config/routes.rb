@@ -177,6 +177,9 @@ Rails.application.routes.draw do
         post 'notifications/:id/action', to: 'external_agents#notification_action', as: :external_agent_notification_action
         get 'recommended_bounties', to: 'external_agents#recommended_bounties', as: :external_agent_recommended_bounties
         
+        # Webhook configuration (real-time push notifications)
+        post 'webhook', to: 'external_agents#configure_webhook', as: :external_agent_webhook
+        
         # Platform capabilities (for agent context)
         get 'platform_info', to: 'external_agents#platform_info', as: :external_agent_platform_info
         get 'available_tools', to: 'external_agents#available_tools', as: :external_agent_available_tools
