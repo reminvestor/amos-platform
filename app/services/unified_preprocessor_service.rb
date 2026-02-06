@@ -189,6 +189,14 @@ class UnifiedPreprocessorService
     # Action words that indicate the user wants Amos to DO something
     action_pattern = /\b(show|create|build|get|list|search|find|open|view|pull|fetch|tell|weather|check|send|email|schedule|make|design|update|delete|run|execute|analyze|generate|summarize)\b/
     
+    # CRITICAL: Check conversation history for active creation/workflow context
+    # Short affirmative replies like "yes", "ok", "let's do that" are NOT simple
+    # when the conversation is in the middle of creating a workflow or automation
+    if conversation_has_active_creation_context?
+      Rails.logger.info "[Preprocessor] 🔄 Conversation has active creation context - bypassing fast path"
+      return false
+    end
+    
     # Very short messages (greetings, acknowledgments)
     return true if msg.length < 20 && !msg.match?(action_pattern)
     
@@ -207,6 +215,53 @@ class UnifiedPreprocessorService
     end
     
     false
+  end
+  
+  # Check if the recent conversation history contains active creation/workflow context
+  # This prevents the fast path from swallowing affirmative replies like "yes, build it"
+  # when Amos just proposed creating a workflow, automation, landing page, etc.
+  def conversation_has_active_creation_context?
+    return false if @conversation_history.blank?
+    
+    # Check the last 3-4 messages for creation/workflow context
+    recent_messages = @conversation_history.last(4)
+    
+    creation_patterns = [
+      # Workflow/automation patterns
+      /\b(workflow|automation|trigger|form\s+submit|webhook|record\s+event)/i,
+      /\b(when\s+.{0,20}(submit|create|update|change))/i,
+      /\b(auto[\s-]?create|auto[\s-]?send|auto[\s-]?notify)/i,
+      # Building/designing patterns
+      /\b(here'?s?\s+how\s+we'?ll\s+build|i'?ll\s+design|let\s+me\s+create|shall\s+i\s+build)/i,
+      /\b(should\s+i\s+proceed|want\s+me\s+to\s+build|ready\s+to\s+build)/i,
+      # Plan proposals with actions listed
+      /\b(step\s+\d|action\s+\d|trigger:?|actions?:)/i,
+      # Landing page / email campaign creation
+      /\b(landing\s+page|email\s+campaign|email\s+sequence)/i,
+      # Module / app design
+      /\b(module\s+design|app\s+design|propose.*schema)/i
+    ]
+    
+    recent_messages.any? do |msg|
+      content = case msg
+                when Hash
+                  msg[:content] || msg['content'] || ''
+                when String
+                  msg
+                else
+                  ''
+                end
+      
+      # Handle content that might be an array of content blocks
+      if content.is_a?(Array)
+        content = content.filter_map { |c|
+          c[:text] || c['text'] if c.is_a?(Hash)
+        }.join(' ')
+      end
+      
+      content_str = content.to_s.downcase
+      creation_patterns.any? { |p| content_str.match?(p) }
+    end
   end
   
   # Build a minimal result for fast path (no thread overhead)
@@ -396,8 +451,11 @@ class UnifiedPreprocessorService
     # CREATE intent (internal platform objects)
     return :create_data if msg.match?(/\b(create|add|new)\s+(a\s+)?(contact|campaign|task|event|note)/i)
     
-    # BUILD intent (creative/design work - delegate to agent)
-    return :build if msg.match?(/\b(create|build|design|make)\s+(a\s+)?(landing\s*page|email\s*campaign|newsletter|template)/i)
+    # BUILD intent (creative/design work - includes workflows and automations)
+    return :build if msg.match?(/\b(create|build|design|make|set\s*up)\s+(me\s+)?(a\s+)?(an?\s+)?(landing\s*page|email\s*campaign|newsletter|template|workflow|automation|trigger)/i)
+    # Also catch natural workflow descriptions: "when X happens, do Y"
+    return :build if msg.match?(/\b(when|after|if)\s+.{0,30}(submit|create|update|change).{0,30}(send|create|update|notify|email)/i)
+    return :build if msg.match?(/\bautomat(e|ically)\s+.{0,30}(send|create|update|notify|sync)/i)
     
     # INTEGRATION intent
     return :integration if msg.match?(/\b(quickbooks|stripe|gmail|shopify|salesforce|hubspot)\b/i)
@@ -683,7 +741,7 @@ class UnifiedPreprocessorService
       get_schema create_object update_object get_data discover_tools
     ],
     build: %w[
-      plan_design plan_application start_module_design discover_tools load_canvas
+      plan_design plan_application start_module_design generate_automation_code discover_tools load_canvas
     ],
     integration: %w[
       execute_integration list_operations list_integrations create_freeform_canvas discover_tools
@@ -769,7 +827,7 @@ class UnifiedPreprocessorService
     app: %w[plan_design plan_application load_canvas discover_tools],
     module: %w[start_module_design propose_module_schema get_schema discover_tools],
     email: %w[plan_design get_schema create_object discover_tools],
-    workflow: %w[plan_design load_canvas discover_tools],
+    workflow: %w[generate_automation_code plan_design load_canvas discover_tools],
     integration: %w[execute_integration list_operations list_integrations create_freeform_canvas discover_tools],
     agent: %w[discover_tools load_canvas]
   }.freeze
@@ -778,7 +836,7 @@ class UnifiedPreprocessorService
     personal: %w[web_search search_memory discover_tools],
     ideate: %w[web_search search_memory create_freeform_canvas discover_tools],
     operate: %w[get_data get_schema create_object update_object load_canvas discover_tools],
-    create: %w[plan_design plan_application start_module_design discover_tools load_canvas]
+    create: %w[plan_design plan_application start_module_design generate_automation_code discover_tools load_canvas]
   }.freeze
   
   def refine_tools_with_llm_classification(current_tools:, regex_intent:, llm_mode:, llm_design_intent:)
