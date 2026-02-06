@@ -1203,6 +1203,7 @@ class ScoutGenericToolsServiceV2
     list_tools
     create_scheduled_task
     list_scheduled_tasks
+    generate_automation_code
     generate_ai_landing_page
     create_freeform_canvas
   ].freeze
