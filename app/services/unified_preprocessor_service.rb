@@ -759,10 +759,10 @@ class UnifiedPreprocessorService
     ],
     document: %w[
       query_document_content read_document list_documents get_data discover_tools
-    ],
-    unknown: %w[
-      web_search get_data discover_tools load_canvas search_memory query_document_content read_document
     ]
+    # NOTE: :unknown is intentionally NOT in this map.
+    # Unknown intents fall through to RAG-based discovery (semantic search)
+    # which dynamically finds the right tools for any message.
   }.freeze
   
   # Tool preloading - now uses INTENT-BASED selection first, RAG as fallback
@@ -852,35 +852,35 @@ class UnifiedPreprocessorService
     # LLM refinement is for when regex was unsure
     return nil if regex_intent && regex_intent != :unknown && current_tools[:source] == :intent_based
     
-    tool_names = []
+    llm_tools = []
     source = nil
     
     # Priority 1: design_intent is most specific
     if llm_design_intent.present? && LLM_DESIGN_INTENT_TOOLS[llm_design_intent.to_sym]
-      tool_names = LLM_DESIGN_INTENT_TOOLS[llm_design_intent.to_sym].dup
+      llm_tools = LLM_DESIGN_INTENT_TOOLS[llm_design_intent.to_sym].dup
       source = :llm_design_intent
-      Rails.logger.info "[Preprocessor] 🧠 LLM design_intent refinement (#{llm_design_intent}): #{tool_names.join(', ')}"
+      Rails.logger.info "[Preprocessor] 🧠 LLM design_intent refinement (#{llm_design_intent}): #{llm_tools.join(', ')}"
     # Priority 2: mode is less specific but still better than regex :unknown
     elsif llm_mode.present? && LLM_MODE_TOOLS[llm_mode.to_sym]
-      tool_names = LLM_MODE_TOOLS[llm_mode.to_sym].dup
+      llm_tools = LLM_MODE_TOOLS[llm_mode.to_sym].dup
       source = :llm_mode
-      Rails.logger.info "[Preprocessor] 🧠 LLM mode refinement (#{llm_mode}): #{tool_names.join(', ')}"
+      Rails.logger.info "[Preprocessor] 🧠 LLM mode refinement (#{llm_mode}): #{llm_tools.join(', ')}"
     else
       # No LLM guidance, keep current
       return nil
     end
     
-    # Merge with any integration-specific tools from regex detection
-    if current_tools[:tool_names]&.include?('execute_integration')
-      tool_names += %w[execute_integration list_operations]
-    end
+    # MERGE with existing tools (don't replace RAG-discovered tools)
+    # RAG may have found tools the LLM map doesn't include (e.g., document tools)
+    existing_tools = current_tools[:tool_names] || []
+    merged = (llm_tools + existing_tools).uniq
     
-    tool_names.uniq!
+    Rails.logger.info "[Preprocessor] 🔀 Merged #{llm_tools.length} LLM + #{existing_tools.length} existing = #{merged.length} tools"
     
     {
-      tool_names: tool_names,
-      categories: [source],
-      count: tool_names.size,
+      tool_names: merged,
+      categories: [source, current_tools[:source]].compact.uniq,
+      count: merged.size,
       source: source
     }
   end
