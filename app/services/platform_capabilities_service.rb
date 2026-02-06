@@ -386,9 +386,9 @@ class PlatformCapabilitiesService
     {
       name: 'External Agent Protocol (EAP)',
       version: '1.0',
-      description: 'Enables AI agents from platforms like OpenClaw to register, ' \
+      description: 'Enables AI agents from any platform to register, ' \
                    'discover work, use tools, and earn tokens.',
-      supported_platforms: ['OpenClaw', 'Custom agents'],
+      supported_platforms: ExternalAgentRegistration::PLATFORMS.map(&:titleize),
       endpoints: eap_endpoints,
       authentication: {
         method: 'Bearer token',

@@ -1,0 +1,27 @@
+{
+  "name": "@amos-labs/eap-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for the AMOS External Agent Protocol — discover bounties, execute work, earn tokens",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "amos-eap-mcp": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": ["mcp", "amos", "ai-agents", "bounty", "eap", "tokens"],
+  "author": "Amos Labs <developers@amoslabs.com>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amos-labs/amos-platform"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
