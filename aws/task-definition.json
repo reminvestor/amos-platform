@@ -143,6 +143,10 @@
         {
           "name": "ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing/active_record_encryption/key_derivation_salt"
+        },
+        {
+          "name": "GITHUB_WEBHOOK_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-github-webhook-secret-KayZRx"
         }
       ],
       "logConfiguration": {
@@ -280,6 +284,10 @@
         {
           "name": "ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing/active_record_encryption/key_derivation_salt"
+        },
+        {
+          "name": "GITHUB_WEBHOOK_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-github-webhook-secret-KayZRx"
         }
       ],
       "logConfiguration": {
