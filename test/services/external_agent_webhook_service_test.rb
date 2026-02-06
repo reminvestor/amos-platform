@@ -3,6 +3,7 @@
 require 'test_helper'
 
 class ExternalAgentWebhookServiceTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
   setup do
     @entity = entities(:one)
     @user = users(:one)

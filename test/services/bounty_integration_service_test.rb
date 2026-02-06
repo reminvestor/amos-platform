@@ -59,36 +59,42 @@ class BountyIntegrationServiceTest < ActiveSupport::TestCase
     end
   end
 
-  test "create_bounties_from_tickets processes high priority only" do
-    # Low priority - should be ignored
+  test "create_bounties_from_tickets only converts qualified tickets" do
+    # Thin ticket — should NOT qualify (low readiness)
     SupportTicket.create!(
       entity: @entity,
-      title: 'Minor issue',
-      description: 'Low priority',
+      title: 'bug',
+      description: 'broken',
       source: 'user_reported',
       priority: 'low',
       category: 'bug',
       status: 'open'
     )
 
-    # High priority - should create bounty
+    # Rich ticket — should qualify (high readiness)
     SupportTicket.create!(
       entity: @entity,
-      title: 'Major issue',
-      description: 'High priority',
+      title: 'Fix email notification delay on form submission',
+      description: 'When a user submits the contact form, no email is sent. This was working before the Mailgun update.',
       source: 'user_reported',
       priority: 'high',
       category: 'bug',
-      status: 'open'
+      status: 'open',
+      steps_to_reproduce: "1. Go to landing page\n2. Submit form\n3. Check email — nothing received",
+      expected_behavior: "Email should arrive within 5 minutes",
+      actual_behavior: "No email sent, Mailgun timeout in logs",
+      acceptance_criteria: ["Email sends within 5 minutes", "Error handled gracefully"],
+      affected_component: "Email/Notifications",
+      estimated_effort: 'small'
     )
 
     mock_score = { points: 150, rationale: 'Test', effort_score: 5, impact_score: 5, urgency_score: 5, complexity_score: 5, estimated_hours: 2 }
     
-    AmosBountyScorer.stub(:score, mock_score) do
+    AmosBountyScorer.stub(:score_ticket, ->(_) { mock_score }) do
       bounties = @service.create_bounties_from_tickets!
 
       assert_equal 1, bounties.count
-      assert_equal 'Major issue', bounties.first.title
+      assert_match(/email notification/i, bounties.first.title)
     end
   end
 
@@ -165,20 +171,28 @@ class BountyIntegrationServiceTest < ActiveSupport::TestCase
   # === SYNC ALL ===
 
   test "sync_all creates bounties from all sources" do
-    # Create a high-priority ticket
+    # Create a well-qualified ticket
     SupportTicket.create!(
       entity: @entity,
-      title: 'Critical bug',
-      description: 'Fix ASAP',
+      title: 'Critical database connection timeout on dashboard load',
+      description: 'Dashboard fails to load with PG::ConnectionBad timeout error after 30 seconds. Affects all users.',
       source: 'log_monitor',
       priority: 'critical',
       category: 'bug',
-      status: 'open'
+      status: 'open',
+      error_message: 'PG::ConnectionBad: timeout expired',
+      error_class: 'PG::ConnectionBad',
+      steps_to_reproduce: "1. Navigate to dashboard\n2. Wait 30 seconds\n3. See timeout error",
+      expected_behavior: "Dashboard loads within 3 seconds",
+      actual_behavior: "PG::ConnectionBad timeout after 30 seconds",
+      acceptance_criteria: ["Dashboard loads in under 3 seconds", "No timeout errors in logs"],
+      affected_component: "Database",
+      estimated_effort: 'medium'
     )
 
     mock_score = { points: 200, rationale: 'Test', effort_score: 5, impact_score: 8, urgency_score: 10, complexity_score: 6, estimated_hours: 4 }
     
-    AmosBountyScorer.stub :score, mock_score do
+    AmosBountyScorer.stub(:score_ticket, ->(_) { mock_score }) do
       results = @service.sync_all!
 
       assert results[:from_tickets].any?

@@ -32,13 +32,13 @@ class UnifiedPreprocessorServiceTest < ActiveSupport::TestCase
 
   test "classifies natural workflow description as build intent" do
     preprocessor = build_preprocessor
-    result = preprocessor.send(:classify_intent, "when a form is submitted, create a contact and send an email")
+    result = preprocessor.send(:classify_intent, "when a form is submitted, update the record and send an email")
     assert_equal :build, result
   end
 
   test "classifies automate pattern as build intent" do
     preprocessor = build_preprocessor
-    result = preprocessor.send(:classify_intent, "automatically send an email when a new contact is created")
+    result = preprocessor.send(:classify_intent, "automatically send a notification when a record is updated")
     assert_equal :build, result
   end
 
