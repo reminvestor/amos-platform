@@ -2,7 +2,7 @@
 
 require 'test_helper'
 
-class GitHubWebhookServiceTest < ActiveSupport::TestCase
+class GithubWebhookServiceTest < ActiveSupport::TestCase
   setup do
     @entity = entities(:one)
     @user = users(:one)
@@ -34,7 +34,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
   # ═══════════════════════════════════════════════════════════════════════════
 
   test "finds bounty from PR title with bounty ID" do
-    bounty = GitHubWebhookService.send(:find_linked_bounty,
+    bounty = GithubWebhookService.send(:find_linked_bounty,
       "Fix email system - Bounty ##{@bounty.id}",
       "Some description",
       "fix/email-system"
@@ -43,7 +43,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
   end
 
   test "finds bounty from PR body with Fixes bounty pattern" do
-    bounty = GitHubWebhookService.send(:find_linked_bounty,
+    bounty = GithubWebhookService.send(:find_linked_bounty,
       "Fix email system",
       "This PR fixes bounty ##{@bounty.id} by updating the mailer config",
       "fix/email-system"
@@ -52,7 +52,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
   end
 
   test "finds bounty from branch name" do
-    bounty = GitHubWebhookService.send(:find_linked_bounty,
+    bounty = GithubWebhookService.send(:find_linked_bounty,
       "Fix email system",
       "Some description",
       "bounty-#{@bounty.id}/fix-email"
@@ -64,7 +64,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
     # Link bounty to ticket first
     @bounty.update!(support_ticket: @ticket)
 
-    bounty = GitHubWebhookService.send(:find_linked_bounty,
+    bounty = GithubWebhookService.send(:find_linked_bounty,
       "Fix: #{@ticket.ticket_number} Email broken",
       "Resolves the email issue",
       "fix/email"
@@ -73,7 +73,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
   end
 
   test "returns nil when no bounty reference found" do
-    bounty = GitHubWebhookService.send(:find_linked_bounty,
+    bounty = GithubWebhookService.send(:find_linked_bounty,
       "Update README",
       "Just a small doc update",
       "docs/readme-update"
@@ -86,7 +86,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
   # ═══════════════════════════════════════════════════════════════════════════
 
   test "finds ticket from PR title" do
-    ticket = GitHubWebhookService.send(:find_linked_ticket,
+    ticket = GithubWebhookService.send(:find_linked_ticket,
       "Fix: #{@ticket.ticket_number} Email notification bug",
       "Description"
     )
@@ -94,7 +94,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
   end
 
   test "returns nil when no ticket reference found" do
-    ticket = GitHubWebhookService.send(:find_linked_ticket,
+    ticket = GithubWebhookService.send(:find_linked_ticket,
       "Update README",
       "Description"
     )
@@ -114,7 +114,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
       branch: "fix/email-bounty-#{@bounty.id}"
     )
 
-    GitHubWebhookService.process(event_type: 'pull_request', payload: payload)
+    GithubWebhookService.process(event_type: 'pull_request', payload: payload)
 
     @bounty.reload
     assert_equal 42, @bounty.pr_number
@@ -137,7 +137,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
       merge_sha: 'abc123def456'
     )
 
-    GitHubWebhookService.process(event_type: 'pull_request', payload: payload)
+    GithubWebhookService.process(event_type: 'pull_request', payload: payload)
 
     @bounty.reload
     assert_equal 'abc123def456', @bounty.commit_sha
@@ -155,7 +155,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
       merge_sha: 'abc123def456'
     )
 
-    GitHubWebhookService.process(event_type: 'pull_request', payload: payload)
+    GithubWebhookService.process(event_type: 'pull_request', payload: payload)
 
     @ticket.reload
     assert_equal 'resolved', @ticket.status
@@ -175,7 +175,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
       merged: false
     )
 
-    GitHubWebhookService.process(event_type: 'pull_request', payload: payload)
+    GithubWebhookService.process(event_type: 'pull_request', payload: payload)
 
     @bounty.reload
     # Should release the claim (if release_claim! is available)
@@ -203,7 +203,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
 
     # Should not raise
     assert_nothing_raised do
-      GitHubWebhookService.process(event_type: 'pull_request_review', payload: payload)
+      GithubWebhookService.process(event_type: 'pull_request_review', payload: payload)
     end
   end
 
@@ -213,7 +213,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
 
   test "handles ping event without error" do
     assert_nothing_raised do
-      GitHubWebhookService.process(event_type: 'ping', payload: { 'zen' => 'Speak like a human.' })
+      GithubWebhookService.process(event_type: 'ping', payload: { 'zen' => 'Speak like a human.' })
     end
   end
 
@@ -223,7 +223,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
 
   test "ignores unknown event types" do
     assert_nothing_raised do
-      GitHubWebhookService.process(event_type: 'star', payload: { 'action' => 'created' })
+      GithubWebhookService.process(event_type: 'star', payload: { 'action' => 'created' })
     end
   end
 
@@ -232,7 +232,7 @@ class GitHubWebhookServiceTest < ActiveSupport::TestCase
   # ═══════════════════════════════════════════════════════════════════════════
 
   test "all bounty patterns match expected formats" do
-    patterns = GitHubWebhookService::BOUNTY_PATTERNS
+    patterns = GithubWebhookService::BOUNTY_PATTERNS
 
     # bounty #123
     assert patterns.any? { |p| "Fixes bounty #123".match?(p) }

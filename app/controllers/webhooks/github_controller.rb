@@ -33,7 +33,7 @@ module Webhooks
       Rails.logger.info "[GitHub Webhook] Received #{event_type} (delivery: #{delivery_id})"
 
       # Process asynchronously to return 200 quickly
-      GitHubWebhookJob.perform_later(event_type, payload, delivery_id)
+      GithubWebhookJob.perform_later(event_type, payload, delivery_id)
 
       render json: { received: true, event: event_type }, status: :ok
     rescue JSON::ParserError => e

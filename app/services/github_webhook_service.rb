@@ -19,7 +19,7 @@
 #
 # 4. EAP WEBHOOKS: Fires webhooks for external agent bounties
 #
-class GitHubWebhookService
+class GithubWebhookService
   # Patterns to match bounty references in PR titles/bodies/branches
   BOUNTY_PATTERNS = [
     /\b(?:bounty|fixes bounty|closes bounty|resolves bounty)\s*#?(\d+)/i,
