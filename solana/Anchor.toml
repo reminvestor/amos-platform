@@ -8,14 +8,17 @@ skip-lint = false
 [programs.localnet]
 amos_governance = "AmosGov111111111111111111111111111111111111"
 amos_treasury = "6d3oWMePD7newkpZSmGBWS2qAFWQmrapsLwoPnMva55G"
+amos_bounty = "AmosBnty111111111111111111111111111111111111"
 
 [programs.devnet]
 amos_governance = "AQEf6P1qhKC2dCTMhqRh2rmKNpcQsR4ahwT1MvSoSehu"
 amos_treasury = "3p2MqHiQVLWfvvfU7psLyEsLLVzbGwqa3bSG7avKqiYP"
+amos_bounty = "AmosBnty111111111111111111111111111111111111"
 
 [programs.mainnet]
 amos_governance = "AmosGov111111111111111111111111111111111111"
 amos_treasury = "6d3oWMePD7newkpZSmGBWS2qAFWQmrapsLwoPnMva55G"
+amos_bounty = "AmosBnty111111111111111111111111111111111111"
 
 [registry]
 url = "https://api.apr.dev"

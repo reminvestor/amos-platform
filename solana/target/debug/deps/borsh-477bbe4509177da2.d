@@ -1,0 +1,11 @@
+/Users/rickbarkley/SW_Projects/ai_co/agent_marketing/solana/target/debug/deps/borsh-477bbe4509177da2.d: /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/lib.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/de/mod.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/de/hint.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/schema.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/schema_helpers.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/ser/mod.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/ser/helpers.rs
+
+/Users/rickbarkley/SW_Projects/ai_co/agent_marketing/solana/target/debug/deps/libborsh-477bbe4509177da2.rmeta: /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/lib.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/de/mod.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/de/hint.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/schema.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/schema_helpers.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/ser/mod.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/ser/helpers.rs
+
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/lib.rs:
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/de/mod.rs:
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/de/hint.rs:
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/schema.rs:
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/schema_helpers.rs:
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/ser/mod.rs:
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/borsh-0.9.3/src/ser/helpers.rs:

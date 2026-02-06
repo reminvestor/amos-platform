@@ -1,0 +1,7 @@
+/Users/rickbarkley/SW_Projects/ai_co/agent_marketing/solana/target/debug/deps/serde_with_macros-95dacc5b883e7caa.d: /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_with_macros-2.3.3/src/lib.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_with_macros-2.3.3/src/apply.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_with_macros-2.3.3/src/utils.rs
+
+/Users/rickbarkley/SW_Projects/ai_co/agent_marketing/solana/target/debug/deps/libserde_with_macros-95dacc5b883e7caa.dylib: /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_with_macros-2.3.3/src/lib.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_with_macros-2.3.3/src/apply.rs /Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_with_macros-2.3.3/src/utils.rs
+
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_with_macros-2.3.3/src/lib.rs:
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_with_macros-2.3.3/src/apply.rs:
+/Users/rickbarkley/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_with_macros-2.3.3/src/utils.rs:
