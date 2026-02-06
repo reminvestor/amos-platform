@@ -62,7 +62,7 @@ class BedrockService
     'claude-opus-4-5' => {
       id: 'global.anthropic.claude-opus-4-5-20251101-v1:0',
       name: 'Claude Opus 4.5',
-      description: 'Newest frontier model, maximum reasoning',
+      description: 'Frontier model, maximum reasoning',
       max_tokens: 30000,
       cost_per_1m_input: 5.00,    # Actual AWS pricing
       cost_per_1m_output: 25.00,
@@ -70,6 +70,18 @@ class BedrockService
       supports_tools: true,
       supports_caching: false, # Global endpoint limitation
       endpoint_type: 'global'
+    },
+    'claude-opus-4-6' => {
+      id: 'anthropic.claude-opus-4-6-v1',
+      name: 'Claude Opus 4.6',
+      description: 'Latest frontier model, enhanced reasoning and coding',
+      max_tokens: 30000,
+      cost_per_1m_input: 5.00,    # Same as Opus 4.5
+      cost_per_1m_output: 25.00,
+      supports_vision: true,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
     },
     'qwen-3-32b' => {
       id: 'qwen.qwen3-32b-v1:0', # ON_DEMAND direct
@@ -378,7 +390,8 @@ class BedrockService
     'claude-3-5-sonnet',          # Fast, capable - good backup
     'claude-sonnet-4-5',          # Latest, powerful - reliable fallback
     'claude-opus-4-1',            # Most robust
-    'claude-opus-4-5'             # Maximum capability - last resort
+    'claude-opus-4-5',            # Maximum capability
+    'claude-opus-4-6'             # Latest frontier - last resort
   ].freeze
 
   def initialize(custom_model_id: nil, user: nil, entity: nil, context: {}, execution: nil)
@@ -438,6 +451,7 @@ class BedrockService
     { key: 'claude-haiku-4-5', context: 200_000 }, # 200K, fast Claude
     { key: 'claude-sonnet-4-5', context: 200_000 },# 200K, powerful
     { key: 'claude-opus-4-5', context: 200_000 },  # 200K, most capable
+    { key: 'claude-opus-4-6', context: 200_000 },  # 200K, latest frontier
   ].freeze
 
   # Check if error is a context overflow (input too large for model)
@@ -590,6 +604,8 @@ class BedrockService
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
     when "claude-opus-4-5", "claude-opus-4.5"
       "global.anthropic.claude-opus-4-5-20251101-v1:0" # Opus 4.5 inference profile
+    when "claude-opus-4-6", "claude-opus-4.6"
+      "anthropic.claude-opus-4-6-v1" # Opus 4.6 - latest frontier
     when "qwen-3-32b", "qwen-3.32b"
       "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
     when "qwen-3-coder-30b", "qwen-coder"
@@ -989,6 +1005,8 @@ class BedrockService
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
     when "claude-opus-4-5", "claude-opus-4.5"
       "global.anthropic.claude-opus-4-5-20251101-v1:0" # Opus 4.5 inference profile
+    when "claude-opus-4-6", "claude-opus-4.6"
+      "anthropic.claude-opus-4-6-v1" # Opus 4.6 - latest frontier
     when "qwen-3-32b", "qwen-3.32b"
       "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
     when "qwen-3-coder-30b", "qwen-coder"

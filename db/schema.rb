@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_04_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_06_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2961,6 +2961,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_04_000001) do
     t.string "suspension_reason"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "webhook_url"
+    t.string "webhook_secret"
+    t.string "webhook_events", default: [], array: true
+    t.integer "webhook_failures", default: 0
+    t.datetime "webhook_last_delivered_at"
     t.index ["agent_identifier"], name: "index_external_agent_registrations_on_agent_identifier", unique: true
     t.index ["agent_platform"], name: "index_external_agent_registrations_on_agent_platform"
     t.index ["api_key"], name: "index_external_agent_registrations_on_api_key", unique: true
@@ -5568,13 +5573,32 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_04_000001) do
     t.boolean "admin_approved", default: false
     t.bigint "admin_approved_by_id"
     t.datetime "admin_approved_at"
+    t.integer "readiness_score", default: 0
+    t.datetime "readiness_assessed_at"
+    t.text "readiness_notes"
+    t.text "steps_to_reproduce"
+    t.text "expected_behavior"
+    t.text "actual_behavior"
+    t.jsonb "acceptance_criteria", default: []
+    t.string "affected_component"
+    t.string "affected_url"
+    t.jsonb "environment_info", default: {}
+    t.text "scope_summary"
+    t.string "estimated_effort"
+    t.text "suggested_approach"
+    t.text "user_story"
+    t.text "business_value"
+    t.boolean "bounty_eligible", default: false
+    t.string "bounty_blocked_reason"
     t.index ["admin_approved"], name: "index_support_tickets_on_admin_approved"
+    t.index ["bounty_eligible"], name: "index_support_tickets_on_bounty_eligible"
     t.index ["category", "admin_approved"], name: "idx_tickets_feature_approval"
     t.index ["entity_id", "created_at"], name: "index_support_tickets_on_entity_id_and_created_at"
     t.index ["entity_id", "status"], name: "index_support_tickets_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_support_tickets_on_entity_id"
     t.index ["error_signature"], name: "index_support_tickets_on_error_signature"
     t.index ["priority"], name: "index_support_tickets_on_priority"
+    t.index ["readiness_score"], name: "index_support_tickets_on_readiness_score"
     t.index ["scout_conversation_id"], name: "index_support_tickets_on_scout_conversation_id"
     t.index ["source"], name: "index_support_tickets_on_source"
     t.index ["status"], name: "index_support_tickets_on_status"

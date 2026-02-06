@@ -28,6 +28,10 @@ class BillingConfiguration < ApplicationRecord
     'claude-4-5-haiku' => { input: 1.00, output: 5.00 },
     'claude-haiku-4-5-20251001' => { input: 1.00, output: 5.00 },
     
+    # Claude Opus 4.6: $5.00/M input, $25.00/M output (same as Opus 4.5)
+    'claude-opus-4-6' => { input: 5.00, output: 25.00 },
+    'anthropic.claude-opus-4-6-v1' => { input: 5.00, output: 25.00 },
+    
     # Claude Opus 4.5: $5.00/M input, $25.00/M output (AWS Bedrock Jan 2026)
     'claude-opus-4-5' => { input: 5.00, output: 25.00 },
     'claude-4-5-opus' => { input: 5.00, output: 25.00 },
