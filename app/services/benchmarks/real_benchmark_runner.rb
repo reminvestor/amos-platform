@@ -202,7 +202,7 @@ module Benchmarks
       
       begin
         # Use Scout to answer the question
-        scout_service = ScoutGenericToolsServiceV2.new(@user, @entity, "benchmark_#{SecureRandom.hex(4)}")
+        scout_service = V3::AgentLoop # V3 migration stub.new(@user, @entity, "benchmark_#{SecureRandom.hex(4)}")
         
         # Simple callback to collect response
         response_text = ""

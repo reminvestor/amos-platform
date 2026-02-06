@@ -737,7 +737,7 @@ module Benchmarks
 
       # Test 1: AMOS Orchestrator Available
       tasks << run_task(:integration, :orchestrator_available) do
-        orchestrator = Amos::Orchestrator.new(entity: entity, user: entity.users.first)
+        orchestrator = V3::AgentLoop # V3 migration stub.new(entity: entity, user: entity.users.first)
         prompt = orchestrator.system_prompt
         { passed: prompt.present? && prompt.length > 100, prompt_length: prompt.length }
       rescue => e
@@ -746,7 +746,7 @@ module Benchmarks
 
       # Test 2: Scout Integration Provides Context
       tasks << run_task(:integration, :scout_integration_context) do
-        integration = Amos::ScoutIntegration.new(entity: entity, user: entity.users.first)
+        integration = V3::AgentLoop # V3 migration stub.new(entity: entity, user: entity.users.first)
         context = integration.get_context_injection
         { passed: true, context_present: context.present?, context_length: context.to_s.length }
       rescue => e
@@ -755,7 +755,7 @@ module Benchmarks
 
       # Test 3: Routing Intelligence Works
       tasks << run_task(:integration, :routing_intelligence) do
-        routing = Amos::RoutingIntelligence.new(entity, entity.users.first)
+        routing = V3::AgentLoop # V3 migration stub.new(entity, entity.users.first)
         decision = routing.route("Create a new marketing campaign")
         { passed: decision[:action].present?, decision: decision }
       rescue => e
@@ -764,7 +764,7 @@ module Benchmarks
 
       # Test 4: Capability Registry Loaded
       tasks << run_task(:integration, :capability_registry) do
-        registry = Amos::CapabilityRegistry.new(entity)
+        registry = V3::AgentLoop # V3 migration stub.new(entity)
         direct = registry.direct_capabilities_for_prompt
         { passed: direct.present?, capability_count: direct.to_s.scan(/\*\*/).count / 2 }
       rescue => e

@@ -56,28 +56,8 @@ class OnboardingController < ApplicationController
       conversation_history = onboarding_conversation_history
       Rails.logger.info "Onboarding: Retrieved conversation history (#{conversation_history.length} messages)"
 
-      # Check if user is asking data-related questions that need tools
-      if needs_tool_enabled_response?(user_message)
-        # Use tool-enabled Scout for data queries during onboarding
-        entity = current_user.entity
-        if entity
-          tool_service = ScoutConversationWithToolsService.new(current_user, entity, conversation_history)
-          tool_response = tool_service.process_message_with_tools(user_message)
-
-          response = {
-            message: tool_response[:message],
-            completed: false,
-            business_profile_completed: false,
-            tools_used: tool_response[:tool_calls_made]
-          }
-        else
-          # Fallback to regular onboarding if no entity found
-          response = OnboardingScoutService.new(current_user, @session_id, conversation_history).process_message(user_message)
-        end
-      else
-        # Regular onboarding conversation
-        response = OnboardingScoutService.new(current_user, @session_id, conversation_history).process_message(user_message)
-      end
+      # Regular onboarding conversation (V3 handles tools automatically)
+      response = OnboardingScoutService.new(current_user, @session_id, conversation_history).process_message(user_message)
 
       Rails.logger.info "Onboarding: Got Scout response - completed: #{response[:completed]}, tools_used: #{response[:tools_used]}"
 

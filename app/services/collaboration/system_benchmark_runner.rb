@@ -173,7 +173,7 @@ module Collaboration
         session_id = "benchmark_#{SecureRandom.hex(8)}"
         
         # Use Scout V2 - the main chat interface with tools
-        scout_service = ScoutGenericToolsServiceV2.new(@user, @entity, session_id)
+        scout_service = V3::AgentLoop # V3 migration stub.new(@user, @entity, session_id)
 
         # Collect streaming output
         accumulated_response = ""

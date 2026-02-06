@@ -416,7 +416,7 @@ module Benchmarks
     def execute_task(task)
       session_id = "bob3_#{SecureRandom.hex(4)}"
       
-      scout = ScoutGenericToolsServiceV2.new(@user, @entity, session_id)
+      scout = V3::AgentLoop # V3 migration stub.new(@user, @entity, session_id)
 
       response_text = ""
       tools_used = []

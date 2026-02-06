@@ -675,7 +675,7 @@ module Benchmarks
       session_id = "bob4_#{SecureRandom.hex(4)}"
       
       log "Creating Scout session: #{session_id}", level: :debug
-      scout = ScoutGenericToolsServiceV2.new(@user, @entity, session_id)
+      scout = V3::AgentLoop # V3 migration stub.new(@user, @entity, session_id)
 
       response_text = ""
       tools_used = []

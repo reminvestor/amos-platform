@@ -214,25 +214,10 @@ module Tools
       tools
     end
 
-    # Get tools using tiered discovery (RAG-based)
+    # V3: Tiered discovery removed — V3 ToolRegistry provides all tools directly.
+    # This method is kept for backward compatibility with any remaining callers.
     def get_tiered_tools(user:, entity:, prompt:, agent_loadout: nil)
-      discovery = TieredDiscoveryService.new(user: user, entity: entity, prompt: prompt)
-      discovered = discovery.discover_tools(include_core: true)
-
-      # If agent has a specific loadout, filter discovered tools
-      if agent_loadout&.tool_allowlist.present? && !agent_loadout.tool_allowlist.include?("*")
-        allowed = agent_loadout.tool_allowlist
-        discovered = discovered.select { |t| allowed.include?(t[:name]) }
-      end
-
-      # Convert to Bedrock format
-      discovered.map do |tool|
-        {
-          name: tool[:name],
-          description: tool[:description],
-          parameters: tool[:parameters]
-        }.compact
-      end
+      V3::ToolRegistry.get_bedrock_tools(entity: entity)
     end
 
     # Get tool instance

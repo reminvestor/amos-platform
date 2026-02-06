@@ -59,16 +59,8 @@ class InteractiveWorkflowTaskService
     # Load conversation history from parent conversation
     conversation_history = load_conversation_history
     
-    # Create InteractiveTaskService instance
-    interactive_service = InteractiveTaskService.new(@user, @entity, @session_id)
-    
-    # Set up progress callback to broadcast updates
-    interactive_service.on_progress do |progress_data|
-      handle_progress(progress_data)
-    end
-    
-      # Determine the initial message based on workflow type
-      initial_message = case @workflow_type
+    # V3: Use agent loop directly
+    initial_message = case @workflow_type
       when 'landing_page_creation_v2', 'landing_page_wizard'
         "create a landing page"
       when 'campaign_wizard'
@@ -78,9 +70,14 @@ class InteractiveWorkflowTaskService
       else
         @task.metadata['description'] || @workflow_type
       end
-    
-    # Start the workflow
-    result = interactive_service.process_message(initial_message, conversation_history, nil)
+
+    agent = V3::AgentLoop.new(
+      user: @user,
+      entity: @entity,
+      session_id: @session_id
+    )
+
+    result = agent.process_message_streaming(initial_message, ->(_) {}, conversation_history)
     
     # If workflow needs input, mark task as awaiting input
     if result[:canvas_type] == 'workflow_plan_approval' || workflow_awaiting_input?(result)
@@ -114,21 +111,15 @@ class InteractiveWorkflowTaskService
     # Load conversation history
     conversation_history = load_conversation_history
     
-    interactive_service = InteractiveTaskService.new(@user, @entity, @session_id)
-    
-    # Set up progress callback
-    interactive_service.on_progress do |progress_data|
-      handle_progress(progress_data)
-    end
-    
-    # Continue the workflow
-    if user_input.is_a?(String)
-      # Simple message continuation
-      result = interactive_service.process_message(user_input, conversation_history, nil)
-    else
-      # Structured input (form data)
-      result = interactive_service.continue_workflow(user_input)
-    end
+    # V3: Use agent loop to continue workflow
+    agent = V3::AgentLoop.new(
+      user: @user,
+      entity: @entity,
+      session_id: @session_id
+    )
+
+    message = user_input.is_a?(String) ? user_input : "Continue with inputs: #{user_input.to_json}"
+    result = agent.process_message_streaming(message, ->(_) {}, conversation_history)
     
     # Update task state
     if workflow_awaiting_input?(result)

@@ -86,70 +86,37 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
     entity = @scheduled_task.entity
     session_id = "scheduled-#{@scheduled_task.id}-#{Time.current.to_i}"
     
-    # Build context from input_context
-    # IMPORTANT: Mark this as a scheduled run to prevent creating new scheduled tasks
-    context = (@scheduled_task.input_context || {}).merge(
-      'scheduled_task_id' => @scheduled_task.id,
-      'scheduled_task_name' => @scheduled_task.name,
-      'scheduled_run' => true,
-      'block_new_scheduled_tasks' => true  # Prevent runaway task creation loops
-    )
-    
-    # Create the Scout service
-    scout_service = ScoutGenericToolsServiceV2.new(user, entity, session_id)
-    
-    # IMPORTANT: Set context to block creation of new scheduled tasks
-    # This prevents runaway loops where scheduled tasks create more scheduled tasks
-    scout_service.set_context(context)
-    
     # Build the prompt with any additional context
     prompt = build_prompt
     
-    # Execute and collect results
-    accumulated_content = ""
-    canvas_data = nil
-    tools_used = []
-    
-    # Use the correct method name: process_message_with_tools_streaming
-    # The progress_callback captures streaming output
-    # Note: chunks can be strings (raw content) or hashes (structured data)
-    progress_callback = ->(chunk) {
-      if chunk.is_a?(Hash)
-        chunk_type = chunk[:type] || chunk['type']
-        case chunk_type
-        when "content_chunk", "chunk"
-          content = chunk[:content] || chunk['content']
-          accumulated_content += content.to_s if content
-        when "canvas_update"
-          canvas_data = chunk[:canvas_data] || chunk['canvas_data']
-        when "tool_start"
-          tool_name = chunk[:tool_name] || chunk['tool_name']
-          tools_used << tool_name if tool_name
-        end
-      elsif chunk.is_a?(String)
-        # Raw string content from streaming
-        accumulated_content += chunk
-      end
-    }
-    
-    result = scout_service.process_message_with_tools_streaming(
-      prompt,
-      progress_callback,
-      [],  # conversation_history
-      nil  # current_canvas
+    # Use V3 agent loop
+    agent = V3::AgentLoop.new(
+      user: user,
+      entity: entity,
+      session_id: session_id,
+      model: ENV.fetch("BEDROCK_DEFAULT_MODEL", "anthropic.claude-sonnet-4-v1")
     )
     
-    # Handle result - it might have symbol or string keys
-    final_response = result[:final_response] || result['final_response'] || 
-                     result[:content] || result['content'] || 
-                     accumulated_content
-    result_canvas = canvas_data || result[:canvas_data] || result['canvas_data']
-    result_tools = (result[:tools_used] || result['tools_used'] || []) + tools_used.uniq
+    # Collect results from streaming
+    accumulated_content = ""
+    
+    result = agent.process_message_streaming(
+      prompt,
+      ->(chunk) {
+        if chunk.is_a?(Hash) && chunk[:type] == :content && chunk[:text].present?
+          accumulated_content += chunk[:text]
+        end
+      },
+      [],  # no conversation history for scheduled tasks
+      nil  # no canvas
+    )
+    
+    final_response = result.dig(:final_response, :message) || accumulated_content
     
     {
       content: final_response,
-      canvas_data: result_canvas,
-      tools_used: result_tools,
+      canvas_data: result[:canvas_data],
+      tools_used: result[:tools_used] || [],
       session_id: session_id
     }
   end

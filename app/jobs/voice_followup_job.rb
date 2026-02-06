@@ -46,19 +46,17 @@ class VoiceFollowupJob < ApplicationJob
   end
   
   def execute_voice_task
-    # Use GenericTaskService with voice-optimized settings
-    service = GenericTaskService.new(@task)
-    
-    # Track progress for voice feedback
-    last_progress = 0
-    
-    service.execute_with_progress do |progress, message|
-      # Only broadcast significant progress changes
-      if progress - last_progress >= 20
-        broadcast_status('processing', message)
-        last_progress = progress
-      end
-    end
+    # V3: Execute via agent loop
+    agent = V3::AgentLoop.new(
+      user: @task.user,
+      entity: @task.entity,
+      session_id: @task.parent_conversation_id || SecureRandom.uuid,
+      model: ENV.fetch("BEDROCK_VOICE_MODEL", "anthropic.claude-sonnet-4-v1")
+    )
+
+    prompt = @task.metadata&.dig("description") || @task.metadata&.dig("prompt") || "Execute the pending task"
+    result = agent.process_message_streaming(prompt, ->(_) {}, [])
+    result.dig(:final_response, :message)
   end
   
   def broadcast_voice_response(response)

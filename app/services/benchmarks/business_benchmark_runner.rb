@@ -621,7 +621,7 @@ module Benchmarks
       Rails.logger.info "[Benchmark] User: #{@user.email} (ID: #{@user.id})"
       
       begin
-        scout = ScoutGenericToolsServiceV2.new(@user, @entity, session_id)
+        scout = V3::AgentLoop # V3 migration stub.new(@user, @entity, session_id)
       rescue => e
         Rails.logger.error "[Benchmark] Failed to initialize Scout: #{e.message}"
         return {

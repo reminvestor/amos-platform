@@ -106,20 +106,18 @@ class IntegrationOperationsController < ApplicationController
       return
     end
 
-    # Use the invoke operation tool with main_chat loadout
-    main_chat_loadout = AgentLoadout.new(agent_role: "main_chat", entity: current_entity)
-    service = ScoutGenericToolsServiceV2.new(
-      current_user,
-      current_entity,
-      session[:scout_session_id] || SecureRandom.uuid,
-      agent_loadout: main_chat_loadout
+    # Execute integration action directly via V3 tool
+    tool = V3::Tools::PlatformExecuteTool.new(
+      user: current_user,
+      entity: current_entity,
+      context: {}
     )
-    result = service.execute_tool_by_name(
-      "invoke_operation",
-      "connection_id" => connection.id,
-      "operation_id" => @operation.operation_id,
-      "params" => params[:test_params] || {}
-    )
+    result = tool.execute({
+      "action" => "integration",
+      "integration" => connection.integration&.slug,
+      "operation" => @operation.operation_id,
+      "inputs" => params[:test_params] || {}
+    })
 
     respond_to do |format|
       format.json { render json: result }

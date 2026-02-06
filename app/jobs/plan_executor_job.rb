@@ -343,41 +343,27 @@ class PlanExecutorJob < ApplicationJob
   end
 
   def execute_via_scout(step)
-    # Use Scout service to execute the step directly
-    # Generate a unique session_id for this plan execution step
     session_id = "plan_#{@plan.id}_step_#{step['id']}_#{Time.current.to_i}"
-    
-    scout = ScoutGenericToolsServiceV2.new(
-      @plan.user,
-      @plan.entity,
-      session_id
-    )
 
-    # Create a focused prompt for this step
     prompt = "You are executing step '#{step['name']}' of a plan.\n\n"
     prompt += "Plan goal: #{@plan.original_request}\n\n"
     prompt += "Step to execute: #{step['description'] || step['name']}\n\n"
     prompt += "Please complete this step now."
 
     begin
-      accumulated_response = ""
-      
-      # Use the streaming method with a callback to capture the response
-      progress_callback = ->(message) { 
-        Rails.logger.info "[PlanExecutor] Scout progress: #{message}" if message.is_a?(String)
-      }
-      
-      result = scout.process_message_with_tools_streaming(prompt, progress_callback, [])
-      
-      if result && result[:success] != false
-        response_content = result[:content] || result[:response] || accumulated_response
-        @plan.mark_step_completed!(step['id'], result: { response: response_content.to_s.truncate(500) })
-      else
-        error_msg = result[:error] || "Scout execution returned no result"
-        raise StandardError, error_msg
-      end
+      agent = V3::AgentLoop.new(
+        user: @plan.user,
+        entity: @plan.entity,
+        session_id: session_id,
+        model: ENV.fetch("BEDROCK_DEFAULT_MODEL", "anthropic.claude-sonnet-4-v1")
+      )
+
+      result = agent.process_message_streaming(prompt, ->(_) {}, [])
+
+      response_content = result.dig(:final_response, :message) || ""
+      @plan.mark_step_completed!(step['id'], result: { response: response_content.truncate(500) })
     rescue => e
-      Rails.logger.error "[PlanExecutor] Scout execution failed: #{e.message}"
+      Rails.logger.error "[PlanExecutor] V3 execution failed: #{e.message}"
       @plan.mark_step_failed!(step['id'], error: e.message)
     end
   end

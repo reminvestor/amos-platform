@@ -753,7 +753,8 @@ class Agents::StandardPluginExecutor
 
     # Start with COLLABORATION TOOLS that ALL agents get
     # This enables agent-to-agent collaboration (ask_agent_for_help, list_available_agents, ask_user)
-    collaboration_tool_names = TieredDiscoveryService.agent_collaboration_tool_names.dup
+    # V3: Core collaboration tools (previously from TieredDiscoveryService)
+    collaboration_tool_names = %w[ask_user platform_query platform_create platform_update discover].dup
     
     # Add explicitly assigned tool names from agent configuration
     assigned_tool_names = agent_plugin.agent_tools.pluck(:tool_name)

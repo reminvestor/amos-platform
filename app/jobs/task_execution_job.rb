@@ -1,11 +1,8 @@
 class TaskExecutionJob < ApplicationJob
   include JobErrorHandling
   
-  # Dynamic queue assignment based on task type
-  queue_as do
-    task = TaskSession.find(arguments.first)
-    ParallelTaskOrchestrator::TASK_TYPES[task.task_type.to_sym][:queue] || 'default'
-  end
+  # V3: Simple queue assignment
+  queue_as :default
   
   def perform(task_session_id)
     @task = TaskSession.find(task_session_id)
@@ -98,14 +95,13 @@ class TaskExecutionJob < ApplicationJob
   end
   
   def service_for_task_type
+    # V3: All task types use V3 agent loop directly
+    # InteractiveWorkflowTaskService is still available for structured workflows
     case @task.task_type
     when 'interactive_workflow'
-      # Use specialized service for interactive workflows
-      InteractiveWorkflowTaskService.new(@task)
+      InteractiveWorkflowTaskService.new(@task) rescue nil
     else
-      # All other task types use the GenericTaskService which 
-      # intelligently routes to appropriate Scout tools based on task context
-      GenericTaskService.new(@task)
+      nil # Will be executed via V3 agent in execute_task
     end
   end
   

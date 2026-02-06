@@ -103,141 +103,51 @@ class ScoutController < ApplicationController
     user_message = params[:message]&.strip
     current_canvas = params[:current_canvas]
 
-    Rails.logger.info "Scout chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
-    Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
-
     if user_message.blank?
       render json: { error: "Message cannot be empty" }, status: 400
       return
     end
 
     begin
-      # Save user message
       save_scout_message("user", user_message)
-      Rails.logger.info "Scout: Saved user message"
 
-      # Use the new V2 tools service with main_chat agent loadout
-      # Pass entity to load DB-driven tool configuration
-      main_chat_loadout = AgentLoadout.new(agent_role: "main_chat", entity: current_entity)
-      
-      # Parse fresh_start_at from session (filter memory to only after Fresh Start)
-      fresh_start_time = session[:scout_fresh_start_at].present? ? 
-        (Time.parse(session[:scout_fresh_start_at]) rescue nil) : nil
-      
-      generic_tools_service = ScoutGenericToolsServiceV2.new(
-        current_user,
-        current_entity,
-        session[:scout_session_id],
-        agent_loadout: main_chat_loadout,
-        fresh_start_at: fresh_start_time,
-        client_ip: real_client_ip
+      # V3 agent loop (non-streaming for JSON endpoint)
+      model = params[:model] || session[:premium_model] || ENV.fetch("BEDROCK_DEFAULT_MODEL", "anthropic.claude-sonnet-4-v1")
+      canvas_type = extract_canvas_type(current_canvas)
+
+      agent = V3::AgentLoop.new(
+        user: current_user,
+        entity: current_entity,
+        session_id: @session_id,
+        model: model
       )
 
-      # Apply model mode from user preference (auto, fast, balanced, powerful)
-      model_mode = params[:model_mode]&.to_sym || session[:model_mode]&.to_sym || :auto
-      generic_tools_service.set_model_mode(model_mode)
-      
-      # Pass session context for tools that need it (e.g., read_viewed_page)
-      generic_tools_service.set_context({
-        current_viewed_url: session[:current_viewed_url],
-        current_viewed_at: session[:current_viewed_at],
-        proxy_base_url: session[:proxy_base_url],
-        proxy_session_id: session[:proxy_session_id]
-      })
-
-      # Use last 20 messages for active context window (keeping token usage manageable)
       conversation_history = persisted_history_last_k(20)
-      # Note: V2 uses streaming by default, but this endpoint returns JSON
-      # We'll need to update this to use process_message_with_tools_streaming properly
-      # For now, let's create a simple wrapper
-      result = nil
-      generic_tools_service.process_message_with_tools_streaming(
+
+      result = agent.process_message_streaming(
         user_message,
-        ->(update) {
-          # Collect the final response
-          if update.is_a?(Hash) && update[:final_response]
-            result = update
-          end
-        },
+        ->(_chunk) {}, # No streaming for JSON endpoint
         conversation_history,
-        current_canvas
+        canvas_type
       )
 
-      # Extract response from result
-      response = if result
-        {
-          message: result[:final_response][:message],
-          tools_used: result[:tools_used] || [],
-          success_count: result[:tools_used]&.length || 0,
-          error_count: 0,
-          canvas_type: result[:canvas_type] || "conversation",
-          canvas_data: result[:canvas_data] || {}
-        }
-      else
-        {
-          message: "I couldn't process that request.",
-          tools_used: [],
-          success_count: 0,
-          error_count: 1,
-          canvas_type: "conversation",
-          canvas_data: {}
-        }
-      end
+      response_message = result.dig(:final_response, :message) || "Done."
+      save_scout_message("assistant", response_message)
 
-      Rails.logger.info "Scout: Got response - tools_used: #{response[:tools_used]}, success_count: #{response[:success_count]}"
-
-      # Extract source information from tools_used (specifically read_document calls)
-      sources = extract_response_sources(response[:tools_used])
-      Rails.logger.info "📚 Extracted sources: #{sources.inspect}" if sources.any?
-
-      # Save Scout's response
-      save_scout_message("assistant", response[:message])
-
-      # Return structured response
       render json: {
-        message: response[:message],
-        tools_used: response[:tools_used],
-        tools_list: response[:tools_list],
-        success_count: response[:success_count],
-        error_count: response[:error_count],
-        sources: sources,
-        canvas: response[:canvas]
+        message: response_message,
+        tools_used: result[:tools_used] || [],
+        success_count: result[:tools_used]&.length || 0,
+        error_count: 0,
+        canvas: result[:suggested_canvas] || "conversation",
+        version: "v3"
       }
 
-    rescue AmosErrors::BedrockThrottlingError, AmosErrors::BedrockUnavailableError, AmosErrors::BedrockTimeoutError => e
-      Rails.logger.error "Scout Bedrock error: #{e.class.name} - #{e.message}"
-      save_scout_message("assistant", e.user_message)
-
-      render json: {
-        message: e.user_message,
-        error: true,
-        retry_after: e.retry_after,
-        error_type: e.class.name.demodulize
-      }, status: 503
-    rescue AmosErrors::BedrockError => e
-      Rails.logger.error "Scout Bedrock error: #{e.message}"
-      save_scout_message("assistant", e.user_message)
-
-      render json: {
-        message: e.user_message,
-        error: true,
-        retry_after: e.retry_after
-      }, status: 503
-    rescue AmosErrors::IntegrationError => e
-      Rails.logger.error "Scout integration error: #{e.integration_name} - #{e.message}"
-      save_scout_message("assistant", e.user_message)
-
-      render json: {
-        message: e.user_message,
-        error: true,
-        integration: e.integration_name
-      }, status: 422
     rescue StandardError => e
-      Rails.logger.error "Scout chat error: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
+      Rails.logger.error "[V3] Chat error: #{e.message}"
+      Rails.logger.error e.backtrace.first(10).join("\n")
 
-      # Fallback response
-      fallback_message = "I apologize, but I'm experiencing some technical difficulties. Please try again, or contact support if the issue persists."
+      fallback_message = "I apologize, but I'm experiencing some technical difficulties. Please try again."
       save_scout_message("assistant", fallback_message)
 
       render json: {
@@ -350,11 +260,10 @@ class ScoutController < ApplicationController
       task_session = TaskSession.find(task_session_id)
 
       if approved
-        # Start the workflow
-        interactive_service = InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id])
-        result = interactive_service.handle_plan_approval(
-          task_session.state["workflow_spec"],
-          approved: true
+        # Mark workflow as approved and let it execute
+        task_session.update!(
+          status: "approved",
+          state: task_session.state.merge("approved_at" => Time.current)
         )
 
         render json: { success: true, message: "Workflow approved and started" }
@@ -445,43 +354,27 @@ class ScoutController < ApplicationController
     # Store in session
     session[:model_mode] = mode
 
-    # Get thinking depth info for the selected mode
-    depth_service = ThinkingDepthService.new
-    depth_info = depth_service.config_for(mode == :auto ? :medium : mode)
-
     render json: {
       success: true,
       mode: mode,
-      description: depth_info[:description],
-      thinking_depth: mode == :auto ? 'auto-selected' : mode.to_s
+      description: "Model mode set to #{mode}",
+      thinking_depth: mode == :auto ? "auto-selected" : mode.to_s
     }
   end
 
-  # Get current thinking depth mode and available levels
+  # Get current model mode
   def get_model_mode
     current_mode = session[:model_mode]&.to_sym || :auto
-    
-    # Map legacy modes to new thinking depth modes
-    current_mode = case current_mode
-                   when :fast then :quick
-                   when :balanced then :standard
-                   when :powerful then :deep
-                   else current_mode
-                   end
-    
-    depth_service = ThinkingDepthService.new
 
     render json: {
       success: true,
       current_mode: current_mode,
-      available_tiers: depth_service.available_depths.map { |d|
-        {
-          key: d[:key],
-          level: d[:level],
-          description: d[:description],
-          auto_eligible: d[:auto_eligible]
-        }
-      }
+      available_tiers: [
+        { key: :auto, level: 1, description: "Auto — system picks the best model" },
+        { key: :quick, level: 2, description: "Quick — fast responses" },
+        { key: :standard, level: 3, description: "Standard — balanced quality" },
+        { key: :deep, level: 4, description: "Deep — maximum reasoning" }
+      ]
     }
   end
 
@@ -584,11 +477,21 @@ class ScoutController < ApplicationController
     Rails.logger.info "Scout continue workflow - Session: #{@session_id}, Inputs: #{user_inputs.keys}"
 
     begin
-      # Initialize interactive task service
-      interactive_service = InteractiveTaskService.new(current_user, current_entity, @session_id)
+      # V3: Continue workflow via agent loop with context
+      agent = V3::AgentLoop.new(
+        user: current_user,
+        entity: current_entity,
+        session_id: @session_id
+      )
 
-      # Continue the workflow
-      result = interactive_service.continue_workflow(user_inputs)
+      prompt = "Continue the current workflow with these inputs: #{user_inputs.to_json}"
+      agent_result = agent.process_message_streaming(prompt, ->(_) {}, persisted_history_last_k(20))
+      result = {
+        success: true,
+        message: agent_result.dig(:final_response, :message),
+        canvas: agent_result[:suggested_canvas],
+        canvas_data: agent_result[:canvas_data]
+      }
 
       # Save any assistant response
       if result[:message]
@@ -627,26 +530,12 @@ class ScoutController < ApplicationController
     end
     user_message = params[:message]&.strip
     current_canvas = params[:current_canvas]
-    context = params[:context]
     file_urls = params[:file_urls] || []
-    # Use explicit model from params, or fall back to premium model from session
     selected_model = params[:model] || session[:premium_model]
 
-    Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
-    if selected_model
-      Rails.logger.info "Selected model: #{selected_model} (premium: #{session[:premium_model].present?})"
-    end
-    Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
-    
-    # Log specific landing page details if on landing page editor
-    if current_canvas && current_canvas["type"] == "landing_page_editor"
-      landing_page_id = current_canvas["data"] && current_canvas["data"]["landing_page_id"]
-      Rails.logger.info "🎯 Landing Page Editor Canvas - ID: #{landing_page_id}"
-      Rails.logger.info "🎯 Canvas Data Details: #{current_canvas["data"].inspect}"
-    end
-    
-    Rails.logger.info "Chat context: #{context.inspect}" if context
-    Rails.logger.info "File URLs: #{file_urls.inspect}" if file_urls.any?
+    Rails.logger.info "[V3] Chat stream - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message&.truncate(100)}"
+    Rails.logger.info "[V3] Model: #{selected_model}" if selected_model
+    Rails.logger.info "[V3] Canvas: #{current_canvas.inspect}" if current_canvas
 
     if user_message.blank?
       render json: { error: "Message cannot be empty" }, status: 400
@@ -657,524 +546,212 @@ class ScoutController < ApplicationController
     response.headers["Content-Type"] = "text/event-stream; charset=utf-8"
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Connection"] = "keep-alive"
-    response.headers["X-Accel-Buffering"] = "no" # Prevent nginx buffering
+    response.headers["X-Accel-Buffering"] = "no"
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["X-Content-Type-Options"] = "nosniff"
-    # Don't set Transfer-Encoding manually - Rails handles this automatically with ActionController::Live
-
-    # Force the headers to be sent immediately
     response.status = 200
 
     begin
-      # Start keep-alive thread to prevent timeout during long operations
       start_keepalive_thread
-      
-      # ===== NEW AMOS INTEGRATION =====
-      # Initialize Amos orchestrator
-      @orchestrator = initialize_amos_orchestrator
-      
-      # Set up real-time streaming from Amos
-      setup_amos_streaming
-      
-      # Process message through Amos
-      process_through_amos(user_message, file_urls, current_canvas, selected_model)
-      
-      # ===== END AMOS INTEGRATION =====
-      
-      return # Early return - Amos handles everything
 
-      # Build enhanced message if files are attached
-      enhanced_message = user_message
-      metadata = {}
+      # ===== V3 AGENT LOOP =====
+      process_through_v3_agent(user_message, file_urls, current_canvas, selected_model)
 
-      if file_urls.any?
-        Rails.logger.info "🔍 Scout file_urls: #{file_urls.inspect}"
-        # Include asset_id so AMOS can use read_document tool
-        file_details = file_urls.map do |f|
-          # Support both asset_id and document_id for backward compatibility
-          id = f['asset_id'] || f['document_id']
-          asset_type = f['asset_type'] || 'image' # Default to image for backward compatibility
-          "📎 #{f['filename']} (asset_id: #{id}, asset_type: #{asset_type}, type: #{f['content_type']})"
-        end.join(", ")
+      # V3 agent loop handles everything — no preprocessor, no orchestrator
 
-        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id AND asset_type to extract content from these files before responding."
-        metadata[:file_urls] = file_urls
-      end
-
-      # Save user message with file info
-      save_scout_message("user", enhanced_message, metadata: metadata)
-      stream_update("📚 Loading conversation history...")
-
-      # Get conversation history (last 20 messages for active window)
-      conversation_history = persisted_history_last_k(20)
-      stream_update("📚 Loading conversation history (#{conversation_history.length} messages)")
-
-      # Track sources used in tool responses
-      sources_used = {}
-      interactive_service = nil  # Will be initialized based on processing type
-
-      # Define progress callback that will be used if we create InteractiveTaskService
-      progress_callback = lambda do |progress_data|
-        # Handle both string and hash formats
-        if progress_data.is_a?(String)
-          # Simple string message
-          stream_update(progress_data)
-        elsif progress_data.is_a?(Hash)
-          # Structured progress data
-          case progress_data[:type]
-          when "content_chunk"
-            # Stream content chunks directly
-            stream_content_chunk(progress_data[:content])
-          when "intermediate_message", "save_message"
-            # Save and stream intermediate messages
-            if progress_data[:content]
-              save_scout_message(progress_data[:role] || "assistant", progress_data[:content])
-              stream_content_chunk(progress_data[:content])
-            end
-          when 'phase_progress', 'phase_start'
-            # Show workflow phase progress as VISIBLE messages (not transient)
-            phase_message = "🔄 #{progress_data[:message]}"
-            Rails.logger.info "Phase progress: #{phase_message}"
-            save_scout_message('assistant', phase_message)
-            stream_update({
-              type: 'intermediate_message',
-              content: phase_message,
-              role: 'assistant'
-            })
-          when 'phase_complete'
-            # Show phase completion as VISIBLE messages
-            complete_message = "✅ #{progress_data[:message]}"
-            Rails.logger.info "Phase complete: #{complete_message}"
-            save_scout_message('assistant', complete_message)
-            stream_update({
-              type: 'intermediate_message',
-              content: complete_message,
-              role: 'assistant'
-            })
-          when 'tool_start'
-            # Show tool start as VISIBLE message with thinking indicator
-            tool_name = progress_data[:tool_name] || progress_data[:name]
-            tool_message = "🔧 #{get_friendly_tool_name(tool_name)}..."
-            Rails.logger.info "Tool start: #{tool_message}"
-            save_scout_message('assistant', tool_message)
-            stream_update({
-              type: 'intermediate_message',
-              content: tool_message,
-              role: 'assistant'
-            })
-          when 'tool_complete'
-            # Tool complete - just log, don't spam chat
-            tool_name = progress_data[:tool_name] || progress_data[:name]
-            Rails.logger.info "Tool complete: #{tool_name}"
-
-            # Track source if provided in tool response
-            if progress_data[:source]
-              source_type = progress_data[:source]
-              sources_used[source_type] ||= 0
-              sources_used[source_type] += 1
-              Rails.logger.info "📊 Source tracked: #{source_type} (total: #{sources_used[source_type]})"
-            end
-            # Don't show tool complete messages - too noisy
-          when 'progress'
-            # Progress updates from long-running tools with percentage
-            Rails.logger.info "📊 Tool progress: #{progress_data[:tool]} - #{progress_data[:message]} (#{progress_data[:percentage]}%)"
-            stream_update({
-              type: "progress",
-              tool: progress_data[:tool],
-              message: progress_data[:message],
-              percentage: progress_data[:percentage],
-              timestamp: progress_data[:timestamp] || Time.current.to_f
-            })
-          when 'planner_progress'
-            # Stream planner reasoning as transient messages
-            Rails.logger.info "Planner: #{progress_data[:message]}"
-            stream_transient_update("🧠 #{progress_data[:message]}")
-          when "load_canvas"
-            # Stream canvas loading
-            stream_update(progress_data)
-          when "canvas_update"
-            # Stream canvas update
-            stream_update(progress_data)
-          when "workflow_approval_needed"
-            # Handle workflow approval request
-            task_session_id = progress_data[:task_session_id]
-            workflow_spec = progress_data[:workflow_spec]
-
-            # Stream the message and approval UI
-            stream_content_chunk(progress_data[:message] || "I've created a workflow plan for your request. Please review:")
-
-            # Load the approval canvas
-            stream_update({
-              type: "load_canvas",
-              canvas: "task_progress",
-              canvas_data: {
-                task_session_id: task_session_id,
-                awaiting_approval: true,
-                workflow_spec: workflow_spec
-              }
-            })
-          when :step_completed, "step_completed"
-            # Stream step completion and trigger canvas refresh
-            stream_update({
-              type: "step_completed",
-              step_id: progress_data[:step_id],
-              step_name: progress_data[:step_name],
-              message: "✅ Completed: #{progress_data[:step_name] || progress_data[:step_id]}"
-            })
-            # Also send a canvas update to refresh the task list
-            stream_update({
-              type: "canvas_update",
-              canvas_type: "task_progress",
-              canvas_data: {
-                task_session_id: interactive_service.instance_variable_get(:@task_session)&.id
-              }
-            })
-          when :step_failed, "step_failed"
-            # Stream step failure and trigger canvas refresh
-            stream_update({
-              type: "step_failed",
-              step_id: progress_data[:step_id],
-              step_name: progress_data[:step_name],
-              error: progress_data[:error],
-              message: "❌ Failed: #{progress_data[:step_name] || progress_data[:step_id]}"
-            })
-            # Also send a canvas update to refresh the task list
-            stream_update({
-              type: "canvas_update",
-              canvas_type: "task_progress",
-              canvas_data: {
-                task_session_id: interactive_service.instance_variable_get(:@task_session)&.id
-              }
-            })
-          when "tool_start", "tool_complete"
-            # Save and stream tool updates as content
-            tool_name = progress_data[:tool_name] || progress_data[:name]
-            tool_message = if progress_data[:type] == "tool_start"
-              "🔧 Using tool: #{tool_name}"
-            else
-              "✅ Tool completed: #{tool_name}"
-            end
-            save_scout_message("assistant", tool_message)
-            # Stream as intermediate message so it appears in chat
-            stream_update({
-              type: "intermediate_message",
-              content: tool_message,
-              role: "assistant"
-            })
-          when "canvas_update"
-            # CRITICAL: Stream canvas updates for freeform_canvas and others
-            # The frontend expects type: "canvas_update" with canvas_type and canvas_data
-            Rails.logger.info "🎨 Streaming canvas_update: #{progress_data[:canvas_type]}"
-            stream_update({
-              type: "canvas_update",
-              canvas_type: progress_data[:canvas_type],
-              canvas_data: progress_data[:canvas_data] || {}
-            })
-          else
-            # Default progress message
-            stream_update("🔄 #{progress_data[:message] || progress_data.to_s}")
-          end
-        else
-          # Fallback for other types
-          stream_update("🔄 #{progress_data}")
-        end
-      end
-
-      # Check if we should use context (keeping legacy support for now)
-      if false  # Disabled context setting for now
-        # No context loading needed for InteractiveTaskService
-      end
-
-      # Check if this is a plan approval response
-      if current_canvas&.dig("data", "awaiting_approval") && is_approval_response?(user_message)
-        stream_update("📋 Processing your plan feedback...")
-        approval_action = extract_approval_action(user_message)
-        
-        # Initialize service for plan approval if not already done
-        interactive_service ||= InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id], model: selected_model)
-        interactive_service.on_progress(&progress_callback)
-        
-        result = interactive_service.handle_plan_approval(approval_action, user_message)
-      else
-        # Check if we should use parallel processing
-        if should_use_parallel_processing?(user_message, file_urls)
-          stream_update("🚀 **Activating parallel processing** to handle your multi-part request efficiently...")
-          
-          # Use ParallelTaskOrchestrator instead
-          orchestrator = ParallelTaskOrchestrator.new(current_user, current_entity, @session_id)
-          
-          # Create tasks from the request
-          tasks = orchestrator.process_request(user_message, {
-            voice_mode: false,
-            current_canvas: current_canvas,
-            recent_history: conversation_history,
-            file_urls: file_urls
-          })
-          
-          # Stream the parallel execution start
-          stream_update({
-            type: 'parallel_execution_start',
-            execution_id: SecureRandom.uuid,
-            task_count: tasks.length,
-            tasks: tasks.map { |t| 
-              {
-                id: t.id,
-                type: t.task_type,
-                description: t.metadata['description']
-              }
-            }
-          })
-          
-          # Load the parallel tasks canvas
-          stream_update({
-            type: 'load_canvas',
-            canvas: 'parallel_tasks',
-            canvas_data: {
-              session_id: @session_id,
-              tasks: tasks.map { |t| 
-                {
-                  id: t.id,
-                  type: t.task_type,
-                  description: t.metadata['description'],
-                  status: t.status,
-                  progress: t.progress || 0,
-                  dependencies: t.task_dependencies.map { |d|
-                    {
-                      id: d.id,
-                      depends_on_task_id: d.depends_on_task_id,
-                      relationship_type: d.relationship_type,
-                      dependency_type: d.dependency_type,
-                      status: d.status
-                    }
-                  }
-                }
-              }
-            }
-          })
-          
-          # Don't claim success yet - tasks are just queued
-          result = { 
-            success: true, 
-            message: "I'm processing #{tasks.length} tasks in parallel. You can continue chatting or work on other things while I handle these in the background. Check the parallel tasks panel for real-time progress.",
-            mode: "parallel",
-            message_already_saved: false,
-            canvas_type: 'parallel_tasks',
-            canvas_data: {
-              session_id: @session_id,
-              tasks: tasks.map { |t| 
-                {
-                  id: t.id,
-                  type: t.task_type,
-                  description: t.metadata['description'],
-                  status: t.status,
-                  progress: t.progress || 0,
-                  dependencies: t.task_dependencies.map { |d|
-                    {
-                      id: d.id,
-                      depends_on_task_id: d.depends_on_task_id,
-                      relationship_type: d.relationship_type,
-                      dependency_type: d.dependency_type,
-                      status: d.status
-                    }
-                  }
-                }
-              }
-            }
-          }
-          
-          # Immediately enable chat for continued conversation
-          stream_update({
-            type: 'enable_chat',
-            message: 'Feel free to ask other questions while I work on these tasks!'
-          })
-        else
-          # Process message using InteractiveTaskService
-          stream_update("🧠 Analyzing your request...")
-          stream_update("📋 Detecting task mode and preparing workflow...")
-          
-          # Initialize InteractiveTaskService for sequential processing
-          interactive_service = InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id], model: selected_model)
-          interactive_service.on_progress(&progress_callback)
-          
-          # Add file URLs to context if present
-          if file_urls.any?
-            interactive_service.set_context(attached_files: file_urls)
-          end
-
-          result = interactive_service.process_message(user_message, conversation_history, current_canvas)
-        end
-      end
-
-      # Handle the response from InteractiveTaskService
-      if result[:success]
-        # Save assistant response (only if not already streamed)
-        if result[:mode] != "autonomous" && result[:message] && !result[:message_already_saved]
-          save_scout_message("assistant", result[:message])
-          stream_content_chunk(result[:message])
-        end
-
-        # Handle canvas loading (if not already done during streaming)
-        canvas = result[:canvas_type] || result[:canvas]
-        if canvas && canvas != "conversation" && result[:mode] != "autonomous" && result[:mode] != "parallel"
-          stream_update({
-            type: "load_canvas",
-            canvas: canvas,
-            canvas_data: result[:canvas_data] || {}
-          })
-        end
-
-        # Return the response
-        final_response = {
-          message: result[:message],
-          message_already_saved: result[:message_already_saved] || false,
-          canvas_type: result[:canvas_type] || result[:canvas] || "conversation",
-          canvas_data: result[:canvas_data] || {},
-          tools_used: result[:tools_used] || [],
-          success_count: (result[:tools_used].is_a?(Array) ? result[:tools_used].count : 0),
-          error_count: 0
-        }
-
-        # Add source attribution from tools_used (e.g., read_document)
-        extracted_sources = extract_response_sources(final_response[:tools_used])
-        if extracted_sources.any?
-          final_response[:sources] = extracted_sources
-          Rails.logger.info "📚 Extracted sources from tools: #{final_response[:sources]}"
-        elsif sources_used.any?
-          # Fallback to event-tracked sources if no tools sources found
-          final_response[:sources] = sources_used.map { |source, count| { type: source, count: count } }
-          Rails.logger.info "📊 Response included sources from events: #{final_response[:sources]}"
-        end
-
-        # Check if workflow approval is needed
-        if result[:workflow_approval_needed]
-          final_response[:workflow_approval] = {
-            task_session_id: result[:task_session_id],
-            workflow_spec: result[:workflow_spec]
-          }
-        end
-        
-        # Check if parallel tasks were created (workflow executed as parallel task)
-        if result[:parallel_tasks]
-          Rails.logger.info "🚀 Workflow queued as parallel task"
-          
-          # Stream the parallel execution start
-          stream_update({
-            type: 'parallel_execution_start',
-            execution_id: SecureRandom.uuid,
-            task_count: result[:parallel_tasks].length,
-            tasks: result[:parallel_tasks].map { |t| 
-              {
-                id: t.id,
-                type: t.task_type,
-                description: t.metadata['description']
-              }
-            }
-          })
-          
-          # Load the parallel tasks canvas
-          stream_update({
-            type: 'load_canvas',
-            canvas: 'parallel_tasks',
-            canvas_data: {
-              session_id: @session_id,
-              tasks: result[:parallel_tasks]
-            }
-          })
-          
-          # Enable the chat for continued conversation
-          stream_update({
-            type: 'enable_chat'
-          })
-          
-          # Monitor the parallel tasks
-          monitor_parallel_tasks(result[:parallel_tasks])
-        end
-      else
-        # Handle error case
-        error_message = result[:error] || "An error occurred while processing your request."
-        stream_update("❌ Error: #{error_message}")
-        stream_content_chunk(error_message)
-
-        final_response = {
-          message: error_message,
-          canvas_type: "conversation",
-          canvas_data: {},
-          tools_used: [],
-          success_count: 0,
-          error_count: 1
-        }
-
-        # Add source attribution even in error case
-        if sources_used.any?
-          final_response[:sources] = sources_used.map { |source, count| { type: source, count: count } }
-        end
-      end
-
-      # Stream final response and close
-      stream_final_response(final_response)
-
-    rescue AmosErrors::BedrockThrottlingError, AmosErrors::BedrockUnavailableError => e
-      Rails.logger.error "Scout streaming Bedrock error: #{e.class.name} - #{e.message}"
-      stream_event("error", {
-        message: e.user_message,
-        retry_after: e.retry_after,
-        error_type: e.class.name.demodulize
-      })
-    rescue AmosErrors::BedrockTimeoutError => e
-      Rails.logger.error "Scout streaming timeout: #{e.message}"
-      stream_event("error", {
-        message: e.user_message,
-        retry_after: e.retry_after
-      })
-    rescue AmosErrors::IntegrationError => e
-      Rails.logger.error "Scout streaming integration error: #{e.integration_name} - #{e.message}"
-      stream_event("error", {
-        message: e.user_message,
-        integration: e.integration_name,
-        action: "Please check your #{e.integration_name} connection in Settings > Integrations."
-      })
     rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
-      # Client disconnected - this is normal, not an error
-      Rails.logger.info "Client disconnected during chat stream: #{e.message}"
-
-      # Check if a landing page was created successfully before disconnection
-      # This helps users know their request completed even if streaming failed
-      if @workflow_engine&.workflow_execution&.status == "completed"
-        Rails.logger.info "Workflow completed successfully before client disconnect"
-        
-        # Store a notification for the user about the successful completion
-        # This will be shown when they next access the interface
-        if @workflow_engine.workflow_execution.workflow_spec&.dig('name')&.downcase&.include?('landing page')
-          Rails.logger.info "Landing page workflow completed successfully"
-          # The landing page was created - user can access it through the normal interface
-        end
-      end
+      Rails.logger.info "[V3] Client disconnected: #{e.message}"
     rescue StandardError => e
-      Rails.logger.error "Scout streaming chat error: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
-
+      Rails.logger.error "[V3] Chat stream error: #{e.message}"
+      Rails.logger.error e.backtrace.first(10).join("\n")
+      
       fallback_message = case e.message
       when /timeout/i
         "I'm taking longer than expected to respond. Please try again in a moment."
-      when /network/i, /connection/i
-        "I'm having trouble connecting right now. Please try again."
+      when /throttl/i
+        "I'm experiencing high demand right now. Please try again in a few seconds."
       else
         "I encountered an unexpected error. Please try rephrasing your request."
       end
-
-      stream_update("❌ Error occurred")
-      stream_final_response({
-        message: fallback_message,
-        error: true,
-        tools_used: false
-      })
-    ensure
-      # Stop keep-alive thread
-      stop_keepalive_thread
       
-      response.stream.close
+      begin
+        stream_update("❌ #{fallback_message}")
+        stream_final_response({ message: fallback_message, error: true, tools_used: false })
+      rescue
+        # Stream already closed
+      end
+    ensure
+      stop_keepalive_thread
+      response.stream.close rescue nil
     end
   end
+
+  # ===== V3 AGENT LOOP INTEGRATION =====
+  # Simple, clean: build message → create agent → run loop → stream results
+
+  def process_through_v3_agent(message, file_urls, current_canvas, model_preference)
+    # Stream thinking indicator immediately
+    stream_thinking_indicator
+
+    # Build enhanced message with file attachments
+    enhanced_message = build_v3_enhanced_message(message, file_urls)
+
+    # Save user message
+    save_scout_message("user", enhanced_message)
+
+    # Determine model
+    model = model_preference || ENV.fetch("BEDROCK_DEFAULT_MODEL", "anthropic.claude-sonnet-4-v1")
+
+    # Extract canvas type
+    canvas_type = extract_canvas_type(current_canvas)
+
+    # Create V3 agent loop
+    agent = V3::AgentLoop.new(
+      user: current_user,
+      entity: current_entity,
+      session_id: @session_id,
+      model: model
+    )
+
+    # Get conversation history
+    conversation_history = persisted_history_last_k(20)
+
+    # Process with streaming
+    result = agent.process_message_streaming(
+      enhanced_message,
+      method(:handle_v3_streaming_chunk),
+      conversation_history,
+      canvas_type
+    )
+
+    # Handle final result
+    handle_v3_final_result(result)
+
+  rescue ::Tools::AskUserTool::ExecutionSuspended => e
+    Rails.logger.info "[V3] Ask user suspension"
+    # Already streamed to user via chunk handler
+  end
+
+  def build_v3_enhanced_message(message, file_urls)
+    return message if file_urls.blank? || file_urls.empty?
+
+    file_details = file_urls.map do |f|
+      id = f["asset_id"] || f["document_id"]
+      asset_type = f["asset_type"] || "image"
+      processing = f["processing"] ? " - PROCESSING" : ""
+      "📎 #{f['filename']} (asset_id: #{id}, asset_type: #{asset_type}, type: #{f['content_type']}#{processing})"
+    end.join(", ")
+
+    "#{message}\n\n[Attached Files: #{file_details}]\n\nUse read_file(action: 'read', document_id: ID) to extract content from these files."
+  end
+
+  def extract_canvas_type(current_canvas)
+    if current_canvas.is_a?(Hash) || current_canvas.is_a?(ActionController::Parameters)
+      current_canvas["type"] || current_canvas[:type]
+    elsif current_canvas.is_a?(String)
+      current_canvas
+    end
+  end
+
+  def handle_v3_streaming_chunk(chunk)
+    return unless chunk.is_a?(Hash)
+
+    case chunk[:type]
+    when :content
+      stream_content_chunk(chunk[:text]) if chunk[:text].present?
+    when :canvas_suggestion
+      stream_update({
+        type: "load_canvas",
+        canvas: chunk[:canvas],
+        canvas_data: chunk[:data] || {}
+      })
+    when :ask_user
+      stream_update(chunk[:question])
+    when :status
+      stream_update(chunk[:text])
+    end
+  rescue IOError, Errno::EPIPE
+    # Client disconnected — normal
+  end
+
+  def handle_v3_final_result(result)
+    return unless result.is_a?(Hash)
+
+    response_message = result.dig(:final_response, :message)
+
+    # Save assistant response
+    if response_message.present?
+      # Check for HTML content to route to canvas
+      processed = process_response_html_v3(response_message)
+      save_scout_message("assistant", processed[:clean_content])
+
+      if processed[:canvas_data]
+        stream_update({
+          type: "load_canvas",
+          canvas: "freeform_canvas",
+          canvas_data: processed[:canvas_data]
+        })
+      end
+    end
+
+    # Stream canvas if suggested by tools
+    if result[:suggested_canvas]
+      stream_update({
+        type: "load_canvas",
+        canvas: result[:suggested_canvas],
+        canvas_data: result[:canvas_data] || {}
+      })
+    end
+
+    # Stream final response
+    stream_final_response({
+      message: response_message,
+      message_already_saved: true,
+      canvas_type: result[:suggested_canvas] || "conversation",
+      canvas_data: result[:canvas_data] || {},
+      tools_used: result[:tools_used] || [],
+      success_count: (result[:tools_used]&.length || 0),
+      error_count: 0,
+      model_used: result[:model_used],
+      version: "v3"
+    })
+
+    Rails.logger.info "[V3] Complete. Tools: #{result[:tools_used]&.join(', ')}, Model: #{result[:model_used]}"
+  end
+
+  def process_response_html_v3(content)
+    return { clean_content: content, canvas_data: nil } if content.blank?
+
+    # Detect substantial HTML blocks in the response
+    if content.match?(/<(?:div|section|table|form|main|article|header)[^>]*>.*<\/(?:div|section|table|form|main|article|header)>/m) &&
+       content.scan(/<[a-z]/).length > 5
+      # Extract HTML to canvas
+      html_match = content.match(/(<(?:<!DOCTYPE|<html|<div|<section|<table|<form|<main|<article|<header).*)/m)
+      if html_match
+        html_content = html_match[1]
+        text_before = content[0...html_match.begin(0)].strip
+
+        return {
+          clean_content: text_before.presence || "Here's what I created — check the canvas!",
+          canvas_data: {
+            title: "Generated Content",
+            content: html_content,
+            type: "html"
+          }
+        }
+      end
+    end
+
+    { clean_content: content, canvas_data: nil }
+  end
+
+  # ===== END V3 AGENT LOOP INTEGRATION =====
+
+  # --- OLD chat_stream DEAD CODE REMOVED (V3 migration) ---
+  # The old InteractiveTaskService, ParallelTaskOrchestrator, progress callback,
+  # Amos orchestrator integration, and 500+ lines of dead code were removed.
+  # V3 agent loop replaces ALL of that with ~120 lines above.
+
 
   # Template/Canvas Actions for Intelligent Canvas
   # Get task statuses for refresh
@@ -2631,10 +2208,7 @@ class ScoutController < ApplicationController
     Rails.cache.delete(l1_cache_key)
     Rails.logger.info "🔄 Fresh start: cleared L1 memory cache"
     
-    # NOTE: We intentionally DON'T clear TieredDiscoveryService cache here.
-    # Discovery cache is prompt-based (same question = same tools needed).
-    # It's also space-aware (different spaces have different cache keys).
-    # 60-second TTL handles staleness naturally.
+    # V3: No tool discovery cache to clear — tools are always available.
     
     # Generate new session ID (for active context tracking, not memory separation)
     session[:scout_session_id] = SecureRandom.uuid
@@ -6397,229 +5971,6 @@ class ScoutController < ApplicationController
     }
   end
   
-  # ===== AMOS INTEGRATION METHODS =====
-  
-  def initialize_amos_orchestrator
-    # Create or retrieve Amos orchestrator for this session
-    # Pass the actual request host so callbacks work correctly
-    # Pass fresh_start_at to filter out old messages from before "Fresh Start"
-    # Pass client_ip for geolocation
-    fresh_start_time = session[:scout_fresh_start_at].present? ? 
-      (Time.parse(session[:scout_fresh_start_at]) rescue nil) : nil
-    
-    Amos::Orchestrator.new(current_user, current_entity, @session_id, 
-      request_host: request.host_with_port,
-      fresh_start_at: fresh_start_time,
-      client_ip: real_client_ip
-    )
-  end
-  
-  # Process response content to detect and extract HTML to canvas
-  def process_response_html(content)
-    return { clean_content: content, canvas_data: nil } if content.blank?
-    
-    # Use the ResponseHtmlProcessor to detect and extract HTML
-    result = Amos::ResponseHtmlProcessor.process(content)
-    
-    if result[:canvas_suggestion]
-      Rails.logger.info "[Scout] Extracted HTML to canvas: #{result[:canvas_suggestion][:canvas_data][:title]}"
-      {
-        clean_content: result[:content],
-        canvas_data: result[:canvas_suggestion][:canvas_data]
-      }
-    else
-      { clean_content: content, canvas_data: nil }
-    end
-  end
-  
-  def setup_amos_streaming
-    # Accumulator for streaming content to detect HTML at message boundaries
-    @streaming_content_buffer = ""
-    
-    # Set up a callback to stream Amos responses back through SSE
-    @orchestrator.on_stream do |response|
-      case response[:type]
-      when 'assistant_message', 'amos_response'
-        content = response[:content].to_s
-        
-        # Only stream if this is a streaming chunk, not the complete message
-        # Complete messages are handled by ActionCable separately
-        if response[:metadata]&.dig(:streaming)
-          # Accumulate content for HTML detection at message end
-          @streaming_content_buffer += content
-          
-          # Check for rich HTML in accumulated content (but only act on complete messages)
-          # For now, just stream the chunk - frontend will handle display
-          Rails.logger.debug "[Scout SSE] Streaming chunk to frontend: #{content[0..20]}..."
-          stream_update(content)
-          
-          # Chunks are now properly paced at the source
-          # No additional delay needed here
-        elsif response[:metadata]&.dig(:complete)
-          # Complete message - check for HTML and potentially route to canvas
-          full_content = @streaming_content_buffer.present? ? @streaming_content_buffer : content
-          @streaming_content_buffer = "" # Reset buffer
-          
-          # Process HTML if present - this will extract to canvas if needed
-          processed = process_response_html(full_content)
-          
-          # Save the cleaned message
-          save_scout_message("assistant", processed[:clean_content])
-          
-          # If we extracted HTML to canvas, stream the canvas update
-          if processed[:canvas_data]
-            stream_update({
-              type: 'load_canvas',
-              canvas: 'freeform_canvas',
-              canvas_data: processed[:canvas_data]
-            })
-          end
-        elsif !response[:metadata]&.dig(:streaming) && !response[:metadata]&.dig(:already_saved)
-          # Non-streaming message (like delegation acknowledgments)
-          # Check for HTML here too
-          processed = process_response_html(content)
-          stream_update(processed[:clean_content])
-          save_scout_message("assistant", processed[:clean_content])
-          
-          if processed[:canvas_data]
-            stream_update({
-              type: 'load_canvas',
-              canvas: 'freeform_canvas',
-              canvas_data: processed[:canvas_data]
-            })
-          end
-        end
-        
-      when 'job_status'
-        # Stream job status updates
-        stream_update({
-          type: 'job_status',
-          job_id: response[:job_id],
-          status: response[:status],
-          message: response[:message],
-          progress: response[:progress]
-        })
-        
-      when 'input_request'
-        # Handle input requests from agents
-        stream_update({
-          type: 'input_request',
-          job_id: response[:job_id],
-          prompt: response[:prompt],
-          options: response[:options]
-        })
-        
-      when 'canvas_update'
-        # Handle canvas updates
-        stream_update({
-          type: 'load_canvas',
-          canvas: response[:canvas],
-          canvas_data: response[:canvas_data]
-        })
-        
-      when 'error'
-        # Stream errors
-        stream_update("❌ #{response[:message]}")
-      end
-    end
-  end
-  
-    def process_through_amos(message, file_urls, canvas, model_preference)
-      # Stream "thinking" indicator IMMEDIATELY so user sees feedback right away
-      stream_thinking_indicator
-      
-      # Build metadata for Amos - ensure canvas is a regular hash
-      canvas_hash = if canvas.is_a?(ActionController::Parameters)
-                      canvas.permit!.to_h
-                    elsif canvas.respond_to?(:to_h)
-                      canvas.to_h
-                    else
-                      canvas || {}
-                    end
-      
-      # Get model mode from session (set by slider: auto/fast/balanced/powerful)
-      current_model_mode = session[:model_mode]&.to_sym || :auto
-      
-      # Check if using premium model
-      premium_model = session[:premium_model]
-      is_premium = premium_model.present?
-      
-      metadata = {
-        attached_files: file_urls,
-        canvas: canvas_hash,
-        model_preference: model_preference || premium_model, # Explicit model or premium from session
-        model_mode: current_model_mode,     # The slider mode
-        voice_mode: params[:voice_mode] == 'true',
-        premium_mode: is_premium             # Flag for billing
-      }
-      
-      if is_premium
-        Rails.logger.info "[Scout] 👑 Premium mode - using #{premium_model}"
-      else
-        Rails.logger.info "[Scout] Model selection - explicit: #{model_preference.inspect}, mode: #{current_model_mode}"
-      end
-    
-    # Build enhanced message if files are attached
-    enhanced_message = message
-    if file_urls.any?
-      Rails.logger.info "🔍 AMOS file_urls: #{file_urls.inspect}"
-      # Include asset_id so AMOS can use read_document tool
-      file_details = file_urls.map do |f|
-        # Support both asset_id and document_id for backward compatibility
-        id = f['asset_id'] || f['document_id']
-        asset_type = f['asset_type'] || 'image' # Default to image for backward compatibility
-        processing_note = f['processing'] ? " - PROCESSING" : ""
-        "📎 #{f['filename']} (asset_id: #{id}, asset_type: #{asset_type}, type: #{f['content_type']}#{processing_note})"
-      end.join(", ")
-
-      enhanced_message = "#{message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id AND asset_type to extract content from these files before responding. If a document shows PROCESSING, it may still be extracting content."
-      metadata[:file_urls] = file_urls
-    end
-    
-    # Save enhanced user message
-    save_scout_message("user", enhanced_message)
-    
-    # Process through Amos with enhanced message
-    @orchestrator.process_message(enhanced_message, source: :user, metadata: metadata)
-    
-    # Wait for Amos to complete processing
-    wait_for_amos_completion
-    
-  rescue => e
-    Rails.logger.error "[Scout] Amos processing error: #{e.message}"
-    Rails.logger.error e.backtrace.join("\n")
-    stream_update("❌ An error occurred while processing your request. Please try again.")
-  end
-  
-  def wait_for_amos_completion
-    # Keep the connection alive while Amos processes
-    # This replaces the complex parallel processing logic
-    timeout = 5.minutes
-    start_time = Time.current
-    
-    loop do
-      # Check if all jobs are complete
-      active_jobs = @orchestrator.query_job_status.select { |j| 
-        j[:status][:status].in?(['queued', 'running', 'waiting_for_input'])
-      }
-      
-      break if active_jobs.empty?
-      
-      # Check timeout
-      if Time.current - start_time > timeout
-        Rails.logger.warn "[Scout] Amos processing timeout after #{timeout}"
-        stream_update("⏱️ Processing is taking longer than expected. Tasks will continue in the background.")
-        break
-      end
-      
-      # Send keepalive
-      response.stream.write(":\n\n") rescue nil
-      
-      sleep 0.5
-    end
-  end
-  
-  # ===== END AMOS INTEGRATION =====
 
   # ===== AMOS SPACES =====
   public  # Make these actions accessible as routes

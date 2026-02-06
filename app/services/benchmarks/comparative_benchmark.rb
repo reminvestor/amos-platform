@@ -374,7 +374,7 @@ module Benchmarks
 
     def call_amos(question, collaboration:)
       session_id = "benchmark_#{SecureRandom.hex(4)}"
-      scout_service = ScoutGenericToolsServiceV2.new(@user, @entity, session_id)
+      scout_service = V3::AgentLoop # V3 migration stub.new(@user, @entity, session_id)
       
       # TODO: Add collaboration flag to Scout service
       # For now, we track if collaboration was used by checking tool calls

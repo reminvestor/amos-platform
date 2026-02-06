@@ -131,17 +131,13 @@ module Api
       end
 
       def execute_confirmed_tool
-        # Build a tool service to execute
-        tool_service = ScoutGenericToolsServiceV2.new(
-          @pending.user,
-          @pending.entity,
-          @pending.session_id
-        )
-
-        # Execute the tool
-        result = tool_service.execute_tool_by_name(
+        # Execute through V3 tool registry
+        result = V3::ToolRegistry.execute(
           @pending.tool_name,
-          @pending.tool_args.symbolize_keys
+          @pending.tool_args.symbolize_keys,
+          user: @pending.user,
+          entity: @pending.entity,
+          context: { session_id: @pending.session_id }
         )
 
         # Broadcast the result via ScoutChannel if we have a session
