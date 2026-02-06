@@ -457,6 +457,11 @@ class UnifiedPreprocessorService
     return :build if msg.match?(/\b(when|after|if)\s+.{0,30}(submit|create|update|change).{0,30}(send|create|update|notify|email)/i)
     return :build if msg.match?(/\bautomat(e|ically)\s+.{0,30}(send|create|update|notify|sync)/i)
     
+    # DOCUMENT intent (reading, searching, querying uploaded files)
+    return :document if msg.match?(/\b(read|open|view|search|find|query|look at|check|scan)\s+(my\s+)?(the\s+)?(uploaded\s+)?(pdf|document|file|upload|attachment)/i)
+    return :document if msg.match?(/\b(what does|summarize|extract from|tell me about)\s+(the\s+)?(pdf|document|file)/i)
+    return :document if msg.match?(/\b(pdf|document|file)\s+(say|contain|include|mention|have)/i)
+    
     # INTEGRATION intent
     return :integration if msg.match?(/\b(quickbooks|stripe|gmail|shopify|salesforce|hubspot)\b/i)
     return :integration if msg.match?(/\b(sync|connect|import|export)\s+(from|to|with)\b/i)
@@ -752,8 +757,11 @@ class UnifiedPreprocessorService
     reasoning: %w[
       web_search get_data search_memory query_document_content discover_tools create_freeform_canvas
     ],
+    document: %w[
+      query_document_content read_document list_documents get_data discover_tools
+    ],
     unknown: %w[
-      web_search get_data discover_tools load_canvas search_memory
+      web_search get_data discover_tools load_canvas search_memory query_document_content read_document
     ]
   }.freeze
   
