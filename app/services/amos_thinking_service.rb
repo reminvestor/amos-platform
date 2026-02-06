@@ -26,13 +26,20 @@ class AmosThinkingService
     1. OBSERVATIONS: What patterns do you see? What's working? What's not?
     2. PRIORITIES: What's most important to address right now?
     3. OPPORTUNITIES: What improvements would create the most value?
-    4. BOUNTY IDEAS: Specific work items for contributors
+    4. BOUNTY IDEAS: Specific, ACTIONABLE work items for contributors
     
-    For each bounty idea, specify:
-    - Title (clear, actionable)
-    - Description (what needs to be done)
-    - Type (bug, feature, documentation, content, marketing, support, design)
-    - Why this matters
+    CRITICAL: Bounties must be WELL-DEFINED and ACTIONABLE. External AI agents and
+    human contributors will work on these. The better the bounty, the better the results.
+    
+    For each bounty idea, you MUST specify:
+    - Title: Clear, specific (not vague like "fix bugs")
+    - Description: Detailed explanation of the problem/opportunity
+    - Type: bug, feature, documentation, content, marketing, support, design, testing, infrastructure
+    - Acceptance criteria: How to verify the work is complete (list of checkable items)
+    - Scope: What's affected, what files/components are involved
+    - Suggested approach: How a contributor should tackle this
+    - Estimated effort: trivial, small, medium, large, epic
+    - Rationale: Why this matters to the platform
     
     Be creative but practical. Think about both technical and non-technical opportunities.
     Marketing, content, documentation, and community work are just as valuable as code.
@@ -44,9 +51,13 @@ class AmosThinkingService
       "priorities": ["<priority 1>", "<priority 2>", ...],
       "bounty_ideas": [
         {
-          "title": "<clear actionable title>",
-          "description": "<detailed description of what needs to be done>",
+          "title": "<specific actionable title>",
+          "description": "<detailed description with context>",
           "type": "<bug|feature|documentation|content|marketing|support|design|testing|infrastructure>",
+          "acceptance_criteria": ["<criterion 1>", "<criterion 2>", ...],
+          "scope": "<what files/components are affected>",
+          "suggested_approach": "<how to tackle this>",
+          "estimated_effort": "<trivial|small|medium|large|epic>",
           "rationale": "<why this matters>"
         },
         ...
@@ -396,17 +407,24 @@ class AmosThinkingService
 
       log("Scoring '#{idea[:title]}': #{scoring[:points]} points")
 
+      # Build rich description with all structured context
+      description = build_rich_bounty_description(idea)
+
       # Create the bounty
       bounty = Bounty.create_from_amos!(
         entity: @entity,
         title: idea[:title],
-        description: "#{idea[:description]}\n\n**Why this matters:** #{idea[:rationale]}",
+        description: description,
         bounty_type: normalize_bounty_type(idea[:type]),
         points: scoring[:points],
         scoring_rationale: scoring[:rationale],
         metadata: {
           ai_scores: scoring.slice(:effort_score, :impact_score, :urgency_score, :complexity_score),
-          estimated_hours: scoring[:estimated_hours]
+          estimated_hours: scoring[:estimated_hours],
+          acceptance_criteria: idea[:acceptance_criteria],
+          scope: idea[:scope],
+          suggested_approach: idea[:suggested_approach],
+          estimated_effort: idea[:estimated_effort]
         }
       )
 
@@ -422,6 +440,33 @@ class AmosThinkingService
     end
 
     bounties
+  end
+
+  def build_rich_bounty_description(idea)
+    parts = [idea[:description]]
+
+    if idea[:scope].present?
+      parts << "\n\n### Scope\n#{idea[:scope]}"
+    end
+
+    if idea[:suggested_approach].present?
+      parts << "\n\n### Suggested Approach\n#{idea[:suggested_approach]}"
+    end
+
+    if idea[:acceptance_criteria].present? && idea[:acceptance_criteria].is_a?(Array)
+      criteria = idea[:acceptance_criteria].map { |c| "- [ ] #{c}" }.join("\n")
+      parts << "\n\n### Acceptance Criteria\n#{criteria}"
+    end
+
+    if idea[:estimated_effort].present?
+      parts << "\n\n**Estimated Effort:** #{idea[:estimated_effort].to_s.titleize}"
+    end
+
+    if idea[:rationale].present?
+      parts << "\n\n**Why this matters:** #{idea[:rationale]}"
+    end
+
+    parts.join
   end
 
   def normalize_bounty_type(type)

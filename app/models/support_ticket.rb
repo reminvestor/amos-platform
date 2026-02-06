@@ -249,6 +249,33 @@ class SupportTicket < ApplicationRecord
   end
 
   # ═══════════════════════════════════════════════════════════════════════════
+  # READINESS & BOUNTY ELIGIBILITY
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  scope :bounty_eligible, -> { where(bounty_eligible: true) }
+  scope :needs_qualification, -> { where(readiness_assessed_at: nil) }
+  scope :qualified, -> { where('readiness_score >= ?', TicketQualificationService::BOUNTY_READINESS_THRESHOLD) }
+
+  def bounty_ready?
+    bounty_eligible? && readiness_score.to_i >= TicketQualificationService::BOUNTY_READINESS_THRESHOLD
+  end
+
+  def qualify!
+    TicketQualificationService.qualify!(self)
+  end
+
+  def readiness_label
+    case readiness_score.to_i
+    when 0..30 then 'Insufficient'
+    when 31..50 then 'Partial'
+    when 51..70 then 'Good'
+    when 71..90 then 'Strong'
+    when 91..100 then 'Excellent'
+    else 'Unassessed'
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════════════════
   # QUERIES
   # ═══════════════════════════════════════════════════════════════════════════
 
