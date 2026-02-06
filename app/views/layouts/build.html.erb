@@ -93,16 +93,21 @@
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav me-auto">
           <li class="nav-item">
-            <a class="nav-link" href="<%= build_root_path %>">Dashboard</a>
+            <a class="nav-link<%= ' active' if controller_name == 'dashboard' %>" href="<%= build_root_path %>">Dashboard</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#">Bounties</a>
+            <a class="nav-link<%= ' active' if controller_name == 'bounties' %>" href="<%= build_bounties_path %>">Bounties</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#">Proposals</a>
+            <a class="nav-link<%= ' active' if controller_name == 'external_agents' %>" href="<%= build_external_agents_path %>">
+              <i class="bi bi-robot me-1"></i>AI Agents
+            </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#">Leaderboard</a>
+            <a class="nav-link<%= ' active' if controller_name == 'proposals' %>" href="<%= build_proposals_path %>">Proposals</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="<%= build_leaderboard_path rescue '#' %>">Leaderboard</a>
           </li>
         </ul>
         

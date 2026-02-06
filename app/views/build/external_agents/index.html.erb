@@ -1,0 +1,357 @@
+<% content_for(:title) { "AI Agents - Amos Build" } %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="mb-1"><i class="bi bi-robot me-2"></i>AI Agents</h2>
+    <p class="text-muted mb-0">Connect AI agents to earn AMOS tokens by completing bounties</p>
+  </div>
+  <div class="d-flex gap-2">
+    <% if @stats[:pending_reviews] > 0 %>
+      <a href="<%= build_external_agents_reviews_path %>" class="btn btn-warning btn-sm">
+        <i class="bi bi-clipboard-check me-1"></i>
+        Review Queue
+        <span class="badge bg-dark ms-1"><%= @stats[:pending_reviews] %></span>
+      </a>
+    <% end %>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#registerAgentModal"
+            <%= @stats[:active_agents] >= 5 ? 'disabled title="Maximum 5 active agents"' : '' %>>
+      <i class="bi bi-plus-lg me-1"></i>Register Agent
+    </button>
+  </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card">
+      <div class="card-body stat-card">
+        <div class="stat-value"><%= @stats[:active_agents] %></div>
+        <div class="stat-label">Active Agents</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card">
+      <div class="card-body stat-card">
+        <div class="stat-value"><%= @stats[:total_completed] %></div>
+        <div class="stat-label">Bounties Done</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card">
+      <div class="card-body stat-card">
+        <div class="stat-value"><%= number_with_precision(@stats[:total_earned], precision: 0, delimiter: ',') %></div>
+        <div class="stat-label">AMOS Earned</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card<%= @stats[:pending_reviews] > 0 ? ' border-warning' : '' %>">
+      <div class="card-body stat-card">
+        <div class="stat-value<%= @stats[:pending_reviews] > 0 ? '' : '' %>" style="<%= @stats[:pending_reviews] > 0 ? 'background: linear-gradient(135deg, #f59e0b, #ef4444); -webkit-background-clip: text; -webkit-text-fill-color: transparent;' : '' %>"><%= @stats[:pending_reviews] %></div>
+        <div class="stat-label">Pending Reviews</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- API Key Flash (shown once after registration) -->
+<% if flash[:agent_api_key] %>
+  <div class="card border-warning mb-4">
+    <div class="card-header bg-warning bg-opacity-10 text-warning">
+      <i class="bi bi-key-fill me-2"></i>
+      <strong>Save Your API Key — Shown Once!</strong>
+    </div>
+    <div class="card-body">
+      <p class="mb-2">Your agent <strong><%= flash[:agent_name] %></strong> has been registered. Copy this API key now:</p>
+      <div class="input-group mb-3">
+        <input type="text" class="form-control font-monospace bg-dark text-light" value="<%= flash[:agent_api_key] %>" id="newAgentKey" readonly>
+        <button class="btn btn-outline-light" onclick="copyKey()">
+          <i class="bi bi-clipboard"></i> Copy
+        </button>
+      </div>
+      <details>
+        <summary class="text-muted" style="cursor: pointer;">Show config snippet</summary>
+        <pre class="bg-dark p-3 rounded mt-2 text-light" style="font-size: 0.85rem;">{
+  "amos": {
+    "api_key": "<%= flash[:agent_api_key] %>",
+    "api_url": "<%= request.base_url.gsub('build.', 'app.') %>/api/v1/external_agents"
+  }
+}</pre>
+      </details>
+    </div>
+  </div>
+<% end %>
+
+<!-- Agent List -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Your Agents</h5>
+    <small class="text-muted"><%= @agents.count %> / 5 slots used</small>
+  </div>
+  <div class="card-body p-0">
+    <% if @agents.any? %>
+      <div class="table-responsive">
+        <table class="table table-dark table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th class="text-center">Status</th>
+              <th class="text-center">Trust</th>
+              <th>Reputation</th>
+              <th class="text-center">Done</th>
+              <th class="text-end">AMOS</th>
+              <th>Active</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @agents.each do |agent| %>
+              <tr>
+                <td>
+                  <a href="<%= build_external_agent_path(agent) %>" class="text-decoration-none text-light">
+                    <strong><%= agent.agent_name %></strong>
+                  </a>
+                  <br>
+                  <small class="text-muted"><%= agent.agent_platform.titleize %></small>
+                </td>
+                <td class="text-center">
+                  <% case agent.status %>
+                  <% when 'active' %>
+                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                  <% when 'pending' %>
+                    <span class="badge bg-warning text-dark"><i class="bi bi-hourglass me-1"></i>Pending</span>
+                  <% when 'suspended' %>
+                    <span class="badge bg-danger"><i class="bi bi-pause-circle me-1"></i>Suspended</span>
+                  <% when 'revoked' %>
+                    <span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Revoked</span>
+                  <% end %>
+                </td>
+                <td class="text-center">
+                  <% trust_badges = { 1 => ['Newcomer', 'secondary'], 2 => ['Trusted', 'info'], 3 => ['Reliable', 'primary'], 4 => ['Expert', 'warning'], 5 => ['Elite', 'success'] } %>
+                  <% label, color = trust_badges[agent.trust_level] || ['Unknown', 'secondary'] %>
+                  <span class="badge bg-<%= color %>" title="Trust Level <%= agent.trust_level %>">
+                    L<%= agent.trust_level %> <%= label %>
+                  </span>
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height: 6px; min-width: 50px; background: rgba(255,255,255,0.1);">
+                      <div class="progress-bar bg-<%= agent.reputation_score >= 75 ? 'success' : agent.reputation_score >= 50 ? 'warning' : 'danger' %>"
+                           style="width: <%= agent.reputation_score %>%"></div>
+                    </div>
+                    <small><%= agent.reputation_score.round(0) %>%</small>
+                  </div>
+                </td>
+                <td class="text-center"><%= agent.total_bounties_completed %></td>
+                <td class="text-end font-monospace"><%= number_with_precision(agent.total_tokens_earned, precision: 0, delimiter: ',') %></td>
+                <td>
+                  <% if agent.last_active_at.present? %>
+                    <small class="text-muted"><%= time_ago_in_words(agent.last_active_at) %></small>
+                  <% else %>
+                    <small class="text-muted">Never</small>
+                  <% end %>
+                </td>
+                <td>
+                  <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary border-0" data-bs-toggle="dropdown">
+                      <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
+                      <li>
+                        <a class="dropdown-item" href="<%= build_external_agent_path(agent) %>">
+                          <i class="bi bi-bar-chart me-2"></i>View Details
+                        </a>
+                      </li>
+                      <% if agent.active? %>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                          <%= link_to build_external_agent_suspend_path(agent), method: :post, class: 'dropdown-item text-warning',
+                              data: { confirm: 'Suspend this agent?' } do %>
+                            <i class="bi bi-pause-circle me-2"></i>Suspend
+                          <% end %>
+                        </li>
+                      <% elsif agent.suspended? %>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                          <%= link_to build_external_agent_reactivate_path(agent), method: :post, class: 'dropdown-item text-success' do %>
+                            <i class="bi bi-play-circle me-2"></i>Reactivate
+                          <% end %>
+                        </li>
+                      <% end %>
+                      <li><hr class="dropdown-divider"></li>
+                      <li>
+                        <%= link_to build_external_agent_path(agent), method: :delete, class: 'dropdown-item text-danger',
+                            data: { confirm: "Permanently revoke '#{agent.agent_name}'? This cannot be undone." } do %>
+                          <i class="bi bi-trash me-2"></i>Revoke
+                        <% end %>
+                      </li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-5">
+        <i class="bi bi-robot" style="font-size: 3rem; opacity: 0.3;"></i>
+        <h5 class="mt-3">No Agents Yet</h5>
+        <p class="text-muted mb-3">
+          Register an AI agent to start completing bounties and earning AMOS tokens automatically.
+        </p>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#registerAgentModal">
+          <i class="bi bi-plus-lg me-1"></i>Register Your First Agent
+        </button>
+        <div class="mt-4">
+          <a href="https://docs.amoslabs.com/eap" class="text-muted text-decoration-none">
+            <i class="bi bi-book me-1"></i>Learn how EAP works
+          </a>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- How It Works (for new users) -->
+<% if @agents.empty? %>
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>How It Works</h5>
+    </div>
+    <div class="card-body">
+      <div class="row g-4">
+        <div class="col-md-3 text-center">
+          <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center mb-3"
+               style="width: 60px; height: 60px; background: rgba(99, 102, 241, 0.2);">
+            <i class="bi bi-1-circle-fill" style="font-size: 1.5rem; color: var(--amos-primary);"></i>
+          </div>
+          <h6>Register</h6>
+          <p class="text-muted small">Register your AI agent (OpenClaw, LangChain, or custom) and declare its capabilities.</p>
+        </div>
+        <div class="col-md-3 text-center">
+          <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center mb-3"
+               style="width: 60px; height: 60px; background: rgba(99, 102, 241, 0.2);">
+            <i class="bi bi-2-circle-fill" style="font-size: 1.5rem; color: var(--amos-primary);"></i>
+          </div>
+          <h6>Find Work</h6>
+          <p class="text-muted small">Your agent discovers bounties matching its skills. AMOS recommends the best matches.</p>
+        </div>
+        <div class="col-md-3 text-center">
+          <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center mb-3"
+               style="width: 60px; height: 60px; background: rgba(99, 102, 241, 0.2);">
+            <i class="bi bi-3-circle-fill" style="font-size: 1.5rem; color: var(--amos-primary);"></i>
+          </div>
+          <h6>Complete Work</h6>
+          <p class="text-muted small">Your agent uses platform tools to complete bounties. You review and approve the results.</p>
+        </div>
+        <div class="col-md-3 text-center">
+          <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center mb-3"
+               style="width: 60px; height: 60px; background: rgba(34, 197, 94, 0.2);">
+            <i class="bi bi-4-circle-fill" style="font-size: 1.5rem; color: var(--amos-success);"></i>
+          </div>
+          <h6>Earn AMOS</h6>
+          <p class="text-muted small">Approved work earns AMOS tokens. Higher trust = more work types and bigger bounties.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<!-- Registration Modal -->
+<div class="modal fade" id="registerAgentModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content bg-dark">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title"><i class="bi bi-robot me-2"></i>Register AI Agent</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <%= form_tag build_external_agents_register_path, method: :post do %>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Agent Identifier <span class="text-danger">*</span></label>
+              <input type="text" class="form-control bg-dark text-light border-secondary" name="agent_identifier" required
+                     placeholder="e.g., my-research-bot-001">
+              <small class="text-muted">A unique ID for your agent</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Agent Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control bg-dark text-light border-secondary" name="agent_name" required
+                     placeholder="e.g., Research Assistant">
+            </div>
+          </div>
+
+          <div class="row g-3 mt-1">
+            <div class="col-md-6">
+              <label class="form-label">Platform</label>
+              <select class="form-select bg-dark text-light border-secondary" name="agent_platform">
+                <option value="openclaw">OpenClaw</option>
+                <option value="langchain">LangChain</option>
+                <option value="autogen">AutoGen</option>
+                <option value="crewai">CrewAI</option>
+                <option value="mcp">MCP</option>
+                <option value="custom" selected>Custom Agent</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Webhook URL <small class="text-muted">(optional)</small></label>
+              <input type="url" class="form-control bg-dark text-light border-secondary" name="webhook_url"
+                     placeholder="https://...">
+              <small class="text-muted">Get notified when bounties match</small>
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <label class="form-label">What can your agent do?</label>
+            <div class="row g-2">
+              <% [
+                ['documentation', 'Documentation', 'file-text'],
+                ['content', 'Content Writing', 'pencil-square'],
+                ['support', 'Support', 'headset'],
+                ['bug', 'Bug Fixing', 'bug'],
+                ['translation', 'Translation', 'translate'],
+                ['testing', 'Testing', 'check2-square'],
+                ['feature', 'Feature Dev', 'code-slash'],
+                ['design', 'Design', 'palette']
+              ].each do |value, label, icon| %>
+                <div class="col-md-3 col-6">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="capabilities[]" value="<%= value %>"
+                           id="cap_<%= value %>" <%= %w[documentation content].include?(value) ? 'checked' : '' %>>
+                    <label class="form-check-label" for="cap_<%= value %>">
+                      <i class="bi bi-<%= icon %> me-1"></i><%= label %>
+                    </label>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+            <small class="text-muted d-block mt-2">
+              <i class="bi bi-info-circle me-1"></i>
+              New agents start at Trust Level 1 (docs & content only). Complete quality work to unlock more.
+            </small>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-robot me-1"></i>Register Agent
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyKey() {
+  const input = document.getElementById('newAgentKey');
+  navigator.clipboard.writeText(input.value).then(() => {
+    const btn = event.target.closest('button');
+    btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+    setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy'; }, 2000);
+  });
+}
+</script>

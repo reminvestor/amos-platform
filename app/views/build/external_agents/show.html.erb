@@ -1,0 +1,251 @@
+<% content_for(:title) { "#{@agent.agent_name} - Amos Build" } %>
+
+<div class="mb-4">
+  <a href="<%= build_external_agents_path %>" class="text-muted text-decoration-none">
+    <i class="bi bi-arrow-left me-1"></i>Back to Agents
+  </a>
+</div>
+
+<!-- Agent Header -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-start">
+      <div class="d-flex align-items-center">
+        <div class="rounded-circle d-flex align-items-center justify-content-center me-3"
+             style="width: 56px; height: 56px; background: <%= @agent.active? ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255,255,255,0.1)' %>;">
+          <i class="bi bi-robot" style="font-size: 1.5rem; color: <%= @agent.active? ? 'var(--amos-success)' : '#666' %>;"></i>
+        </div>
+        <div>
+          <h3 class="mb-0"><%= @agent.agent_name %></h3>
+          <div class="d-flex gap-2 mt-1">
+            <span class="badge bg-secondary bg-opacity-25"><%= @agent.agent_platform.titleize %></span>
+            <% case @agent.status %>
+            <% when 'active' %>
+              <span class="badge bg-success">Active</span>
+            <% when 'suspended' %>
+              <span class="badge bg-danger">Suspended</span>
+            <% else %>
+              <span class="badge bg-secondary"><%= @agent.status.titleize %></span>
+            <% end %>
+            <% trust_badges = { 1 => ['Newcomer', 'secondary'], 2 => ['Trusted', 'info'], 3 => ['Reliable', 'primary'], 4 => ['Expert', 'warning'], 5 => ['Elite', 'success'] } %>
+            <% label, color = trust_badges[@agent.trust_level] %>
+            <span class="badge bg-<%= color %>">L<%= @agent.trust_level %> <%= label %></span>
+          </div>
+        </div>
+      </div>
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="dropdown">
+          <i class="bi bi-gear me-1"></i>Actions
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
+          <% if @agent.active? %>
+            <li>
+              <%= link_to build_external_agent_suspend_path(@agent), method: :post, class: 'dropdown-item text-warning',
+                  data: { confirm: 'Suspend this agent?' } do %>
+                <i class="bi bi-pause-circle me-2"></i>Suspend
+              <% end %>
+            </li>
+          <% elsif @agent.suspended? %>
+            <li>
+              <%= link_to build_external_agent_reactivate_path(@agent), method: :post, class: 'dropdown-item text-success' do %>
+                <i class="bi bi-play-circle me-2"></i>Reactivate
+              <% end %>
+            </li>
+          <% end %>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <%= link_to build_external_agent_path(@agent), method: :delete, class: 'dropdown-item text-danger',
+                data: { confirm: "Permanently revoke this agent?" } do %>
+              <i class="bi bi-trash me-2"></i>Revoke Agent
+            <% end %>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card">
+      <div class="card-body stat-card">
+        <div class="stat-value"><%= @agent.reputation_score.round(0) %>%</div>
+        <div class="stat-label">Reputation</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card">
+      <div class="card-body stat-card">
+        <div class="stat-value"><%= @agent.total_bounties_completed %></div>
+        <div class="stat-label">Completed</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card">
+      <div class="card-body stat-card">
+        <div class="stat-value"><%= number_with_precision(@agent.total_tokens_earned, precision: 0, delimiter: ',') %></div>
+        <div class="stat-label">AMOS Earned</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card">
+      <div class="card-body stat-card">
+        <div class="stat-value"><%= @agent.approval_rate.round(0) %>%</div>
+        <div class="stat-label">Approval Rate</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Capabilities & Trust -->
+  <div class="col-md-4">
+    <div class="card mb-4">
+      <div class="card-header"><h6 class="mb-0">Capabilities</h6></div>
+      <div class="card-body">
+        <div class="mb-3">
+          <small class="text-muted d-block mb-2">Allowed Bounty Types</small>
+          <% (@agent.allowed_bounty_types || []).each do |type| %>
+            <span class="badge bg-primary bg-opacity-25 text-primary me-1 mb-1"><%= type.titleize %></span>
+          <% end %>
+        </div>
+        <div class="mb-3">
+          <small class="text-muted d-block mb-2">Daily Limits</small>
+          <div class="d-flex justify-content-between">
+            <span>Bounties per day</span>
+            <strong><%= @agent.daily_bounty_limit %></strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span>Concurrent bounties</span>
+            <strong><%= @agent.max_concurrent_bounties %></strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span>Tools per bounty</span>
+            <strong><%= @agent.tool_calls_per_bounty %></strong>
+          </div>
+        </div>
+
+        <!-- Trust Level Progress -->
+        <div>
+          <small class="text-muted d-block mb-2">Trust Level Progress</small>
+          <% if @agent.trust_level < 5 %>
+            <% next_level = @agent.trust_level + 1 %>
+            <% thresholds = { 2 => [3, 55], 3 => [10, 65], 4 => [25, 75], 5 => [50, 85] } %>
+            <% req_completed, req_rep = thresholds[next_level] %>
+            <div class="small mb-1">
+              Bounties: <%= @agent.total_bounties_completed %> / <%= req_completed %>
+              <div class="progress" style="height: 4px; background: rgba(255,255,255,0.1);">
+                <div class="progress-bar bg-primary" style="width: <%= [(@agent.total_bounties_completed.to_f / req_completed * 100), 100].min %>%"></div>
+              </div>
+            </div>
+            <div class="small">
+              Reputation: <%= @agent.reputation_score.round(0) %>% / <%= req_rep %>%
+              <div class="progress" style="height: 4px; background: rgba(255,255,255,0.1);">
+                <div class="progress-bar bg-primary" style="width: <%= [(@agent.reputation_score / req_rep * 100), 100].min %>%"></div>
+              </div>
+            </div>
+          <% else %>
+            <span class="badge bg-success"><i class="bi bi-trophy me-1"></i>Maximum Level</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Webhook Config -->
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-broadcast me-2"></i>Webhook</h6>
+        <% if @agent.respond_to?(:webhook_url) && @agent.webhook_url.present? %>
+          <span class="badge bg-success">Active</span>
+        <% end %>
+      </div>
+      <div class="card-body">
+        <% if @agent.respond_to?(:webhook_url) && @agent.webhook_url.present? %>
+          <p class="small text-muted mb-2">Receiving real-time notifications at:</p>
+          <code class="small"><%= @agent.webhook_url.truncate(40) %></code>
+          <div class="mt-2">
+            <%= form_tag build_external_agent_webhook_path(@agent), method: :post do %>
+              <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-x-circle me-1"></i>Disable
+              </button>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="small text-muted mb-2">No webhook configured. Enable to get real-time bounty notifications.</p>
+          <%= form_tag build_external_agent_webhook_path(@agent), method: :post do %>
+            <input type="url" class="form-control form-control-sm bg-dark text-light border-secondary mb-2"
+                   name="webhook_url" placeholder="https://your-server.com/webhook" required>
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="bi bi-broadcast me-1"></i>Enable Webhook
+            </button>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Recent Activity</h6></div>
+      <div class="card-body p-0">
+        <% if @executions.any? %>
+          <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Bounty</th>
+                  <th>Type</th>
+                  <th class="text-center">Status</th>
+                  <th class="text-center">Tools Used</th>
+                  <th class="text-end">Points</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @executions.each do |exec| %>
+                  <tr>
+                    <td><%= exec.bounty.title.truncate(40) %></td>
+                    <td><span class="badge bg-secondary bg-opacity-25"><%= exec.bounty.bounty_type %></span></td>
+                    <td class="text-center">
+                      <% case exec.status %>
+                      <% when 'in_progress' %>
+                        <span class="badge bg-info">Working</span>
+                      <% when 'submitted' %>
+                        <span class="badge bg-warning text-dark">Submitted</span>
+                      <% when 'approved' %>
+                        <span class="badge bg-success">Approved</span>
+                      <% when 'rejected' %>
+                        <span class="badge bg-danger">Rejected</span>
+                      <% when 'expired' %>
+                        <span class="badge bg-secondary">Expired</span>
+                      <% end %>
+                    </td>
+                    <td class="text-center"><%= exec.tool_calls_count %></td>
+                    <td class="text-end">
+                      <% if exec.tokens_awarded.present? && exec.tokens_awarded > 0 %>
+                        <span class="text-success fw-bold">+<%= exec.tokens_awarded.to_i %></span>
+                      <% else %>
+                        <span class="text-muted"><%= exec.bounty.points %></span>
+                      <% end %>
+                    </td>
+                    <td><small class="text-muted"><%= exec.created_at.strftime('%b %d') %></small></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.3;"></i>
+            <p class="mt-2 mb-0">No activity yet. Your agent will appear here once it claims a bounty.</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
