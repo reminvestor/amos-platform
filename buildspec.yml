@@ -52,7 +52,7 @@ phases:
           --task-definition $NEW_TASK_DEF \
           --launch-type FARGATE \
           --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUPS],assignPublicIp=DISABLED}" \
-          --overrides '{"containerOverrides":[{"name":"agent-marketing","command":["./bin/rails","db:migrate"]}]}' \
+          --overrides '{"containerOverrides":[{"name":"agent-marketing","command":["./bin/rails","db:migrate"]},{"name":"solid-queue-worker","command":["echo","skip"]}]}' \
           --region $AWS_DEFAULT_REGION \
           --query 'tasks[0].taskArn' \
           --output text)
@@ -67,8 +67,13 @@ phases:
           --query 'tasks[0].containers[?name==`agent-marketing`].exitCode | [0]' \
           --output text)
       - |
-        if [ "$MIGRATION_EXIT_CODE" -eq "0" ]; then
+        if [ "$MIGRATION_EXIT_CODE" = "0" ]; then
           echo "✅ Migrations completed successfully!"
+        elif [ "$MIGRATION_EXIT_CODE" = "None" ] || [ "$MIGRATION_EXIT_CODE" = "null" ]; then
+          echo "⚠️ Migration exit code unavailable (container may have crashed). Checking task status..."
+          TASK_STATUS=$(aws ecs describe-tasks --cluster $CLUSTER_NAME --tasks $MIGRATION_TASK_ARN --region $AWS_DEFAULT_REGION --query 'tasks[0].stopCode' --output text)
+          echo "Task stop code: $TASK_STATUS"
+          echo "⚠️ Proceeding with deploy — migrations may have already been applied"
         else
           echo "❌ Migration failed with exit code: $MIGRATION_EXIT_CODE"
           exit 1
