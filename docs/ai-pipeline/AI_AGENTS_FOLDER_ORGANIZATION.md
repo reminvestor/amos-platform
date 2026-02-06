@@ -435,4 +435,4 @@ AiAgents::Notifiers::SlackNotifier.new
 
 **Last Updated**: October 29, 2025
 **Namespace Convention**: `AiAgents::{Subdirectory}::{ClassName}`
-**File Location**: `/Users/ryan/Documents/agent_marketing/app/services/ai_agents/`
+**File Location**: `./app/services/ai_agents/`

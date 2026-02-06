@@ -259,46 +259,46 @@ rails test
 ## Files Created (Summary)
 
 ### Database
-- `/Users/ryan/Documents/agent_marketing/db/migrate/20251009183620_create_email_sequences.rb`
-- `/Users/ryan/Documents/agent_marketing/db/migrate/20251009183621_create_sequence_steps.rb`
-- `/Users/ryan/Documents/agent_marketing/db/migrate/20251009183622_create_sequence_enrollments.rb`
+- `./db/migrate/20251009183620_create_email_sequences.rb`
+- `./db/migrate/20251009183621_create_sequence_steps.rb`
+- `./db/migrate/20251009183622_create_sequence_enrollments.rb`
 
 ### Models
-- `/Users/ryan/Documents/agent_marketing/app/models/email_sequence.rb`
-- `/Users/ryan/Documents/agent_marketing/app/models/sequence_step.rb`
-- `/Users/ryan/Documents/agent_marketing/app/models/sequence_enrollment.rb`
+- `./app/models/email_sequence.rb`
+- `./app/models/sequence_step.rb`
+- `./app/models/sequence_enrollment.rb`
 
 ### Model Tests
-- `/Users/ryan/Documents/agent_marketing/test/models/email_sequence_test.rb`
-- `/Users/ryan/Documents/agent_marketing/test/models/sequence_step_test.rb`
-- `/Users/ryan/Documents/agent_marketing/test/models/sequence_enrollment_test.rb`
+- `./test/models/email_sequence_test.rb`
+- `./test/models/sequence_step_test.rb`
+- `./test/models/sequence_enrollment_test.rb`
 
 ### Tool Tests
-- `/Users/ryan/Documents/agent_marketing/test/services/tools/create_email_sequence_test.rb`
-- `/Users/ryan/Documents/agent_marketing/test/services/tools/update_email_sequence_test.rb`
-- `/Users/ryan/Documents/agent_marketing/test/services/tools/get_email_sequence_data_test.rb`
+- `./test/services/tools/create_email_sequence_test.rb`
+- `./test/services/tools/update_email_sequence_test.rb`
+- `./test/services/tools/get_email_sequence_data_test.rb`
 
 ### Fixtures
-- `/Users/ryan/Documents/agent_marketing/test/fixtures/email_sequences.yml`
-- `/Users/ryan/Documents/agent_marketing/test/fixtures/sequence_steps.yml`
-- `/Users/ryan/Documents/agent_marketing/test/fixtures/sequence_enrollments.yml`
+- `./test/fixtures/email_sequences.yml`
+- `./test/fixtures/sequence_steps.yml`
+- `./test/fixtures/sequence_enrollments.yml`
 
 ## Files Modified
 
 ### Core Services
-- `/Users/ryan/Documents/agent_marketing/app/services/tools/create_object_tool.rb`
-- `/Users/ryan/Documents/agent_marketing/app/services/tools/update_object_tool.rb`
-- `/Users/ryan/Documents/agent_marketing/app/services/tools/get_data_tool.rb`
-- `/Users/ryan/Documents/agent_marketing/app/services/scout_data_registry.rb`
+- `./app/services/tools/create_object_tool.rb`
+- `./app/services/tools/update_object_tool.rb`
+- `./app/services/tools/get_data_tool.rb`
+- `./app/services/scout_data_registry.rb`
 
 ### Models
-- `/Users/ryan/Documents/agent_marketing/app/models/entity.rb`
-- `/Users/ryan/Documents/agent_marketing/app/models/contact.rb`
-- `/Users/ryan/Documents/agent_marketing/app/models/contact_group.rb`
+- `./app/models/entity.rb`
+- `./app/models/contact.rb`
+- `./app/models/contact_group.rb`
 
 ### Test Fixtures
-- `/Users/ryan/Documents/agent_marketing/test/fixtures/contacts.yml`
-- `/Users/ryan/Documents/agent_marketing/test/fixtures/contact_groups.yml`
+- `./test/fixtures/contacts.yml`
+- `./test/fixtures/contact_groups.yml`
 
 ## Next Steps
 
@@ -437,7 +437,7 @@ puts "Found #{result[:count]} sequences"
 
 ### 6. Test Workflow Integration
 The workflow template is already created at:
-`/Users/ryan/Documents/agent_marketing/app/workflow_templates/email_sequence_v2.yml`
+`./app/workflow_templates/email_sequence_v2.yml`
 
 To test:
 1. Start the AMOS chat interface

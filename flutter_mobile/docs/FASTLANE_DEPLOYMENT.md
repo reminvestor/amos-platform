@@ -37,7 +37,7 @@ ASC_ISSUER_ID=12345678-1234-1234-1234-123456789012  # Your Issuer ID
 ASC_KEY_CONTENT=LS0tLS1CRUdJTi...   # Base64 encoded .p8 file content
 
 # From Apple Developer account
-APPLE_ID=ryan@amoslabs.com     # Your Apple ID email
+APPLE_ID=your-apple-id@example.com     # Your Apple ID email
 TEAM_ID=ABCD1234EF             # Team ID from developer.apple.com/account
 ITC_TEAM_ID=123456789          # iTunes Connect Team ID (often same as TEAM_ID)
 APPLE_APP_ID=123456789         # App ID (assigned after app is created)
@@ -122,7 +122,7 @@ bundle exec fastlane clean
 bundle exec fastlane sync_certificates
 
 # Register a new test device
-bundle exec fastlane register_device name:"Ryan's iPhone" udid:"00001234-ABCD5678EFGH9012"
+bundle exec fastlane register_device name:"My iPhone" udid:"00001234-ABCD5678EFGH9012"
 ```
 
 ## Versioning

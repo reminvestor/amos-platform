@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document outlines the complete implementation requirements for the **Automated Email Sequence** feature in AMOS V2. The workflow template has been created at `/Users/ryan/Documents/agent_marketing/app/workflow_templates/email_sequence_v2.yml`.
+This document outlines the complete implementation requirements for the **Automated Email Sequence** feature in AMOS V2. The workflow template has been created at `./app/workflow_templates/email_sequence_v2.yml`.
 
 ## Design Overview
 
@@ -48,7 +48,7 @@ This document outlines the complete implementation requirements for the **Automa
 
 **Purpose**: Parent record that defines the sequence configuration
 
-**File**: `/Users/ryan/Documents/agent_marketing/app/models/email_sequence.rb`
+**File**: `./app/models/email_sequence.rb`
 
 **Migration**: `db/migrate/[timestamp]_create_email_sequences.rb`
 
@@ -149,7 +149,7 @@ end
 
 **Purpose**: Individual email in the sequence with timing configuration
 
-**File**: `/Users/ryan/Documents/agent_marketing/app/models/sequence_step.rb`
+**File**: `./app/models/sequence_step.rb`
 
 **Migration**: `db/migrate/[timestamp]_create_sequence_steps.rb`
 
@@ -223,7 +223,7 @@ end
 
 **Purpose**: Tracks each contact's progress through the sequence
 
-**File**: `/Users/ryan/Documents/agent_marketing/app/models/sequence_enrollment.rb`
+**File**: `./app/models/sequence_enrollment.rb`
 
 **Migration**: `db/migrate/[timestamp]_create_sequence_enrollments.rb`
 
@@ -325,7 +325,7 @@ end
 
 ### 1. CreateObjectTool Enhancement
 
-**File**: `/Users/ryan/Documents/agent_marketing/app/services/tools/create_object_tool.rb`
+**File**: `./app/services/tools/create_object_tool.rb`
 
 **Changes Required**: Add support for new object types
 
@@ -459,7 +459,7 @@ end
 
 ### 2. UpdateObjectTool Enhancement
 
-**File**: `/Users/ryan/Documents/agent_marketing/app/services/tools/update_object_tool.rb`
+**File**: `./app/services/tools/update_object_tool.rb`
 
 **Changes Required**: Add support for sequence activation/deactivation
 
@@ -510,7 +510,7 @@ end
 
 ### 3. GetDataTool Enhancement
 
-**File**: `/Users/ryan/Documents/agent_marketing/app/services/tools/get_data_tool.rb`
+**File**: `./app/services/tools/get_data_tool.rb`
 
 **Changes Required**: Add query support for sequence models
 
@@ -544,7 +544,7 @@ when 'sequence_enrollments'
 
 ### 4. NEW: EnrollContactsInSequenceTool (Optional Helper)
 
-**File**: `/Users/ryan/Documents/agent_marketing/app/services/tools/enroll_contacts_in_sequence_tool.rb`
+**File**: `./app/services/tools/enroll_contacts_in_sequence_tool.rb`
 
 **Purpose**: Batch-create enrollments for all contacts in a group
 
@@ -671,7 +671,7 @@ end
 
 ### 1. ProcessSequenceEnrollmentsJob
 
-**File**: `/Users/ryan/Documents/agent_marketing/app/jobs/process_sequence_enrollments_job.rb`
+**File**: `./app/jobs/process_sequence_enrollments_job.rb`
 
 **Purpose**: Process pending enrollments when sequence is activated
 
@@ -700,7 +700,7 @@ end
 
 ### 2. SendSequenceEmailsJob
 
-**File**: `/Users/ryan/Documents/agent_marketing/app/jobs/send_sequence_emails_job.rb`
+**File**: `./app/jobs/send_sequence_emails_job.rb`
 
 **Purpose**: Send emails for enrollments that are ready
 
@@ -988,7 +988,7 @@ The email sequence workflow is designed to integrate seamlessly with existing AM
 **Estimated Implementation Time**: 8-12 hours for experienced Rails developer
 
 **Files Created**:
-1. `/Users/ryan/Documents/agent_marketing/app/workflow_templates/email_sequence_v2.yml` ✅
+1. `./app/workflow_templates/email_sequence_v2.yml` ✅
 2. This design document
 
 **Next Steps**: Follow the implementation checklist to build the feature incrementally.
