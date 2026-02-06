@@ -1273,6 +1273,9 @@ Rails.application.routes.draw do
 
   # Workflow webhooks - external services can trigger workflows
   post "webhooks/workflow/:path", to: "webhooks/workflows#receive", as: :workflow_webhook
+
+  # GitHub webhooks - PR events, CI status, bounty auto-linking
+  post "webhooks/github", to: "webhooks/github#receive", as: :github_webhook
   post "scout/cancel_job", to: "scout#cancel_job"
   post "scout/capture_web_page", to: "scout#capture_web_page"
   get "scout/browser_session_screenshot/:session_id", to: "scout#browser_session_screenshot"
