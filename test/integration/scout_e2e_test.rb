@@ -29,10 +29,16 @@ class ScoutE2eTest < ActionDispatch::IntegrationTest
       eu.role = 'admin'
     end
 
+    # E2E tests need REAL AWS Bedrock calls (test_helper stubs all AWS by default)
+    Aws.config.update(stub_responses: false)
+
     sign_in @user
   end
 
   teardown do
+    # Re-enable AWS stubbing for other tests
+    Aws.config.update(stub_responses: true)
+
     # Clean up test data
     Contact.where(entity: @entity).where("email LIKE '%@e2e-test.com'").destroy_all
     EmailTemplate.where(entity: @entity).where("name LIKE 'E2E%'").destroy_all
@@ -159,11 +165,32 @@ class ScoutE2eTest < ActionDispatch::IntegrationTest
         tools_used = (tools_used + Array(result[:tools_used])).uniq
       end
     rescue => e
-      errors << e.message
+      errors << "#{e.class}: #{e.message}"
+      puts "\n[E2E ERROR] #{e.class}: #{e.message}"
+      # Find the root cause
+      cause = e
+      while cause.cause
+        cause = cause.cause
+      end
+      if cause != e
+        puts "[E2E ROOT CAUSE] #{cause.class}: #{cause.message}"
+        puts "[E2E ROOT TRACE] #{cause.backtrace.first(10).join("\n")}"
+      else
+        puts "[E2E TRACE] #{e.backtrace.first(10).join("\n")}"
+      end
+    end
+
+    # Log for debugging
+    if errors.any?
+      puts "\n[E2E ERROR] #{errors.join(', ')}"
+    end
+    if response_text.blank? && errors.empty?
+      puts "\n[E2E WARN] No response and no errors -- agent may have returned empty"
+      puts "[E2E WARN] Result: #{result.inspect.truncate(300)}" if defined?(result)
     end
 
     {
-      success: errors.empty?,
+      success: errors.empty? && response_text.present?,
       response: response_text,
       tools_used: tools_used,
       errors: errors,
