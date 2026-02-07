@@ -172,7 +172,7 @@ module Modules
           .to_a
         
         matching = automations.select do |automation|
-          automation.matches_trigger?(trigger_type, match_config)
+          automation.matches_trigger?(trigger_data.merge(match_config))
         end
         
         Rails.logger.info "[AutomationBridge] Found #{matching.size} matching automations for #{trigger_type}"

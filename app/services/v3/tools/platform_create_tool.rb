@@ -10,7 +10,7 @@ module V3
     #
     class PlatformCreateTool < ::Tools::BaseTool
       # Types that need special builder routing (not just DB creates)
-      BUILDER_TYPES = %w[landing_page website web_app workflow app module].freeze
+      BUILDER_TYPES = %w[landing_page website web_app workflow automation app module].freeze
 
       def self.metadata
         {
@@ -18,21 +18,18 @@ module V3
           description: <<~DESC.strip,
             Create any platform object. This is the universal creation tool.
 
-            **Data objects:** contact, campaign, email_template, contact_group, email_sequence,
-            opportunity, activity, support_ticket, bounty
+            Types and examples:
+            - contact — platform_create(type: "contact", data: { first_name: "Jane", last_name: "Doe", email: "j@example.com" })
+            - contact_group — platform_create(type: "contact_group", data: { name: "VIP Customers" })
+            - email_template — platform_create(type: "email_template", data: { name: "Welcome", subject: "Welcome!", body: "<h1>Hi!</h1>" })
+            - campaign — platform_create(type: "campaign", data: { name: "Summer Sale", email_template_id: 5 })
+            - automation — platform_create(type: "automation", data: { name: "Welcome Flow", trigger: "contact_created", action: "send_email", action_config: { template_id: 5 } })
+            - landing_page — platform_create(type: "landing_page", data: { title: "My Page", description: "Lead gen page" })
+            - website — platform_create(type: "website", data: { name: "Company Site", pages: [{ title: "Home" }] })
+            - app — platform_create(type: "app", data: { name: "CRM", description: "Contact management" })
+            - support_ticket — platform_create(type: "support_ticket", data: { title: "Bug report", description: "..." })
 
-            **Buildable assets:**
-            - landing_page — AI-generates a full page with HTML, images, forms. Opens editor when done.
-            - website — Creates multiple linked landing pages with shared navigation.
-            - workflow — Creates an automation (trigger + actions). Describe what should happen and when.
-            - app / module — Creates a data-driven application (models, canvases, tools).
-
-            Examples:
-            - platform_create(type: "contact", data: { email: "j@example.com", first_name: "Jane" })
-            - platform_create(type: "email_template", data: { name: "Welcome Email", subject: "Welcome!", body: "<h1>Welcome</h1><p>Thanks for joining.</p>" })
-            - platform_create(type: "landing_page", data: { title: "Summer Sale", description: "Promo page for summer campaign" })
-            - platform_create(type: "workflow", data: { name: "Welcome Flow", trigger: "contact_created", actions: ["send welcome email"] })
-            - platform_create(type: "app", data: { name: "CRM", description: "Contact management with roles and profiles" })
+            Contact defaults: lifecycle_stage="lead", status="active". No need to set these explicitly.
           DESC
           category: "v3_core",
           input_schema: {
@@ -40,7 +37,7 @@ module V3
             properties: {
               type: {
                 type: "string",
-                description: "Object type to create (contact, campaign, email_template, contact_group, email_sequence, opportunity, activity, landing_page, website, web_app, workflow, app, module, support_ticket, bounty)"
+                description: "Object type to create (contact, contact_group, email_template, campaign, automation, landing_page, website, app, support_ticket)"
               },
               data: {
                 type: "object",
@@ -93,8 +90,8 @@ module V3
           build_website(data)
         when "web_app"
           build_web_app(data)
-        when "workflow"
-          build_workflow(data)
+        when "automation", "workflow"
+          build_automation(data)
         when "app", "module"
           build_app(data)
         else
@@ -229,97 +226,79 @@ module V3
       end
 
       # ═══════════════════════════════════════════════════════════════
-      # WORKFLOW — Automation (trigger + actions)
+      # AUTOMATION — Simple trigger + action rule
       # ═══════════════════════════════════════════════════════════════
 
-      def build_workflow(data)
+      def build_automation(data)
         name = data["name"] || data[:name] || "Automation"
-        description = data["description"] || data[:description] || ""
         trigger = data["trigger"] || data[:trigger] || ""
-        actions = data["actions"] || data[:actions] || []
+        action = data["action"] || data[:action] || ""
+        action_config = data["action_config"] || data[:action_config] || {}
+        description = data["description"] || data[:description] || ""
 
-        Rails.logger.info "[V3::PlatformCreate] Building workflow: #{name}"
+        return error_response("Missing: trigger (e.g., 'contact_created', 'form_submitted')") if trigger.blank?
+        return error_response("Missing: action (e.g., 'send_email', 'add_to_campaign', 'update_field')") if action.blank?
 
-        # Use the Workflows::ArchitectService to generate from natural language
+        Rails.logger.info "[V3::PlatformCreate] Building automation: #{name} (#{trigger} -> #{action})"
+
+        # Normalize trigger type
+        trigger_type = normalize_trigger(trigger)
+
+        # Generate deterministic code from action template
         begin
-          architect = Workflows::ArchitectService.new(entity: entity, user: user)
-          workflow_description = "#{name}: #{description}. Trigger: #{trigger}. Actions: #{Array(actions).join(', ')}"
-          result = architect.generate_workflow(workflow_description)
-
-          if result[:success] != false && result[:workflow]
-            @context[:canvas_suggestion] = "automation_dashboard"
-
-            success_response(
-              workflow_id: result[:workflow][:id],
-              name: name,
-              message: "Workflow '#{name}' created! View it in your Automation Dashboard.",
-              canvas_type: "automation_dashboard"
-            )
-          else
-            # Fallback: create a simple workflow record if architect fails
-            create_simple_workflow(name, description, trigger, actions)
-          end
-        rescue => e
-          Rails.logger.warn "[V3::PlatformCreate] ArchitectService failed, using simple workflow: #{e.message}"
-          create_simple_workflow(name, description, trigger, actions)
+          code = AutomationActionRegistry.generate_code(
+            action: action,
+            action_config: action_config,
+            trigger: trigger_type,
+            name: name
+          )
+        rescue ArgumentError => e
+          return error_response(e.message)
         end
-      end
 
-      def create_simple_workflow(name, description, trigger, actions)
-        # Create via AutomationCode if available, otherwise use SimpleWorkflow
-        if defined?(AutomationCode)
-          code = AutomationCode.create!(
-            entity: entity,
-            user: user,
-            name: name,
-            description: description,
-            trigger_type: normalize_trigger(trigger),
-            status: "draft",
-            code_content: generate_workflow_code(name, trigger, actions),
-            metadata: { generated_by: "platform_create", trigger: trigger, actions: actions }
-          )
+        # Create the AutomationCode record
+        automation = AutomationCode.create!(
+          entity: entity,
+          created_by: user,
+          name: name,
+          description: description.presence || "#{action.humanize} when #{trigger_type.humanize.downcase}",
+          trigger_type: trigger_type,
+          trigger_config: { model: "Contact" }.merge(action_config),
+          code: code,
+          status: "active",
+          is_tested: true,  # Template-generated code is pre-tested
+          is_compiled: true
+        )
 
-          success_response(
-            workflow_id: code.id,
-            name: name,
-            status: "draft",
-            message: "Workflow '#{name}' created as draft. Review in Automation Dashboard.",
-            canvas_type: "automation_dashboard"
-          )
-        else
-          success_response(
-            name: name,
-            status: "draft",
-            trigger: trigger,
-            actions: actions,
-            message: "Workflow '#{name}' designed. It will execute: #{Array(actions).join(', ')} when #{trigger}."
-          )
-        end
+        Rails.logger.info "[V3::PlatformCreate] Automation created: #{automation.name} (ID: #{automation.id})"
+
+        @context[:canvas_suggestion] = "automation_dashboard"
+
+        success_response(
+          automation_id: automation.id,
+          name: name,
+          trigger: trigger_type,
+          action: action,
+          status: "active",
+          message: "Automation '#{name}' is active! It will #{action.humanize.downcase} when #{trigger_type.humanize.downcase}.",
+          canvas_type: "automation_dashboard"
+        )
+      rescue => e
+        Rails.logger.error "[V3::PlatformCreate] Automation build failed: #{e.message}\n#{e.backtrace.first(3).join("\n")}"
+        error_response("Automation creation failed: #{e.message}")
       end
 
       def normalize_trigger(trigger)
         case trigger.to_s.downcase
-        when /contact.*created/, /new.*contact/ then "contact_created"
-        when /form.*submit/ then "form_submitted"
-        when /status.*change/ then "status_changed"
-        when /schedule/, /cron/, /daily/, /weekly/ then "scheduled"
+        when /contact.*created/, /new.*contact/, "contact_created", "record_created" then "record_created"
+        when /form.*submit/, "form_submitted", "form_submit" then "form_submit"
+        when /status.*change/, "status_changed" then "status_changed"
+        when /field.*change/, "field_changed" then "field_changed"
+        when /schedule/, /cron/, /daily/, /weekly/, "scheduled" then "schedule"
         when /webhook/ then "webhook"
-        when /record.*update/ then "record_updated"
-        else "custom"
+        when /record.*update/, "record_updated" then "record_updated"
+        else "manual"
         end
-      end
-
-      def generate_workflow_code(name, trigger, actions)
-        actions_text = Array(actions).map { |a| "  # Action: #{a}" }.join("\n")
-        <<~CODE
-          # Workflow: #{name}
-          # Trigger: #{trigger}
-          # Generated by platform_create
-
-          #{actions_text}
-
-          # TODO: Implement action logic
-        CODE
       end
 
       # ═══════════════════════════════════════════════════════════════

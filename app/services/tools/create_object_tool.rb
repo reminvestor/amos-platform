@@ -34,7 +34,7 @@ module Tools
       end
 
       # Validate object type - check static types first, then dynamic modules
-      valid_types = [ "campaigns", "contacts", "contact_groups", "email_templates", "email_sequences", "sequence_steps", "sequence_enrollments", "opportunities", "activities" ]
+      valid_types = [ "campaigns", "contacts", "contact_groups", "email_templates", "email_sequences", "sequence_steps", "sequence_enrollments", "opportunities", "activities", "support_tickets" ]
       
       # Check for dynamic module type
       if !valid_types.include?(object_type)
@@ -106,38 +106,84 @@ module Tools
       # Symbolize keys for consistent access
       data = data.symbolize_keys
 
-      # Ensure required fields
+      # Check for drip mode -- route to EmailSequence internally
+      mode = data.delete(:mode)&.to_s&.downcase
+      steps = data.delete(:steps)
+
+      if mode == "drip" && steps.present?
+        return create_drip_campaign(data, steps)
+      end
+
+      # Standard blast campaign
       data[:status] ||= "draft"
 
       # Remove fields that don't exist on Campaign model
       data.delete(:from_email)
       data.delete(:from_name)
 
-      # Handle unresolved variables - if email_template_id contains {{, it's unresolved
+      # Handle unresolved variables
       if data[:email_template_id].is_a?(String) && data[:email_template_id].include?("{{")
-        Rails.logger.warn "Unresolved variable in email_template_id: #{data[:email_template_id]}"
         data[:email_template_id] = nil
       end
 
-      # Convert empty string or "0" to nil for foreign keys
+      # Clean up foreign keys
       if data[:email_template_id].to_s == "0" || data[:email_template_id].to_s.empty?
         data[:email_template_id] = nil
       end
-
-      # Convert string IDs to integers for foreign keys
       if data[:email_template_id].is_a?(String) && data[:email_template_id].match?(/^\d+$/)
         data[:email_template_id] = data[:email_template_id].to_i
       end
-
-      Rails.logger.info "📝 Creating campaign with data: #{data.inspect}"
 
       campaign = Campaign.new(data)
       campaign.user = user
       campaign.entity = entity
       campaign.save!
 
-      Rails.logger.info "✅ Created campaign: #{campaign.name} (ID: #{campaign.id}), template_id: #{campaign.email_template_id}"
+      Rails.logger.info "✅ Created campaign: #{campaign.name} (ID: #{campaign.id})"
       campaign
+    end
+
+    def create_drip_campaign(data, steps)
+      # Drip campaigns are stored as EmailSequences internally
+      # The AI sees "campaign" with mode: "drip", platform routes to EmailSequence
+
+      # Need a contact_group_id for sequences
+      contact_group_id = data[:contact_group_id]
+      unless contact_group_id
+        # Create a default group if none specified
+        group = ContactGroup.create!(
+          name: "#{data[:name]} Recipients",
+          user: user,
+          entity: entity
+        )
+        contact_group_id = group.id
+      end
+
+      sequence = EmailSequence.create!(
+        name: data[:name] || "Drip Campaign",
+        entity: entity,
+        contact_group_id: contact_group_id,
+        status: "draft"
+      )
+
+      # Create steps
+      steps.each_with_index do |step_data, index|
+        step_data = step_data.symbolize_keys if step_data.is_a?(Hash)
+        template_id = step_data[:template_id] || step_data[:email_template_id]
+        delay = step_data[:delay_days] || step_data[:delay_hours].to_i / 24 || 0
+
+        SequenceStep.create!(
+          email_sequence: sequence,
+          email_template_id: template_id,
+          step_number: index + 1,
+          delay_hours: delay * 24,
+          subject: step_data[:subject],
+          body: step_data[:body]
+        )
+      end
+
+      Rails.logger.info "✅ Created drip campaign (sequence): #{sequence.name} (ID: #{sequence.id}) with #{steps.length} steps"
+      sequence
     end
 
     def create_contact(data)
@@ -154,12 +200,11 @@ module Tools
       # Handle status values - must be lowercase, default to active
       if data[:status].present?
         data[:status] = data[:status].downcase
-      else
-        data[:status] = "active"
       end
+      # status and lifecycle_stage defaults are set by Contact model callbacks
 
-      # Set lead flag default
-      data[:lead] = true unless data.key?(:lead)
+      # Remove deprecated lead boolean -- lifecycle_stage handles this now
+      data.delete(:lead)
 
       contact = Contact.new(data)
       contact.entity = entity

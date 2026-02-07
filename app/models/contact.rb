@@ -1,5 +1,6 @@
 class Contact < ApplicationRecord
   include HasCustomFields
+  include AutomationTriggerable
   
   belongs_to :user
   belongs_to :entity
@@ -64,8 +65,9 @@ class Contact < ApplicationRecord
   # Scopes
   scope :by_entity, ->(entity_id) { where(entity_id: entity_id) if entity_id.present? }
   scope :global, -> { where(entity_id: nil) }
-  scope :leads, -> { where(lead: true) }
-  scope :customers, -> { where(lead: false) }
+  # Lead/customer scopes derived from lifecycle_stage (lead boolean is deprecated)
+  scope :leads, -> { where(lifecycle_stage: %w[subscriber lead mql]) }
+  scope :customers, -> { where(lifecycle_stage: 'customer') }
   
   # CRM Scopes
   scope :by_lifecycle_stage, ->(stage) { where(lifecycle_stage: stage) }
@@ -140,9 +142,13 @@ class Contact < ApplicationRecord
     update!(
       lifecycle_stage: 'customer',
       converted_at: Time.current,
-      conversion_source: source,
-      lead: false
+      conversion_source: source
     )
+  end
+
+  # Deprecated: use lifecycle_stage instead. Kept for backward compatibility.
+  def lead?
+    lifecycle_stage.in?(%w[subscriber lead mql])
   end
 
   # Assignment methods
@@ -310,7 +316,8 @@ class Contact < ApplicationRecord
   private
 
   def set_default_lifecycle_stage
-    self.lifecycle_stage ||= 'subscriber'
+    self.lifecycle_stage ||= 'lead'
+    self.status ||= 'active'
   end
 
   def single_group_membership
