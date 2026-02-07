@@ -93,42 +93,41 @@ class AutomationActionRegistry
       <<~RUBY
         # Automation: #{name}
         # Action: Send email template #{template_id}
-        
-        record = trigger_data[:record] || {}
-        record_id = record["id"] || record[:id]
-        entity_id = trigger_data[:entity_id]
-        
-        # Find the contact/record to get the email
-        contact = Contact.find_by(id: record_id)
-        return { success: false, error: "Contact not found" } unless contact
-        
-        to_email = contact.#{to_field}
-        return { success: false, error: "No email address on record" } if to_email.blank?
-        
-        # Find the template
-        template = EmailTemplate.find_by(id: #{template_id})
-        return { success: false, error: "Email template #{template_id} not found" } unless template
-        
-        # Render and send
-        rendered_subject = template.subject
-        rendered_body = template.body
-        
-        # Simple variable substitution
-        contact_attrs = contact.attributes
-        contact_attrs.each do |key, value|
-          rendered_subject = rendered_subject.gsub("{{#{key}}}", value.to_s) if value.present?
-          rendered_body = rendered_body.gsub("{{#{key}}}", value.to_s) if value.present?
+        def execute(trigger_data)
+          record = trigger_data[:record] || trigger_data["record"] || {}
+          record_id = record["id"] || record[:id]
+          entity_id = trigger_data[:entity_id] || trigger_data["entity_id"]
+          
+          contact = Contact.find_by(id: record_id)
+          return { success: false, error: "Contact not found" } unless contact
+          
+          to_email = contact.#{to_field}
+          return { success: false, error: "No email address" } if to_email.blank?
+          
+          template = EmailTemplate.find_by(id: #{template_id})
+          return { success: false, error: "Template not found" } unless template
+          
+          rendered_subject = template.subject.to_s
+          rendered_body = template.body.to_s
+          
+          contact.attributes.each do |key, value|
+            next if value.blank?
+            rendered_subject = rendered_subject.gsub("\#\{" + key + "\}", value.to_s)
+            rendered_body = rendered_body.gsub("\#\{" + key + "\}", value.to_s)
+          end
+          
+          WorkflowMailer.workflow_email(
+            to: to_email,
+            subject: rendered_subject,
+            body: rendered_body,
+            html: true,
+            entity_id: entity_id,
+            automation_id: trigger_data[:automation_id],
+            contact_id: contact.id
+          ).deliver_later
+          
+          { success: true, sent_to: to_email, template_id: #{template_id} }
         end
-        
-        WorkflowMailer.workflow_email(
-          to: to_email,
-          subject: rendered_subject,
-          body: rendered_body,
-          html: true,
-          entity_id: entity_id
-        ).deliver_later
-        
-        { success: true, sent_to: to_email, template_id: #{template_id} }
       RUBY
     end
 
@@ -138,27 +137,28 @@ class AutomationActionRegistry
       <<~RUBY
         # Automation: #{name}
         # Action: Add to campaign #{campaign_id}
-        
-        record = trigger_data[:record] || {}
-        record_id = record["id"] || record[:id]
-        entity_id = trigger_data[:entity_id]
-        
-        contact = Contact.find_by(id: record_id)
-        return { success: false, error: "Contact not found" } unless contact
-        
-        campaign = Campaign.find_by(id: #{campaign_id}, entity_id: entity_id)
-        return { success: false, error: "Campaign not found" } unless campaign
-        
-        # Enroll in campaign (create enrollment if campaign supports it)
-        enrollment = SequenceEnrollment.create!(
-          email_sequence_id: campaign.id,
-          contact: contact,
-          entity_id: entity_id,
-          status: 'pending',
-          current_step_number: 0
-        )
-        
-        { success: true, enrollment_id: enrollment.id, campaign_id: #{campaign_id} }
+        def execute(trigger_data)
+          record = trigger_data[:record] || trigger_data["record"] || {}
+          record_id = record["id"] || record[:id]
+          entity_id = trigger_data[:entity_id] || trigger_data["entity_id"]
+          
+          contact = Contact.find_by(id: record_id)
+          return { success: false, error: "Contact not found" } unless contact
+          
+          # Find the sequence/campaign
+          sequence = EmailSequence.find_by(id: #{campaign_id}, entity_id: entity_id)
+          return { success: false, error: "Campaign not found" } unless sequence
+          
+          enrollment = SequenceEnrollment.create!(
+            email_sequence: sequence,
+            contact: contact,
+            entity_id: entity_id,
+            status: 'pending',
+            current_step_number: 0
+          )
+          
+          { success: true, enrollment_id: enrollment.id, campaign_id: #{campaign_id} }
+        end
       RUBY
     end
 
@@ -168,18 +168,18 @@ class AutomationActionRegistry
 
       <<~RUBY
         # Automation: #{name}
-        # Action: Update field #{field} to #{value}
-        
-        record = trigger_data[:record] || {}
-        record_id = record["id"] || record[:id]
-        model_name = trigger_data[:model] || "Contact"
-        
-        record_obj = model_name.constantize.find_by(id: record_id)
-        return { success: false, error: "Record not found" } unless record_obj
-        
-        record_obj.update!("#{field}" => "#{value}")
-        
-        { success: true, field: "#{field}", value: "#{value}" }
+        # Action: Update field #{field}
+        def execute(trigger_data)
+          record = trigger_data[:record] || trigger_data["record"] || {}
+          record_id = record["id"] || record[:id]
+          
+          contact = Contact.find_by(id: record_id)
+          return { success: false, error: "Record not found" } unless contact
+          
+          contact.update!("#{field}" => "#{value}")
+          
+          { success: true, field: "#{field}", value: "#{value}" }
+        end
       RUBY
     end
 
@@ -191,25 +191,26 @@ class AutomationActionRegistry
       <<~RUBY
         # Automation: #{name}
         # Action: Create activity
-        
-        record = trigger_data[:record] || {}
-        record_id = record["id"] || record[:id]
-        entity_id = trigger_data[:entity_id]
-        
-        contact = Contact.find_by(id: record_id)
-        
-        Activity.create!(
-          entity_id: entity_id,
-          contact: contact,
-          activity_type: "#{activity_type}",
-          subject: "#{subject}",
-          description: "#{description}",
-          status: 'completed',
-          completed_at: Time.current,
-          metadata: { automation: "#{name}", trigger: trigger_data[:event] }
-        )
-        
-        { success: true, activity_type: "#{activity_type}" }
+        def execute(trigger_data)
+          record = trigger_data[:record] || trigger_data["record"] || {}
+          record_id = record["id"] || record[:id]
+          entity_id = trigger_data[:entity_id] || trigger_data["entity_id"]
+          
+          contact = Contact.find_by(id: record_id)
+          
+          Activity.create!(
+            entity_id: entity_id,
+            contact: contact,
+            activity_type: "#{activity_type}",
+            subject: "#{subject}",
+            description: "#{description}",
+            status: 'completed',
+            completed_at: Time.current,
+            metadata: { automation: "#{name}", trigger: trigger_data[:event] }
+          )
+          
+          { success: true, activity_type: "#{activity_type}" }
+        end
       RUBY
     end
 
@@ -218,23 +219,13 @@ class AutomationActionRegistry
 
       <<~RUBY
         # Automation: #{name}
-        # Action: Call webhook #{url}
-        
-        require 'net/http'
-        require 'json'
-        
-        uri = URI.parse("#{url}")
-        http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl = uri.scheme == 'https'
-        http.open_timeout = 10
-        http.read_timeout = 30
-        
-        request = Net::HTTP::Post.new(uri.request_uri, { 'Content-Type' => 'application/json' })
-        request.body = trigger_data.to_json
-        
-        response = http.request(request)
-        
-        { success: response.code.to_i < 400, status_code: response.code.to_i, body: response.body.truncate(500) }
+        # Action: Call webhook
+        def execute(trigger_data)
+          # Use sandbox http_post helper (Net::HTTP is blocked in sandbox)
+          result = http_post("#{url}", body: trigger_data.to_json, headers: { "Content-Type" => "application/json" })
+          
+          { success: result[:status].to_i < 400, status_code: result[:status], body: result[:body].to_s.truncate(500) }
+        end
       RUBY
     end
 
@@ -245,26 +236,24 @@ class AutomationActionRegistry
       <<~RUBY
         # Automation: #{name}
         # Action: Notify user
-        
-        entity_id = trigger_data[:entity_id]
-        record = trigger_data[:record] || {}
-        
-        # Find the user to notify
-        user = #{user_id ? "User.find_by(id: #{user_id})" : "User.joins(:entity_users).where(entity_users: { entity_id: entity_id, role: ['admin', 'owner'] }).first"}
-        return { success: false, error: "No user to notify" } unless user
-        
-        # Create a work item notification
-        AgentWorkItem.create!(
-          entity_id: entity_id,
-          user: user,
-          work_type: 'automation_notification',
-          title: "Automation: #{name}",
-          summary: "#{message}",
-          priority: 'normal',
-          metadata: { trigger_data: trigger_data, automation: "#{name}" }
-        )
-        
-        { success: true, notified_user_id: user.id }
+        def execute(trigger_data)
+          entity_id = trigger_data[:entity_id] || trigger_data["entity_id"]
+          
+          user = #{user_id ? "User.find_by(id: #{user_id})" : "User.joins(:entity_users).where(entity_users: { entity_id: entity_id, role: ['admin', 'owner'] }).first"}
+          return { success: false, error: "No user to notify" } unless user
+          
+          AgentWorkItem.create!(
+            entity_id: entity_id,
+            user: user,
+            work_type: 'automation_notification',
+            title: "Automation: #{name}",
+            summary: "#{message}",
+            priority: 'normal',
+            metadata: { automation: "#{name}" }
+          )
+          
+          { success: true, notified_user_id: user.id }
+        end
       RUBY
     end
   end
