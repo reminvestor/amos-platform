@@ -30,10 +30,19 @@ class ScoutE2eTest < ActionDispatch::IntegrationTest
     end
 
     # E2E tests need REAL AWS Bedrock calls (test_helper stubs all AWS by default)
-    # Clear fake credentials and stubbing so SDK uses container's real IAM credentials
+    # Use actual credentials from Docker environment
+    real_key = ENV['AWS_ACCESS_KEY_ID']
+    real_secret = ENV['AWS_SECRET_ACCESS_KEY']
+    real_region = ENV['AWS_REGION'] || 'us-east-1'
+
+    if real_key.blank? || real_key == 'test_access_key'
+      skip "E2E tests require real AWS credentials in environment"
+    end
+
     Aws.config.update(
       stub_responses: false,
-      credentials: nil  # Let SDK discover real credentials from env/IAM role
+      region: real_region,
+      credentials: Aws::Credentials.new(real_key, real_secret)
     )
 
     sign_in @user
