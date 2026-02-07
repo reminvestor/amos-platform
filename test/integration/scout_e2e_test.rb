@@ -21,11 +21,6 @@ class ScoutE2eTest < ActionDispatch::IntegrationTest
   fixtures :users, :entities
 
   setup do
-    # E2E tests require real Bedrock API calls -- skip if not configured
-    unless ENV['AWS_ACCESS_KEY_ID'].present? || ENV['AWS_REGION'].present?
-      skip "E2E tests require AWS Bedrock access. Set AWS credentials or run with: SCOUT_E2E=true"
-    end
-
     @user = users(:one)
     @entity = entities(:one)
     @user.update!(entity: @entity) unless @user.entity_id == @entity.id
