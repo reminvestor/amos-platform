@@ -30,14 +30,21 @@ class ScoutE2eTest < ActionDispatch::IntegrationTest
     end
 
     # E2E tests need REAL AWS Bedrock calls (test_helper stubs all AWS by default)
-    Aws.config.update(stub_responses: false)
+    # Clear fake credentials and stubbing so SDK uses container's real IAM credentials
+    Aws.config.update(
+      stub_responses: false,
+      credentials: nil  # Let SDK discover real credentials from env/IAM role
+    )
 
     sign_in @user
   end
 
   teardown do
-    # Re-enable AWS stubbing for other tests
-    Aws.config.update(stub_responses: true)
+    # Re-enable AWS stubbing and fake credentials for other tests
+    Aws.config.update(
+      stub_responses: true,
+      credentials: Aws::Credentials.new('test_access_key', 'test_secret_key')
+    )
 
     # Clean up test data
     Contact.where(entity: @entity).where("email LIKE '%@e2e-test.com'").destroy_all
