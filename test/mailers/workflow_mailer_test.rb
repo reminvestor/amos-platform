@@ -82,7 +82,7 @@ class WorkflowMailerTest < ActionMailer::TestCase
       entity_id: @entity.id
     )
 
-    from = email.from_address || email.header["From"].to_s
-    assert from.to_s.present?, "Should have a from address"
+    from = email.header["From"].to_s
+    assert from.present?, "Should have a from address"
   end
 end

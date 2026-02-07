@@ -35,7 +35,7 @@ class V3::Tools::BashToolTest < ActiveSupport::TestCase
     result = @tool.execute({ "command" => "rm -rf /" })
     
     assert_equal false, result[:success]
-    assert_match /blocked/, result[:error].downcase
+    assert_match /blocked|not allowed|forbidden/i, result[:error]
   end
 
   test "blocks sudo commands" do

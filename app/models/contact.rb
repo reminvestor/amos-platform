@@ -316,7 +316,9 @@ class Contact < ApplicationRecord
   private
 
   def set_default_lifecycle_stage
-    self.lifecycle_stage ||= 'lead'
+    # DB default is 'subscriber' but platform default for AI-created contacts should be 'lead'
+    # Only override if it's the DB default (subscriber) and this is a new record
+    self.lifecycle_stage = 'lead' if new_record? && lifecycle_stage == 'subscriber'
     self.status ||= 'active'
   end
 

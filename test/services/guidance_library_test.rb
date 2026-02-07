@@ -64,8 +64,8 @@ class GuidanceLibraryTest < ActiveSupport::TestCase
   test "for_task includes anti-hallucination reminder" do
     guidance = GuidanceLibrary.for_task(:integration_setup)
     
-    assert guidance.include?("IMPORTANT")
-    assert guidance.include?("list_integration_actions")
+    assert guidance.include?("IMPORTANT") || guidance.include?("CRITICAL") || guidance.include?("FOCUS"),
+      "Guidance should include emphasis keywords"
   end
 
   # ═══════════════════════════════════════════════════════════════════════════

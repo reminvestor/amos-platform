@@ -221,7 +221,7 @@ class AutomationActionRegistry
         # Automation: #{name}
         # Action: Call webhook
         def execute(trigger_data)
-          # Use sandbox http_post helper (Net::HTTP is blocked in sandbox)
+          # Use sandbox http_post helper (direct HTTP is blocked in sandbox)
           result = http_post("#{url}", body: trigger_data.to_json, headers: { "Content-Type" => "application/json" })
           
           { success: result[:status].to_i < 400, status_code: result[:status], body: result[:body].to_s.truncate(500) }
