@@ -828,8 +828,9 @@ module Benchmarks
           end
         end
       else
-        log "Request: \"#{task[:request].truncate(80)}\"", level: :info
-        result = scout.process_message_streaming(task[:request], callback, [], nil)
+        request_text = task[:request].is_a?(Proc) ? task[:request].call(self) : task[:request]
+        log "Request: \"#{request_text.truncate(80)}\"", level: :info
+        result = scout.process_message_streaming(request_text, callback, [], nil)
 
         # V3 returns canvas info in the result hash (not just via callback)
         if result.is_a?(Hash)

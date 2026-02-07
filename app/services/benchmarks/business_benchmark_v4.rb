@@ -172,6 +172,44 @@ module Benchmarks
         cleanup: -> (runner) { Contact.where(email: 'bob.test@benchmark.com').destroy_all },
         max_latency_ms: 15_000
       }
+      # NEW: Create email template and verify
+      {
+        id: 'b1_template_001',
+        tier: :tier_1,
+        category: :side_effects,
+        name: 'Create email template',
+        request: 'Create an email template called "Test Welcome" with subject "Welcome!" and body "<h1>Hello!</h1><p>Welcome aboard.</p>"',
+        verification: :artifact_created,
+        artifact_type: EmailTemplate,
+        artifact_query: -> (entity) { EmailTemplate.find_by(entity: entity, name: 'Test Welcome') },
+        expected_fields: { name: 'Test Welcome', subject: 'Welcome!' },
+        cleanup: -> (runner) { EmailTemplate.where(entity: runner.entity, name: 'Test Welcome').destroy_all },
+        max_latency_ms: 15_000
+      },
+      # NEW: Delete a contact
+      {
+        id: 'b1_delete_001',
+        tier: :tier_1,
+        category: :side_effects,
+        name: 'Delete a contact',
+        setup: -> (runner) {
+          Contact.where(entity: runner.entity, email: 'delete.me@benchmark.com').destroy_all
+          Contact.create!(entity: runner.entity, user: runner.user, first_name: 'Delete', last_name: 'Me', email: 'delete.me@benchmark.com', status: 'active')
+        },
+        request: -> (runner) {
+          contact = Contact.find_by(entity: runner.entity, email: 'delete.me@benchmark.com')
+          "Delete the contact with ID #{contact.id}"
+        },
+        verification: :workflow_complete,
+        workflow_steps: [
+          {
+            description: 'Contact deleted',
+            tool: 'platform_execute',
+            check: -> (runner) { !Contact.exists?(entity: runner.entity, email: 'delete.me@benchmark.com') }
+          }
+        ],
+        max_latency_ms: 15_000
+      }
     ].freeze
 
     # ============================================
@@ -235,6 +273,45 @@ module Benchmarks
           "Leads: #{leads}, Qualified: #{qualified}" if leads && qualified
         },
         max_latency_ms: 15_000
+      },
+      # NEW: Create automation rule
+      {
+        id: 'b2_automation_001',
+        tier: :tier_2,
+        category: :side_effects,
+        name: 'Create automation rule',
+        setup: -> (runner) {
+          EmailTemplate.create!(entity: runner.entity, user: runner.user, name: 'BOB Automation Template', subject: 'Welcome', body: '<p>Hi!</p>')
+        },
+        request: -> (runner) {
+          template = EmailTemplate.find_by(entity: runner.entity, name: 'BOB Automation Template')
+          "Create an automation called 'Welcome Flow' that sends email template #{template.id} when a new contact is created"
+        },
+        verification: :artifact_created,
+        artifact_type: AutomationCode,
+        artifact_query: -> (entity) { AutomationCode.find_by(entity: entity, name: 'Welcome Flow') },
+        expected_fields: { trigger_type: 'record_created', status: 'active' },
+        cleanup: -> (runner) {
+          AutomationCode.where(entity: runner.entity, name: 'Welcome Flow').destroy_all
+          EmailTemplate.where(entity: runner.entity, name: 'BOB Automation Template').destroy_all
+        },
+        max_latency_ms: 20_000
+      },
+      # NEW: Add custom field to Contact
+      {
+        id: 'b2_schema_001',
+        tier: :tier_2,
+        category: :side_effects,
+        name: 'Add custom field to Contact',
+        request: 'Add a custom field called "industry" of type "string" to contacts',
+        verification: :artifact_created,
+        artifact_type: CustomFieldDefinition,
+        artifact_query: -> (entity) { CustomFieldDefinition.find_by(entity: entity, model_type: 'Contact', field_name: 'industry') },
+        expected_fields: { field_type: 'string', active: true },
+        cleanup: -> (runner) {
+          CustomFieldDefinition.where(entity: runner.entity, model_type: 'Contact', field_name: 'industry').destroy_all
+        },
+        max_latency_ms: 15_000
       }
     ].freeze
 
@@ -243,6 +320,37 @@ module Benchmarks
     # Expectation: 70%+ success rate
     # ============================================
     TIER_3_TASKS = [
+      # NEW: Full welcome email automation flow (multi-turn)
+      {
+        id: 'b3_welcome_flow_001',
+        tier: :tier_3,
+        category: :multi_step,
+        name: 'Full welcome email automation flow',
+        conversation: [
+          { role: 'user', content: 'Create an email template called "BOB Welcome" with subject "Welcome to our platform!" and body "<h1>Welcome!</h1><p>We are glad to have you.</p>"' },
+          { role: 'user', content: 'Now create an automation that sends that template whenever a new contact is created. Call it "BOB Welcome Automation".' }
+        ],
+        verification: :workflow_complete,
+        workflow_steps: [
+          {
+            description: 'Email template created',
+            tool: 'platform_create',
+            check: -> (runner) { EmailTemplate.exists?(entity: runner.entity, name: 'BOB Welcome') }
+          },
+          {
+            description: 'Automation created and active',
+            tool: 'platform_create',
+            check: -> (runner) {
+              AutomationCode.exists?(entity: runner.entity, name: 'BOB Welcome Automation', status: 'active')
+            }
+          }
+        ],
+        cleanup: -> (runner) {
+          AutomationCode.where(entity: runner.entity).where("name LIKE 'BOB Welcome%'").destroy_all
+          EmailTemplate.where(entity: runner.entity, name: 'BOB Welcome').destroy_all
+        },
+        max_latency_ms: 60_000
+      },
       # PLATFORM FACTORY TEST
       # Tests that the AI can use request_module or start_module_design to begin module creation
       # Note: Full module generation is async and can take several minutes
