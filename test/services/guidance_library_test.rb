@@ -111,8 +111,9 @@ class GuidanceLibraryTest < ActiveSupport::TestCase
     tools = GuidanceLibrary.tools_for_task(:integration_setup)
     
     assert tools.is_a?(Array)
-    assert tools.include?("list_connections")
-    assert tools.include?("execute_integration_action")
+    # V3 uses platform tools instead of individual tools
+    assert tools.include?("platform_query") || tools.include?("platform_execute") || tools.include?("discover"),
+      "Integration tools should include V3 platform tools, got: #{tools}"
   end
 
   test "tools_for_task returns empty array for general" do

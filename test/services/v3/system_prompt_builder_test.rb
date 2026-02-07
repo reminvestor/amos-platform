@@ -66,6 +66,27 @@ class V3::SystemPromptBuilderTest < ActiveSupport::TestCase
     assert prompt.is_a?(String)
   end
 
+  test "does not reference deprecated concepts" do
+    prompt = @builder.build(message: "help me build something")
+
+    assert_no_match /design_studio/, prompt
+    assert_no_match /plan_design/, prompt
+    assert_no_match /build_design/, prompt
+    assert_no_match /workflow_designer/, prompt
+    assert_no_match /app_designer/, prompt
+  end
+
+  test "mentions automation not workflow for creation" do
+    prompt = @builder.build
+    # Should mention automation as the creation concept
+    assert_match /automation/i, prompt
+  end
+
+  test "mentions browser_use tool" do
+    prompt = @builder.build
+    assert_match /browser_use/, prompt
+  end
+
   test "prompt is under 15K tokens (rough estimate)" do
     prompt = @builder.build(
       current_canvas: "dashboard",

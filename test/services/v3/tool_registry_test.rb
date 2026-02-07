@@ -3,15 +3,17 @@
 require "test_helper"
 
 class V3::ToolRegistryTest < ActiveSupport::TestCase
-  test "POWER_TOOLS has exactly 10 tools" do
-    assert_equal 10, V3::ToolRegistry::POWER_TOOLS.keys.length,
-      "V3 should have exactly 10 power tools, got: #{V3::ToolRegistry::POWER_TOOLS.keys}"
+  test "POWER_TOOLS has expected count" do
+    # 12 power tools: 4 CRUD + 5 knowledge/browser + 3 interface
+    assert_equal 12, V3::ToolRegistry::POWER_TOOLS.keys.length,
+      "V3 should have 12 power tools, got: #{V3::ToolRegistry::POWER_TOOLS.keys}"
   end
 
   test "all expected power tools are registered" do
     expected = %w[
       platform_query platform_create platform_update platform_execute
-      discover read_file web_search bash load_canvas ask_user
+      discover read_file web_search view_web_page browser_use
+      bash load_canvas ask_user
     ]
 
     expected.each do |tool_name|
@@ -24,7 +26,7 @@ class V3::ToolRegistryTest < ActiveSupport::TestCase
     tools = V3::ToolRegistry.get_bedrock_tools
 
     assert tools.is_a?(Array)
-    assert tools.length >= 10, "Should have at least 10 tools (power + memory), got #{tools.length}"
+    assert tools.length >= 12, "Should have at least 12 tools (power + memory), got #{tools.length}"
 
     # Check each tool has required fields
     tools.each do |tool|
