@@ -30,10 +30,21 @@ class ScoutE2eTest < ActionDispatch::IntegrationTest
     end
 
     # E2E tests need REAL AWS Bedrock calls (test_helper stubs all AWS by default)
-    # The Docker container mounts ~/.aws for credential discovery via AWS_SDK_LOAD_CONFIG
+    # Restore real credentials from ~/.aws (mounted in Docker) or environment
+    # The credential chain: env vars → shared config (~/.aws) → instance profile
+    provider = Aws::CredentialProviderChain.new.resolve
+    if provider.nil? || !provider.respond_to?(:credentials) || provider.credentials.access_key_id == 'test_access_key'
+      # Try loading from shared config directly
+      begin
+        provider = Aws::SharedCredentials.new
+      rescue Aws::Errors::NoSuchProfileError
+        skip "E2E tests require real AWS credentials (~/.aws or env vars)"
+      end
+    end
+
     Aws.config.update(
       stub_responses: false,
-      credentials: nil,  # Clear fake creds, let SDK discover from ~/.aws or env
+      credentials: provider,
       region: ENV['AWS_REGION'] || 'us-east-1'
     )
 
