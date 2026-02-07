@@ -4,19 +4,12 @@ module Tools
       {
         name: "generate_ai_landing_page",
         description: <<~DESC.strip,
-          ⚠️ **INTERNAL TOOL - Use `build_design` instead!**
+          AI landing page generator. Creates a complete HTML page with professional design,
+          AI-generated images, responsive layout, and lead capture forms.
           
-          This is the internal HTML generator called by `build_design`.
-          DO NOT call this tool directly. Use the proper flow:
-          
-          1. User wants a landing page → Call `plan_design` → shows visual plan
-          2. User reviews and refines the plan
-          3. User approves → Call `build_design` with plan_id
-          
-          `build_design` will internally use this tool with all the plan data,
-          including advanced options (visual_description, content_guidance, etc.)
-          
-          **NEVER call generate_ai_landing_page directly** - always use build_design.
+          Called internally by platform_create(type: "landing_page").
+          Accepts: title, description, page_type, design_style, business_name,
+          key_details, business_info, design_preferences, form_fields, and more.
         DESC
         category: "landing_page",
         input_schema: {
@@ -253,12 +246,9 @@ module Tools
           subdomain: landing_page.subdomain,
           subdomain_url: landing_page.subdomain_url,  # Direct URL via subdomain (e.g., mypage.lp.amoslabs.com)
           status: "draft",
-          message: "🎉 Your landing page '#{landing_page.title}' is ready! Opening the editor now...",
+          message: "Your landing page '#{landing_page.title}' is ready! Opening the editor now.",
           preview_url: "/landing_pages/#{landing_page.slug}/preview",
-          public_url: landing_page.subdomain_url || "/landing/#{landing_page.slug}",  # Best URL for sharing
-          html_content: html_content,  # Include HTML for validation
-          edit_url: "/landing_pages/#{landing_page.id}/edit",
-          landing_page_url: "/landing_pages/#{landing_page.slug}/preview",
+          public_url: landing_page.subdomain_url || "/landing/#{landing_page.slug}",
           # Auto-open the landing page editor canvas
           canvas_type: 'landing_page_editor',
           canvas_data: { landing_page_id: landing_page.id }

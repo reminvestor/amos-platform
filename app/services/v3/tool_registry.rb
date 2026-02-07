@@ -19,11 +19,13 @@ module V3
       "discover"         => V3::Tools::DiscoverTool,
       "read_file"        => V3::Tools::ReadFileTool,
       "web_search"       => ::Tools::WebSearchTool,
+      "view_web_page"    => ::Tools::WebPageViewTool,
+      "browser_use"      => V3::Tools::BrowserUseTool,
 
       # Direct interaction
       "bash"             => V3::Tools::BashTool,
       "load_canvas"      => nil, # Special: built inline in get_bedrock_tools
-      "ask_user"         => ::Tools::AskUserTool,
+      "ask_user"         => V3::Tools::AskUserTool,
     }.freeze
 
     class << self
@@ -115,7 +117,22 @@ module V3
 
         {
           name: "load_canvas",
-          description: "Show a visual canvas/view to the user. Use 'design_studio' for draft plans, 'landing_page_editor' for built pages, 'my_creations' for all assets.",
+          description: <<~DESC.strip,
+            Show a visual canvas/view to the user.
+            
+            Key canvases:
+            - 'landing_page_editor' — View/edit a landing page (pass landing_page_id in canvas_data)
+            - 'automation_dashboard' — View all automations and their status
+            - 'contact_viewer' — View and manage contacts list
+            - 'pipeline_viewer' — Visual CRM pipeline
+            - 'integrations_manager' — Manage connected external services
+            - 'my_creations' — View all user's created assets
+            - 'module_manager' — View installed apps/modules
+            - 'dashboard' — Main dashboard
+            
+            To CREATE landing pages, websites, apps, or workflows, use platform_create instead.
+            Use load_canvas to VIEW or EDIT things that already exist.
+          DESC
           parameters: {
             type: "object",
             properties: {
@@ -126,7 +143,7 @@ module V3
               },
               canvas_data: {
                 type: "object",
-                description: "Data to pass (e.g., plan_id, landing_page_id, campaign_id)",
+                description: "Data to pass (e.g., landing_page_id for editing, plan_id for viewing)",
                 properties: {},
                 additionalProperties: true
               }
@@ -140,9 +157,11 @@ module V3
         %w[
           dashboard campaign_viewer analytics_dashboard landing_page_editor
           contact_viewer integrations_manager custom_domains document_viewer
-          work_inbox scheduled_tasks design_studio my_creations
+          work_inbox scheduled_tasks my_creations
           pipeline_viewer contact_detail support_tickets wallet
           module_manager favorites
+          automation_dashboard sequence_manager
+          activities_viewer
         ]
       end
 

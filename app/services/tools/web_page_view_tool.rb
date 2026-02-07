@@ -22,12 +22,8 @@ module Tools
     def self.metadata
       {
         name: "view_web_page",
-        description: "Display a web page in the canvas. Use when users want to view, preview, or see a website. " \
-                     "BOTH modes are fully supported - there are NO restrictions on interactive mode! " \
-                     "Ask user which mode they prefer: " \
-                     "'screenshot' = static capture with extracted text (faster, good for design reference) or " \
-                     "'interactive' = live browser session (allows clicking, navigation, form filling). " \
-                     "When user says 'interactive', call this tool with mode='interactive' immediately.",
+        description: "Display a web page in the canvas. Default mode is interactive (live browsing). " \
+                     "Falls back to screenshot if the site blocks interactive mode.",
         category: "research",
         input_schema: {
           type: "object",
@@ -38,14 +34,12 @@ module Tools
             },
             mode: {
               type: "string",
-              description: "REQUIRED - The user's chosen viewing mode. " \
-                           "'screenshot' = static capture with text extraction (faster, good for design reference), " \
-                           "'interactive' = live browsing session in canvas (allows clicking, navigation, form filling). " \
-                           "BOTH modes work - no security restrictions!",
+              description: "Viewing mode. Default: 'interactive' (live browsing). " \
+                           "Use 'screenshot' only if user specifically asks for a static capture.",
               enum: %w[screenshot interactive]
             }
           },
-          required: %w[url mode]
+          required: %w[url]
         }
       }
     end
@@ -54,20 +48,11 @@ module Tools
       log_execution(args)
 
       url = get_arg(args, :url)
-      mode = get_arg(args, :mode) || get_arg(args, :capture_mode)
+      mode = get_arg(args, :mode) || get_arg(args, :capture_mode) || "interactive"
 
       # Validate required args
       if error = validate_required_args(args, [:url])
         return error
-      end
-
-      # Check if mode was provided - if not, prompt to ask user
-      if mode.blank?
-        return error_response(
-          "Please ask the user which viewing mode they prefer: " \
-          "'screenshot' (static capture, faster) or 'interactive' (live browsing, can click around). " \
-          "Then call this tool again with their choice."
-        )
       end
 
       # Normalize URL

@@ -599,11 +599,21 @@ class ScoutController < ApplicationController
     # Save user message
     save_scout_message("user", enhanced_message)
 
-    # Determine model
-    model = model_preference || ENV.fetch("BEDROCK_DEFAULT_MODEL", "anthropic.claude-sonnet-4-v1")
+    # Determine model - default to qwen for auto mode (fast/cheap)
+    # Only use premium models if explicitly selected by user
+    model = model_preference.presence || ENV.fetch("BEDROCK_DEFAULT_MODEL", "qwen3-next-80b")
+    Rails.logger.info "[V3] Using model: #{model} (explicit: #{model_preference.present?})"
 
-    # Extract canvas type
+    # Extract canvas type and data
     canvas_type = extract_canvas_type(current_canvas)
+    canvas_data = extract_canvas_data(current_canvas)
+
+    # If user is on a canvas with context (e.g., landing page editor with landing_page_id),
+    # inject that context into the message so Amos knows what they're looking at
+    if canvas_data.present? && canvas_data.any?
+      context_hint = "[Current canvas: #{canvas_type}, data: #{canvas_data.to_json}]"
+      enhanced_message = "#{enhanced_message}\n\n#{context_hint}"
+    end
 
     # Create V3 agent loop
     agent = V3::AgentLoop.new(
@@ -642,7 +652,7 @@ class ScoutController < ApplicationController
       "📎 #{f['filename']} (asset_id: #{id}, asset_type: #{asset_type}, type: #{f['content_type']}#{processing})"
     end.join(", ")
 
-    "#{message}\n\n[Attached Files: #{file_details}]\n\nUse read_file(action: 'read', document_id: ID) to extract content from these files."
+    "#{message}\n\n[Attached Files: #{file_details}]\n\nTo read these files, use the read_file tool with action='read' and the document_id from above."
   end
 
   def extract_canvas_type(current_canvas)
@@ -653,12 +663,26 @@ class ScoutController < ApplicationController
     end
   end
 
+  def extract_canvas_data(current_canvas)
+    if current_canvas.is_a?(ActionController::Parameters)
+      data = current_canvas["data"] || current_canvas[:data]
+      data.is_a?(ActionController::Parameters) ? data.permit!.to_h : (data.is_a?(Hash) ? data : {})
+    elsif current_canvas.is_a?(Hash)
+      data = current_canvas["data"] || current_canvas[:data]
+      data.is_a?(Hash) ? data : {}
+    else
+      {}
+    end
+  end
+
   def handle_v3_streaming_chunk(chunk)
     return unless chunk.is_a?(Hash)
 
     case chunk[:type]
     when :content
-      stream_content_chunk(chunk[:text]) if chunk[:text].present?
+      # BedrockService sends :content, agent_loop may send :text - handle both
+      text = chunk[:text] || chunk[:content]
+      stream_content_chunk(text) if text.present?
     when :canvas_suggestion
       stream_update({
         type: "load_canvas",
@@ -3275,10 +3299,25 @@ class ScoutController < ApplicationController
     return [] unless current_user && current_entity
     
     # Query by user and entity for continuous chat
-    ScoutMessage.where(user_id: current_user.id, entity_id: current_entity.id)
-                .oldest_first
-                .last(k)
-                .map do |m|
+    scope = ScoutMessage.where(user_id: current_user.id, entity_id: current_entity.id)
+    
+    # IMPORTANT: If user did a fresh start, only show messages after that time
+    # This prevents old chat history from polluting the new conversation context
+    if session[:scout_fresh_start_at].present?
+      fresh_start_time = Time.parse(session[:scout_fresh_start_at]) rescue nil
+      if fresh_start_time
+        scope = scope.where("created_at > ?", fresh_start_time)
+        Rails.logger.info "📜 AI context: Filtering to messages after fresh start: #{fresh_start_time}"
+      end
+    end
+    
+    # Filter out useless responses that provide no context (error states, etc.)
+    # These can poison the model's understanding of how to respond
+    scope = scope.where.not(content: ["Done.", "I encountered an unexpected error. Please try rephrasing your request."])
+    
+    scope.oldest_first
+         .last(k)
+         .map do |m|
       {
         role: m.role,
         content: m.content,

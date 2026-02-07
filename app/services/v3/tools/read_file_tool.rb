@@ -79,20 +79,29 @@ module V3
       def list_documents(args)
         limit = [get_arg(args, :limit, 20).to_i, 50].min
         
-        docs = entity.documents.order(created_at: :desc).limit(limit).map do |doc|
+        docs = RagDocument.joins(:rag_store)
+                          .where(rag_stores: { entity_id: entity.id })
+                          .order(created_at: :desc)
+                          .limit(limit)
+                          .map do |doc|
           {
             id: doc.id,
-            name: doc.name,
+            filename: doc.original_filename,
+            title: doc.title || doc.original_filename,
             content_type: doc.content_type,
-            size: doc.file_size,
+            size: doc.file_size_bytes,
+            status: doc.processing_status,
             created_at: doc.created_at
           }
         end
 
+        total = RagDocument.joins(:rag_store).where(rag_stores: { entity_id: entity.id }).count
+
         success_response(
           documents: docs,
           count: docs.length,
-          total: entity.documents.count
+          total: total,
+          message: "Use read_file(action: 'read', document_id: ID) to read a document's content."
         )
       end
 
@@ -100,9 +109,9 @@ module V3
         doc_id = get_arg(args, :document_id)
         return error_response("Missing: document_id") if doc_id.blank?
 
-        # Delegate to existing ReadDocumentTool
+        # Delegate to existing ReadDocumentTool with correct params
         tool = ::Tools::ReadDocumentTool.new(user: user, entity: entity, context: context)
-        tool.execute({ "document_id" => doc_id })
+        tool.execute({ "asset_id" => doc_id.to_i, "asset_type" => "document" })
       end
 
       def search_documents(args)

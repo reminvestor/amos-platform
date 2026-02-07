@@ -283,6 +283,112 @@ class SkillLibraryService
         - Explain statistical methods used
         - Provide actionable insights
       SKILL
+    },
+
+    'workflow_building' => {
+      name: 'Workflow Building',
+      keywords: %w[workflow automation automate trigger when then flow sequence drip],
+      source: 'built-in',
+      content: <<~SKILL.strip
+        ## Workflow Building Skill
+        
+        Workflows are visual automations with triggers → actions → outputs.
+        
+        ### Key Canvases
+        - `workflow_designer` — Visual drag-drop builder
+        - `automation_dashboard` — Monitor all automations
+        
+        ### Trigger Types
+        - form_submission, schedule (cron), event, webhook, manual
+        
+        ### Common Actions
+        - send_email, update_record, call_integration, add_to_group, delay
+        
+        ### Quick Start
+        ```
+        load_canvas(canvas_name: "workflow_designer")
+        ```
+        
+        Or create programmatically:
+        ```
+        platform_create(type: "workflow", data: {
+          name: "Welcome Flow",
+          trigger_type: "form_submission",
+          status: "draft"
+        })
+        ```
+        
+        Use `platform_query(type: "automation_recipes")` to see pre-built templates.
+      SKILL
+    },
+
+    'app_building' => {
+      name: 'Application Building',
+      keywords: %w[app application module custom build crud database schema],
+      source: 'built-in',
+      content: <<~SKILL.strip
+        ## Application Building Skill
+        
+        Custom apps extend the platform with domain-specific data and views.
+        
+        ### Key Canvases
+        - `app_designer` — Visual app builder
+        - `module_manager` — List all custom modules
+        
+        ### Schema Field Types
+        text, textarea, number, currency, date, datetime, select, 
+        multi_select, boolean, reference, file, json
+        
+        ### Quick Start
+        ```
+        load_canvas(canvas_name: "app_designer")
+        ```
+        
+        Or create programmatically:
+        ```
+        platform_create(type: "app_module", data: {
+          name: "Project Tracker",
+          slug: "projects",
+          schema: {
+            fields: [
+              { name: "title", type: "text", required: true },
+              { name: "status", type: "select", options: ["open", "done"] }
+            ]
+          }
+        })
+        ```
+        
+        Reference fields create relationships between objects.
+      SKILL
+    },
+
+    'landing_page_building' => {
+      name: 'Landing Page Building',
+      keywords: %w[landing page website design hero cta section build create],
+      source: 'built-in',
+      content: <<~SKILL.strip
+        ## Landing Page Building Skill
+        
+        ### Key Canvases
+        - `design_studio` — Create new landing pages and websites
+        - `landing_page_editor` — Edit existing landing pages
+        - `my_creations` — View all created assets
+        
+        ### Quick Start
+        ```
+        load_canvas(canvas_name: "design_studio")
+        ```
+        
+        ### Edit Existing
+        ```
+        load_canvas(canvas_name: "landing_page_editor", canvas_data: { landing_page_id: 42 })
+        ```
+        
+        ### Query Pages
+        ```
+        platform_query(type: "landing_pages", filters: { status: "published" })
+        ```
+      SKILL
     }
   }.freeze
 

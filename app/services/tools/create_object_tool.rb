@@ -46,7 +46,7 @@ module Tools
           return error_response(
             "Cannot create objects of type: #{object_type}",
             valid_types: valid_types + available_modules,
-            note: "Use generate_ai_landing_page for landing pages"
+            note: "For landing pages, websites, apps, or workflows, use platform_create with the appropriate type"
           )
         end
       end

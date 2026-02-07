@@ -38,8 +38,8 @@ module V3AgentSupport
     # Save user message
     save_scout_message("user", enhanced_message) if respond_to?(:save_scout_message, true)
 
-    # Determine model
-    model = model_preference || session[:premium_model] || ENV.fetch("BEDROCK_DEFAULT_MODEL", "anthropic.claude-sonnet-4-v1")
+    # Determine model - default to qwen for auto mode (fast/cheap)
+    model = model_preference.presence || session[:premium_model].presence || ENV.fetch("BEDROCK_DEFAULT_MODEL", "qwen3-next-80b")
 
     # Extract canvas context
     canvas_type = if current_canvas.is_a?(Hash) || current_canvas.is_a?(ActionController::Parameters)
@@ -87,8 +87,10 @@ module V3AgentSupport
     case chunk[:type]
     when :content
       # Stream text content to frontend
-      if chunk[:text].present? && respond_to?(:stream_content, true)
-        stream_content(chunk[:text])
+      # BedrockService sends :content, agent_loop may send :text - handle both
+      text = chunk[:text] || chunk[:content]
+      if text.present? && respond_to?(:stream_content, true)
+        stream_content(text)
       end
     when :canvas_suggestion
       # Broadcast canvas change

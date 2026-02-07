@@ -10,179 +10,58 @@
   </div>
 
   <div class="nav-items">
-    <div class="nav-section">
-      <%# Home / Dashboard - loads dashboard canvas as the home view %>
-      <div class="nav-item" data-action="click->scout#loadDashboardCanvas">
-        <i data-lucide="home"></i>
-        <span class="nav-text">Home</span>
-      </div>
-
-      <%# 
-          Personal Space Items - Notes, Bookmarks, Reminders 
-          DISABLED: These are accessed via Amos chat, not sidebar.
-          Users can say "show my notes", "show bookmarks", "show reminders".
-      %>
-      <% if false # DISABLED - Notes/Bookmarks/Reminders are chat-only %>
-        <% if sidebar_section_visible?('notes') %>
-          <div class="nav-item" data-action="click->scout#loadNotesCanvas" title="Personal notes">
-            <i data-lucide="edit-3"></i>
-            <span class="nav-text">Notes</span>
-          </div>
-        <% end %>
-        <% if sidebar_section_visible?('bookmarks') %>
-          <div class="nav-item" data-action="click->scout#loadBookmarksCanvas" title="Saved items">
-            <i data-lucide="bookmark"></i>
-            <span class="nav-text">Bookmarks</span>
-          </div>
-        <% end %>
-        <% if sidebar_section_visible?('reminders') %>
-          <div class="nav-item" data-action="click->scout#loadRemindersCanvas" title="Personal reminders">
-            <i data-lucide="bell"></i>
-            <span class="nav-text">Reminders</span>
-          </div>
-        <% end %>
-      <% end %>
-
-      <%# Tasks - visible in all spaces %>
-      <% if sidebar_section_visible?('tasks') %>
-        <div class="nav-item" data-action="click->scout#loadScheduledTasksCanvas" title="View all running and scheduled tasks">
-          <i data-lucide="list-checks"></i>
-          <span class="nav-text">Tasks</span>
-          <span id="active-task-count" class="task-badge" style="display: none;">0</span>
-        </div>
-      <% end %>
-
-      <%# Work Inbox - visible in all spaces %>
-      <div class="nav-item" data-action="click->scout#loadWorkInboxCanvas" title="View agent work inbox">
-        <i data-lucide="inbox"></i>
-        <span class="nav-text">Work Inbox</span>
-        <span id="work-inbox-badge" class="nav-badge" style="display: none;">0</span>
-      </div>
-
-      <%# System Notifications / Operations Center - visible in all spaces %>
-      <div class="nav-item" data-action="click->scout#loadOperationsDashboardCanvas" title="System notifications and health">
-        <i data-lucide="bell"></i>
-        <span class="nav-text">Notifications</span>
-        <span id="system-notifications-badge" class="nav-badge notification-badge" style="display: none;">0</span>
-      </div>
-
-      <%# Team Space - Channels %>
-      <% if sidebar_section_visible?('channels') %>
-        <div class="nav-item" data-action="click->scout#loadChannelsCanvas" title="Team channels">
-          <i data-lucide="hash"></i>
-          <span class="nav-text">Channels</span>
-        </div>
-      <% end %>
-
-
-      <%# Marketing Items - Check each individually %>
-      <% if sidebar_item_visible?('landing_pages') %>
-        <div class="nav-item" data-template-type="landing_page" data-action="click->scout#loadLandingPagesCanvas">
-          <i data-lucide="globe"></i>
-          <span class="nav-text">Landing Pages</span>
-        </div>
-      <% end %>
-      <% if sidebar_item_visible?('campaigns') %>
-        <div class="nav-item" data-template-type="campaign" data-action="click->scout#loadCampaignsCanvas">
-          <i data-lucide="mail"></i>
-          <span class="nav-text">Campaigns</span>
-        </div>
-      <% end %>
-      <% if sidebar_item_visible?('email_templates') %>
-        <div class="nav-item" data-template-type="email_template" data-action="click->scout#loadEmailTemplatesCanvas">
-          <i data-lucide="file-text"></i>
-          <span class="nav-text">Email Templates</span>
-        </div>
-      <% end %>
-
-      <%# Contacts - Check individual items %>
-      <% if sidebar_item_visible?('contacts') %>
-        <div class="nav-item" data-template-type="contact" data-action="click->scout#loadContactsCanvas">
-          <i data-lucide="users"></i>
-          <span class="nav-text">Contacts</span>
-        </div>
-      <% end %>
-
-      <%# Analytics %>
-      <% if sidebar_item_visible?('analytics') %>
-        <div class="nav-item" data-template-type="analytics" data-action="click->scout#loadAnalyticsCanvas">
-          <i data-lucide="bar-chart-2"></i>
-          <span class="nav-text">Analytics</span>
-        </div>
-      <% end %>
-
-      <%# Integrations %>
-      <% if sidebar_item_visible?('integrations_manager') %>
-        <div class="nav-item" data-template-type="integration" data-action="click->scout#loadIntegrationsCanvas">
-          <i data-lucide="plug"></i>
-          <span class="nav-text">Integrations</span>
-        </div>
-      <% end %>
-
-      <%# Agent Marketplace %>
-      <% if sidebar_item_visible?('agent_marketplace') %>
-        <div class="nav-item" data-action="click->scout#loadAgentMarketplaceCanvas" title="Browse and discover AI agents">
-          <i data-lucide="store"></i>
-          <span class="nav-text">Agent Marketplace</span>
-        </div>
-      <% end %>
-
-      <%# Installed Apps (Module Manager) %>
-      <% if sidebar_item_visible?('apps') || sidebar_item_visible?('module_manager') || sidebar_item_visible?('installed_apps') %>
-        <div class="nav-item" data-action="click->scout#loadInstalledAppsCanvas" title="Manage your installed apps">
-          <i data-lucide="box"></i>
-          <span class="nav-text">Installed Apps</span>
-        </div>
-      <% end %>
-
-      <%# App Store / Browse Apps %>
-      <% if sidebar_item_visible?('apps') || sidebar_item_visible?('module_marketplace') || sidebar_item_visible?('app_store') %>
-        <div class="nav-item" data-action="click->scout#loadAppsCanvas" title="Browse and install apps">
-          <i data-lucide="grid-2x2"></i>
-          <span class="nav-text">App Store</span>
-        </div>
-      <% end %>
-
-      <%# CRM / Pipeline %>
-      <% if sidebar_item_visible?('pipeline') || sidebar_item_visible?('pipeline_viewer') %>
-        <div class="nav-item" data-action="click->scout#loadPipelineCanvas" title="Sales pipeline">
-          <i data-lucide="git-branch"></i>
-          <span class="nav-text">Pipeline</span>
-        </div>
-      <% end %>
-      <% if sidebar_item_visible?('saved_visualizations') %>
-        <div class="nav-item" data-action="click->scout#loadSavedVisualizationsCanvas" title="Saved visualizations">
-          <i data-lucide="bookmark"></i>
-          <span class="nav-text">Saved Visuals</span>
-        </div>
-      <% end %>
-      <% if sidebar_item_visible?('document_viewer') %>
-        <div class="nav-item" data-action="click->scout#loadDocumentViewerCanvas" title="View documents">
-          <i data-lucide="file-text"></i>
-          <span class="nav-text">Documents</span>
-        </div>
-      <% end %>
+    <div class="nav-item" data-action="click->scout#loadDashboardCanvas">
+      <i data-lucide="home"></i>
+      <span class="nav-text">Home</span>
+    </div>
+    <div class="nav-item" data-action="click->scout#loadWorkInboxCanvas" title="Agent work inbox and file downloads">
+      <i data-lucide="inbox"></i>
+      <span class="nav-text">Work Inbox</span>
+      <span id="work-inbox-badge" class="nav-badge" style="display: none;">0</span>
+    </div>
+    <div class="nav-item" data-action="click->scout#loadScheduledTasksCanvas" title="Scheduled and running tasks">
+      <i data-lucide="list-checks"></i>
+      <span class="nav-text">Tasks</span>
+      <span id="active-task-count" class="task-badge" style="display: none;">0</span>
+    </div>
+    <div class="nav-item" data-action="click->scout#loadContactsCanvas" title="View and manage contacts">
+      <i data-lucide="users"></i>
+      <span class="nav-text">Contacts</span>
+    </div>
+    <div class="nav-item" data-action="click->scout#loadPipelineCanvas" title="Sales pipeline">
+      <i data-lucide="git-branch"></i>
+      <span class="nav-text">Pipeline</span>
+    </div>
+    <div class="nav-item" data-action="click->scout#loadDocumentViewerCanvas" title="View documents">
+      <i data-lucide="file-text"></i>
+      <span class="nav-text">Documents</span>
+    </div>
+    <div class="nav-item" data-action="click->scout#loadIntegrationsCanvas" title="Connected services">
+      <i data-lucide="plug"></i>
+      <span class="nav-text">Integrations</span>
+    </div>
+    <div class="nav-item" data-action="click->scout#loadMyCreationsCanvas" title="Your apps, pages, and automations">
+      <i data-lucide="sparkles"></i>
+      <span class="nav-text">Apps & Automations</span>
+    </div>
+    <div class="nav-item" data-action="click->scout#loadOperationsDashboardCanvas" title="System notifications">
+      <i data-lucide="bell"></i>
+      <span class="nav-text">Notifications</span>
+      <span id="system-notifications-badge" class="nav-badge notification-badge" style="display: none;">0</span>
     </div>
 
-    <%# Custom Modules Section - Dynamically show enabled module canvases %>
+    <%# Custom module canvases %>
     <% if current_user&.entity %>
       <% module_canvases = current_user.entity.app_modules.active.includes(:module_canvases).flat_map(&:module_canvases).select { |c| sidebar_item_visible?("module_#{c.app_module.slug}_#{c.slug}") } %>
-      <% if module_canvases.any? %>
-        <div class="nav-section">
-          <div class="nav-section-title">Custom Modules</div>
-          <% module_canvases.each do |canvas| %>
-            <div class="nav-item" 
-                 onclick="window.scoutController && window.scoutController.loadScoutCanvas('module_<%= canvas.slug %>', {})"
-                 title="<%= canvas.name %>">
-              <i data-lucide="<%= canvas.app_module.metadata&.dig('icon') || 'database' %>"></i>
-              <span class="nav-text"><%= canvas.name.truncate(20) %></span>
-            </div>
-          <% end %>
+      <% module_canvases.each do |canvas| %>
+        <div class="nav-item" 
+             onclick="window.scoutController && window.scoutController.loadScoutCanvas('module_<%= canvas.slug %>', {}); window.scoutController && window.scoutController.collapseSideNav()"
+             title="<%= canvas.name %>">
+          <i data-lucide="<%= canvas.app_module.metadata&.dig('icon') || 'database' %>"></i>
+          <span class="nav-text"><%= canvas.name.truncate(20) %></span>
         </div>
       <% end %>
     <% end %>
-
-    <%# Templates section removed - content now accessible via chat canvases %>
   </div>
 
   <div class="nav-footer">

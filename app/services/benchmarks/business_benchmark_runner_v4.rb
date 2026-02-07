@@ -675,7 +675,7 @@ module Benchmarks
       session_id = "bob4_#{SecureRandom.hex(4)}"
       
       log "Creating Scout session: #{session_id}", level: :debug
-      scout = V3::AgentLoop # V3 migration stub.new(@user, @entity, session_id)
+      scout = V3::AgentLoop.new(user: @user, entity: @entity, session_id: session_id)
 
       response_text = ""
       tools_used = []
@@ -686,18 +686,59 @@ module Benchmarks
 
       last_progress_time = Time.current
       
+      # Track current tool being streamed (V3 sends start/stop events separately)
+      current_streaming_tool = nil
+
       callback = ->(chunk) {
         chunk_count += 1
         
         if chunk.is_a?(String)
           response_text += chunk
-          # Show streaming progress every 5 seconds
           if Time.current - last_progress_time > 5
             log "Streaming... #{response_text.length} chars, #{tool_calls} tools", level: :progress
             last_progress_time = Time.current
           end
         elsif chunk.is_a?(Hash)
           type = (chunk[:type] || chunk['type']).to_s
+
+          # ── V3 Agent Loop raw chunk types (symbol keys) ──
+          # These come directly from Bedrock via the V3 agent loop
+
+          if type == 'content'
+            # V3: Raw content chunk from Bedrock
+            text = chunk[:text] || chunk[:content]
+            response_text += text if text.present?
+          end
+
+          if type == 'tool_use_start'
+            # V3: Tool is starting — track name/id
+            tool_name = chunk[:tool_name]
+            current_streaming_tool = tool_name
+            tools_used << tool_name if tool_name.present?
+            tool_calls += 1
+            log "Tool START: #{tool_name}", level: :tool
+          end
+
+          if type == 'content_block_stop'
+            # V3: Content block done — if we had a tool streaming, it's complete
+            if current_streaming_tool
+              log "Tool COMPLETE: #{current_streaming_tool}", level: :tool
+              current_streaming_tool = nil
+            end
+          end
+
+          if type == 'canvas_suggestion'
+            # V3: Canvas suggestion from tool execution
+            canvas_loaded = chunk[:canvas]
+            log "Canvas loaded: #{canvas_loaded}", level: :success
+          end
+
+          if type == 'status'
+            log "Status: #{chunk[:text]}", level: :progress
+          end
+
+          # ── V2 / Controller-level chunk types (string keys) ──
+          # These come from the controller after processing raw chunks
 
           if type == 'tool_start'
             tool_name = chunk[:name] || chunk[:tool_name] || chunk['name'] || chunk['tool_name']
@@ -765,12 +806,19 @@ module Benchmarks
               callback.call(chunk)  # Forward to main callback
               if chunk.is_a?(String)
                 turn_response += chunk
-              elsif chunk.is_a?(Hash) && chunk[:type] == 'content_chunk'
-                turn_response += (chunk[:content] || '')
+              elsif chunk.is_a?(Hash)
+                # V3 raw content chunks
+                if chunk[:type] == :content
+                  text = chunk[:text] || chunk[:content]
+                  turn_response += text if text.present?
+                # V2/controller content chunks
+                elsif chunk[:type] == 'content_chunk'
+                  turn_response += (chunk[:content] || '')
+                end
               end
             }
             
-            scout.process_message_with_tools_streaming(turn[:content], turn_callback, conversation_history, nil)
+            scout.process_message_streaming(turn[:content], turn_callback, conversation_history, nil)
             
             # Save assistant response to DB
             save_benchmark_message('assistant', turn_response, session_id) if turn_response.present?
@@ -781,7 +829,24 @@ module Benchmarks
         end
       else
         log "Request: \"#{task[:request].truncate(80)}\"", level: :info
-        scout.process_message_with_tools_streaming(task[:request], callback, [], nil)
+        result = scout.process_message_streaming(task[:request], callback, [], nil)
+
+        # V3 returns canvas info in the result hash (not just via callback)
+        if result.is_a?(Hash)
+          if result[:suggested_canvas].present? && canvas_loaded.nil?
+            canvas_loaded = result[:suggested_canvas]
+            log "Canvas from result: #{canvas_loaded}", level: :success
+          end
+          # Also capture response from result if streaming didn't capture it
+          if response_text.blank? && result.dig(:final_response, :message).present?
+            response_text = result[:final_response][:message]
+          end
+          # Capture tools from result if callback didn't catch them
+          if tools_used.empty? && result[:tools_used].present?
+            tools_used = Array(result[:tools_used])
+            tool_calls = tools_used.length if tool_calls == 0
+          end
+        end
       end
 
       log "Execution complete. #{tool_calls} tool calls, #{response_text.length} chars response", level: :success

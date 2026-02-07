@@ -440,11 +440,15 @@ module Tools
         "document_search_results", "work_inbox", "scheduled_tasks",
         "scheduled_task_editor", "saved_visualizations",
         "agent_marketplace", "agent_detail", "favorites", "test_results",
-        "research_council", "module_manager", "module_marketplace", "app_designer",
-        # Plan → Build workflow canvases
-        "design_studio", "my_creations",
-        # CRM / Sales canvases (accessible via chat only)
+        "research_council", "module_manager", "module_marketplace",
+        # Created assets
+        "my_creations",
+        # CRM / Sales canvases
         "pipeline_viewer", "contact_detail", "activities_viewer",
+        # Automation monitoring
+        "automation_dashboard", "workflow_approval", "workflow_analytics",
+        # Email sequences
+        "sequence_manager",
         # Support & Evolution canvases
         "support_tickets",
         # Token Economy

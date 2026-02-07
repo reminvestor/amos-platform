@@ -78,7 +78,8 @@ module V3
     end
 
     def build_datetime_context
-      tz = user&.timezone || "America/Los_Angeles"
+      # User doesn't have timezone column - use entity settings or default
+      tz = entity&.settings&.dig("timezone") || "America/Los_Angeles"
       current_time = Time.current.in_time_zone(tz)
       "📅 #{current_time.strftime('%A, %B %d, %Y at %I:%M %p %Z')}"
     end
@@ -131,9 +132,14 @@ module V3
       # Map canvas type to clear context
       context = case current_canvas
                 when "landing_page_editor"
-                  "The user is viewing a landing page in the editor. Help them edit sections, content, and styling."
-                when "design_studio"
-                  "The user is in the Design Studio working on a design plan. Help them refine and build their design."
+                  "The user is viewing a landing page in the editor. They may ask you to edit sections, content, and styling.\n" \
+                  "To edit a SECTION by name (hero, features, pricing, etc.):\n" \
+                  "  platform_update(type: 'landing_page', id: ID, data: { section: 'hero', instruction: 'Remove the image and center the text' })\n" \
+                  "To read the page sections:\n" \
+                  "  platform_update(type: 'landing_page', id: ID, data: { read_sections: true })\n" \
+                  "To replace full HTML:\n" \
+                  "  platform_update(type: 'landing_page', id: ID, data: { html_content: '...' })\n" \
+                  "The landing page ID should be in the canvas context below."
                 when "campaign_viewer"
                   "The user is viewing a campaign. Help them manage recipients, content, and sending."
                 when "integrations_manager"
@@ -153,34 +159,49 @@ module V3
 
     def build_tool_instructions
       <<~TOOLS
-        ## How to Work (V3 Power Tools)
+        ## Tools Available
         
-        You have 10 core tools. Use them directly — no need to search for specialized tools.
+        **Data:** `platform_query`, `platform_create`, `platform_update`, `platform_execute`
+        **Knowledge:** `discover`, `read_file`, `web_search`, `view_web_page`
+        **Browser:** `browser_use` — Autonomous web browsing (navigate, click, type, scroll, screenshot). Supports user handoff for login.
+        **Interface:** `load_canvas`, `ask_user`, `bash`
+        **Memory:** `remember_this`, `recall_context`, `search_memory`, `list_saved`, `bookmark_this`
         
-        **Data operations:**
-        - `platform_query` — Read ANY data (contacts, campaigns, schemas, stats, integrations)
-        - `platform_create` — Create ANY object (contact, campaign, template, etc.)
-        - `platform_update` — Update ANY object by type + ID
-        - `platform_execute` — Execute operations (send campaigns, run integrations, publish pages)
+        ## Building Things (use platform_create)
         
-        **Knowledge:**
-        - `discover` — Find skills, integrations, features, recipes
-        - `read_file` — Read uploaded documents and knowledge base
-        - `web_search` — Search the web for real-time information
+        `platform_create` handles ALL creation — both simple data and complex builds:
+        - **Landing page** → `platform_create(type: "landing_page", data: { title: "...", description: "..." })`
+        - **Website** → `platform_create(type: "website", data: { name: "...", pages: [{ title: "...", description: "..." }] })`
+        - **App/Module** → `platform_create(type: "app", data: { name: "CRM", description: "..." })`
+        - **Workflow** → `platform_create(type: "workflow", data: { name: "...", trigger: "...", actions: [...] })`
+        - **Contacts, campaigns, templates, etc.** → `platform_create(type: "contact", data: { ... })`
         
-        **Power tools:**
-        - `bash` — Run shell commands (curl, jq, ruby, data processing)
-        - `load_canvas` — Show visual content to the user
-        - `ask_user` — Ask the user a clarifying question
+        ## Viewing Things (use load_canvas)
+        - `landing_page_editor` — View/edit a landing page (pass landing_page_id)
+        - `contact_viewer` — View and manage contacts
+        - `pipeline_viewer` — Visual CRM pipeline
+        - `automation_dashboard` — Monitor all automations
+        - `my_creations` — View all created assets
+        - `module_manager` — View installed apps
         
-        **Memory tools:** remember_this, recall_context, search_memory, list_saved, bookmark_this
+        ## CRITICAL: Tool Usage Rules
         
-        **Rules:**
-        - Use `platform_query(type: "schema")` to discover what's available
-        - Use `discover` when you need to learn HOW to do something
-        - Use `bash` for anything not covered by other tools (calculations, API testing, data transforms)
-        - Always scope queries to the current organization (automatic)
-        - For destructive operations, confirm with the user first using `ask_user`
+        **You MUST call tools to perform actions.** Never claim to have completed an action without a tool call.
+        
+        **Wrong:** Saying "Done! I created 10 contacts." without tool calls
+        **Right:** Calling `platform_create` 10 times, THEN summarizing what was created
+        
+        **Wrong:** Outputting CSV as text and saying "copy this"
+        **Right:** Using the `platform_execute` tool with action="generate_file"
+        
+        **Wrong:** Guessing at math calculations (LLMs are bad at math!)
+        **Right:** Using the `bash` tool to run Python for calculations
+        
+        If asked to show/view something, use `load_canvas` to open the appropriate view.
+        If unsure which tool to use, call `discover` first.
+        
+        **IMPORTANT:** Your current tool capabilities ALWAYS override anything you said in previous messages.
+        If you previously said "I can't do X" but you now have a tool for it, USE THE TOOL.
       TOOLS
     end
 
@@ -197,15 +218,16 @@ module V3
         Rails.logger.debug "[V3::SystemPrompt] Personality error: #{e.message}"
       end
 
-      # Learned behaviors from ScoutLearning
+      # Learned behaviors from ScoutLearning (entity-level, not user-level)
       begin
-        learnings = ScoutLearning.where(user: user, entity: entity)
+        learnings = ScoutLearning.where(entity: entity)
                                  .where("confidence >= ?", 0.7)
+                                 .where(active: true)
                                  .order(confidence: :desc)
                                  .limit(10)
 
         if learnings.any?
-          learned = learnings.map { |l| "- #{l.learning_text}" }.join("\n")
+          learned = learnings.map { |l| "- #{l.learning}" }.join("\n")
           parts << "## Learned Preferences\n#{learned}"
         end
       rescue => e

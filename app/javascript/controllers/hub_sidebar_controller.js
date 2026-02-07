@@ -24,11 +24,9 @@ export default class extends Controller {
     this.threadSubscription = null
     this.pendingTasks = new Map() // Track pending tasks
     
-    // Restore collapsed state from localStorage
-    const savedCollapsed = localStorage.getItem('hubSidebarCollapsed')
-    if (savedCollapsed === 'true') {
-      this.collapse()
-    }
+    // Always start collapsed (icon strip) — overlay mode
+    // Sidebar only expands when user clicks the expand button
+    this.collapse()
     
     // Restore section collapsed states
     this.restoreSectionStates()
@@ -147,9 +145,11 @@ export default class extends Controller {
       workspace.classList.add('sidebar-collapsed')
     }
     
+    // Hide backdrop
+    this._hideBackdrop()
+    
     // Save state
     localStorage.setItem('hubSidebarCollapsed', 'true')
-    console.log("🌐 Sidebar collapsed to icon mode")
     
     // Re-render icons (the collapse button icon rotates)
     if (window.lucide) {
@@ -167,13 +167,38 @@ export default class extends Controller {
       workspace.classList.remove('sidebar-collapsed')
     }
     
+    // Show backdrop for click-outside-to-close
+    this._showBackdrop()
+    
     // Save state
     localStorage.setItem('hubSidebarCollapsed', 'false')
-    console.log("🌐 Sidebar expanded")
     
     // Re-render icons
     if (window.lucide) {
       setTimeout(() => window.lucide.createIcons(), 50)
+    }
+  }
+
+  _showBackdrop() {
+    if (!this._backdrop) {
+      this._backdrop = document.createElement("div")
+      this._backdrop.className = "hub-sidebar-backdrop"
+      this._backdrop.addEventListener("click", () => this.collapse())
+      const workspace = document.getElementById('workspace')
+      if (workspace) {
+        workspace.appendChild(this._backdrop)
+      } else {
+        document.body.appendChild(this._backdrop)
+      }
+    }
+    requestAnimationFrame(() => {
+      this._backdrop.classList.add("active")
+    })
+  }
+
+  _hideBackdrop() {
+    if (this._backdrop) {
+      this._backdrop.classList.remove("active")
     }
   }
   
@@ -673,6 +698,9 @@ export default class extends Controller {
     const canvasType = event.currentTarget.dataset.canvas
     console.log("🌐 Loading canvas:", canvasType)
     
+    // Collapse sidebar after selection (overlay mode)
+    this.collapse()
+    
     // Close user menu if open
     const menu = document.getElementById('hub-user-menu')
     menu?.classList.remove('open')
@@ -995,6 +1023,7 @@ export default class extends Controller {
   // Ask Amos for help
   askForHelp(event) {
     event?.preventDefault()
+    this.collapse()
     
     // Select Amos first
     this.selectAmos(event)

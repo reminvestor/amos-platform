@@ -1463,11 +1463,13 @@ class BedrockService
           when "tool_use"
             # Convert tool_use format - sanitize ID for Bedrock compatibility
             tool_data = block[:tool_use]
+            # Handle both :id and :tool_use_id keys
+            tool_id = tool_data[:tool_use_id] || tool_data[:id] || tool_data["tool_use_id"] || tool_data["id"]
             {
               tool_use: {
-                tool_use_id: BedrockService.sanitize_tool_id(tool_data[:id]),
-                name: tool_data[:name],
-                input: tool_data[:input]
+                tool_use_id: BedrockService.sanitize_tool_id(tool_id),
+                name: tool_data[:name] || tool_data["name"],
+                input: tool_data[:input] || tool_data["input"] || {}
               }
             }
           when "tool_result"
@@ -1600,6 +1602,9 @@ class BedrockService
               sanitized_id = BedrockService.sanitize_tool_id(tool_info.tool_use_id)
               yield(type: :tool_use_start, tool_id: sanitized_id, tool_name: tool_info.name)
             end
+          when :content_block_stop
+            # Content block complete - signal that current tool (if any) is done
+            yield(type: :content_block_stop)
           when :message_stop
             # Message complete
             total_elapsed = (Time.now - start_time).round(3)
@@ -1901,33 +1906,49 @@ class BedrockService
         # Check if array items already have 'type' field, if not fix them
         items = content.map do |item|
           if item.is_a?(Hash) && (item[:type] || item["type"])
-            # Already correctly formatted - ensure keys are symbols and text is not nil
-            text_content = (item[:text] || item["text"])&.to_s&.strip
-            next nil if text_content.blank? # Skip empty text blocks
-            { type: (item[:type] || item["type"]).to_s, text: text_content }
+            item_type = (item[:type] || item["type"]).to_s
+            # Pass through tool_use and tool_result blocks unchanged
+            if item_type == "tool_use"
+              tool_data = item[:tool_use] || item["tool_use"] || item
+              { type: "tool_use", tool_use: tool_data }
+            elsif item_type == "tool_result"
+              result_data = item[:tool_result] || item["tool_result"] || item
+              { type: "tool_result", tool_result: result_data }
+            else
+              # Text content
+              text_content = (item[:text] || item["text"])&.to_s&.strip
+              next nil if text_content.blank?
+              { type: "text", text: text_content }
+            end
+          elsif item.is_a?(Hash) && (item[:tool_use] || item["tool_use"])
+            # Tool use block without explicit type
+            tool_data = item[:tool_use] || item["tool_use"]
+            { type: "tool_use", tool_use: tool_data }
+          elsif item.is_a?(Hash) && (item[:tool_result] || item["tool_result"])
+            # Tool result block without explicit type
+            result_data = item[:tool_result] || item["tool_result"]
+            { type: "tool_result", tool_result: result_data }
           elsif item.is_a?(Hash) && (item[:text] || item["text"])
             text_value = (item[:text] || item["text"])&.to_s&.strip
-            next nil if text_value.blank? # Skip empty text blocks
+            next nil if text_value.blank?
             { type: "text", text: text_value }
           elsif item.is_a?(String)
             text = item.strip
-            next nil if text.blank? # Skip empty strings
+            next nil if text.blank?
             { type: "text", text: text }
           else
             text = item.to_s.strip
-            next nil if text.blank? # Skip empty content
+            next nil if text.blank?
             { type: "text", text: text }
           end
-        end.compact # Remove nil entries
+        end.compact
         
         # If all content was empty, add a placeholder
         items.empty? ? [{ type: "text", text: "(empty message)" }] : items
       elsif content.is_a?(String)
         text = content.strip
-        # Convert string to required format - use placeholder if empty
         [ { type: "text", text: text.present? ? text : "(empty message)" } ]
       else
-        # Convert other types to string first
         text = content.to_s.strip
         [ { type: "text", text: text.present? ? text : "(empty message)" } ]
       end

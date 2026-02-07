@@ -16,17 +16,19 @@ module V3
           name: "platform_execute",
           description: <<~DESC.strip,
             Execute platform operations: integration actions, email sending, data syncing,
-            workflow triggers, and other operational tasks.
+            workflow triggers, file generation, and other operational tasks.
             
             For integration actions, use action="integration" with integration name and action name.
             For sending campaigns, use action="send_campaign" with campaign_id.
             For enrolling contacts in sequences, use action="enroll_sequence".
+            For generating downloadable files (CSV, Excel), use action="generate_file".
             
             Examples:
             - platform_execute(action: "integration", integration: "stripe", operation: "list_customers", inputs: { limit: 10 })
             - platform_execute(action: "send_campaign", campaign_id: 7)
             - platform_execute(action: "enroll_sequence", sequence_id: 3, contact_ids: [1, 2, 3])
             - platform_execute(action: "publish_landing_page", landing_page_id: 15)
+            - platform_execute(action: "generate_file", inputs: { format: "csv", title: "Customer Export", headers: ["Name", "Email"], rows: [["John", "john@example.com"]] })
           DESC
           category: "v3_core",
           input_schema: {
@@ -34,7 +36,7 @@ module V3
             properties: {
               action: {
                 type: "string",
-                description: "The operation to execute: 'integration', 'send_campaign', 'enroll_sequence', 'publish_landing_page', 'sync_data', 'send_email'"
+                description: "The operation to execute: 'integration', 'send_campaign', 'enroll_sequence', 'publish_landing_page', 'generate_file', 'send_email'"
               },
               integration: {
                 type: "string",
@@ -79,10 +81,12 @@ module V3
           execute_publish_landing_page(args)
         when "send_email"
           execute_send_email(args)
+        when "generate_file"
+          execute_generate_file(args)
         else
           error_response(
             "Unknown action: #{action}",
-            available_actions: %w[integration send_campaign enroll_sequence publish_landing_page send_email]
+            available_actions: %w[integration send_campaign enroll_sequence publish_landing_page send_email generate_file]
           )
         end
       rescue => e
@@ -206,6 +210,171 @@ module V3
           status: "queued",
           message: "Email to #{to} queued for delivery"
         )
+      end
+
+      # Generate a downloadable file (CSV or Excel) from data
+      # Creates a work item with download link in the work inbox
+      def execute_generate_file(args)
+        inputs = get_arg(args, :inputs, {})
+        
+        format = (inputs["format"] || inputs[:format] || "csv").to_s.downcase
+        title = inputs["title"] || inputs[:title] || "Data Export"
+        headers = inputs["headers"] || inputs[:headers] || []
+        rows = inputs["rows"] || inputs[:rows] || []
+        
+        # Also support data as array of hashes (more natural for AI)
+        data = inputs["data"] || inputs[:data]
+        if data.is_a?(Array) && data.first.is_a?(Hash)
+          # Convert array of hashes to headers + rows
+          headers = data.first.keys.map(&:to_s) if headers.empty?
+          rows = data.map { |row| headers.map { |h| row[h] || row[h.to_sym] } }
+        end
+        
+        return error_response("No data provided. Include 'headers' and 'rows', or 'data' as array of objects.") if rows.empty?
+        
+        # Generate file content
+        file_content, content_type, extension = generate_file_content(format, headers, rows)
+        return error_response("Unsupported format: #{format}. Use 'csv', 'excel', or 'pdf'.") unless file_content
+        
+        # Create filename
+        safe_title = title.parameterize(separator: '_')
+        filename = "#{safe_title}_#{Time.current.strftime('%Y%m%d_%H%M%S')}.#{extension}"
+        
+        # Store file via Active Storage
+        blob = ActiveStorage::Blob.create_and_upload!(
+          io: StringIO.new(file_content),
+          filename: filename,
+          content_type: content_type
+        )
+        
+        # Generate download URL
+        host = ENV.fetch("APP_HOST", "http://localhost:3000")
+        download_url = Rails.application.routes.url_helpers.rails_blob_url(
+          blob,
+          host: host,
+          disposition: "attachment"
+        )
+        
+        # Create work item for the work inbox
+        work_item = AgentWorkItem.create!(
+          entity: entity,
+          user: user,
+          work_type: 'report_generated',
+          title: title,
+          summary: "#{format.upcase} file with #{rows.length} rows",
+          priority: 'normal',
+          metadata: {
+            download_url: download_url,
+            blob_id: blob.id,
+            filename: filename,
+            format: format,
+            row_count: rows.length,
+            column_count: headers.length,
+            generated_at: Time.current.iso8601
+          }
+        )
+        
+        Rails.logger.info "[V3::PlatformExecute] Generated #{format.upcase} file: #{filename} (#{rows.length} rows) → WorkItem ##{work_item.id}"
+        
+        # Set canvas suggestion to show work inbox
+        @context[:canvas_suggestion] = "work_inbox"
+        
+        success_response(
+          message: "#{format.upcase} file generated! Check your Work Inbox to download.",
+          work_item_id: work_item.id,
+          filename: filename,
+          format: format,
+          row_count: rows.length,
+          column_count: headers.length,
+          download_url: download_url
+        )
+      end
+      
+      def generate_file_content(format, headers, rows)
+        case format
+        when "csv"
+          generate_csv_content(headers, rows)
+        when "excel", "xlsx"
+          generate_excel_content(headers, rows)
+        when "pdf"
+          generate_pdf_content(headers, rows)
+        else
+          nil
+        end
+      end
+      
+      def generate_csv_content(headers, rows)
+        require 'csv'
+        
+        content = CSV.generate do |csv|
+          csv << headers if headers.any?
+          rows.each { |row| csv << row }
+        end
+        
+        [content, "text/csv", "csv"]
+      end
+      
+      def generate_excel_content(headers, rows)
+        # Use caxlsx gem if available, otherwise fall back to CSV
+        begin
+          require 'caxlsx'
+          
+          package = Axlsx::Package.new
+          workbook = package.workbook
+          
+          workbook.add_worksheet(name: "Data") do |sheet|
+            # Add header row with bold styling
+            if headers.any?
+              sheet.add_row headers, style: workbook.styles.add_style(b: true, bg_color: "E0E0E0")
+            end
+            
+            # Add data rows
+            rows.each { |row| sheet.add_row row }
+          end
+          
+          [package.to_stream.read, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx"]
+        rescue LoadError
+          # Fallback to CSV if caxlsx not available
+          Rails.logger.warn "[V3::PlatformExecute] caxlsx gem not available, falling back to CSV"
+          generate_csv_content(headers, rows)
+        end
+      end
+      
+      def generate_pdf_content(headers, rows)
+        require 'prawn'
+        require 'prawn/table'
+        
+        pdf = Prawn::Document.new(page_size: 'A4', page_layout: :landscape)
+        
+        # Title
+        pdf.font_size(16) { pdf.text "Data Export", style: :bold }
+        pdf.move_down 10
+        pdf.font_size(10) { pdf.text "Generated: #{Time.current.strftime('%B %d, %Y at %H:%M')}", color: "666666" }
+        pdf.move_down 20
+        
+        # Build table data
+        table_data = []
+        table_data << headers if headers.any?
+        rows.each { |row| table_data << row.map(&:to_s) }
+        
+        if table_data.any?
+          pdf.table(table_data, header: headers.any?, width: pdf.bounds.width) do |t|
+            t.row(0).font_style = :bold if headers.any?
+            t.row(0).background_color = "E0E0E0" if headers.any?
+            t.cells.padding = [5, 8]
+            t.cells.borders = [:bottom]
+            t.cells.border_color = "CCCCCC"
+          end
+        end
+        
+        # Footer with row count
+        pdf.move_down 20
+        pdf.font_size(9) { pdf.text "Total rows: #{rows.length}", color: "999999" }
+        
+        [pdf.render, "application/pdf", "pdf"]
+      rescue LoadError
+        Rails.logger.warn "[V3::PlatformExecute] prawn gem not available, falling back to CSV"
+        generate_csv_content(headers, rows)
       end
     end
   end

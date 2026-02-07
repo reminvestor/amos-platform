@@ -320,9 +320,44 @@ export default class extends Controller {
     }
   }
 
-  // Toggle side navigation
+  // Toggle side navigation (overlay mode)
   toggleSideNav() {
+    const isExpanding = !this.sideNavTarget.classList.contains("expanded")
     this.sideNavTarget.classList.toggle("expanded")
+
+    if (isExpanding) {
+      this._showSideNavBackdrop()
+    } else {
+      this._hideSideNavBackdrop()
+    }
+  }
+
+  // Collapse side navigation (called from nav items and backdrop)
+  collapseSideNav() {
+    if (this.hasSideNavTarget && this.sideNavTarget.classList.contains("expanded")) {
+      this.sideNavTarget.classList.remove("expanded")
+      this._hideSideNavBackdrop()
+    }
+  }
+
+  _showSideNavBackdrop() {
+    // Create backdrop if it doesn't exist
+    if (!this._sideNavBackdrop) {
+      this._sideNavBackdrop = document.createElement("div")
+      this._sideNavBackdrop.className = "side-nav-backdrop"
+      this._sideNavBackdrop.addEventListener("click", () => this.collapseSideNav())
+      this.element.appendChild(this._sideNavBackdrop)
+    }
+    // Use requestAnimationFrame to ensure the element is in DOM before adding class
+    requestAnimationFrame(() => {
+      this._sideNavBackdrop.classList.add("active")
+    })
+  }
+
+  _hideSideNavBackdrop() {
+    if (this._sideNavBackdrop) {
+      this._sideNavBackdrop.classList.remove("active")
+    }
   }
 
   // Send chat message
@@ -1833,13 +1868,9 @@ export default class extends Controller {
   }
 
   // Helper to update active nav item
-  // DISABLED: Nav highlighting removed in chat mode because Amos constantly 
-  // renders canvases that don't map to nav items, making highlighting confusing
+  // Collapse sidebar after nav item selection (overlay mode - always collapse)
   setActiveNavItem(event) {
-    // Only handle mobile sidebar collapse, no active state changes
-    if (this.isMobileViewport() && this.hasSideNavTarget) {
-      this.sideNavTarget.classList.remove('expanded')
-    }
+    this.collapseSideNav()
   }
 
   // Nav handler methods
@@ -1961,6 +1992,18 @@ export default class extends Controller {
     this.setActiveNavItem(event)
     console.log("📊 Loading operations dashboard canvas")
     this.loadScoutCanvas("operations_dashboard", {})
+  }
+
+  loadMyCreationsCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("🎨 Loading my creations canvas")
+    this.loadScoutCanvas("my_creations", {})
+  }
+
+  loadAutomationDashboardCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("⚡ Loading automation dashboard canvas")
+    this.loadScoutCanvas("automation_dashboard", {})
   }
 
   // Personal Space canvas loaders

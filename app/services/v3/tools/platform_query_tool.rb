@@ -26,10 +26,11 @@ module V3
           name: "platform_query",
           description: <<~DESC.strip,
             Query any platform data: contacts, campaigns, landing pages, bounties, tickets,
-            integrations, email templates, sequences, opportunities, activities, modules, etc.
+            integrations, email templates, sequences, opportunities, activities, documents, etc.
             
             Use type="schema" to discover available object types and their fields.
             Use type="stats" to get platform overview statistics.
+            Use type="documents" to list, read, or search uploaded documents.
             Use any object type name to query records.
             
             Examples:
@@ -38,7 +39,9 @@ module V3
             - platform_query(type: "schema", object: "contacts")
             - platform_query(type: "stats")
             - platform_query(type: "landing_pages", id: 123)
-            - platform_query(type: "integrations")
+            - platform_query(type: "documents")  # List uploaded documents
+            - platform_query(type: "documents", id: 5)  # Read document content
+            - platform_query(type: "documents", search: "contract terms")  # Search documents
           DESC
           category: "v3_core",
           input_schema: {
@@ -96,6 +99,8 @@ module V3
           query_stats
         when "integrations"
           query_integrations(args)
+        when "documents", "document"
+          query_documents(args)
         else
           query_data(type, args)
         end
@@ -156,7 +161,8 @@ module V3
           email_sequences: -> { entity.email_sequences.count },
           opportunities: -> { entity.opportunities.count rescue 0 },
           bounties: -> { entity.bounties.count rescue 0 },
-          support_tickets: -> { entity.support_tickets.count rescue 0 }
+          support_tickets: -> { entity.support_tickets.count rescue 0 },
+          documents: -> { RagDocument.joins(:rag_store).where(rag_stores: { entity_id: entity.id }).count rescue 0 }
         }
 
         stat_models.each do |name, counter|
@@ -198,6 +204,153 @@ module V3
           available: available,
           count: connections.length
         )
+      end
+
+      def query_documents(args)
+        doc_id = get_arg(args, :id)
+        search_query = get_arg(args, :search)
+        limit = [get_arg(args, :limit, 20).to_i, 50].min
+        
+        # Get all RAG stores for this entity
+        rag_stores = entity.rag_stores.where(status: "active")
+        
+        if doc_id
+          # Fetch specific document with content
+          rag_doc = RagDocument.joins(:rag_store)
+                               .where(rag_stores: { entity_id: entity.id })
+                               .find_by(id: doc_id)
+          
+          return error_response("Document not found: #{doc_id}") unless rag_doc
+          
+          # Extract text content if available
+          content = extract_document_content(rag_doc)
+          
+          success_response(
+            document: {
+              id: rag_doc.id,
+              filename: rag_doc.original_filename,
+              title: rag_doc.title || rag_doc.original_filename,
+              content_type: rag_doc.content_type,
+              size_bytes: rag_doc.file_size_bytes,
+              status: rag_doc.processing_status,
+              store: rag_doc.rag_store.name,
+              created_at: rag_doc.created_at,
+              content: content
+            },
+            content_length: content&.length || 0
+          )
+        elsif search_query.present?
+          # Semantic search across documents
+          search_documents(search_query, limit)
+        else
+          # List all documents
+          documents = RagDocument.joins(:rag_store)
+                                 .where(rag_stores: { entity_id: entity.id })
+                                 .order(created_at: :desc)
+                                 .limit(limit)
+          
+          doc_list = documents.map do |doc|
+            {
+              id: doc.id,
+              filename: doc.original_filename,
+              title: doc.title || doc.original_filename,
+              content_type: doc.content_type,
+              size_bytes: doc.file_size_bytes,
+              status: doc.processing_status,
+              store: doc.rag_store.name,
+              created_at: doc.created_at
+            }
+          end
+          
+          success_response(
+            documents: doc_list,
+            count: doc_list.length,
+            total: RagDocument.joins(:rag_store).where(rag_stores: { entity_id: entity.id }).count,
+            message: "#{doc_list.length} document(s). Use id parameter to read content, or search parameter to find specific content."
+          )
+        end
+      end
+      
+      def extract_document_content(rag_doc, max_chars: 50000)
+        # Try to get content from chunks first (already processed)
+        if rag_doc.rag_chunks.any?
+          chunks = rag_doc.rag_chunks.order(:chunk_index).pluck(:content)
+          content = chunks.join("\n\n")
+          return content.truncate(max_chars) if content.present?
+        end
+        
+        # Try extracted_text field
+        return rag_doc.extracted_text.truncate(max_chars) if rag_doc.extracted_text.present?
+        
+        # Try to read file directly for simple text files
+        if rag_doc.file.attached? && rag_doc.content_type&.start_with?("text/")
+          begin
+            content = rag_doc.file.download
+            return content.force_encoding("UTF-8").truncate(max_chars)
+          rescue => e
+            Rails.logger.warn "[V3::PlatformQuery] Could not read file content: #{e.message}"
+          end
+        end
+        
+        nil
+      end
+      
+      def search_documents(query, limit)
+        # Use existing RAG infrastructure for semantic search
+        begin
+          results = []
+          
+          # Try vector search if available
+          rag_service = RagStoreService.new(entity: entity)
+          search_result = rag_service.search(query: query, top_k: limit)
+          
+          if search_result[:success] && search_result[:results].present?
+            results = search_result[:results].map do |r|
+              {
+                document_id: r[:document_id],
+                chunk_content: r[:content].truncate(500),
+                relevance: r[:score],
+                filename: r[:filename],
+                title: r[:title]
+              }
+            end
+          end
+          
+          success_response(
+            query: query,
+            results: results,
+            count: results.length,
+            search_type: "semantic",
+            message: results.any? ? 
+              "Found #{results.length} relevant section(s). Use platform_query(type: 'documents', id: X) to read full document." :
+              "No matching content found."
+          )
+        rescue => e
+          Rails.logger.warn "[V3::PlatformQuery] Semantic search failed: #{e.message}"
+          
+          # Fallback to text search
+          docs = RagDocument.joins(:rag_store)
+                            .where(rag_stores: { entity_id: entity.id })
+                            .where("original_filename ILIKE :q OR title ILIKE :q OR extracted_text ILIKE :q", q: "%#{query}%")
+                            .limit(limit)
+          
+          results = docs.map do |doc|
+            {
+              document_id: doc.id,
+              filename: doc.original_filename,
+              title: doc.title,
+              match_type: "text"
+            }
+          end
+          
+          success_response(
+            query: query,
+            results: results,
+            count: results.length,
+            search_type: "text",
+            message: results.any? ? "Found #{results.length} document(s) matching '#{query}'." : "No matching documents found."
+          )
+        end
       end
 
       def query_data(type, args)

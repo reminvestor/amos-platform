@@ -151,352 +151,214 @@ class GuidanceLibrary
     landing_page_create: {
       title: "Landing Page Creation",
       expertise: <<~GUIDANCE.strip,
-        ## Plan → Build Workflow (REQUIRED)
+        ## Available Approaches
         
-        ### CALL plan_design IMMEDIATELY!
-        When user asks to create a landing page, call `plan_design` right away.
-        The tool auto-pulls BusinessProfile (company name, industry, colors).
-        Show the visual plan first - user can refine from there.
+        **Visual Builder (recommended for most users):**
+        `load_canvas(canvas_name: "design_studio")` — Opens the drag-drop landing page builder
         
-        Don't ask "what's the goal?" or "what sections?" - just show a plan!
-        The plan is easy to modify - it's better to show something than ask questions.
+        **Query existing pages:**
+        `platform_query(type: "landing_pages")` — See what already exists
         
-        ### User Reviews the Plan
-        After seeing the plan, user can request changes:
-        - Use `plan_design(action: 'refine', plan_id: X, refinements: {...})`
+        **View created assets:**
+        `load_canvas(canvas_name: "my_creations")` — Show all user's creations
         
-        ### Build on Approval  
-        When user approves ("build it", "looks good"):
-        - Call `plan_design(action: 'build', plan_id: X)`
-        
-        ### Listing and Loading Existing Plans
-        - "Show my plans" → `plan_design(action: 'list')`
-        - "Open plan 5" → `plan_design(action: 'load', plan_id: 5)`
-        - Plans also appear in Created Assets canvas
-        
-        ## CRITICAL
-        ✅ Call plan_design IMMEDIATELY when user asks for a landing page
-        ❌ Don't ask clarifying questions first - show the plan!
-        ❌ Never call generate_ai_landing_page directly
+        ## Context
+        - BusinessProfile contains company name, colors, industry
+        - The design studio provides AI-assisted content generation
+        - Pages can be saved as drafts before publishing
       GUIDANCE
-      anti_hallucination: "IMMEDIATELY call plan_design. Don't ask questions - show the plan first! User can refine after seeing it."
+      anti_hallucination: nil
     },
 
     website_create: {
       title: "Website Creation",
       expertise: <<~GUIDANCE.strip,
-        You're helping create a multi-page website. Use the Plan → Build workflow:
+        ## Available Approaches
         
-        1. FIRST: Call `plan_design` with design_type: 'website'
-           - This creates a blueprint with multiple pages
-           - Shows navigation structure, page sections, colors
+        **Visual Builder:**
+        `load_canvas(canvas_name: "design_studio")` — Multi-page website builder
         
-        2. Let the user review and customize pages
-           - Add pages: plan_design(action: 'add_page', page_name: 'About')
-           - Remove pages: plan_design(action: 'remove_page', page_name: 'About')
-           - Refine sections, colors, content
-        
-        3. When ready → Call `plan_design` with action: 'build'
-           - Creates Website + WebsitePages
-           - Opens website editor
-        
-        Key principles:
-        - Start with 3-5 key pages (Home, About, Services/Products, Contact)
-        - Pages share navigation and styling
-        - Each page can have its own sections
+        ## Context
+        - Websites have multiple pages with shared navigation
+        - Common pages: Home, About, Services, Contact
+        - Each page can have independent sections
       GUIDANCE
-      anti_hallucination: "Use plan_design with design_type: 'website'. Always show the multi-page plan first."
+      anti_hallucination: nil
     },
 
     landing_page_edit: {
       title: "Landing Page Editing",
       expertise: <<~GUIDANCE.strip,
-        ## FIRST: Check what you're editing!
+        ## Context Check
         
-        Look at the canvas context:
-        - If `plan_id` is set but NO `landing_page_id` → This is a DRAFT PLAN, use `plan_design` with action: 'refine'
-        - If `landing_page_id` is set → This is a BUILT page, use landing page tools below
+        Look at canvas_data to understand what's being edited:
+        - `landing_page_id` present → This is a built page
+        - `plan_id` only → This is a draft design
         
-        ## For BUILT landing pages (has landing_page_id):
-        
-        - ALWAYS use `read_landing_page_sections` first to understand current structure
-        - Use `edit_landing_page_section` for surgical edits - specify exact section IDs
-        - Preserve existing content unless explicitly asked to change it
-        - For layout changes (full-width, centering), the tool handles parent containers
-        - For color changes, specify the exact color value
-        - After edits, confirm what changed and offer to make additional adjustments
-        
-        ## For DRAFT plans (has plan_id but no landing_page_id):
-        
-        Use `plan_design` with:
-        - action: 'refine'
-        - plan_id: [the plan ID from context]
-        - refinements: { update_section: { name: "cta", content: { ... } } }
-        
-        Common issues to avoid:
-        - Don't use landing page tools on draft plans!
-        - Don't recreate entire sections when making small changes
-        - Don't remove content that wasn't asked to be removed
+        ## Available Tools
+        - `read_landing_page_sections` — Get current structure of built pages
+        - `edit_landing_page_section` — Modify specific sections
+        - `load_canvas(canvas_name: "landing_page_editor", canvas_data: { landing_page_id: X })` — Open visual editor
       GUIDANCE
-      anti_hallucination: "CHECK the canvas data for plan_id vs landing_page_id. Draft plans need plan_design with action:'refine'. Only built pages use edit_landing_page_section."
+      anti_hallucination: nil
     },
 
     workflow_design: {
       title: "Workflow Design",
       expertise: <<~GUIDANCE.strip,
-        You're helping design an automation workflow. Key principles:
+        ## Available Approaches
         
-        - Workflows have: Triggers → Actions → Outputs
-        - Use the workflow designer canvas to visualize
-        - Every workflow needs a clear trigger (webhook, schedule, event, manual)
-        - Actions should be deterministic and testable
-        - Consider error handling and edge cases
-        - Build incrementally - start simple, add complexity
+        **Visual Builder:**
+        `load_canvas(canvas_name: "workflow_designer")` — Drag-drop workflow builder
         
-        Workflow types:
-        - Form submission → notification/CRM update
-        - Scheduled tasks → reports, reminders
-        - Integration sync → data flow between systems
-        - Event-driven → respond to system events
+        **Programmatic:**
+        `platform_create(type: "workflow", data: { name: "...", trigger_type: "..." })`
+        
+        **Templates:**
+        `platform_query(type: "automation_recipes")` — Pre-built workflow templates
+        
+        ## Workflow Components
+        - **Triggers**: form_submission, schedule, event, webhook, manual
+        - **Actions**: send_email, update_record, call_integration, delay, etc.
+        - **Conditions**: Branch logic based on data values
+        
+        ## Monitor
+        `load_canvas(canvas_name: "automation_dashboard")` — View all automations
       GUIDANCE
-      anti_hallucination: "Use workflow tools to create/modify workflows. Don't describe what you would do - actually do it."
+      anti_hallucination: nil
     },
 
     crm_operation: {
       title: "CRM Operations",
       expertise: <<~GUIDANCE.strip,
-        You're helping with CRM and contact management. Key principles:
+        ## Available Tools
+        - `platform_query(type: "contacts", ...)` — Search and list contacts
+        - `platform_create(type: "contact", data: {...})` — Create contacts
+        - `platform_update(type: "contact", id: X, data: {...})` — Update contacts
+        - `load_canvas(canvas_name: "pipeline_viewer")` — Visual sales pipeline
         
-        - Always verify contact data before making changes
-        - Use search to find contacts before creating duplicates
-        - Pipeline stages should flow logically
-        - Keep notes and activity logs for context
-        - Respect data privacy - don't expose sensitive info unnecessarily
-        
-        Best practices:
-        - Segment contacts by meaningful criteria
-        - Track interactions and follow-ups
-        - Use tags consistently
-        - Keep contact records clean and updated
+        ## Key Models
+        - Contact: email, first_name, last_name, status, lifecycle_stage, tags
+        - Opportunity: linked to contacts, has stages and value
+        - Activity: interaction history on contacts
+        - ContactGroup: for segmentation
       GUIDANCE
-      anti_hallucination: "Use CRM tools to search, create, or update contacts. Confirm changes after making them."
+      anti_hallucination: nil
     },
 
     email_creation: {
       title: "Email Creation",
       expertise: <<~GUIDANCE.strip,
-        You're helping create email content. Key principles:
+        ## Available Tools
+        - `platform_create(type: "email_template", data: {...})` — Create template
+        - `platform_query(type: "email_templates")` — List templates
+        - `load_canvas(canvas_name: "sequence_manager")` — Email sequence builder
         
-        - Subject lines: Clear, compelling, not spammy
-        - Keep emails focused on one main message
-        - Include clear call-to-action
-        - Consider mobile readability
-        - Personalization when possible
-        - Test before sending
-        
-        Structure:
-        - Hook in first line
-        - Value proposition
-        - Clear CTA
-        - Professional signature
+        ## Key Fields
+        - name, subject, body (HTML), preheader
+        - Personalization: {{contact.first_name}}, {{contact.email}}, etc.
       GUIDANCE
-      anti_hallucination: "Use email tools to create and preview. Don't just describe the email - create it."
+      anti_hallucination: nil
     },
 
     integration_setup: {
       title: "Integration Setup & Data",
       expertise: <<~GUIDANCE.strip,
-        You're helping with integrations - both setup and data operations.
+        ## Available Tools
+        - `platform_query(type: "connections")` — See connected integrations
+        - `platform_query(type: "integrations")` — See available integrations
+        - `platform_execute(operation: "integration_action", ...)` — Call integration APIs
+        - `load_canvas(canvas_name: "integrations_manager")` — Visual integration manager
+        - `discover(query: "stripe actions")` — Find available integration actions
         
-        ## CONNECTION SETUP
-        - Check if integration is already connected with `list_connections`
-        - OAuth integrations require browser redirect
-        - Test the connection after setup
-        
-        ## EXECUTING INTEGRATION ACTIONS
-        ALWAYS use this workflow when calling integration APIs:
-        
-        1. **First: List available actions**
-           ```
-           list_integration_actions(integration: "stripe")
-           ```
-           This shows you EXACTLY what actions exist and what inputs they need.
-        
-        2. **Then: Execute with correct parameters**
-           ```
-           execute_integration_action(
-             integration: "stripe",
-             action: "list_customers",
-             inputs: { limit: 10 }
-           )
-           ```
-        
-        ## IMPORTANT PARAMETER NAMES
-        - Use `action` not `operation`
-        - Use `inputs` not `params`
-        - Check `list_integration_actions` output for required fields!
-        
-        ## COMMON ACTIONS (always verify with list_integration_actions first!)
-        - Stripe: create_customer, list_customers, get_customer
-        - Mailgun: send_email, list_messages
-        - HubSpot: create_contact, list_contacts, create_deal
-        
-        ## LEARNING BEFORE ACTING
-        If you're unsure about API-specific quirks (like QuickBooks query syntax):
+        ## Parameter Pattern
         ```
-        query_integration_knowledge(
-          question: "How do I filter open invoices in QuickBooks?",
-          integration_name: "quickbooks"
+        platform_execute(
+          operation: "integration_action",
+          params: { 
+            integration: "stripe", 
+            action: "list_customers", 
+            inputs: { limit: 10 } 
+          }
         )
         ```
-        This queries the integration knowledge base with API docs and best practices.
         
-        ## Building Integration Knowledge
-        Use `create_rag_store` to build knowledge bases from API documentation for
-        integrations that don't have pre-built knowledge.
-        
-        ## Troubleshooting
-        - If auth fails, check credentials/tokens
-        - If action not found, call list_integration_actions first
-        - If unsure about API syntax, use query_integration_knowledge
-        - Rate limits may apply to API calls
+        ## Knowledge Base
+        Use `discover` to find API-specific documentation and quirks for integrations.
       GUIDANCE
-      anti_hallucination: "ALWAYS call list_integration_actions FIRST to see available actions and their exact input requirements. Use query_integration_knowledge for API-specific questions. Do NOT guess parameter names."
+      anti_hallucination: nil
     },
 
     app_design: {
-      title: "App/Module & Landing Page Design",
+      title: "App/Module Design",
       expertise: <<~GUIDANCE.strip,
-        You're helping design landing pages, websites, or app modules.
+        ## Available Approaches
         
-        ## CRITICAL: YOU ARE EDITING A DRAFT PLAN
+        **Visual Builder:**
+        `load_canvas(canvas_name: "app_designer")` — Drag-drop app builder
         
-        The user is on the Design Studio canvas with a plan. When they ask to 
-        change sections, backgrounds, colors, text - they want to modify the PLAN,
-        not a built landing page!
-        
-        **ALWAYS use `plan_design` with `action: 'refine'` for ANY changes.**
-        
-        ## Common Refinement Examples:
-        
-        "Make the features section lighter" →
-        ```json
-        { "action": "refine", "plan_id": 7, "refinements": { 
-          "update_section": { "name": "features", "background": "light" }
-        }}
+        **Programmatic:**
+        ```
+        platform_create(type: "app_module", data: {
+          name: "Project Tracker",
+          schema: { fields: [...] }
+        })
         ```
         
-        "Change the hero headline" →
-        ```json
-        { "action": "refine", "plan_id": 7, "refinements": { 
-          "update_section": { "name": "hero", "content": { "headline": "New Headline" }}
-        }}
-        ```
+        ## Schema Field Types
+        text, textarea, number, currency, date, datetime, select, 
+        multi_select, boolean, reference, file, json
         
-        "Add a pricing section" →
-        ```json
-        { "action": "refine", "plan_id": 7, "refinements": { 
-          "add_section": "pricing"
-        }}
-        ```
-        
-        "Change the primary color" →
-        ```json
-        { "action": "refine", "plan_id": 7, "refinements": { 
-          "update_colors": { "primary": "#1a2b3c" }
-        }}
-        ```
-        
-        ## NEVER DO THESE:
-        ❌ Use `edit_landing_page_section` - that's for BUILT pages only
-        ❌ Use `read_landing_page_sections` - the plan IS the sections
-        ❌ Try to find a landing_page_id - the plan hasn't been built yet!
-        
-        ## When User Says "Build It":
-        Call `plan_design` with `action: 'build'` and the plan_id
-        
-        ## For APP MODULES:
-        - Start with the data model (what entities, what fields?)
-        - Consider relationships between entities
-        - Plan CRUD operations needed
+        ## Context
+        If on design_studio with a plan_id, the user is working on a design draft.
       GUIDANCE
-      anti_hallucination: "You're editing a DRAFT PLAN. Use plan_design(action: 'refine') for ALL changes. NEVER use landing page tools - the plan isn't built yet!"
+      anti_hallucination: nil
     },
 
     document_analysis: {
       title: "Document Analysis",
       expertise: <<~GUIDANCE.strip,
-        You're helping analyze documents. Key principles:
+        ## Available Tools
+        - `read_file(path: "...")` — Read uploaded documents
+        - `platform_query(type: "documents")` — List uploaded files
+        - `load_canvas(canvas_name: "document_viewer", canvas_data: { document_id: X })` — Visual document viewer
         
-        - Wait for document processing to complete
-        - Summarize key points first
-        - Extract specific data when asked
-        - Reference page numbers/sections
-        - Maintain accuracy - quote when needed
-        
-        Capabilities:
-        - Text extraction
-        - Summarization
-        - Key information extraction
-        - Question answering about content
+        ## Capabilities
+        Text extraction, summarization, data extraction, Q&A on content.
       GUIDANCE
-      anti_hallucination: "Base analysis on actual document content. Don't fabricate or assume content."
+      anti_hallucination: nil
     },
 
     analytics_review: {
       title: "Analytics Review",
       expertise: <<~GUIDANCE.strip,
-        You're helping review analytics and metrics. Key principles:
+        ## Available Tools
+        - `platform_query(type: "analytics", ...)` — Query metrics
+        - `load_canvas(canvas_name: "analytics_dashboard")` — Visual analytics
         
-        - Present data clearly and accurately
-        - Highlight trends and anomalies
-        - Provide actionable insights
-        - Compare to relevant benchmarks
-        - Suggest improvements based on data
-        
-        Key metrics to consider:
-        - Engagement rates
-        - Conversion funnels
-        - Growth trends
-        - Performance benchmarks
+        ## Key Metrics
+        Engagement rates, conversion funnels, growth trends, performance benchmarks.
       GUIDANCE
-      anti_hallucination: "Use actual data from analytics tools. Don't invent statistics."
+      anti_hallucination: nil
     },
 
     custom_domain_management: {
       title: "Custom Domain Management",
       expertise: <<~GUIDANCE.strip,
-        You're helping configure custom domains for landing pages, websites, and email.
+        ## Available Tools
+        - `platform_execute(operation: "manage_domain", params: { action: "create", domain: "..." })`
+        - `platform_execute(operation: "manage_domain", params: { action: "verify", domain: "..." })`
+        - `load_canvas(canvas_name: "custom_domains")` — Visual domain manager
         
-        ## Use `manage_custom_domain` tool with these actions:
+        ## Actions
+        - create: Returns DNS records (CNAME, TXT) to configure
+        - verify: Checks if DNS is properly configured
+        - setup_ses: Configure email sending from domain
         
-        ### Setting up a new custom domain
-        1. Call `manage_custom_domain(action: 'create', domain_name: 'example.com')`
-        2. This returns DNS records (CNAME and TXT) the user must add
-        3. Show the user clearly what records to add and where
-        
-        ### Verifying DNS is configured
-        - Call `manage_custom_domain(action: 'verify', domain_name: 'example.com')`
-        - Reports if CNAME and TXT records are properly configured
-        
-        ### Auto-configuring DNS via GoDaddy
-        - If user has GoDaddy connected, offer to auto-configure
-        - Call `manage_custom_domain(action: 'auto_configure_dns', custom_domain_id: X, integration_connection_id: Y)`
-        
-        ### Setting up email sending (SES)
-        - Call `manage_custom_domain(action: 'setup_ses', domain_name: 'example.com')`
-        - Returns TXT and DKIM CNAME records for email verification
-        - Call `manage_custom_domain(action: 'verify_ses', domain_name: 'example.com')` to check
-        
-        ### Listing all domains
-        - Call `manage_custom_domain(action: 'list')` to see all configured domains
-        
-        ## Key Points
-        - DNS changes can take up to 48 hours to propagate
-        - Always explain the records clearly to the user
-        - Offer to load the custom_domains canvas to show all domains
+        ## Note
+        DNS changes can take up to 48 hours to propagate.
       GUIDANCE
-      anti_hallucination: "Use manage_custom_domain tool. Report actual verification results, not assumptions about DNS configuration."
+      anti_hallucination: nil
     },
 
     general: {
@@ -513,67 +375,50 @@ class GuidanceLibrary
 
   TASK_TOOLS = {
     landing_page_create: %w[
-      plan_design
-      generate_ai_landing_page
+      platform_create
+      load_canvas
     ],
 
     website_create: %w[
-      plan_design
+      platform_create
+      load_canvas
     ],
 
     landing_page_edit: %w[
-      plan_design
-      read_landing_page_sections
-      edit_landing_page_section
-      update_landing_page_content
-      get_landing_page_details
-      list_landing_pages
+      platform_query
+      platform_update
+      load_canvas
     ],
 
     workflow_design: %w[
-      create_workflow
-      get_workflow
-      list_workflows
-      add_workflow_step
-      save_workflow
-      compile_workflow
+      platform_create
+      platform_query
     ],
 
     crm_operation: %w[
-      search_contacts
-      create_contact
-      update_contact
-      get_contact_details
-      list_pipeline_stages
-      update_opportunity
+      platform_query
+      platform_create
+      platform_update
+      load_canvas
     ],
 
     email_creation: %w[
-      create_email_template
-      preview_email
-      send_email
-      list_email_templates
+      platform_create
+      platform_query
+      platform_execute
     ],
 
     integration_setup: %w[
-      list_connections
-      list_integration_actions
-      execute_integration_action
-      query_integration_knowledge
-      list_available_integrations
-      get_integration_status
-      test_integration
-      configure_integration
-      create_rag_store
+      platform_query
+      platform_execute
+      discover
+      load_canvas
     ],
 
     app_design: %w[
-      plan_design
-      generate_ai_landing_page
-      create_app_module
-      create_tool
-      list_app_modules
-      list_landing_pages
+      platform_create
+      platform_query
+      load_canvas
     ],
 
     document_analysis: %w[
