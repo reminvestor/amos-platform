@@ -23,12 +23,13 @@ module V3
             - publish_landing_page — Publish a draft landing page
             - generate_file — Create a downloadable CSV, Excel, or PDF file
             - send_email — Send a one-off email
+            - delete — Delete a record by type and ID
             
             Examples:
             - platform_execute(action: "integration", integration: "stripe", operation: "list_customers", inputs: { limit: 10 })
             - platform_execute(action: "send_campaign", campaign_id: 7)
-            - platform_execute(action: "publish_landing_page", landing_page_id: 15)
             - platform_execute(action: "generate_file", inputs: { format: "csv", title: "Export", headers: ["Name"], rows: [["John"]] })
+            - platform_execute(action: "delete", type: "contact", id: 42)
           DESC
           category: "v3_core",
           input_schema: {
@@ -83,10 +84,12 @@ module V3
           execute_send_email(args)
         when "generate_file"
           execute_generate_file(args)
+        when "delete"
+          execute_delete(args)
         else
           error_response(
             "Unknown action: #{action}",
-            available_actions: %w[integration send_campaign publish_landing_page send_email generate_file]
+            available_actions: %w[integration send_campaign publish_landing_page send_email generate_file delete]
           )
         end
       rescue => e
@@ -375,6 +378,50 @@ module V3
       rescue LoadError
         Rails.logger.warn "[V3::PlatformExecute] prawn gem not available, falling back to CSV"
         generate_csv_content(headers, rows)
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # DELETE
+      # ═══════════════════════════════════════════════════════════════
+
+      def execute_delete(args)
+        type = get_arg(args, :type)&.to_s&.downcase&.singularize
+        id = get_arg(args, :id)
+
+        return error_response("Missing: type (e.g., 'contact', 'campaign', 'landing_page')") if type.blank?
+        return error_response("Missing: id") if id.blank?
+
+        # Map type to model class (only allow safe deletions)
+        model_class = case type
+        when "contact" then Contact
+        when "contact_group" then ContactGroup
+        when "campaign" then Campaign
+        when "email_template" then EmailTemplate
+        when "email_sequence" then EmailSequence
+        when "landing_page" then LandingPage
+        when "opportunity" then Opportunity
+        when "activity" then Activity
+        when "support_ticket" then SupportTicket
+        when "automation", "automation_code" then AutomationCode
+        else
+          return error_response("Cannot delete type: #{type}. Supported: contact, contact_group, campaign, email_template, landing_page, opportunity, activity, support_ticket, automation")
+        end
+
+        record = model_class.where(entity: entity).find_by(id: id)
+        return error_response("#{type.titleize} not found with ID: #{id}") unless record
+
+        record_name = record.try(:name) || record.try(:title) || record.try(:email) || "ID #{id}"
+        record.destroy!
+
+        Rails.logger.info "[V3::PlatformExecute] Deleted #{type}: #{record_name} (ID: #{id})"
+
+        success_response(
+          deleted: true,
+          type: type,
+          id: id,
+          name: record_name,
+          message: "#{type.titleize} '#{record_name}' has been deleted."
+        )
       end
     end
   end

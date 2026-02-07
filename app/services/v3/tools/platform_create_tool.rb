@@ -10,7 +10,7 @@ module V3
     #
     class PlatformCreateTool < ::Tools::BaseTool
       # Types that need special builder routing (not just DB creates)
-      BUILDER_TYPES = %w[landing_page website web_app workflow automation app module].freeze
+      BUILDER_TYPES = %w[landing_page website web_app workflow automation app module sync].freeze
 
       def self.metadata
         {
@@ -24,12 +24,11 @@ module V3
             - email_template — platform_create(type: "email_template", data: { name: "Welcome", subject: "Welcome!", body: "<h1>Hi!</h1>" })
             - campaign — platform_create(type: "campaign", data: { name: "Summer Sale", email_template_id: 5 })
             - automation — platform_create(type: "automation", data: { name: "Welcome Flow", trigger: "contact_created", action: "send_email", action_config: { template_id: 5 } })
+            - sync — platform_create(type: "sync", data: { integration: "stripe", source: "customers", target: "Contact", schedule: "daily" })
             - landing_page — platform_create(type: "landing_page", data: { title: "My Page", description: "Lead gen page" })
-            - website — platform_create(type: "website", data: { name: "Company Site", pages: [{ title: "Home" }] })
             - app — platform_create(type: "app", data: { name: "CRM", description: "Contact management" })
-            - support_ticket — platform_create(type: "support_ticket", data: { title: "Bug report", description: "..." })
 
-            Contact defaults: lifecycle_stage="lead", status="active". No need to set these explicitly.
+            Contact defaults: lifecycle_stage="lead", status="active".
           DESC
           category: "v3_core",
           input_schema: {
@@ -37,7 +36,7 @@ module V3
             properties: {
               type: {
                 type: "string",
-                description: "Object type to create (contact, contact_group, email_template, campaign, automation, landing_page, website, app, support_ticket)"
+                description: "Object type to create (contact, contact_group, email_template, campaign, automation, sync, landing_page, app, support_ticket)"
               },
               data: {
                 type: "object",
@@ -94,6 +93,8 @@ module V3
           build_automation(data)
         when "app", "module"
           build_app(data)
+        when "sync"
+          build_sync(data)
         else
           error_response("Unknown builder type: #{type}")
         end
@@ -286,6 +287,117 @@ module V3
       rescue => e
         Rails.logger.error "[V3::PlatformCreate] Automation build failed: #{e.message}\n#{e.backtrace.first(3).join("\n")}"
         error_response("Automation creation failed: #{e.message}")
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # SYNC — Integration data sync (Stripe → Contacts, etc.)
+      # ═══════════════════════════════════════════════════════════════
+
+      def build_sync(data)
+        integration_slug = data["integration"] || data[:integration]
+        source = data["source"] || data[:source] || data["resource_type"] || data[:resource_type]
+        target = data["target"] || data[:target] || data["target_type"] || data[:target_type]
+        field_mappings = data["field_mappings"] || data[:field_mappings] || {}
+        schedule = data["schedule"] || data[:schedule] || "manual"
+        direction = data["direction"] || data[:direction] || "inbound"
+        name = data["name"] || data[:name]
+
+        return error_response("Missing: integration (e.g., 'stripe', 'hubspot')") if integration_slug.blank?
+        return error_response("Missing: source (e.g., 'customers', 'invoices')") if source.blank?
+        return error_response("Missing: target (e.g., 'Contact', 'Opportunity')") if target.blank?
+
+        # Find the integration connection
+        connection = entity.connections.joins(:integration)
+                           .where(integrations: { slug: integration_slug })
+                           .where.not(status: :disconnected)
+                           .first
+
+        unless connection
+          return error_response(
+            "No active connection found for '#{integration_slug}'. Connect it first via Integrations.",
+            available_integrations: entity.connections.joins(:integration).pluck("integrations.slug").uniq
+          )
+        end
+
+        # Auto-generate field mappings if not provided
+        if field_mappings.blank?
+          field_mappings = auto_generate_field_mappings(integration_slug, source, target)
+        end
+
+        Rails.logger.info "[V3::PlatformCreate] Building sync: #{integration_slug}/#{source} → #{target}"
+
+        # Create the sync config
+        sync_config = IntegrationSyncConfig.create!(
+          entity: entity,
+          connection: connection,
+          resource_type: source,
+          target_type: target.classify,
+          field_mappings: field_mappings,
+          sync_direction: direction,
+          sync_mode: "incremental",
+          conflict_resolution: "external_wins",
+          schedule_type: schedule == "manual" ? "manual" : "scheduled",
+          cron_expression: schedule_to_cron(schedule),
+          enabled: true,
+          metadata: {
+            name: name || "#{integration_slug.titleize} #{source.titleize} Sync",
+            created_by: "platform_create",
+            created_at: Time.current.iso8601
+          }
+        )
+
+        Rails.logger.info "[V3::PlatformCreate] Sync config created: #{sync_config.id}"
+
+        # Optionally run the first sync immediately
+        first_sync_result = nil
+        if data["run_now"] || data[:run_now]
+          first_sync_result = sync_config.execute_sync!(user: user)
+        end
+
+        success_response(
+          sync_id: sync_config.id,
+          integration: integration_slug,
+          source: source,
+          target: target,
+          field_mappings: field_mappings,
+          schedule: schedule,
+          direction: direction,
+          first_sync: first_sync_result,
+          message: "Sync configured: #{integration_slug} #{source} → #{target}. #{schedule == 'manual' ? 'Run manually or set a schedule.' : "Scheduled: #{schedule}."}"
+        )
+      rescue => e
+        Rails.logger.error "[V3::PlatformCreate] Sync build failed: #{e.message}\n#{e.backtrace.first(3).join("\n")}"
+        error_response("Sync creation failed: #{e.message}")
+      end
+
+      def auto_generate_field_mappings(integration, source, target)
+        # Common field mappings by integration + source → target
+        case [integration, source, target.downcase]
+        when ["stripe", "customers", "contact"]
+          { "name" => "full_name", "email" => "email", "phone" => "phone", "id" => "metadata.stripe_id" }
+        when ["stripe", "customers", "opportunity"]
+          { "name" => "name", "email" => "contact_email", "id" => "metadata.stripe_id" }
+        when ["hubspot", "contacts", "contact"]
+          { "firstname" => "first_name", "lastname" => "last_name", "email" => "email", "phone" => "phone", "company" => "metadata.company" }
+        when ["quickbooks", "customers", "contact"]
+          { "DisplayName" => "full_name", "PrimaryEmailAddr.Address" => "email", "PrimaryPhone.FreeFormNumber" => "phone" }
+        when ["quickbooks", "invoices", "opportunity"]
+          { "CustomerRef.name" => "name", "TotalAmt" => "value", "DocNumber" => "metadata.invoice_number" }
+        else
+          # Return empty — Amos can ask user or discover the schema
+          {}
+        end
+      end
+
+      def schedule_to_cron(schedule)
+        case schedule.to_s.downcase
+        when "hourly" then "0 * * * *"
+        when "daily" then "0 9 * * *"
+        when "weekly" then "0 9 * * 1"
+        when "every_15_minutes", "15min" then "*/15 * * * *"
+        when "every_30_minutes", "30min" then "*/30 * * * *"
+        else nil
+        end
       end
 
       def normalize_trigger(trigger)

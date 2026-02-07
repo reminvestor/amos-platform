@@ -180,11 +180,14 @@ module V3
         
         ## Key Patterns
         
-        - To create a contact: `platform_create(type: "contact", data: { first_name: "...", last_name: "...", email: "..." })`
-        - To create an automation: `platform_create(type: "automation", data: { name: "...", trigger: "contact_created", action: "send_email", action_config: { template_id: X } })`
-        - To edit a landing page section: `platform_update(type: "landing_page", id: X, data: { section: "hero", instruction: "..." })`
-        - To run an integration: `platform_execute(action: "integration", integration: "stripe", operation: "list_customers")`
-        - To export data: `platform_execute(action: "generate_file", inputs: { format: "csv", title: "...", headers: [...], rows: [...] })`
+        - Create a contact: `platform_create(type: "contact", data: { first_name: "...", last_name: "...", email: "..." })`
+        - Create an automation: `platform_create(type: "automation", data: { trigger: "contact_created", action: "send_email", action_config: { template_id: X } })`
+        - Set up a data sync: `platform_create(type: "sync", data: { integration: "stripe", source: "customers", target: "Contact", schedule: "daily" })`
+        - Add a custom field: `platform_update(type: "schema", id: "contact", data: { add_field: { name: "industry", field_type: "string" } })`
+        - Edit a landing page: `platform_update(type: "landing_page", id: X, data: { section: "hero", instruction: "..." })`
+        - Run an integration: `platform_execute(action: "integration", integration: "stripe", operation: "list_customers")`
+        - Delete a record: `platform_execute(action: "delete", type: "contact", id: 42)`
+        - Export data: `platform_execute(action: "generate_file", inputs: { format: "csv", title: "...", headers: [...], rows: [...] })`
         
         ## Rules
         
