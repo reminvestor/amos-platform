@@ -11,23 +11,13 @@ module V3
         {
           name: "platform_update",
           description: <<~DESC.strip,
-            Update any existing platform object by type and ID.
+            Update any existing platform object by type and ID. Only specified fields change.
             
-            Supports: contacts, campaigns, landing pages, email templates, email sequences,
-            contact groups, opportunities, activities, and custom module records.
-            
-            Only the fields you specify will be updated.
-            
-            For landing page section edits, include "section" and "instruction" in data:
-            - platform_update(type: "landing_page", id: 189, data: { section: "hero", instruction: "Remove the image and center the text" })
-            - platform_update(type: "landing_page", id: 189, data: { section: "features", instruction: "Change the headline to 'Why Choose Us'" })
-            
-            For full landing page HTML replacement:
-            - platform_update(type: "landing_page", id: 189, data: { html_content: "<html>..." })
-            
-            Other examples:
-            - platform_update(type: "contact", id: 42, data: { status: "active", first_name: "Jane" })
+            Examples:
+            - platform_update(type: "contact", id: 42, data: { lifecycle_stage: "customer" })
             - platform_update(type: "campaign", id: 7, data: { status: "active" })
+            - platform_update(type: "landing_page", id: 189, data: { section: "hero", instruction: "Center the text and remove the image" })
+            - platform_update(type: "landing_page", id: 189, data: { read_sections: true })
           DESC
           category: "v3_core",
           input_schema: {

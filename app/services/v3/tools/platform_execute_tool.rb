@@ -15,20 +15,20 @@ module V3
         {
           name: "platform_execute",
           description: <<~DESC.strip,
-            Execute platform operations: integration actions, email sending, data syncing,
-            workflow triggers, file generation, and other operational tasks.
+            Execute platform operations and integration actions.
             
-            For integration actions, use action="integration" with integration name and action name.
-            For sending campaigns, use action="send_campaign" with campaign_id.
-            For enrolling contacts in sequences, use action="enroll_sequence".
-            For generating downloadable files (CSV, Excel), use action="generate_file".
+            Actions:
+            - integration — Run an external integration action (Stripe, HubSpot, Gmail, etc.)
+            - send_campaign — Send a campaign to its contact group
+            - publish_landing_page — Publish a draft landing page
+            - generate_file — Create a downloadable CSV, Excel, or PDF file
+            - send_email — Send a one-off email
             
             Examples:
             - platform_execute(action: "integration", integration: "stripe", operation: "list_customers", inputs: { limit: 10 })
             - platform_execute(action: "send_campaign", campaign_id: 7)
-            - platform_execute(action: "enroll_sequence", sequence_id: 3, contact_ids: [1, 2, 3])
             - platform_execute(action: "publish_landing_page", landing_page_id: 15)
-            - platform_execute(action: "generate_file", inputs: { format: "csv", title: "Customer Export", headers: ["Name", "Email"], rows: [["John", "john@example.com"]] })
+            - platform_execute(action: "generate_file", inputs: { format: "csv", title: "Export", headers: ["Name"], rows: [["John"]] })
           DESC
           category: "v3_core",
           input_schema: {
@@ -36,7 +36,7 @@ module V3
             properties: {
               action: {
                 type: "string",
-                description: "The operation to execute: 'integration', 'send_campaign', 'enroll_sequence', 'publish_landing_page', 'generate_file', 'send_email'"
+                description: "The operation to execute: 'integration', 'send_campaign', 'publish_landing_page', 'generate_file', 'send_email'"
               },
               integration: {
                 type: "string",
@@ -86,7 +86,7 @@ module V3
         else
           error_response(
             "Unknown action: #{action}",
-            available_actions: %w[integration send_campaign enroll_sequence publish_landing_page send_email generate_file]
+            available_actions: %w[integration send_campaign publish_landing_page send_email generate_file]
           )
         end
       rescue => e

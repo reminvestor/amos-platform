@@ -25,23 +25,15 @@ module V3
         {
           name: "platform_query",
           description: <<~DESC.strip,
-            Query any platform data: contacts, campaigns, landing pages, bounties, tickets,
-            integrations, email templates, sequences, opportunities, activities, documents, etc.
-            
-            Use type="schema" to discover available object types and their fields.
-            Use type="stats" to get platform overview statistics.
-            Use type="documents" to list, read, or search uploaded documents.
-            Use any object type name to query records.
+            Query any platform data. Use type to specify what to query.
             
             Examples:
-            - platform_query(type: "contacts", filters: { status: "active" }, limit: 10)
-            - platform_query(type: "campaigns", filters: { status: "sent" }, include: ["metrics"])
+            - platform_query(type: "contacts", filters: { lifecycle_stage: "lead" }, limit: 10)
+            - platform_query(type: "landing_pages", id: 123)
             - platform_query(type: "schema", object: "contacts")
             - platform_query(type: "stats")
-            - platform_query(type: "landing_pages", id: 123)
-            - platform_query(type: "documents")  # List uploaded documents
-            - platform_query(type: "documents", id: 5)  # Read document content
-            - platform_query(type: "documents", search: "contract terms")  # Search documents
+            - platform_query(type: "integrations")
+            - platform_query(type: "documents", search: "contract terms")
           DESC
           category: "v3_core",
           input_schema: {

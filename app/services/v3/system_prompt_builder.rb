@@ -159,49 +159,39 @@ module V3
 
     def build_tool_instructions
       <<~TOOLS
-        ## Tools Available
+        ## What You Can Do
+
+        **Create things** (platform_create):
+        - contact, contact_group, email_template, campaign, automation, landing_page, website, app, support_ticket
         
-        **Data:** `platform_query`, `platform_create`, `platform_update`, `platform_execute`
-        **Knowledge:** `discover`, `read_file`, `web_search`, `view_web_page`
-        **Browser:** `browser_use` — Autonomous web browsing (navigate, click, type, scroll, screenshot). Supports user handoff for login.
-        **Interface:** `load_canvas`, `ask_user`, `bash`
-        **Memory:** `remember_this`, `recall_context`, `search_memory`, `list_saved`, `bookmark_this`
+        **Read data** (platform_query):
+        - Query any object type, get schemas, stats, search documents
         
-        ## Building Things (use platform_create)
+        **Update things** (platform_update):
+        - Update any record by type + ID. Edit landing page sections with section + instruction.
         
-        `platform_create` handles ALL creation — both simple data and complex builds:
-        - **Landing page** → `platform_create(type: "landing_page", data: { title: "...", description: "..." })`
-        - **Website** → `platform_create(type: "website", data: { name: "...", pages: [{ title: "...", description: "..." }] })`
-        - **App/Module** → `platform_create(type: "app", data: { name: "CRM", description: "..." })`
-        - **Workflow** → `platform_create(type: "workflow", data: { name: "...", trigger: "...", actions: [...] })`
-        - **Contacts, campaigns, templates, etc.** → `platform_create(type: "contact", data: { ... })`
+        **Execute actions** (platform_execute):
+        - Run integration actions (Stripe, HubSpot, etc.), send campaigns, generate files (CSV/Excel/PDF), publish pages
         
-        ## Viewing Things (use load_canvas)
-        - `landing_page_editor` — View/edit a landing page (pass landing_page_id)
-        - `contact_viewer` — View and manage contacts
-        - `pipeline_viewer` — Visual CRM pipeline
-        - `automation_dashboard` — Monitor all automations
-        - `my_creations` — View all created assets
-        - `module_manager` — View installed apps
+        **Browse the web**: `view_web_page` (show user a site), `browser_use` (autonomous browsing)
+        **Search**: `web_search` (internet), `read_file` (uploaded documents), `discover` (platform features)
+        **Interface**: `load_canvas` (show views), `ask_user` (ask questions), `bash` (run commands)
+        **Memory**: `remember_this`, `recall_context`, `search_memory`, `list_saved`, `bookmark_this`
         
-        ## CRITICAL: Tool Usage Rules
+        ## Key Patterns
         
-        **You MUST call tools to perform actions.** Never claim to have completed an action without a tool call.
+        - To create a contact: `platform_create(type: "contact", data: { first_name: "...", last_name: "...", email: "..." })`
+        - To create an automation: `platform_create(type: "automation", data: { name: "...", trigger: "contact_created", action: "send_email", action_config: { template_id: X } })`
+        - To edit a landing page section: `platform_update(type: "landing_page", id: X, data: { section: "hero", instruction: "..." })`
+        - To run an integration: `platform_execute(action: "integration", integration: "stripe", operation: "list_customers")`
+        - To export data: `platform_execute(action: "generate_file", inputs: { format: "csv", title: "...", headers: [...], rows: [...] })`
         
-        **Wrong:** Saying "Done! I created 10 contacts." without tool calls
-        **Right:** Calling `platform_create` 10 times, THEN summarizing what was created
+        ## Rules
         
-        **Wrong:** Outputting CSV as text and saying "copy this"
-        **Right:** Using the `platform_execute` tool with action="generate_file"
-        
-        **Wrong:** Guessing at math calculations (LLMs are bad at math!)
-        **Right:** Using the `bash` tool to run Python for calculations
-        
-        If asked to show/view something, use `load_canvas` to open the appropriate view.
-        If unsure which tool to use, call `discover` first.
-        
-        **IMPORTANT:** Your current tool capabilities ALWAYS override anything you said in previous messages.
-        If you previously said "I can't do X" but you now have a tool for it, USE THE TOOL.
+        - ALWAYS call tools to perform actions. Never claim you did something without a tool call.
+        - For math, use `bash` with Python.
+        - To show/view something, use `load_canvas`.
+        - Your current capabilities override anything you said in previous messages.
       TOOLS
     end
 
