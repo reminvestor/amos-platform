@@ -284,10 +284,10 @@ module V3
                 
                 You MUST call a tool NOW. Do not explain — just call the tool.
                 Examples:
-                - platform_create(type: "email_template", data: { name: "...", subject: "...", body: "<html>..." })
-                - platform_create(type: "workflow", data: { name: "...", trigger: "contact_created", actions: [...] })
-                - platform_create(type: "contact", data: { ... })
-                - platform_update(type: "...", id: X, data: { ... })
+                - platform_do(goal: "generate image", spec: { prompt: "...", landing_page_id: 123 })
+                - platform_do(goal: "create contact", spec: { first_name: "Jane", email: "jane@co.com" })
+                - platform_do(goal: "edit landing page section", spec: { landing_page_id: 123, section: "hero", instruction: "..." })
+                - platform_query(type: "contacts", limit: 10)
                 
                 CALL THE TOOL NOW.
               CORRECTION
