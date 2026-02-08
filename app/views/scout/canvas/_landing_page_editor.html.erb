@@ -558,10 +558,10 @@
     .content-area {
       flex: 1;
       overflow-y: auto;
-      background: white;
+      background: transparent; /* Let landing page own background show through */
       position: relative;
-      z-index: 1; /* Lower z-index so component panel stays on top */
-      isolation: isolate; /* Create stacking context to contain child z-indexes */
+      z-index: 1;
+      isolation: isolate;
     }
     
     /* Ensure landing page nav/header doesn't bleed over component panel */
@@ -576,24 +576,10 @@
     
     .landing-content { min-height: 100%; }
     
-    /* Drag & Drop States */
-    .content-area.drag-over {
-      box-shadow: inset 0 0 0 3px rgba(236, 72, 153, 0.3);
-    }
-    
-    .drop-target {
-      outline: 2px dashed #ec4899 !important;
-      outline-offset: -2px;
-    }
-    
-    .just-inserted {
-      animation: insertPulse 1s ease-out;
-    }
-    
-    @keyframes insertPulse {
-      0% { box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.6); }
-      100% { box-shadow: none; }
-    }
+    /* Drag & Drop States -- HIDDEN: editing via AI chat, not drag-and-drop */
+    .content-area.drag-over { box-shadow: none; }
+    .drop-target { outline: none !important; }
+    .just-inserted { animation: none; }
     
     /* Editable Elements */
     [contenteditable="true"] { 
@@ -735,10 +721,16 @@
       color: #333;
     }
     
-    /* Section Delete Button */
+    /* Section/Element Delete Buttons -- HIDDEN: editing via AI chat */
+    .section-delete-btn,
+    .element-delete-btn {
+      display: none !important;
+    }
+    
+    /* Original section-delete-btn styles preserved but hidden */
     section, footer { position: relative; }
     
-    .section-delete-btn {
+    .section-delete-btn-orig {
       position: absolute;
       top: 10px;
       right: 10px;
@@ -767,7 +759,7 @@
       transform: scale(1.1);
     }
     
-    /* Grid Drop Zones */
+    /* Grid Drop Zones -- Drag indicators hidden, editing via AI chat */
     .drop-zone, .grid-col {
       min-height: 100px;
       transition: all 0.2s;
@@ -775,14 +767,12 @@
     }
     
     .drop-zone.drag-over, .grid-col.drag-over {
-      background: rgba(236, 72, 153, 0.15) !important;
-      outline: 3px dashed #ec4899 !important;
-      outline-offset: -4px;
-      border-radius: 8px;
+      background: transparent !important;
+      outline: none !important;
     }
     
     .drop-zone.empty {
-      border: 2px dashed rgba(255,255,255,0.2);
+      border: none;
       border-radius: 12px;
       display: flex;
       align-items: center;
@@ -1217,13 +1207,11 @@
       min-height: 200px;
     }
     
-    /* Empty drop zones - make them obvious in edit mode */
+    /* Empty drop zones -- hidden, editing via AI chat */
     .grid-col.empty-col,
     .drop-zone:empty,
     .grid-col:not(:has(*:not(span))) {
-      display: flex !important;
-      align-items: center;
-      justify-content: center;
+      display: none !important;
       min-height: 150px;
       border: 2px dashed rgba(236, 72, 153, 0.4);
       border-radius: 12px;

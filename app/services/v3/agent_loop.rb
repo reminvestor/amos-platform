@@ -410,6 +410,11 @@ module V3
               context: build_tool_context
             )
           else
+            # For platform_do: hide thinking indicator since Brain streams its own progress
+            if tc[:name] == "platform_do"
+              progress_callback&.call({ type: :content, text: "" })
+            end
+
             # Execute through V3 registry
             result = V3::ToolRegistry.execute(
               tc[:name],

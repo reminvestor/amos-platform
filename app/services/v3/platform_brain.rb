@@ -288,11 +288,11 @@ module V3
     def stream_progress(text)
       return unless @progress_callback
 
-      # Stream as normal chat content so it appears as regular text
-      # in the conversation, not in a fancy thinking box
+      # Stream as normal chat content -- appears as regular text
+      # Each update is on its own line in the message
       @progress_callback.call({
         type: :content,
-        text: "#{text}\n"
+        text: text + "\n"
       })
     rescue => e
       Rails.logger.debug "[V3::PlatformBrain] Progress callback error: #{e.message}"
