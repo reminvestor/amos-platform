@@ -17,19 +17,14 @@ module V3
           description: <<~DESC.strip,
             Execute platform operations and integration actions.
             
-            Actions:
-            - integration — Run an external integration action (Stripe, HubSpot, Gmail, etc.)
-            - send_campaign — Send a campaign to its contact group
-            - publish_landing_page — Publish a draft landing page
-            - generate_file — Create a downloadable CSV, Excel, or PDF file
-            - send_email — Send a one-off email
-            - delete — Delete a record by type and ID
-            
-            Examples:
-            - platform_execute(action: "integration", integration: "stripe", operation: "list_customers", inputs: { limit: 10 })
-            - platform_execute(action: "send_campaign", campaign_id: 7)
-            - platform_execute(action: "generate_file", inputs: { format: "csv", title: "Export", headers: ["Name"], rows: [["John"]] })
-            - platform_execute(action: "delete", type: "contact", id: 42)
+            Actions and examples:
+            - integration — platform_execute(action: "integration", integration: "stripe", operation: "list_customers")
+            - send_campaign — platform_execute(action: "send_campaign", campaign_id: 7)
+            - generate_file — platform_execute(action: "generate_file", inputs: { format: "csv", title: "...", headers: [...], rows: [...] })
+            - generate_image — platform_execute(action: "generate_image", inputs: { prompt: "a professional banner for..." })
+            - publish_landing_page — platform_execute(action: "publish_landing_page", landing_page_id: 15)
+            - delete — platform_execute(action: "delete", type: "contact", id: 42)
+            - send_email — platform_execute(action: "send_email", inputs: { to: "...", subject: "...", body: "..." })
           DESC
           category: "v3_core",
           input_schema: {
@@ -84,12 +79,14 @@ module V3
           execute_send_email(args)
         when "generate_file"
           execute_generate_file(args)
+        when "generate_image"
+          execute_generate_image(args)
         when "delete"
           execute_delete(args)
         else
           error_response(
             "Unknown action: #{action}",
-            available_actions: %w[integration send_campaign publish_landing_page send_email generate_file delete]
+            available_actions: %w[integration send_campaign publish_landing_page send_email generate_file generate_image delete]
           )
         end
       rescue => e
@@ -378,6 +375,49 @@ module V3
       rescue LoadError
         Rails.logger.warn "[V3::PlatformExecute] prawn gem not available, falling back to CSV"
         generate_csv_content(headers, rows)
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # IMAGE GENERATION
+      # ═══════════════════════════════════════════════════════════════
+
+      def execute_generate_image(args)
+        inputs = get_arg(args, :inputs, {})
+        prompt = inputs["prompt"] || inputs[:prompt] || get_arg(args, :prompt)
+        style = inputs["style"] || inputs[:style] || "professional photography"
+        size = inputs["size"] || inputs[:size] || "1024x1024"
+        title = inputs["title"] || inputs[:title] || "AI Generated Image"
+
+        return error_response("Missing: prompt (describe the image you want)") if prompt.blank?
+
+        begin
+          service = ImageGenerationService.new
+          asset = service.generate_and_store!(
+            user: user,
+            entity: entity,
+            title: title,
+            description: prompt,
+            size: size,
+            tags: ["ai-generated", "user-requested"]
+          )
+
+          if asset&.file&.attached?
+            host = ENV.fetch("APP_HOST", "http://localhost:3000")
+            image_url = Rails.application.routes.url_helpers.rails_blob_url(asset.file, host: host)
+
+            success_response(
+              asset_id: asset.id,
+              url: image_url,
+              title: title,
+              prompt: prompt,
+              message: "Image generated! #{image_url}"
+            )
+          else
+            error_response("Image generation failed -- no file was created")
+          end
+        rescue => e
+          error_response("Image generation failed: #{e.message}")
+        end
       end
 
       # ═══════════════════════════════════════════════════════════════

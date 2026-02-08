@@ -150,6 +150,10 @@ module Tools
           File.read(file_path)
         when '.docx'
           extract_docx_text(file_path)
+        when '.xlsx', '.xls'
+          extract_excel_text(file_path)
+        when '.csv'
+          extract_csv_text(file_path)
         when '.jpg', '.jpeg', '.png', '.gif', '.webp'
           # Images - use Claude vision
           extract_with_vision(file_path, content_type)
@@ -221,6 +225,66 @@ module Tools
       "Error extracting PDF: #{e.message}"
     end
     
+    def extract_excel_text(file_path)
+      require 'roo'
+      
+      spreadsheet = Roo::Spreadsheet.open(file_path)
+      text_parts = []
+      
+      spreadsheet.sheets.each do |sheet_name|
+        sheet = spreadsheet.sheet(sheet_name)
+        text_parts << "=== Sheet: #{sheet_name} ==="
+        
+        # Get headers from first row
+        headers = sheet.row(1).map(&:to_s)
+        text_parts << headers.join("\t")
+        text_parts << "-" * 40
+        
+        # Get data rows (limit to first 500 for sanity)
+        (2..[sheet.last_row, 502].min).each do |row_num|
+          row = sheet.row(row_num).map(&:to_s)
+          text_parts << row.join("\t")
+        end
+        
+        if sheet.last_row > 502
+          text_parts << "[... #{sheet.last_row - 502} more rows truncated ...]"
+        end
+        
+        text_parts << ""
+      end
+      
+      text_parts.join("\n")
+    rescue LoadError
+      Rails.logger.warn "roo gem not available for Excel parsing"
+      "Excel parsing requires the 'roo' gem. Please install it or convert to CSV."
+    rescue => e
+      "Error reading Excel file: #{e.message}"
+    end
+
+    def extract_csv_text(file_path)
+      require 'csv'
+      
+      rows = CSV.read(file_path, headers: false)
+      return "CSV file is empty" if rows.empty?
+      
+      text_parts = []
+      headers = rows.first
+      text_parts << headers.join("\t")
+      text_parts << "-" * 40
+      
+      rows[1..500].each do |row|
+        text_parts << row.map(&:to_s).join("\t")
+      end
+      
+      if rows.length > 501
+        text_parts << "[... #{rows.length - 501} more rows truncated ...]"
+      end
+      
+      text_parts.join("\n")
+    rescue => e
+      "Error reading CSV file: #{e.message}"
+    end
+
     def extract_docx_text(file_path)
       require 'docx'
       

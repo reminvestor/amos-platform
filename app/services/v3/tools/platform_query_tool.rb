@@ -93,6 +93,8 @@ module V3
           query_integrations(args)
         when "documents", "document"
           query_documents(args)
+        when "usage", "credits", "tokens", "balance"
+          query_usage
         else
           query_data(type, args)
         end
@@ -168,6 +170,36 @@ module V3
           stats: stats,
           entity: entity.name,
           message: "Platform overview for #{entity.name}"
+        )
+      end
+
+      def query_usage
+        account = UserBillingAccount.find_by(user: user)
+
+        unless account
+          return success_response(
+            balance: 0,
+            status: "no_account",
+            message: "No billing account found. Contact support to set up billing."
+          )
+        end
+
+        # Today's usage
+        today_summary = WorkTokenUsageSummary.find_by(
+          user: user, entity: entity,
+          summary_date: Date.current, category: "ai_tokens"
+        )
+
+        success_response(
+          balance: account.work_token_balance,
+          lifetime_used: account.lifetime_tokens_used,
+          status: account.status,
+          has_payment_method: account.has_payment_method,
+          auto_replenish: account.auto_replenish_enabled,
+          today_tokens: today_summary&.tokens_used || 0,
+          today_cost_cents: today_summary&.raw_cost_cents || 0,
+          today_transactions: today_summary&.transaction_count || 0,
+          message: "Balance: #{account.work_token_balance.to_i.abs} tokens. Today: #{today_summary&.tokens_used || 0} tokens used."
         )
       end
 

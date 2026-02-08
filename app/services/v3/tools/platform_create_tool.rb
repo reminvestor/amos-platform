@@ -10,7 +10,7 @@ module V3
     #
     class PlatformCreateTool < ::Tools::BaseTool
       # Types that need special builder routing (not just DB creates)
-      BUILDER_TYPES = %w[landing_page website web_app workflow automation app module sync].freeze
+      BUILDER_TYPES = %w[landing_page website web_app workflow automation app module sync scheduled_task].freeze
 
       def self.metadata
         {
@@ -25,6 +25,7 @@ module V3
             - campaign — platform_create(type: "campaign", data: { name: "Summer Sale", email_template_id: 5 })
             - automation — platform_create(type: "automation", data: { name: "Welcome Flow", trigger: "contact_created", action: "send_email", action_config: { template_id: 5 } })
             - sync — platform_create(type: "sync", data: { integration: "stripe", source: "customers", target: "Contact", schedule: "daily" })
+            - scheduled_task — platform_create(type: "scheduled_task", data: { name: "Weekly Report", prompt: "Generate a summary of this week's contacts", schedule: "weekly" })
             - landing_page — platform_create(type: "landing_page", data: { title: "My Page", description: "Lead gen page" })
             - app — platform_create(type: "app", data: { name: "CRM", description: "Contact management" })
 
@@ -36,7 +37,7 @@ module V3
             properties: {
               type: {
                 type: "string",
-                description: "Object type to create (contact, contact_group, email_template, campaign, automation, sync, landing_page, app, support_ticket)"
+                description: "Object type to create (contact, contact_group, email_template, campaign, automation, sync, scheduled_task, landing_page, app, support_ticket)"
               },
               data: {
                 type: "object",
@@ -95,6 +96,8 @@ module V3
           build_app(data)
         when "sync"
           build_sync(data)
+        when "scheduled_task"
+          build_scheduled_task(data)
         else
           error_response("Unknown builder type: #{type}")
         end
@@ -387,6 +390,50 @@ module V3
           # Return empty — Amos can ask user or discover the schema
           {}
         end
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # SCHEDULED TASK — Recurring tasks (reports, syncs, checks)
+      # ═══════════════════════════════════════════════════════════════
+
+      def build_scheduled_task(data)
+        name = data["name"] || data[:name]
+        prompt = data["prompt"] || data[:prompt] || data["description"] || data[:description]
+        schedule = data["schedule"] || data[:schedule] || "daily"
+        task_type = data["task_type"] || data[:task_type] || "custom"
+        timezone = data["timezone"] || data[:timezone] || "America/Los_Angeles"
+
+        return error_response("Missing: name") if name.blank?
+        return error_response("Missing: prompt (what the task should do)") if prompt.blank?
+
+        cron = schedule_to_cron(schedule)
+        schedule_type = cron ? "cron" : "daily"
+
+        task = ScheduledAgentTask.create!(
+          entity: entity,
+          user: user,
+          name: name,
+          description: prompt,
+          task_type: task_type,
+          prompt: prompt,
+          schedule_type: schedule_type,
+          cron_expression: cron,
+          timezone: timezone,
+          status: "active",
+          enabled: true,
+          input_context: data.except("name", "prompt", "schedule", "task_type", "timezone", :name, :prompt, :schedule, :task_type, :timezone)
+        )
+
+        success_response(
+          task_id: task.id,
+          name: task.name,
+          schedule: schedule,
+          cron: cron,
+          next_run_at: task.next_run_at,
+          message: "Scheduled task '#{name}' created! It will run #{schedule}."
+        )
+      rescue => e
+        error_response("Scheduled task creation failed: #{e.message}")
       end
 
       def schedule_to_cron(schedule)
