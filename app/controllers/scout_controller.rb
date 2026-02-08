@@ -693,15 +693,6 @@ class ScoutController < ApplicationController
       stream_update(chunk[:question])
     when :status
       stream_update(chunk[:text])
-    when "progress"
-      # Platform Brain progress -- stream as progress type for step-by-step display
-      stream_update({
-        type: "progress",
-        tool: chunk[:tool],
-        message: chunk[:message],
-        percentage: chunk[:percentage],
-        timestamp: chunk[:timestamp]
-      })
     end
   rescue IOError, Errno::EPIPE
     # Client disconnected — normal

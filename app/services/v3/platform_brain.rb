@@ -288,15 +288,11 @@ module V3
     def stream_progress(text)
       return unless @progress_callback
 
-      # Use the :progress type which the frontend handles via
-      # updateToolProgress → addToolThinkingStep, showing a
-      # step-by-step indicator that replaces instead of appending
+      # Stream as normal chat content so it appears as regular text
+      # in the conversation, not in a fancy thinking box
       @progress_callback.call({
-        type: "progress",
-        tool: "platform_do",
-        message: text,
-        percentage: nil,
-        timestamp: Time.current.iso8601
+        type: :content,
+        text: "#{text}\n"
       })
     rescue => e
       Rails.logger.debug "[V3::PlatformBrain] Progress callback error: #{e.message}"
