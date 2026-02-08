@@ -24,6 +24,8 @@ module V3
             - email_template — platform_create(type: "email_template", data: { name: "Welcome", subject: "Welcome!", body: "<h1>Hi!</h1>" })
             - campaign — platform_create(type: "campaign", data: { name: "Summer Sale", email_template_id: 5 })
             - automation — platform_create(type: "automation", data: { name: "Welcome Flow", trigger: "contact_created", action: "send_email", action_config: { template_id: 5 } })
+              Triggers: contact_created, form_submit, record_updated, status_changed, field_changed, schedule, webhook
+              Actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user
             - sync — platform_create(type: "sync", data: { integration: "stripe", source: "customers", target: "Contact", schedule: "daily" })
             - scheduled_task — platform_create(type: "scheduled_task", data: { name: "Weekly Report", prompt: "Generate a summary of this week's contacts", schedule: "weekly" })
             - landing_page — platform_create(type: "landing_page", data: { title: "My Page", description: "Lead gen page" })

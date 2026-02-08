@@ -241,7 +241,6 @@ class LandingPageSubmission < ApplicationRecord
           metadata: contact_metadata,
           # Set lifecycle stage for new leads
           lifecycle_stage: "lead",
-          lead: true,
           last_activity_at: Time.current
         )
         self.contact = new_contact

@@ -159,38 +159,34 @@ module V3
 
     def build_tool_instructions
       <<~TOOLS
+        ## How the Platform Works
+        
+        **Landing pages** automatically create contacts when forms are submitted.
+        You do NOT need to set this up -- it's built-in. Every form submission:
+        1. Creates a LandingPageSubmission record
+        2. Auto-creates or updates a Contact from the form data
+        3. Fires any automations triggered by "contact_created" or "form_submit"
+        
+        **Automations** run deterministically (no AI at runtime). Available triggers:
+        - contact_created — fires when any new contact is added (including from forms)
+        - form_submit — fires when a landing page form is submitted
+        - record_updated, status_changed, field_changed — fires on record changes
+        - schedule — fires on a cron schedule
+        
+        Available actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user
+        
+        **Example:** "Send welcome email on form submission" =
+        1. Create email template
+        2. Create automation with trigger: "contact_created", action: "send_email", action_config: { template_id: X }
+        That's it. The landing page form auto-creates the contact, which fires the automation.
+        
         ## What You Can Do
-
-        **Create things** (platform_create):
-        - contact, contact_group, email_template, campaign, automation, landing_page, website, app, support_ticket
         
-        **Read data** (platform_query):
-        - Query any object type, get schemas, stats, search documents
-        
-        **Update things** (platform_update):
-        - Update any record by type + ID. Edit landing page sections with section + instruction.
-        
-        **Execute actions** (platform_execute):
-        - Run integration actions (Stripe, HubSpot, etc.), send campaigns, generate files (CSV/Excel/PDF), publish pages
-        
-        **Browse the web**: `view_web_page` (show user a site), `browser_use` (autonomous browsing)
-        **Search**: `web_search` (internet), `read_file` (uploaded documents), `discover` (platform features)
-        **Interface**: `load_canvas` (show views), `ask_user` (ask questions), `bash` (run commands)
-        **Memory**: `remember_this`, `recall_context`, `search_memory`, `list_saved`, `bookmark_this`
-        
-        ## Key Patterns
-        
-        - Create a contact: `platform_create(type: "contact", data: { first_name: "...", last_name: "...", email: "..." })`
-        - Create an automation: `platform_create(type: "automation", data: { trigger: "contact_created", action: "send_email", action_config: { template_id: X } })`
-        - Set up a data sync: `platform_create(type: "sync", data: { integration: "stripe", source: "customers", target: "Contact", schedule: "daily" })`
-        - Add a custom field: `platform_update(type: "schema", id: "contact", data: { add_field: { name: "industry", field_type: "string" } })`
-        - Edit a landing page: `platform_update(type: "landing_page", id: X, data: { section: "hero", instruction: "..." })`
-        - Run an integration: `platform_execute(action: "integration", integration: "stripe", operation: "list_customers")`
-        - Generate an image: `platform_execute(action: "generate_image", inputs: { prompt: "..." })`
-        - Schedule a task: `platform_create(type: "scheduled_task", data: { name: "...", prompt: "...", schedule: "daily" })`
-        - Check token balance: `platform_query(type: "usage")`
-        - Delete a record: `platform_execute(action: "delete", type: "contact", id: 42)`
-        - Export data: `platform_execute(action: "generate_file", inputs: { format: "csv", ... })`
+        **platform_create**: contact, contact_group, email_template, campaign, automation, sync, scheduled_task, landing_page, app, support_ticket
+        **platform_query**: Any data type, schema, stats, usage/credits, documents, integrations
+        **platform_update**: Any record, landing page sections, custom fields (type: "schema")
+        **platform_execute**: integration actions, send_campaign, generate_file, generate_image, publish_landing_page, delete, send_email
+        **Other**: view_web_page, browser_use, web_search, read_file, discover, bash, load_canvas, ask_user, memory tools
         
         ## Rules
         
