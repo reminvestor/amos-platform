@@ -181,7 +181,7 @@ module Modules
           Rails.logger.info "[AutomationBridge] Triggering automation: #{automation.name} (ID: #{automation.id})"
           
           # Run in background job for non-blocking execution
-          AutomationTriggerJob.perform_later(automation.id, trigger_data.deep_stringify_keys)
+          AutomationTriggerJob.perform_later(automation.id, trigger_data.deep_stringify_keys, { trigger_source: 'record' })
         end
         
         matching.size

@@ -18,7 +18,7 @@ class AutomationExecution < ApplicationRecord
   # ============================================
 
   STATUSES = %w[pending running success failed timeout].freeze
-  TRIGGER_SOURCES = %w[record schedule webhook manual test].freeze
+  TRIGGER_SOURCES = %w[record schedule webhook manual test job form automation_bridge].freeze
 
   # ============================================
   # VALIDATIONS
