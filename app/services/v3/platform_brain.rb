@@ -65,6 +65,8 @@ module V3
       @context = context
       @progress_callback = progress_callback
       @tools_called = []
+      @needs_input = false
+      @question = nil
     end
 
     # Execute a goal using the Platform Brain's agent loop
@@ -91,8 +93,8 @@ module V3
 
       Rails.logger.info "[V3::PlatformBrain] Completed in #{latency_ms}ms, #{@tools_called.length} tool calls"
 
-      {
-        success: true,
+      result = {
+        success: !@needs_input, # Partial success if needs input
         message: final_text,
         tools_used: @tools_called,
         _engine: {
@@ -102,6 +104,23 @@ module V3
           latency_ms: latency_ms
         }
       }
+
+      # If the Brain needs user input, signal this to the IntentEngine/Amos
+      if @needs_input
+        result[:status] = "needs_input"
+        result[:question] = @question
+        result[:partial_results] = @tool_results_log
+        result[:success] = true # It's not a failure, just needs more info
+      end
+
+      # Propagate canvas_type from tool results
+      canvas_result = @tool_results_log&.reverse&.find { |r| r[:result].is_a?(Hash) && r[:result][:canvas_type].present? }
+      if canvas_result
+        result[:canvas_type] = canvas_result[:result][:canvas_type]
+        result[:canvas_data] = canvas_result[:result][:canvas_data]
+      end
+
+      result
     rescue => e
       Rails.logger.error "[V3::PlatformBrain] Failed: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
       {
@@ -121,11 +140,15 @@ module V3
       client = bedrock_client
       turn_count = 0
       accumulated_text = ""
+      @tool_results_log = [] # Track results for question context
+
+      stream_progress("Starting execution...")
 
       loop do
         turn_count += 1
         if turn_count > MAX_TOOL_TURNS
           Rails.logger.warn "[V3::PlatformBrain] Exceeded max turns (#{MAX_TOOL_TURNS})"
+          stream_progress("Reached maximum steps. Wrapping up.")
           break
         end
 
@@ -151,13 +174,28 @@ module V3
         # Accumulate any text
         text_blocks.each { |b| accumulated_text = b.text }
 
-        # If no tool calls, we're done
+        # If no tool calls, we're done (or the Brain has a question)
         if tool_use_blocks.empty?
           Rails.logger.info "[V3::PlatformBrain] Turn #{turn_count}: Done (text response)"
+
+          # Check if the Brain is asking a question rather than reporting completion
+          if brain_is_asking_question?(accumulated_text)
+            Rails.logger.info "[V3::PlatformBrain] Brain is asking a question: #{accumulated_text.truncate(100)}"
+            @needs_input = true
+            @question = accumulated_text
+          else
+            stream_progress("Complete!")
+          end
+
           break
         end
 
         Rails.logger.info "[V3::PlatformBrain] Turn #{turn_count}: #{tool_use_blocks.length} tool call(s)"
+
+        # Stream thinking text from the Brain if present
+        text_blocks.each do |b|
+          stream_progress(b.text.truncate(200)) if b.text.present?
+        end
 
         # Add assistant's response to conversation
         assistant_content = content_blocks.map do |block|
@@ -170,7 +208,7 @@ module V3
 
         messages << { role: "assistant", content: assistant_content }
 
-        # Execute tools and build results
+        # Execute tools and build results -- with progress streaming
         tool_results = tool_use_blocks.map do |block|
           tool_use = block.tool_use
           tool_name = tool_use.name
@@ -178,11 +216,27 @@ module V3
 
           @tools_called << tool_name
 
+          # Stream progress: tool starting
+          friendly_name = humanize_tool_call(tool_name, tool_input)
+          stream_progress("Working: #{friendly_name}...")
+
           Rails.logger.info "[V3::PlatformBrain] Executing: #{tool_name}"
 
           result = execute_brain_tool(tool_name, tool_input)
 
-          Rails.logger.info "[V3::PlatformBrain] Result: #{result.is_a?(Hash) && result[:success] != false ? '✅' : '❌'}"
+          success = result.is_a?(Hash) && result[:success] != false
+          Rails.logger.info "[V3::PlatformBrain] Result: #{success ? '✅' : '❌'}"
+
+          # Stream progress: tool completed
+          if success
+            result_summary = result[:message] || result[:name] || "done"
+            stream_progress("#{friendly_name}: #{result_summary.to_s.truncate(100)}")
+          else
+            stream_progress("#{friendly_name}: failed - #{(result[:error] || 'unknown error').to_s.truncate(100)}")
+          end
+
+          # Track for context
+          @tool_results_log << { tool: tool_name, success: success, result: result }
 
           {
             tool_result: {
@@ -220,6 +274,55 @@ module V3
     rescue => e
       Rails.logger.error "[V3::PlatformBrain] Tool #{name} error: #{e.message}"
       { success: false, error: e.message }
+    end
+
+    # ═══════════════════════════════════════════════════════════════
+    # PROGRESS STREAMING
+    # ═══════════════════════════════════════════════════════════════
+
+    def stream_progress(text)
+      return unless @progress_callback
+
+      @progress_callback.call({
+        type: :status,
+        text: text
+      })
+    rescue => e
+      Rails.logger.debug "[V3::PlatformBrain] Progress callback error: #{e.message}"
+    end
+
+    # Detect if the Brain's final text response is a question rather than a completion summary
+    def brain_is_asking_question?(text)
+      return false if text.blank?
+
+      # If the Brain made tool calls and is now responding with text, it's probably a summary
+      return false if @tools_called.length > 2
+
+      # Check for question indicators
+      text.strip.end_with?("?") ||
+        text.match?(/\b(what|which|how|do you|should I|would you|can you|please (specify|provide|tell|choose))\b/i)
+    end
+
+    # Create a human-friendly description of what the Brain is doing
+    def humanize_tool_call(tool_name, input)
+      case tool_name
+      when "platform_create"
+        type = input["type"] || input[:type] || "object"
+        name = input.dig("data", "name") || input.dig("data", "title") || input.dig(:data, :name) || ""
+        name_part = name.present? ? " '#{name.to_s.truncate(40)}'" : ""
+        "Creating #{type}#{name_part}"
+      when "platform_update"
+        type = input["type"] || input[:type] || "object"
+        "Updating #{type}"
+      when "platform_execute"
+        action = input["action"] || input[:action] || "action"
+        "Executing #{action}"
+      when "platform_query"
+        type = input["type"] || input[:type] || "data"
+        "Querying #{type}"
+      else
+        tool_name.humanize
+      end
     end
 
     # ═══════════════════════════════════════════════════════════════
