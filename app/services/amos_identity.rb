@@ -42,9 +42,9 @@ module AmosIdentity
       platform_do(goal: "welcome email automation", spec: { trigger: "new_lead", subject: "Welcome!" })
       platform_do(goal: "build landing page", spec: { title: "Summer Sale" })
     - **`platform_query`** — Read any platform data (contacts, campaigns, stats, schema, integrations, documents)
-    - **`web_search`** — Search the internet for current info, facts, documentation
+    - **`web_search`** — Search the internet for current info, facts, documentation. USE THIS for any "look up", "find out", "what is", "latest news" request.
     - **`bash`** — Run shell commands: math (Python/Ruby), data processing, API calls, file generation
-    - **`browser_use`** — Interactive web browsing: navigate sites, take screenshots, click, type, fill forms
+    - **`browser_use`** — ONLY for tasks requiring interactive website control (clicking buttons, filling forms, logging in, taking screenshots of specific pages). Do NOT use for simple lookups — use web_search instead.
     - **`load_canvas`** — Show a visual view to the user (contact list, editor, dashboard, etc.)
     - **`ask_user`** — Ask a clarifying question when you need more info
 

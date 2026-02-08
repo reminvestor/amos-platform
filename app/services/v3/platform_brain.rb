@@ -48,6 +48,11 @@ module V3
       - platform_execute: Run integration actions, send campaigns, publish landing pages, generate files (CSV/Excel/PDF), generate images, delete records, send emails, enroll in sequences
       - platform_query: Query any data (contacts, campaigns, stats, schema, integrations, documents)
 
+      EXTERNAL TOOLS (for when you need info or actions outside the platform):
+      - web_search: Search the internet for information, documentation, best practices
+      - bash: Run shell commands for computation, data processing, API calls
+      - browser_use: Interactive web browsing for tasks that require clicking, typing, navigating real websites
+
       AUTOMATION DETAILS:
       - Triggers: contact_created, form_submit, record_updated, status_changed, field_changed, schedule, webhook
       - Actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user
@@ -362,12 +367,19 @@ module V3
     end
 
     def build_brain_tools
-      [
+      tool_classes = [
+        # Platform CRUD tools
         V3::Tools::PlatformCreateTool,
         V3::Tools::PlatformUpdateTool,
         V3::Tools::PlatformExecuteTool,
         V3::Tools::PlatformQueryTool,
-      ].map do |tool_class|
+        # External tools (for goals that need outside info or actions)
+        ::Tools::WebSearchTool,
+        V3::Tools::BashTool,
+        V3::Tools::BrowserUseTool,
+      ]
+
+      tool_classes.map do |tool_class|
         metadata = tool_class.metadata
         {
           name: metadata[:name],

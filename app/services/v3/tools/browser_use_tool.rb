@@ -25,7 +25,9 @@ module V3
         {
           name: "browser_use",
           description: <<~DESC.strip,
-            Autonomous web browser control. Navigate, click, type, scroll on websites.
+            Interactive web browser for tasks that REQUIRE clicking, typing, or navigating a real website.
+            Use ONLY when you need to interact with a webpage (fill forms, click buttons, take screenshots, log in).
+            Do NOT use for simple information lookups -- use web_search instead.
             Each call performs ONE action and returns page state. Supports user handoff for login.
           DESC
           category: "v3_core",
