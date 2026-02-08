@@ -822,6 +822,17 @@ module Tools
         - MUST complete all form fields with proper closing tags and submit button
         - MUST include </body></html> at the end - incomplete HTML is unusable!
         
+        TEXT CONTRAST (CRITICAL - Never create unreadable text!):
+        - EVERY piece of text must be clearly readable against its background
+        - Dark text (#1a1a2e, #333, #1e293b) on light/white backgrounds
+        - Light/white text (#fff, #f8fafc) ONLY on dark or colored backgrounds
+        - NEVER use light/gray text on white or light backgrounds
+        - NEVER use white text on light-colored sections (light pink, light blue, etc.)
+        - Test mentally: "Can I read this text?" If not, fix the contrast
+        - Headings should ALWAYS be high-contrast (dark on light, or white on dark)
+        - Body text should be at least #555 on white backgrounds
+        - If using a gradient background, ensure text color contrasts with ALL parts of the gradient
+
         FOOTER STYLING (CRITICAL):
         - Footer should have a DARK background (e.g., bg-dark, #1e293b, #0f172a)
         - Footer TEXT must be LIGHT/WHITE (text-light, text-white, #e2e8f0, #f8fafc)
