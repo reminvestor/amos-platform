@@ -3,7 +3,7 @@
 module V3
   # ToolRegistry - Registry of V3 tools
   #
-  # Intent Engine Architecture: The LLM sees 7 tools.
+  # Intent Engine Architecture: The LLM sees 8 tools.
   # The old CRUD tools (platform_create, platform_update, platform_execute)
   # are kept as INTERNAL_TOOLS for use by recipes and the Platform Brain,
   # but are NOT exposed to the LLM.
@@ -11,9 +11,10 @@ module V3
   # LLM-facing tools (Amos's toolkit):
   #   platform_do    — "do something on the platform" (routes through IntentEngine → Platform Brain)
   #   platform_query — "read platform data" (unchanged)
-  #   web_search     — external internet knowledge
+  #   web_search     — search the internet for info (text results)
+  #   view_web_page  — open a website in the interactive viewer (user can browse)
   #   bash           — math, computation, escape hatch
-  #   browser_use    — interactive web browsing, screenshots, form filling
+  #   browser_use    — autonomous web browsing (Amos clicks/types on sites)
   #   ask_user       — clarify with user
   #   load_canvas    — show things to the user
   #
@@ -25,6 +26,7 @@ module V3
       "platform_do"      => V3::Tools::PlatformDoTool,
       "platform_query"   => V3::Tools::PlatformQueryTool,
       "web_search"       => ::Tools::WebSearchTool,
+      "view_web_page"    => ::Tools::WebPageViewTool,
       "bash"             => V3::Tools::BashTool,
       "browser_use"      => V3::Tools::BrowserUseTool,
       "ask_user"         => V3::Tools::AskUserTool,
@@ -38,7 +40,6 @@ module V3
       "platform_execute" => V3::Tools::PlatformExecuteTool,
       "discover"         => V3::Tools::DiscoverTool,
       "read_file"        => V3::Tools::ReadFileTool,
-      "view_web_page"    => ::Tools::WebPageViewTool,
     }.freeze
 
     # All tools (for execution -- LLM might still reference old names during transition)
