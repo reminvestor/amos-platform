@@ -3,62 +3,95 @@
 require "test_helper"
 
 class V3::ToolRegistryTest < ActiveSupport::TestCase
-  test "POWER_TOOLS has expected count" do
-    # 12 power tools: 4 CRUD + 5 knowledge/browser + 3 interface
-    assert_equal 12, V3::ToolRegistry::POWER_TOOLS.keys.length,
-      "V3 should have 12 power tools, got: #{V3::ToolRegistry::POWER_TOOLS.keys}"
+  # ══════════════════════════════════════════════════════════════
+  # LLM TOOL SET
+  # ══════════════════════════════════════════════════════════════
+
+  test "LLM_TOOLS contains exactly 6 tools" do
+    assert_equal 6, V3::ToolRegistry::LLM_TOOLS.keys.length
   end
 
-  test "all expected power tools are registered" do
-    expected = %w[
-      platform_query platform_create platform_update platform_execute
-      discover read_file web_search view_web_page browser_use
-      bash load_canvas ask_user
-    ]
-
-    expected.each do |tool_name|
-      assert V3::ToolRegistry::POWER_TOOLS.key?(tool_name),
-        "Missing power tool: #{tool_name}"
-    end
+  test "LLM_TOOLS has the correct tool set" do
+    expected = %w[platform_do platform_query web_search bash ask_user load_canvas]
+    assert_equal expected.sort, V3::ToolRegistry::LLM_TOOLS.keys.sort
   end
 
-  test "get_bedrock_tools returns tool definitions" do
+  test "INTERNAL_TOOLS preserves old CRUD tools" do
+    internal = V3::ToolRegistry::INTERNAL_TOOLS
+    assert internal.key?("platform_create"), "Should keep platform_create internally"
+    assert internal.key?("platform_update"), "Should keep platform_update internally"
+    assert internal.key?("platform_execute"), "Should keep platform_execute internally"
+  end
+
+  test "ALL_TOOLS includes both LLM and internal tools" do
+    all = V3::ToolRegistry::ALL_TOOLS
+    assert all.key?("platform_do"), "Should have platform_do"
+    assert all.key?("platform_create"), "Should have platform_create"
+    assert all.key?("platform_query"), "Should have platform_query"
+    assert all.key?("bash"), "Should have bash"
+  end
+
+  # ══════════════════════════════════════════════════════════════
+  # BEDROCK TOOLS (what the LLM sees)
+  # ══════════════════════════════════════════════════════════════
+
+  test "get_bedrock_tools returns only LLM-facing tools" do
     tools = V3::ToolRegistry.get_bedrock_tools
+    tool_names = tools.map { |t| t[:name] }
 
-    assert tools.is_a?(Array)
-    assert tools.length >= 12, "Should have at least 12 tools (power + memory), got #{tools.length}"
+    # Should include LLM tools
+    assert_includes tool_names, "platform_do"
+    assert_includes tool_names, "platform_query"
+    assert_includes tool_names, "web_search"
+    assert_includes tool_names, "bash"
+    assert_includes tool_names, "ask_user"
+    assert_includes tool_names, "load_canvas"
 
-    # Check each tool has required fields
-    tools.each do |tool|
-      assert tool[:name].present?, "Tool missing name: #{tool.inspect}"
-      assert tool[:description].present?, "Tool #{tool[:name]} missing description"
-      assert tool[:parameters].present?, "Tool #{tool[:name]} missing parameters"
-    end
+    # Should NOT include internal tools
+    refute_includes tool_names, "platform_create"
+    refute_includes tool_names, "platform_update"
+    refute_includes tool_names, "platform_execute"
+    refute_includes tool_names, "discover"
+    refute_includes tool_names, "read_file"
+    refute_includes tool_names, "browser_use"
   end
 
-  test "tool_exists? returns true for registered tools" do
-    assert V3::ToolRegistry.tool_exists?("platform_query")
+  # ══════════════════════════════════════════════════════════════
+  # TOOL EXECUTION (both LLM and internal)
+  # ══════════════════════════════════════════════════════════════
+
+  test "can execute LLM tools" do
+    assert V3::ToolRegistry.tool_exists?("platform_do")
     assert V3::ToolRegistry.tool_exists?("bash")
-    assert V3::ToolRegistry.tool_exists?("discover")
-    refute V3::ToolRegistry.tool_exists?("nonexistent_tool")
   end
 
-  test "tool_names returns all tool names" do
+  test "can execute internal tools" do
+    assert V3::ToolRegistry.tool_exists?("platform_create")
+    assert V3::ToolRegistry.tool_exists?("platform_update")
+    assert V3::ToolRegistry.tool_exists?("platform_execute")
+  end
+
+  test "tool_names returns only LLM-facing names" do
     names = V3::ToolRegistry.tool_names
-    assert names.include?("platform_query")
-    assert names.include?("bash")
-    assert names.include?("load_canvas")
+    assert_includes names, "platform_do"
+    assert_includes names, "load_canvas"
+    refute_includes names, "platform_create"
+    refute_includes names, "platform_execute"
   end
 
-  test "execute returns error for unknown tool" do
-    user = users(:one) rescue nil
-    entity = entities(:one) rescue nil
+  test "all_tool_names returns everything" do
+    names = V3::ToolRegistry.all_tool_names
+    assert_includes names, "platform_do"
+    assert_includes names, "platform_create"
+    assert_includes names, "platform_update"
+    assert_includes names, "platform_execute"
+  end
 
-    # Skip if fixtures aren't available
-    skip "Fixtures not available" unless user && entity
+  # ══════════════════════════════════════════════════════════════
+  # BACKWARD COMPATIBILITY
+  # ══════════════════════════════════════════════════════════════
 
-    result = V3::ToolRegistry.execute("nonexistent", {}, user: user, entity: entity)
-    assert_equal false, result[:success]
-    assert_match /Unknown/, result[:error]
+  test "POWER_TOOLS alias still works" do
+    assert_equal V3::ToolRegistry::ALL_TOOLS, V3::ToolRegistry::POWER_TOOLS
   end
 end

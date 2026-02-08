@@ -129,16 +129,11 @@ module V3
     end
 
     def build_canvas_context(current_canvas)
-      # Map canvas type to clear context
+      # Map canvas type to clear context for Amos
       context = case current_canvas
                 when "landing_page_editor"
                   "The user is viewing a landing page in the editor. They may ask you to edit sections, content, and styling.\n" \
-                  "To edit a SECTION by name (hero, features, pricing, etc.):\n" \
-                  "  platform_update(type: 'landing_page', id: ID, data: { section: 'hero', instruction: 'Remove the image and center the text' })\n" \
-                  "To read the page sections:\n" \
-                  "  platform_update(type: 'landing_page', id: ID, data: { read_sections: true })\n" \
-                  "To replace full HTML:\n" \
-                  "  platform_update(type: 'landing_page', id: ID, data: { html_content: '...' })\n" \
+                  "Use platform_do to edit: platform_do(goal: 'edit landing page section', spec: { landing_page_id: ID, section: 'hero', instruction: 'Center the text' })\n" \
                   "The landing page ID should be in the canvas context below."
                 when "campaign_viewer"
                   "The user is viewing a campaign. Help them manage recipients, content, and sending."
@@ -159,41 +154,14 @@ module V3
 
     def build_tool_instructions
       <<~TOOLS
-        ## How the Platform Works
-        
-        **Landing pages** automatically create contacts when forms are submitted.
-        You do NOT need to set this up -- it's built-in. Every form submission:
-        1. Creates a LandingPageSubmission record
-        2. Auto-creates or updates a Contact from the form data
-        3. Fires any automations triggered by "contact_created" or "form_submit"
-        
-        **Automations** run deterministically (no AI at runtime). Available triggers:
-        - contact_created — fires when any new contact is added (including from forms)
-        - form_submit — fires when a landing page form is submitted
-        - record_updated, status_changed, field_changed — fires on record changes
-        - schedule — fires on a cron schedule
-        
-        Available actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user
-        
-        **Example:** "Send welcome email on form submission" =
-        1. Create email template
-        2. Create automation with trigger: "contact_created", action: "send_email", action_config: { template_id: X }
-        That's it. The landing page form auto-creates the contact, which fires the automation.
-        
-        ## What You Can Do
-        
-        **platform_create**: contact, contact_group, email_template, campaign, automation, sync, scheduled_task, landing_page, app, support_ticket
-        **platform_query**: Any data type, schema, stats, usage/credits, documents, integrations
-        **platform_update**: Any record, landing page sections, custom fields (type: "schema")
-        **platform_execute**: integration actions, send_campaign, generate_file, generate_image, publish_landing_page, delete, send_email
-        **Other**: view_web_page, browser_use, web_search, read_file, discover, bash, load_canvas, ask_user, memory tools
-        
         ## Rules
         
         - ALWAYS call tools to perform actions. Never claim you did something without a tool call.
-        - For math, use `bash` with Python.
-        - To show/view something, use `load_canvas`.
-        - Your current capabilities override anything you said in previous messages.
+        - Use `platform_do` for ANY platform action (create, update, delete, build, send, sync).
+        - Use `platform_query` to read/query platform data.
+        - Use `bash` for math and computation.
+        - Use `web_search` for internet lookups.
+        - Use `load_canvas` to show views to the user.
       TOOLS
     end
 

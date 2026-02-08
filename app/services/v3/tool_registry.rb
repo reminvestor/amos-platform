@@ -1,43 +1,59 @@
 # frozen_string_literal: true
 
 module V3
-  # ToolRegistry - Registry of V3 power tools
+  # ToolRegistry - Registry of V3 tools
   #
-  # Unlike V2's ToolCatalog which auto-discovers 150+ tool classes,
-  # V3 has exactly 10 power tools that are always available.
-  # The model doesn't need to discover tools — it always has them all.
+  # Intent Engine Architecture: The LLM sees 6 tools.
+  # The old CRUD tools (platform_create, platform_update, platform_execute)
+  # are kept as INTERNAL_TOOLS for use by recipes and the intent engine,
+  # but are NOT exposed to the LLM.
+  #
+  # LLM-facing tools:
+  #   platform_do    — "do something" (routes through IntentEngine)
+  #   platform_query — "read something" (unchanged)
+  #   web_search     — external internet knowledge
+  #   bash           — math, computation, escape hatch
+  #   ask_user       — clarify with user
+  #   load_canvas    — show things to the user
   #
   class ToolRegistry
-    POWER_TOOLS = {
-      # Platform CRUD
+    # Tools exposed to the LLM (what the model sees and can call)
+    LLM_TOOLS = {
+      "platform_do"      => V3::Tools::PlatformDoTool,
       "platform_query"   => V3::Tools::PlatformQueryTool,
+      "web_search"       => ::Tools::WebSearchTool,
+      "bash"             => V3::Tools::BashTool,
+      "ask_user"         => V3::Tools::AskUserTool,
+      "load_canvas"      => nil, # Special: built inline in get_bedrock_tools
+    }.freeze
+
+    # Internal tools: NOT exposed to LLM, but available for recipes/engine
+    INTERNAL_TOOLS = {
       "platform_create"  => V3::Tools::PlatformCreateTool,
       "platform_update"  => V3::Tools::PlatformUpdateTool,
       "platform_execute" => V3::Tools::PlatformExecuteTool,
-
-      # Knowledge & Discovery
       "discover"         => V3::Tools::DiscoverTool,
       "read_file"        => V3::Tools::ReadFileTool,
-      "web_search"       => ::Tools::WebSearchTool,
       "view_web_page"    => ::Tools::WebPageViewTool,
       "browser_use"      => V3::Tools::BrowserUseTool,
-
-      # Direct interaction
-      "bash"             => V3::Tools::BashTool,
-      "load_canvas"      => nil, # Special: built inline in get_bedrock_tools
-      "ask_user"         => V3::Tools::AskUserTool,
     }.freeze
 
+    # All tools (for execution -- LLM might still reference old names during transition)
+    ALL_TOOLS = LLM_TOOLS.merge(INTERNAL_TOOLS).freeze
+
+    # Legacy alias for backward compatibility
+    POWER_TOOLS = ALL_TOOLS
+
     class << self
-      # Get all V3 tools in Bedrock format for LLM consumption
+      # Get tools in Bedrock format for LLM consumption (only LLM_TOOLS)
       def get_bedrock_tools(entity: nil)
         tools = []
 
         # 1. Add load_canvas (special: needs dynamic enum)
         tools << build_canvas_tool(entity)
 
-        # 2. Add all power tools
-        POWER_TOOLS.each do |name, tool_class|
+        # 2. Add LLM-facing tools
+        LLM_TOOLS.each do |name, tool_class|
           next if name == "load_canvas" # Already added
           next unless tool_class # Skip nil entries
 
@@ -57,8 +73,9 @@ module V3
       end
 
       # Execute a V3 tool by name
+      # Supports BOTH LLM tools and internal tools (for backward compat & recipes)
       def execute(name, args, user:, entity:, context: {}, progress_callback: nil)
-        tool_class = POWER_TOOLS[name]
+        tool_class = ALL_TOOLS[name]
 
         # Check if it's a memory tool
         if tool_class.nil? && memory_tool?(name)
@@ -96,17 +113,22 @@ module V3
         end
       end
 
-      # List all available tool names
+      # List all available tool names (LLM-facing only)
       def tool_names
-        names = POWER_TOOLS.keys.reject { |k| k == "load_canvas" }
+        names = LLM_TOOLS.keys.reject { |k| k == "load_canvas" }
         names += %w[load_canvas]
         names += memory_tool_names
         names
       end
 
-      # Check if a tool exists
+      # List all tool names including internal ones
+      def all_tool_names
+        ALL_TOOLS.keys + memory_tool_names
+      end
+
+      # Check if a tool exists (checks both LLM and internal)
       def tool_exists?(name)
-        POWER_TOOLS.key?(name) || memory_tool?(name)
+        ALL_TOOLS.key?(name) || memory_tool?(name)
       end
 
       private
@@ -130,8 +152,8 @@ module V3
             - 'module_manager' — View installed apps/modules
             - 'dashboard' — Main dashboard
             
-            To CREATE landing pages, websites, apps, or workflows, use platform_create instead.
-            Use load_canvas to VIEW or EDIT things that already exist.
+            To CREATE or BUILD things, use platform_do instead.
+            Use load_canvas to VIEW things that already exist.
           DESC
           parameters: {
             type: "object",
