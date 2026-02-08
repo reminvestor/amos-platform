@@ -287,15 +287,14 @@ module V3
     end
 
     def bedrock_client
-      @bedrock_client ||= begin
-        Aws::BedrockRuntime::Client.new(
-          region: ENV.fetch("AWS_REGION", "us-west-2"),
-          credentials: Aws::Credentials.new(
-            ENV.fetch("AWS_ACCESS_KEY_ID"),
-            ENV.fetch("AWS_SECRET_ACCESS_KEY")
-          )
-        )
-      end
+      # Use the same credential chain as BedrockService:
+      # env vars → ECS/EC2 instance profile → ~/.aws/credentials
+      # Do NOT hardcode credentials -- let the AWS SDK find them.
+      @bedrock_client ||= Aws::BedrockRuntime::Client.new(
+        region: ENV["AWS_REGION"] || "us-east-1",
+        http_read_timeout: 300,
+        http_open_timeout: 30
+      )
     end
   end
 end
