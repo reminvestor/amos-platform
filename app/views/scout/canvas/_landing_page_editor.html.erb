@@ -373,8 +373,9 @@
       overflow: hidden;
     }
     
-    /* Component Panel - 2-column grid like design panel */
+    /* Component Panel - HIDDEN: editing now happens through AI chat */
     .component-panel {
+      display: none !important;
       width: 200px;
       background: #1a1a2e;
       border-right: 1px solid #2d2d44;
@@ -1230,13 +1231,10 @@
       position: relative;
     }
     
+    /* Drop zone hints hidden -- editing happens through AI chat */
     .grid-col.empty-col::after,
     .drop-zone:empty::after {
-      content: '➕ Drop component here';
-      color: rgba(236, 72, 153, 0.6);
-      font-size: 0.875rem;
-      font-weight: 500;
-      pointer-events: none;
+      content: none;
     }
     
     .grid-col.empty-col:hover,

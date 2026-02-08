@@ -288,9 +288,15 @@ module V3
     def stream_progress(text)
       return unless @progress_callback
 
+      # Use the :progress type which the frontend handles via
+      # updateToolProgress → addToolThinkingStep, showing a
+      # step-by-step indicator that replaces instead of appending
       @progress_callback.call({
-        type: :status,
-        text: text
+        type: "progress",
+        tool: "platform_do",
+        message: text,
+        percentage: nil,
+        timestamp: Time.current.iso8601
       })
     rescue => e
       Rails.logger.debug "[V3::PlatformBrain] Progress callback error: #{e.message}"
