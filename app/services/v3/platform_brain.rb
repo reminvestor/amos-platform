@@ -59,6 +59,11 @@ module V3
       - Landing pages auto-create contacts when forms are submitted (built-in, no setup needed)
       - A "welcome email flow" = create email_template + create automation with trigger="contact_created" action="send_email"
 
+      IMAGE + LANDING PAGE WORKFLOW:
+      - When generating an image for a landing page, ALWAYS follow up with platform_update to insert it into the page section.
+      - Example: 1) platform_execute(action: "generate_image", inputs: { prompt: "..." }) → get image URL
+                 2) platform_update(type: "landing_page", id: X, data: { section: "hero", instruction: "Replace the hero image with this URL: [image_url]" })
+
       IMPORTANT:
       - Always use the tools. Never claim you did something without a tool call.
       - If creating multiple related objects, do them in order (template first, then automation referencing the template ID).
