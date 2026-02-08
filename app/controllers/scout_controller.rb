@@ -3315,6 +3315,13 @@ class ScoutController < ApplicationController
     # These can poison the model's understanding of how to respond
     scope = scope.where.not(content: ["Done.", "I encountered an unexpected error. Please try rephrasing your request."])
     
+    # Filter out poisoned assistant messages where tool calls were output as text
+    # (Qwen sometimes outputs "platform_do(...)" as text instead of making a real tool call)
+    # These teach the model the wrong pattern on replay
+    scope = scope.where.not(
+      "role = 'assistant' AND (content LIKE 'platform_do(%' OR content LIKE 'platform_create(%' OR content LIKE 'platform_update(%' OR content LIKE 'platform_execute(%')"
+    )
+    
     scope.oldest_first
          .last(k)
          .map do |m|
