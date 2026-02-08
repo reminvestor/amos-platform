@@ -3,7 +3,7 @@
 module V3
   # ToolRegistry - Registry of V3 tools
   #
-  # Intent Engine Architecture: The LLM sees 8 tools.
+  # Intent Engine Architecture: The LLM sees 9 tools.
   # The old CRUD tools (platform_create, platform_update, platform_execute)
   # are kept as INTERNAL_TOOLS for use by recipes and the Platform Brain,
   # but are NOT exposed to the LLM.
@@ -13,6 +13,7 @@ module V3
   #   platform_query — "read platform data" (unchanged)
   #   web_search     — search the internet for info (text results)
   #   view_web_page  — open a website in the interactive viewer (user can browse)
+  #   read_file      — read uploaded documents and knowledge base content
   #   bash           — math, computation, escape hatch
   #   browser_use    — autonomous web browsing (Amos clicks/types on sites)
   #   ask_user       — clarify with user
@@ -27,6 +28,7 @@ module V3
       "platform_query"   => V3::Tools::PlatformQueryTool,
       "web_search"       => ::Tools::WebSearchTool,
       "view_web_page"    => ::Tools::WebPageViewTool,
+      "read_file"        => V3::Tools::ReadFileTool,
       "bash"             => V3::Tools::BashTool,
       "browser_use"      => V3::Tools::BrowserUseTool,
       "ask_user"         => V3::Tools::AskUserTool,
@@ -39,7 +41,6 @@ module V3
       "platform_update"  => V3::Tools::PlatformUpdateTool,
       "platform_execute" => V3::Tools::PlatformExecuteTool,
       "discover"         => V3::Tools::DiscoverTool,
-      "read_file"        => V3::Tools::ReadFileTool,
     }.freeze
 
     # All tools (for execution -- LLM might still reference old names during transition)
