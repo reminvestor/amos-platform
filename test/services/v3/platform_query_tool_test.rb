@@ -41,8 +41,21 @@ class V3::Tools::PlatformQueryToolTest < ActiveSupport::TestCase
 
   test "query contacts returns results" do
     result = @tool.execute({ "type" => "contacts", "limit" => 5 })
-    # May succeed or fail based on data, but should not crash
     assert result.is_a?(Hash)
     assert result.key?(:success)
+  end
+
+  test "query usage returns token balance" do
+    result = @tool.execute({ "type" => "usage" })
+    assert result[:success] != false, "Should not crash: #{result[:error]}"
+    # May have no billing account, but should return structured data
+    assert result.key?(:balance) || result.key?(:status)
+  end
+
+  test "query usage also works with aliases" do
+    %w[credits tokens balance].each do |alias_type|
+      result = @tool.execute({ "type" => alias_type })
+      assert result[:success] != false, "#{alias_type} should not crash: #{result[:error]}"
+    end
   end
 end

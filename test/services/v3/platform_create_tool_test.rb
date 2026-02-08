@@ -149,4 +149,38 @@ class V3::Tools::PlatformCreateToolTest < ActiveSupport::TestCase
   test "routes app to builder" do
     assert V3::Tools::PlatformCreateTool::BUILDER_TYPES.include?("app")
   end
+
+  test "routes scheduled_task to builder" do
+    assert V3::Tools::PlatformCreateTool::BUILDER_TYPES.include?("scheduled_task")
+  end
+
+  # ══════════════════════════════════════════════════════════════
+  # SCHEDULED TASK CREATION
+  # ══════════════════════════════════════════════════════════════
+
+  test "creates scheduled task" do
+    result = @tool.execute({
+      "type" => "scheduled_task",
+      "data" => { "name" => "E2E Test Task", "prompt" => "Generate a weekly report", "schedule" => "weekly" }
+    })
+
+    assert result[:success] != false, "Should succeed: #{result[:error]}"
+    assert result[:task_id].present?
+
+    task = ScheduledAgentTask.find_by(id: result[:task_id])
+    assert task, "Task should exist"
+    assert_equal "E2E Test Task", task.name
+    assert_equal "active", task.status
+  ensure
+    ScheduledAgentTask.where(entity: @entity, name: "E2E Test Task").destroy_all
+  end
+
+  test "scheduled task requires name and prompt" do
+    result = @tool.execute({
+      "type" => "scheduled_task",
+      "data" => { "schedule" => "daily" }
+    })
+    assert_equal false, result[:success]
+    assert_match /name/i, result[:error]
+  end
 end

@@ -46,4 +46,49 @@ class V3::Tools::PlatformExecuteToolTest < ActiveSupport::TestCase
     assert_equal false, result[:success]
     assert_match /Missing.*landing_page_id/i, result[:error]
   end
+
+  # ══════════════════════════════════════════════════════════════
+  # DELETE
+  # ══════════════════════════════════════════════════════════════
+
+  test "delete requires type and id" do
+    result = @tool.execute({ "action" => "delete" })
+    assert_equal false, result[:success]
+    assert_match /type/i, result[:error]
+  end
+
+  test "delete removes a contact" do
+    contact = Contact.create!(entity: @entity, user: @user, first_name: "Del", last_name: "Test", email: "del@test.com")
+    result = @tool.execute({ "action" => "delete", "type" => "contact", "id" => contact.id })
+    assert result[:success] != false, "Should succeed: #{result[:error]}"
+    refute Contact.exists?(id: contact.id)
+  end
+
+  test "delete rejects unsupported types" do
+    result = @tool.execute({ "action" => "delete", "type" => "user", "id" => 1 })
+    assert_equal false, result[:success]
+    assert_match /Cannot delete/i, result[:error]
+  end
+
+  # ══════════════════════════════════════════════════════════════
+  # GENERATE IMAGE
+  # ══════════════════════════════════════════════════════════════
+
+  test "generate_image requires prompt" do
+    result = @tool.execute({ "action" => "generate_image" })
+    assert_equal false, result[:success]
+    assert_match /prompt/i, result[:error]
+  end
+
+  # ══════════════════════════════════════════════════════════════
+  # AVAILABLE ACTIONS
+  # ══════════════════════════════════════════════════════════════
+
+  test "available_actions includes all actions" do
+    result = @tool.execute({ "action" => "nonexistent" })
+    actions = result[:available_actions]
+    %w[integration send_campaign generate_file generate_image delete].each do |a|
+      assert actions.include?(a), "Should include action: #{a}"
+    end
+  end
 end
