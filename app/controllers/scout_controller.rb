@@ -1457,9 +1457,21 @@ class ScoutController < ApplicationController
         )
         canvas_title = "#{@design&.dig(:name) || 'Module'} - Design Preview"
       when "automation_dashboard"
+        # Self-loading: query automations for this entity
+        automations = AutomationCode.where(entity: current_entity).order(created_at: :desc)
+        auto_data = {
+          automations: automations.map { |a| { id: a.id, name: a.name, trigger_type: a.trigger_type, status: a.status, execution_count: a.execution_count, success_count: a.success_count, error_count: a.error_count, last_executed_at: a.last_executed_at, avg_execution_time_ms: a.avg_execution_time_ms, created_at: a.created_at } },
+          stats: {
+            total_automations: automations.count,
+            active_automations: automations.where(status: "active").count,
+            total_executions_24h: automations.sum(:execution_count),
+            success_rate: automations.sum(:execution_count) > 0 ? (automations.sum(:success_count).to_f / automations.sum(:execution_count) * 100).round(1) : 0,
+            avg_execution_time_ms: automations.where.not(avg_execution_time_ms: nil).average(:avg_execution_time_ms)&.round || 0
+          }
+        }
         canvas_content = render_to_string(
           partial: "scout/canvas/automation_dashboard",
-          locals: { canvas_data: canvas_data },
+          locals: { canvas_data: auto_data },
           formats: [:html]
         )
         canvas_title = "Automation Dashboard"
