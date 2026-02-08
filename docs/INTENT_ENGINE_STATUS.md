@@ -6,7 +6,10 @@ Two-tier agent system:
 - **Amos (Qwen)** = user-facing translator with 9 LLM tools
 - **Platform Brain (Claude Sonnet)** = backend executor with platform CRUD + external tools
 
-## Current Branch: `v3/intent-engine-architecture` (merged to dev)
+## Branches
+- `dev` — current working branch (merged, use this going forward)
+- `v3/intent-engine-architecture` — intent engine work (merged to dev)
+- `v3/simplified-agent-core` — V3 core rewrite that this was branched from (also merged to dev)
 
 ## What's Working
 - Intent Engine routing (Amos → IntentEngine → PlatformBrain)
@@ -48,12 +51,43 @@ Two-tier agent system:
 - Clicking an automation in the dashboard refreshes instead of showing detail
 - Need: automation detail view canvas or modal
 
-### 2. Integrations as Subset of Automations
-- User asked: "create automation when new Stripe customer → create contact"
-- Brain created wrong type (AutomationCode with webhook trigger, create_activity action)
-- Should use: IntegrationSyncConfig (type: "sync") for this pattern
-- **Design decision**: Unify integrations and automations under one concept
-- The Pi strategy: automations ARE the abstraction, integrations are just triggers/actions
+### 2. Integrations + Automations Unification (Major Design Work)
+
+**Problem**: The platform has two separate systems that confuse both users and the LLM:
+- **Automations** (`AutomationCode`) — internal triggers (contact_created, form_submit, schedule)
+- **Integration Syncs** (`IntegrationSyncConfig`) — external data syncs (Stripe customers → Contacts)
+
+When user says "when a new Stripe customer is created, create a contact," the Brain doesn't know which system to use. It created an AutomationCode with webhook trigger and create_activity action — which is wrong.
+
+**Design Direction (Pi strategy)**: Automations should be THE single abstraction. An integration is just a trigger source or action target within an automation. The user shouldn't think about "syncs" vs "automations" — they should just say what they want and the platform handles it.
+
+**What exists today**:
+- `AutomationCode` model — trigger_type (record_created, form_submit, webhook, schedule, etc.) + code
+- `AutomationActionRegistry` — generates code for actions (send_email, update_field, etc.)
+- `IntegrationSyncConfig` model — maps external data to internal models
+- `AutomationBridge` service — fires automations when records are created/updated
+- `AutomationTriggerJob` — background execution of automation code
+- `Modules::AutomationBridge` — connects record events to automation triggers
+- Webhook infrastructure exists but isn't fully wired for Stripe customer events
+
+**What needs to happen**:
+1. Add integration triggers to AutomationActionRegistry (stripe.customer_created → create_contact)
+2. Wire Stripe webhooks to the AutomationBridge so they fire automations
+3. Add "integration" actions to the registry (pull_stripe_data, sync_hubspot_contacts)
+4. Update PlatformBrain system prompt to understand this unified model
+5. Ensure PlatformCreateTool's `build_automation` handles integration triggers correctly
+6. Build or fix the webhook receiver endpoint for Stripe events
+7. Test: user says "sync Stripe customers" → Brain creates correct automation
+
+**Key files**:
+- `app/services/automation_action_registry.rb` — action templates
+- `app/services/automation_code_executor.rb` — runs automation code
+- `app/services/modules/automation_bridge.rb` — event → automation dispatcher
+- `app/models/automation_code.rb` — the automation model
+- `app/models/integration_sync_config.rb` — the sync model (may be merged into automations)
+- `app/jobs/automation_trigger_job.rb` — background execution
+- `app/services/v3/tools/platform_create_tool.rb` — build_automation, build_sync methods
+- `app/controllers/api/v1/webhooks_controller.rb` — webhook receiver (check if exists)
 
 ### 3. Interactive Iframe Viewer
 - Picture-in-picture bug when streaming web pages (pre-existing)
