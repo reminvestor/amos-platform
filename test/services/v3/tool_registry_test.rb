@@ -7,12 +7,12 @@ class V3::ToolRegistryTest < ActiveSupport::TestCase
   # LLM TOOL SET
   # ══════════════════════════════════════════════════════════════
 
-  test "LLM_TOOLS contains exactly 6 tools" do
-    assert_equal 6, V3::ToolRegistry::LLM_TOOLS.keys.length
+  test "LLM_TOOLS contains exactly 7 tools" do
+    assert_equal 7, V3::ToolRegistry::LLM_TOOLS.keys.length
   end
 
   test "LLM_TOOLS has the correct tool set" do
-    expected = %w[platform_do platform_query web_search bash ask_user load_canvas]
+    expected = %w[platform_do platform_query web_search bash browser_use ask_user load_canvas]
     assert_equal expected.sort, V3::ToolRegistry::LLM_TOOLS.keys.sort
   end
 
@@ -53,7 +53,6 @@ class V3::ToolRegistryTest < ActiveSupport::TestCase
     refute_includes tool_names, "platform_execute"
     refute_includes tool_names, "discover"
     refute_includes tool_names, "read_file"
-    refute_includes tool_names, "browser_use"
   end
 
   # ══════════════════════════════════════════════════════════════

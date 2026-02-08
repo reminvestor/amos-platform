@@ -3,31 +3,35 @@
 module V3
   # ToolRegistry - Registry of V3 tools
   #
-  # Intent Engine Architecture: The LLM sees 6 tools.
+  # Intent Engine Architecture: The LLM sees 7 tools.
   # The old CRUD tools (platform_create, platform_update, platform_execute)
-  # are kept as INTERNAL_TOOLS for use by recipes and the intent engine,
+  # are kept as INTERNAL_TOOLS for use by recipes and the Platform Brain,
   # but are NOT exposed to the LLM.
   #
-  # LLM-facing tools:
-  #   platform_do    — "do something" (routes through IntentEngine)
-  #   platform_query — "read something" (unchanged)
+  # LLM-facing tools (Amos's toolkit):
+  #   platform_do    — "do something on the platform" (routes through IntentEngine → Platform Brain)
+  #   platform_query — "read platform data" (unchanged)
   #   web_search     — external internet knowledge
   #   bash           — math, computation, escape hatch
+  #   browser_use    — interactive web browsing, screenshots, form filling
   #   ask_user       — clarify with user
   #   load_canvas    — show things to the user
   #
   class ToolRegistry
     # Tools exposed to the LLM (what the model sees and can call)
+    # These are Amos's tools for interacting with the world OUTSIDE the platform,
+    # plus platform_do (which delegates to the Platform Brain) and platform_query.
     LLM_TOOLS = {
       "platform_do"      => V3::Tools::PlatformDoTool,
       "platform_query"   => V3::Tools::PlatformQueryTool,
       "web_search"       => ::Tools::WebSearchTool,
       "bash"             => V3::Tools::BashTool,
+      "browser_use"      => V3::Tools::BrowserUseTool,
       "ask_user"         => V3::Tools::AskUserTool,
       "load_canvas"      => nil, # Special: built inline in get_bedrock_tools
     }.freeze
 
-    # Internal tools: NOT exposed to LLM, but available for recipes/engine
+    # Internal tools: NOT exposed to LLM, but available for recipes/engine/Brain
     INTERNAL_TOOLS = {
       "platform_create"  => V3::Tools::PlatformCreateTool,
       "platform_update"  => V3::Tools::PlatformUpdateTool,
@@ -35,7 +39,6 @@ module V3
       "discover"         => V3::Tools::DiscoverTool,
       "read_file"        => V3::Tools::ReadFileTool,
       "view_web_page"    => ::Tools::WebPageViewTool,
-      "browser_use"      => V3::Tools::BrowserUseTool,
     }.freeze
 
     # All tools (for execution -- LLM might still reference old names during transition)
