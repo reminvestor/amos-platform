@@ -255,26 +255,9 @@ export default class extends Controller {
           this.loadScoutCanvas(canvasState.type, canvasState.data || {})
         }, 500)
       } else {
-        // No saved state for this space
-        // Personal space: default to conversation mode (no canvas)
-        // Design space: load template_library as the default creative starting point
-        // Work/Team space: load dashboard as the default home experience
-        console.log(`🏠 No saved state for ${currentSpace}, applying defaults...`)
-        
-        if (currentSpace === 'personal') {
-          console.log(`💬 Personal space - starting in conversation mode (no canvas)`)
-          // Stay in conversation mode - user can click Home to see dashboard if they want
-        } else if (currentSpace === 'design') {
-          console.log(`🎨 Design space - loading template library as home`)
-          setTimeout(() => {
-            this.loadScoutCanvas('template_library', {})
-          }, 300) // Faster load for design default
-        } else {
-          console.log(`🏠 Operations/other space - loading dashboard as home`)
-          setTimeout(() => {
-            this.loadScoutCanvas('default', {})
-          }, 500)
-        }
+        // No saved state — all spaces default to conversation mode (no canvas)
+        // Users can open canvases on demand via nav or by asking Amos
+        console.log(`💬 No saved state for ${currentSpace} - starting in conversation mode (no canvas)`)
       }
     } catch (e) {
       console.log("Could not restore canvas state:", e.message)
