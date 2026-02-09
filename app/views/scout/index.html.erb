@@ -1910,9 +1910,9 @@ document.addEventListener('turbo:load', function() {
         // Add a fresh start message
         addMessage("🔄 **Fresh Start!**\n\nI've cleared our active context. I still remember everything from our past conversations - just ask if you need to recall something!\n\nWhat would you like to work on?", 'assistant');
         
-        // Reset canvas to default
-        if (window.scoutLoadCanvas) {
-          window.scoutLoadCanvas('default', {});
+        // Drop the canvas — go to clean conversation mode
+        if (window.scoutController) {
+          window.scoutController.goToConversation();
         }
       })
       .catch(error => {
