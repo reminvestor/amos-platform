@@ -198,7 +198,7 @@ class IntegrationSyncConfig < ApplicationRecord
         entity: entity
       )
 
-      if execution.completed?
+      if execution.success?
         data = execution.normalized_response || execution.raw_response
         return { success: true, records: extract_records(data) }
       else

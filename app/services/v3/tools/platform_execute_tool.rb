@@ -188,7 +188,7 @@ module V3
             entity: entity
           )
 
-          if execution.completed?
+          if execution.success?
             return success_response(
               data: execution.normalized_response || execution.raw_response,
               via: "action",
