@@ -69,15 +69,23 @@ class WebsitePage < ApplicationRecord
   # CONTENT
   # ============================================
   
-  def render(data: {})
-    if use_website_layout?
-      website.render_page(self, data: data)
+  def render(data: {}, params: {})
+    # Render content through Liquid if this page has module data binding
+    rendered_content = if liquid_template?
+      render_liquid(params: params)
     else
-      standalone_render(data: data)
+      html_content
+    end
+
+    if use_website_layout?
+      website.render_page(self, data: data, rendered_content: rendered_content)
+    else
+      standalone_render(data: data, rendered_content: rendered_content)
     end
   end
   
-  def standalone_render(data: {})
+  def standalone_render(data: {}, rendered_content: nil)
+    content = rendered_content || html_content
     <<~HTML
       <!DOCTYPE html>
       <html lang="en">
@@ -89,12 +97,24 @@ class WebsitePage < ApplicationRecord
       </head>
       <body>
         #{custom_header_html}
-        <main>#{html_content}</main>
+        <main>#{content}</main>
         #{custom_footer_html}
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
       </body>
       </html>
     HTML
+  end
+  
+  # Check if this page uses Liquid templates (contains Liquid tags or variables)
+  def liquid_template?
+    return false if html_content.blank?
+    html_content.include?('{{') || html_content.include?('{%')
+  end
+  
+  # Render the page content through the Liquid template engine
+  def render_liquid(params: {})
+    renderer = Modules::LiquidTemplateRenderer.new(entity: entity)
+    renderer.render_page(self, params: params)
   end
   
   # ============================================
@@ -262,6 +282,37 @@ class WebsitePage < ApplicationRecord
           </div>
         </section>
       HTML
+    when 'module_canvas'
+      # Embed a published module canvas into a website page
+      canvas = ModuleCanvas.find_by(id: data['canvas_id'])
+      if canvas
+        output = ""
+        output += "<style>#{canvas.css_content}</style>\n" if canvas.css_content.present?
+        output += canvas.render_html(data)
+        output += "\n<script>#{canvas.js_content}</script>" if canvas.js_content.present?
+        "<section class='py-4'><div class='container'>#{output}</div></section>"
+      else
+        "<div class='content-block text-muted text-center py-3'>Canvas not found</div>"
+      end
+    when 'module_data'
+      # Render module data using a Liquid template inline
+      template = data['template'] || ''
+      if template.present? && entity.present?
+        app_mod = AppModule.find_by(id: data['module_id'], entity_id: entity_id)
+        if app_mod
+          renderer = Modules::LiquidTemplateRenderer.new(entity: entity)
+          records = app_mod.dynamic_model_class&.where(entity_id: entity_id)&.limit(data['limit'] || 10)&.to_a || []
+          collection_name = app_mod.slug.pluralize
+          renderer.render(
+            template_string: template,
+            module_data: { collection_name => records.map { |r| Modules::ModuleRecordDrop.new(r) } }
+          )
+        else
+          ''
+        end
+      else
+        ''
+      end
     else
       "<div class='content-block' data-type='#{type}'>#{data.to_json}</div>"
     end

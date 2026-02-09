@@ -1,0 +1,60 @@
+# Integration action fixtures for testing
+stripe_list_customers_action:
+  integration: stripe
+  integration_operation: stripe_list_customers
+  action_name: "list_customers"
+  slug: "stripe.list_customers"
+  description: "List all Stripe customers"
+  category: "crud"
+  status: 2
+  input_schema:
+    - name: "limit"
+      type: "integer"
+      required: false
+      description: "Max customers to return"
+    - name: "email"
+      type: "string"
+      required: false
+      description: "Filter by email"
+  sample_input:
+    limit: 10
+  usage_count: 15
+  success_count: 14
+  error_count: 1
+
+stripe_create_charge_action:
+  integration: stripe
+  integration_operation: stripe_create_charge
+  action_name: "create_charge"
+  slug: "stripe.create_charge"
+  description: "Create a new charge in Stripe"
+  category: "crud"
+  status: 2
+  input_schema:
+    - name: "amount"
+      type: "number"
+      required: true
+      description: "Charge amount in dollars"
+      min: 0
+    - name: "currency"
+      type: "string"
+      required: true
+      description: "3-letter currency code"
+    - name: "customer"
+      type: "string"
+      required: false
+      description: "Customer ID"
+  sample_input:
+    amount: 29.99
+    currency: "usd"
+  mapping_code: |
+    def map(inputs)
+      {
+        amount: to_cents(inputs[:amount]),
+        currency: downcase(inputs[:currency]),
+        customer: inputs[:customer]
+      }.compact
+    end
+  usage_count: 5
+  success_count: 5
+  error_count: 0

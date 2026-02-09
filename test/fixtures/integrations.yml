@@ -4,21 +4,30 @@ stripe:
   slug: stripe
   category: payment
   auth_type: 0
+  api_base_url: "https://api.stripe.com/v1"
+  documentation_url: "https://stripe.com/docs/api"
   is_active: true
   is_verified: true
+  description: "Payment processing platform"
 
 mailgun:
   name: Mailgun
   slug: mailgun
-  category: email
+  category: communication
   auth_type: 0
+  api_base_url: "https://api.mailgun.net/v3"
+  documentation_url: "https://documentation.mailgun.com"
   is_active: true
   is_verified: true
+  description: "Email delivery service"
 
 quickbooks:
   name: QuickBooks
   slug: quickbooks
   category: accounting
   auth_type: 1
+  api_base_url: "https://quickbooks.api.intuit.com/v3"
+  documentation_url: "https://developer.intuit.com/app/developer/qbo/docs"
   is_active: true
   is_verified: true
+  description: "Accounting and invoicing"

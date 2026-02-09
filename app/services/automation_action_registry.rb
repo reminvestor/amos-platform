@@ -41,6 +41,66 @@ class AutomationActionRegistry
       description: "Send a notification to the record owner or a specific user",
       required_config: %w[message],
       optional_config: %w[user_id],
+    },
+    "create_contact" => {
+      description: "Create a contact from integration/webhook data (e.g., Stripe customer → Contact)",
+      required_config: %w[field_mappings],
+      optional_config: %w[integration source],
+    },
+    "sync_integration_data" => {
+      description: "Pull data from a connected integration and sync to platform records",
+      required_config: %w[integration resource_type],
+      optional_config: %w[field_mappings target_type],
+    },
+    "update_module_record" => {
+      description: "Update a field on a dynamic module record (any app module type)",
+      required_config: %w[module_slug field value],
+      optional_config: %w[model_name],
+    },
+    "create_module_record" => {
+      description: "Create a new record in a dynamic module (any app module type)",
+      required_config: %w[module_slug field_values],
+      optional_config: %w[model_name],
+    },
+    "notify_on_module_event" => {
+      description: "Send a notification when a module record changes status or is created",
+      required_config: %w[module_slug message],
+      optional_config: %w[user_id event_type],
+    }
+  }.freeze
+
+  # Integration-aware trigger types that map external events to automations
+  INTEGRATION_TRIGGERS = {
+    "stripe.customer_created"    => { trigger_type: "webhook", event_filter: "customer.created", integration: "stripe" },
+    "stripe.payment_received"    => { trigger_type: "webhook", event_filter: "invoice.payment_succeeded", integration: "stripe" },
+    "stripe.subscription_created"=> { trigger_type: "webhook", event_filter: "customer.subscription.created", integration: "stripe" },
+    "stripe.charge_succeeded"    => { trigger_type: "webhook", event_filter: "charge.succeeded", integration: "stripe" },
+    "hubspot.contact_created"    => { trigger_type: "webhook", event_filter: "contact.creation", integration: "hubspot" },
+    "hubspot.deal_created"       => { trigger_type: "webhook", event_filter: "deal.creation", integration: "hubspot" },
+    "shopify.order_created"      => { trigger_type: "webhook", event_filter: "orders/create", integration: "shopify" },
+    "shopify.customer_created"   => { trigger_type: "webhook", event_filter: "customers/create", integration: "shopify" },
+    "quickbooks.customer_created"=> { trigger_type: "webhook", event_filter: "Customer.Create", integration: "quickbooks" },
+    "quickbooks.invoice_created" => { trigger_type: "webhook", event_filter: "Invoice.Create", integration: "quickbooks" },
+  }.freeze
+
+  # Default field mappings for common integration syncs
+  DEFAULT_FIELD_MAPPINGS = {
+    ["stripe", "customers"] => {
+      "name" => "full_name", "email" => "email", "phone" => "phone",
+      "id" => "metadata.stripe_id", "created" => "metadata.stripe_created_at"
+    },
+    ["hubspot", "contacts"] => {
+      "firstname" => "first_name", "lastname" => "last_name",
+      "email" => "email", "phone" => "phone", "company" => "metadata.company"
+    },
+    ["shopify", "customers"] => {
+      "first_name" => "first_name", "last_name" => "last_name",
+      "email" => "email", "phone" => "phone"
+    },
+    ["quickbooks", "customers"] => {
+      "DisplayName" => "full_name",
+      "PrimaryEmailAddr.Address" => "email",
+      "PrimaryPhone.FreeFormNumber" => "phone"
     }
   }.freeze
 
@@ -69,7 +129,28 @@ class AutomationActionRegistry
         generate_call_webhook_code(action_config, name)
       when "notify_user"
         generate_notify_user_code(action_config, name)
+      when "create_contact"
+        generate_create_contact_code(action_config, name)
+      when "sync_integration_data"
+        generate_sync_integration_code(action_config, name)
+      when "update_module_record"
+        generate_update_module_record_code(action_config, name)
+      when "create_module_record"
+        generate_create_module_record_code(action_config, name)
+      when "notify_on_module_event"
+        generate_notify_on_module_event_code(action_config, name)
       end
+    end
+
+    # Resolve an integration trigger name to trigger config
+    # e.g., "stripe.customer_created" → { trigger_type: "webhook", event_filter: "customer.created", integration: "stripe" }
+    def resolve_integration_trigger(trigger_name)
+      INTEGRATION_TRIGGERS[trigger_name.to_s]
+    end
+
+    # Get default field mappings for an integration + resource type
+    def default_field_mappings(integration, resource_type)
+      DEFAULT_FIELD_MAPPINGS[[integration.to_s, resource_type.to_s]] || {}
     end
 
     # List available actions for the AI
@@ -80,6 +161,17 @@ class AutomationActionRegistry
           description: config[:description],
           required_config: config[:required_config],
           optional_config: config[:optional_config]
+        }
+      end
+    end
+
+    # List available integration triggers
+    def available_integration_triggers
+      INTEGRATION_TRIGGERS.map do |name, config|
+        {
+          trigger: name,
+          integration: config[:integration],
+          event_filter: config[:event_filter]
         }
       end
     end
@@ -253,6 +345,232 @@ class AutomationActionRegistry
           )
           
           { success: true, notified_user_id: user.id }
+        end
+      RUBY
+    end
+
+    def generate_create_contact_code(config, name)
+      field_mappings = config["field_mappings"] || config[:field_mappings] || {}
+      integration = config["integration"] || config[:integration] || "unknown"
+      source = config["source"] || config[:source] || "webhook"
+
+      # Build the field mapping logic as Ruby code
+      mapping_lines = field_mappings.map do |source_field, target_field|
+        if target_field.start_with?("metadata.")
+          meta_key = target_field.sub("metadata.", "")
+          "          metadata[\"#{meta_key}\"] = extract_field(payload, \"#{source_field}\")"
+        else
+          "          attrs[\"#{target_field}\"] = extract_field(payload, \"#{source_field}\")"
+        end
+      end.join("\n")
+
+      <<~RUBY
+        # Automation: #{name}
+        # Action: Create contact from #{integration} #{source} data
+        def execute(trigger_data)
+          entity_id = trigger_data[:entity_id] || trigger_data["entity_id"]
+          payload = trigger_data[:payload] || trigger_data["payload"] || trigger_data[:record] || trigger_data["record"] || {}
+          
+          # Handle nested event data (e.g., Stripe wraps in data.object)
+          payload = payload["data"]["object"] if payload.is_a?(Hash) && payload.dig("data", "object")
+          
+          attrs = {}
+          metadata = {}
+          
+#{mapping_lines}
+          
+          # Skip if no email found
+          return { success: false, error: "No email in payload" } if attrs["email"].blank?
+          
+          # Upsert: find existing contact by email or create new
+          contact = Contact.find_or_initialize_by(entity_id: entity_id, email: attrs["email"])
+          was_new = contact.new_record?
+          
+          attrs.each do |key, value|
+            contact.send(:"#\{key\}=", value) if contact.respond_to?(:"#\{key\}=") && value.present?
+          end
+          
+          contact.lifecycle_stage ||= "lead"
+          contact.status ||= "active"
+          contact.source ||= "#{integration}"
+          contact.metadata = (contact.metadata || {}).merge(metadata).merge(
+            "synced_from" => "#{integration}",
+            "synced_at" => Time.current.iso8601
+          )
+          
+          contact.save!
+          
+          { success: true, contact_id: contact.id, email: contact.email, created: was_new, source: "#{integration}" }
+        end
+        
+        def extract_field(data, field_path)
+          parts = field_path.to_s.split(".")
+          result = data
+          parts.each { |p| result = result.is_a?(Hash) ? (result[p] || result[p.to_sym]) : nil }
+          result
+        end
+      RUBY
+    end
+
+    def generate_update_module_record_code(config, name)
+      module_slug = config["module_slug"] || config[:module_slug]
+      field = config["field"] || config[:field]
+      value = config["value"] || config[:value]
+      model_name = config["model_name"] || config[:model_name] || module_slug.classify
+
+      <<~RUBY
+        # Automation: #{name}
+        # Action: Update field on dynamic module record (#{module_slug})
+        def execute(trigger_data)
+          record = trigger_data[:record] || trigger_data["record"] || {}
+          record_id = record["id"] || record[:id]
+          entity_id = trigger_data[:entity_id] || trigger_data["entity_id"]
+          
+          # Load the dynamic module model
+          app_module = AppModule.find_by(slug: "#{module_slug}", entity_id: entity_id)
+          return { success: false, error: "Module '#{module_slug}' not found" } unless app_module
+          
+          model_class = Modules::DynamicModelLoader.instance.get_model(app_module, "#{model_name}")
+          return { success: false, error: "Model class not loaded" } unless model_class
+          
+          target = model_class.find_by(id: record_id, entity_id: entity_id)
+          return { success: false, error: "Record not found" } unless target
+          
+          target.update!("#{field}" => "#{value}")
+          
+          { success: true, record_id: target.id, field: "#{field}", value: "#{value}" }
+        rescue => e
+          { success: false, error: e.message }
+        end
+      RUBY
+    end
+
+    def generate_create_module_record_code(config, name)
+      module_slug = config["module_slug"] || config[:module_slug]
+      field_values = config["field_values"] || config[:field_values] || {}
+      model_name = config["model_name"] || config[:model_name] || module_slug.classify
+      values_json = field_values.to_json
+
+      <<~RUBY
+        # Automation: #{name}
+        # Action: Create new record in dynamic module (#{module_slug})
+        def execute(trigger_data)
+          entity_id = trigger_data[:entity_id] || trigger_data["entity_id"]
+          payload = trigger_data[:payload] || trigger_data["payload"] || trigger_data[:record] || {}
+          
+          app_module = AppModule.find_by(slug: "#{module_slug}", entity_id: entity_id)
+          return { success: false, error: "Module '#{module_slug}' not found" } unless app_module
+          
+          model_class = Modules::DynamicModelLoader.instance.get_model(app_module, "#{model_name}")
+          return { success: false, error: "Model class not loaded" } unless model_class
+          
+          # Merge predefined field values with any trigger payload data
+          attrs = JSON.parse('#{values_json}')
+          
+          # Allow trigger payload to override/supplement field values
+          payload.each do |key, value|
+            attrs[key.to_s] = value if model_class.column_names.include?(key.to_s)
+          end
+          
+          attrs["entity_id"] = entity_id
+          
+          record = model_class.create!(attrs)
+          
+          { success: true, record_id: record.id, module: "#{module_slug}" }
+        rescue => e
+          { success: false, error: e.message }
+        end
+      RUBY
+    end
+
+    def generate_notify_on_module_event_code(config, name)
+      module_slug = config["module_slug"] || config[:module_slug]
+      message = config["message"] || config[:message]
+      user_id = config["user_id"] || config[:user_id]
+      event_type = config["event_type"] || config[:event_type] || "module_event"
+
+      <<~RUBY
+        # Automation: #{name}
+        # Action: Notify on module event (#{module_slug})
+        def execute(trigger_data)
+          entity_id = trigger_data[:entity_id] || trigger_data["entity_id"]
+          record = trigger_data[:record] || trigger_data["record"] || {}
+          event = trigger_data[:event] || trigger_data["event"] || "#{event_type}"
+          
+          user = #{user_id ? "User.find_by(id: #{user_id})" : "User.joins(:entity_users).where(entity_users: { entity_id: entity_id, role: ['admin', 'owner'] }).first"}
+          return { success: false, error: "No user to notify" } unless user
+          
+          # Interpolate record data into message
+          message = "#{message}"
+          record.each do |key, value|
+            message = message.gsub("\\\#{" + key.to_s + "}", value.to_s)
+          end if record.is_a?(Hash)
+          
+          AgentWorkItem.create!(
+            entity_id: entity_id,
+            user: user,
+            work_type: 'automation_notification',
+            title: "#{module_slug.titleize}: " + event.to_s.humanize,
+            summary: message,
+            priority: 'normal',
+            metadata: { automation: "#{name}", module: "#{module_slug}", event: event }
+          )
+          
+          { success: true, notified_user_id: user.id, module: "#{module_slug}" }
+        end
+      RUBY
+    end
+
+    def generate_sync_integration_code(config, name)
+      integration = config["integration"] || config[:integration]
+      resource_type = config["resource_type"] || config[:resource_type]
+      target_type = config["target_type"] || config[:target_type] || "Contact"
+      field_mappings = config["field_mappings"] || config[:field_mappings] || {}
+
+      # Use default mappings if none provided
+      if field_mappings.empty?
+        defaults = DEFAULT_FIELD_MAPPINGS[[integration.to_s, resource_type.to_s]]
+        field_mappings = defaults if defaults
+      end
+
+      mapping_json = field_mappings.to_json
+
+      <<~RUBY
+        # Automation: #{name}
+        # Action: Sync #{integration} #{resource_type} → #{target_type}
+        def execute(trigger_data)
+          entity_id = trigger_data[:entity_id] || trigger_data["entity_id"]
+          
+          # Find the integration connection
+          connection = Connection.joins(:integration)
+            .where(integrations: { slug: "#{integration}" }, entity_id: entity_id)
+            .where.not(status: :disconnected)
+            .first
+          
+          return { success: false, error: "No active #{integration} connection" } unless connection
+          
+          # Execute the sync via IntegrationSyncService
+          field_mappings = JSON.parse('#{mapping_json}')
+          
+          sync_config = IntegrationSyncConfig.find_or_create_by!(
+            entity_id: entity_id,
+            connection: connection,
+            resource_type: "#{resource_type}",
+            target_type: "#{target_type}"
+          ) do |config|
+            config.field_mappings = field_mappings
+            config.sync_direction = "inbound"
+            config.sync_mode = "incremental"
+            config.conflict_resolution = "external_wins"
+            config.schedule_type = "manual"
+            config.enabled = true
+          end
+          
+          result = sync_config.execute_sync!(user: nil)
+          
+          { success: true, sync_id: sync_config.id, records_synced: result[:records_synced] || 0 }
+        rescue => e
+          { success: false, error: e.message }
         end
       RUBY
     end

@@ -171,7 +171,7 @@ module Benchmarks
         expected_fields: { first_name: 'BOB', email: 'bob.test@benchmark.com' },
         cleanup: -> (runner) { Contact.where(email: 'bob.test@benchmark.com').destroy_all },
         max_latency_ms: 15_000
-      }
+      },
       # NEW: Create email template and verify
       {
         id: 'b1_template_001',

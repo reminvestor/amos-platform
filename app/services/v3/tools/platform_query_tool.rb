@@ -33,7 +33,14 @@ module V3
             - platform_query(type: "schema", object: "contacts")
             - platform_query(type: "stats")
             - platform_query(type: "integrations")
+            - platform_query(type: "integration_operations", integration: "stripe")
+            - platform_query(type: "integration_actions", integration: "stripe", search: "customers")
             - platform_query(type: "documents", search: "contract terms")
+            
+            Custom app data (after building an app):
+            - platform_query(type: "tasks", filters: { status: "in_progress" })
+            - platform_query(type: "products", search: "widget")
+            - platform_query(type: "schema") — lists ALL types including custom app models
           DESC
           category: "v3_core",
           input_schema: {
@@ -41,7 +48,7 @@ module V3
             properties: {
               type: {
                 type: "string",
-                description: "Object type to query (e.g., 'contacts', 'campaigns', 'landing_pages', 'schema', 'stats', 'integrations')"
+                description: "Object type to query (e.g., 'contacts', 'campaigns', 'landing_pages', 'schema', 'stats', 'integrations', 'integration_operations', 'integration_actions')"
               },
               id: {
                 type: ["string", "integer"],
@@ -91,6 +98,10 @@ module V3
           query_stats
         when "integrations"
           query_integrations(args)
+        when "integration_operations"
+          query_integration_operations(args)
+        when "integration_actions"
+          query_integration_actions(args)
         when "documents", "document"
           query_documents(args)
         when "usage", "credits", "tokens", "balance"
@@ -109,28 +120,57 @@ module V3
         object = get_arg(args, :object)
 
         if object.blank?
-          # List all available object types
+          # List all available object types (includes dynamic modules)
           types = ScoutDataRegistry.available_object_types(entity)
           type_info = types.map do |t|
             config = ScoutDataRegistry.object_config(t, entity)
-            {
+            info = {
               type: t,
               description: config&.dig(:description),
               creatable: config&.dig(:creatable) || false
             }
+            # Tag dynamic module types so the Brain knows they're user-built apps
+            info[:dynamic] = true if config&.dig(:dynamic)
+            info[:module_slug] = config[:module_slug] if config&.dig(:module_slug)
+            info
           end.compact
+
+          # Separate built-in and dynamic types for clarity
+          built_in = type_info.reject { |t| t[:dynamic] }
+          dynamic = type_info.select { |t| t[:dynamic] }
 
           success_response(
             available_types: type_info,
+            built_in_types: built_in.map { |t| t[:type] },
+            module_types: dynamic.map { |t| { type: t[:type], description: t[:description], module_slug: t[:module_slug] } },
             count: type_info.length,
-            message: "#{type_info.length} object types available. Query any type with platform_query(type: 'typename')."
+            message: "#{type_info.length} object types available (#{built_in.length} built-in, #{dynamic.length} from custom apps). Query any type with platform_query(type: 'typename')."
           )
         else
           # Get schema for specific object type
           config = ScoutDataRegistry.object_config(object, entity)
+
+          # If not found in registry, try dynamic module resolution
+          if config.nil?
+            model_class = resolve_dynamic_model(object)
+            if model_class
+              fields = model_class.columns.map { |c| { name: c.name, type: c.type.to_s } }
+              fields.reject! { |f| %w[id entity_id created_at updated_at].include?(f[:name]) }
+              return success_response(
+                object_type: object,
+                description: "Dynamic module: #{object.titleize}",
+                fields: fields,
+                queryable_fields: model_class.column_names,
+                filterable_fields: model_class.column_names,
+                creatable: true,
+                dynamic: true
+              )
+            end
+          end
+
           return error_response("Unknown object type: #{object}") unless config
 
-          success_response(
+          response = {
             object_type: object,
             description: config[:description],
             queryable_fields: config[:queryable_fields],
@@ -139,7 +179,11 @@ module V3
             relationships: config[:relationships],
             creatable: config[:creatable] || false,
             creation_schema: config[:creation_schema]
-          )
+          }
+          response[:dynamic] = true if config[:dynamic]
+          response[:module_slug] = config[:module_slug] if config[:module_slug]
+
+          success_response(response)
         end
       end
 
@@ -227,6 +271,87 @@ module V3
           connected: connections,
           available: available,
           count: connections.length
+        )
+      end
+
+      def query_integration_operations(args)
+        integration_slug = get_arg(args, :integration) || get_arg(args, :search)
+        return error_response("Missing: integration slug (e.g., 'stripe')") if integration_slug.blank?
+
+        integration = Integration.find_by(slug: integration_slug) ||
+                      Integration.where(entity: entity).find_by(slug: integration_slug) ||
+                      Integration.where("name ILIKE ?", "%#{integration_slug}%").first
+
+        return error_response("Integration '#{integration_slug}' not found") unless integration
+
+        operations = integration.integration_operations.order(:name).map do |op|
+          {
+            id: op.id,
+            operation_id: op.operation_id,
+            name: op.name,
+            description: op.description,
+            http_method: op.http_method,
+            path: op.path_template,
+            has_action: IntegrationAction.exists?(integration: integration, integration_operation: op),
+            request_schema_fields: op.request_schema&.dig("properties")&.keys&.first(10)
+          }
+        end
+
+        success_response(
+          integration: integration.name,
+          integration_id: integration.id,
+          slug: integration.slug,
+          operations: operations,
+          count: operations.length,
+          message: "#{operations.length} operation(s) for #{integration.name}. Operations with has_action=true have smart mapping code."
+        )
+      end
+
+      def query_integration_actions(args)
+        integration_slug = get_arg(args, :integration)
+        search = get_arg(args, :search)
+
+        if integration_slug.blank? && search.blank?
+          return error_response("Provide 'integration' slug or 'search' term")
+        end
+
+        scope = IntegrationAction.for_entity(entity)
+
+        if integration_slug.present?
+          integration = Integration.find_by(slug: integration_slug) ||
+                        Integration.where(entity: entity).find_by(slug: integration_slug)
+          return error_response("Integration '#{integration_slug}' not found") unless integration
+          scope = scope.where(integration: integration)
+        end
+
+        if search.present?
+          scope = scope.where("action_name ILIKE :q OR description ILIKE :q OR slug ILIKE :q", q: "%#{search}%")
+        end
+
+        actions = scope.usable.order(:action_name).limit(50).map do |action|
+          {
+            id: action.id,
+            slug: action.slug,
+            name: action.action_name,
+            description: action.description,
+            category: action.category,
+            status: action.status,
+            input_schema: action.input_schema,
+            required_fields: action.required_fields,
+            usage_count: action.usage_count,
+            success_rate: action.success_rate,
+            has_mapping_code: action.mapping_code.present?,
+            last_used_at: action.last_used_at
+          }
+        end
+
+        success_response(
+          integration: integration_slug,
+          actions: actions,
+          count: actions.length,
+          message: actions.any? ?
+            "#{actions.length} action(s) available. Each action has a normalized input_schema — use those field names when calling platform_execute." :
+            "No actions found. Use platform_execute(action: 'generate_action', ...) to create one from an operation."
         )
       end
 
@@ -391,12 +516,22 @@ module V3
         # Validate object type exists
         available = ScoutDataRegistry.available_object_types(entity)
         unless available.include?(normalized_type)
+          # Fallback: try to find as a dynamic module model
+          module_result = query_dynamic_module(type, args)
+          return module_result if module_result
+
           closest = find_closest(normalized_type, available)
           return error_response(
             "Unknown type: #{type}",
             suggestion: closest ? "Did you mean: #{closest}?" : nil,
             available_types: available.first(20)
           )
+        end
+
+        # Check if this is a dynamic module type (ScoutDataRegistry knows about it)
+        config = ScoutDataRegistry.object_config(normalized_type, entity)
+        if config && config[:dynamic]
+          return query_dynamic_module_via_registry(normalized_type, config, args)
         end
 
         if object_id
@@ -466,6 +601,126 @@ module V3
         else
           error_response(result[:error] || "Query failed")
         end
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # DYNAMIC MODULE QUERIES
+      # ═══════════════════════════════════════════════════════════════
+
+      def query_dynamic_module(type, args)
+        model_class = resolve_dynamic_model(type)
+        return nil unless model_class
+
+        execute_dynamic_query(type, model_class, args)
+      end
+
+      def query_dynamic_module_via_registry(type, config, args)
+        # Get model class from the registry config
+        model_class = ScoutDataRegistry.model_class(type, entity)
+        return error_response("Could not load model for #{type}") unless model_class
+
+        execute_dynamic_query(type, model_class, args)
+      end
+
+      def execute_dynamic_query(type, model_class, args)
+        object_id = get_arg(args, :id)
+        filters = get_arg(args, :filters, {})
+        order_by = get_arg(args, :order_by, "created_at desc")
+        limit = [get_arg(args, :limit, 20).to_i, 100].min
+        search = get_arg(args, :search)
+
+        scope = model_class.where(entity_id: entity.id)
+
+        if object_id
+          record = scope.find_by(id: object_id)
+          return error_response("#{type.titleize} ##{object_id} not found") unless record
+
+          return success_response(
+            type: type,
+            record: record.attributes.except('entity_id'),
+            message: "#{type.titleize} ##{object_id}"
+          )
+        end
+
+        # Apply filters
+        if filters.present? && filters.is_a?(Hash)
+          filters = process_date_filters(filters)
+          valid_columns = model_class.column_names
+          filters.each do |key, value|
+            next unless valid_columns.include?(key.to_s)
+            scope = scope.where(key.to_s => value)
+          end
+        end
+
+        # Apply search across string/text columns
+        if search.present?
+          string_columns = model_class.columns.select { |c| [:string, :text].include?(c.type) }.map(&:name)
+          if string_columns.any?
+            search_conditions = string_columns.map { |col| "#{col} ILIKE :q" }.join(" OR ")
+            scope = scope.where(search_conditions, q: "%#{search}%")
+          end
+        end
+
+        # Apply ordering
+        if order_by.present?
+          parts = order_by.split(' ')
+          column = parts[0]
+          direction = parts[1]&.downcase == 'asc' ? :asc : :desc
+          scope = scope.order(column => direction) if model_class.column_names.include?(column)
+        end
+
+        total = scope.count
+        records = scope.limit(limit).map { |r| r.attributes.except('entity_id') }
+
+        success_response(
+          type: type,
+          records: records,
+          count: records.length,
+          total: total,
+          has_more: total > records.length,
+          filters_applied: filters,
+          message: "#{records.length} #{type} record(s)#{total > records.length ? " (#{total} total)" : ''}"
+        )
+      rescue => e
+        Rails.logger.error "[V3::PlatformQuery] Dynamic module query failed: #{e.message}"
+        error_response("Query failed for #{type}: #{e.message}")
+      end
+
+      def resolve_dynamic_model(type)
+        return nil unless entity
+
+        # Strategy 1: "module_slug/ModelName" format
+        if type.include?('/')
+          parts = type.split('/')
+          app_module = entity.app_modules.active.find_by(slug: parts[0])
+          return nil unless app_module
+          return Modules::DynamicModelLoader.instance.get_model(app_module, parts[1].classify)
+        end
+
+        # Strategy 2: Direct slug match
+        app_module = entity.app_modules.active.find_by(slug: type) ||
+                     entity.app_modules.active.find_by(slug: type.singularize)
+        if app_module
+          model_class = Modules::DynamicModelLoader.instance.get_model(app_module, app_module.slug.classify)
+          return model_class if model_class
+        end
+
+        # Strategy 3: Check sub-module slugs and model names
+        entity.app_modules.active.each do |mod|
+          mod.module_codes.where(code_type: 'model').each do |model_code|
+            model_name = model_code.name
+            if model_name.underscore == type || model_name.underscore == type.singularize ||
+               model_name.underscore.pluralize == type
+              return Modules::DynamicModelLoader.instance.get_model(mod, model_name)
+            end
+            table = model_code.schema_definition&.dig('table_name')
+            if table == type.pluralize || table == type
+              return Modules::DynamicModelLoader.instance.get_model(mod, model_name)
+            end
+          end
+        end
+
+        nil
       end
 
       def normalize_type(type)

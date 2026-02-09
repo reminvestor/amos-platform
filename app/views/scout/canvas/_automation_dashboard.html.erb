@@ -236,6 +236,82 @@
       </div>
     </div>
     
+    <!-- Automation Detail Panel (shown when an automation is clicked) -->
+    <div id="automation-detail-panel" class="mt-4" style="display: none;">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-link text-muted p-0" id="back-to-list">
+              <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+            </button>
+            <h6 class="mb-0" id="detail-automation-name">Automation Detail</h6>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-warning" id="detail-toggle-status">
+              <i data-lucide="pause" style="width: 14px; height: 14px;" class="me-1"></i>
+              <span>Pause</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="detail-test-run">
+              <i data-lucide="play" style="width: 14px; height: 14px;" class="me-1"></i>
+              Test Run
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row g-4">
+            <!-- Left: Automation Info -->
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label text-muted small mb-1">Status</label>
+                <div id="detail-status"></div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label text-muted small mb-1">Trigger</label>
+                <div id="detail-trigger" class="fw-medium"></div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label text-muted small mb-1">Created</label>
+                <div id="detail-created" class="text-muted small"></div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label text-muted small mb-1">Last Executed</label>
+                <div id="detail-last-executed" class="text-muted small"></div>
+              </div>
+            </div>
+            <!-- Right: Stats -->
+            <div class="col-md-6">
+              <div class="row g-3">
+                <div class="col-6">
+                  <div class="p-3 bg-light rounded-3 text-center">
+                    <div class="h4 mb-0 fw-bold text-primary" id="detail-exec-count">0</div>
+                    <small class="text-muted">Total Runs</small>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="p-3 bg-light rounded-3 text-center">
+                    <div class="h4 mb-0 fw-bold text-success" id="detail-success-count">0</div>
+                    <small class="text-muted">Successes</small>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="p-3 bg-light rounded-3 text-center">
+                    <div class="h4 mb-0 fw-bold text-danger" id="detail-error-count">0</div>
+                    <small class="text-muted">Errors</small>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="p-3 bg-light rounded-3 text-center">
+                    <div class="h4 mb-0 fw-bold text-info" id="detail-avg-time">0ms</div>
+                    <small class="text-muted">Avg Time</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Automation Recipes -->
     <% if data[:show_recipes] %>
       <div class="mt-4">
@@ -360,6 +436,76 @@
 document.addEventListener('DOMContentLoaded', function() {
   const container = document.querySelector('.automation-dashboard');
   if (!container) return;
+
+  // Store automation data for drill-down
+  const automationData = {};
+  container.querySelectorAll('.automation-item').forEach(item => {
+    const id = item.dataset.automationId;
+    automationData[id] = {
+      id: id,
+      name: item.querySelector('h6')?.textContent?.trim() || 'Automation',
+      trigger_type: item.querySelector('small .text-muted, small')?.textContent?.trim() || '',
+      status: item.dataset.status,
+      execution_count: parseInt(item.querySelector('.text-muted small, .text-end small')?.textContent?.match(/(\d+)\s*runs/)?.[1] || '0'),
+      success_count: parseInt(item.querySelector('.text-success')?.textContent?.split('/')[0]?.trim() || '0'),
+      error_count: parseInt(item.querySelector('.text-danger, .text-success')?.textContent?.split('/')[1]?.trim() || '0'),
+      avg_execution_time_ms: 0
+    };
+  });
+  
+  const detailPanel = container.querySelector('#automation-detail-panel');
+  const listSection = container.querySelector('.row.g-4');
+  
+  // Show automation detail panel
+  function showAutomationDetail(automationId) {
+    const auto = automationData[automationId];
+    if (!auto || !detailPanel) return;
+    
+    // Populate detail panel
+    container.querySelector('#detail-automation-name').textContent = auto.name;
+    container.querySelector('#detail-trigger').textContent = auto.trigger_type;
+    container.querySelector('#detail-exec-count').textContent = auto.execution_count || 0;
+    container.querySelector('#detail-success-count').textContent = auto.success_count || 0;
+    container.querySelector('#detail-error-count').textContent = auto.error_count || 0;
+    container.querySelector('#detail-avg-time').textContent = (auto.avg_execution_time_ms || 0) + 'ms';
+    
+    // Status badge
+    const statusEl = container.querySelector('#detail-status');
+    const statusColors = { active: 'success', paused: 'warning', draft: 'secondary', failed: 'danger' };
+    statusEl.innerHTML = '<span class="badge bg-' + (statusColors[auto.status] || 'secondary') + '">' + (auto.status || 'unknown') + '</span>';
+    
+    // Toggle button label
+    const toggleBtn = container.querySelector('#detail-toggle-status');
+    if (auto.status === 'active') {
+      toggleBtn.innerHTML = '<i data-lucide="pause" style="width: 14px; height: 14px;" class="me-1"></i><span>Pause</span>';
+      toggleBtn.className = 'btn btn-sm btn-outline-warning';
+    } else {
+      toggleBtn.innerHTML = '<i data-lucide="play" style="width: 14px; height: 14px;" class="me-1"></i><span>Activate</span>';
+      toggleBtn.className = 'btn btn-sm btn-outline-success';
+    }
+    
+    // Store current automation ID
+    detailPanel.dataset.currentId = automationId;
+    
+    // Show detail, keep list visible
+    detailPanel.style.display = 'block';
+    detailPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    // Highlight selected item
+    container.querySelectorAll('.automation-item').forEach(i => i.classList.remove('active', 'bg-light'));
+    const selectedItem = container.querySelector(`.automation-item[data-automation-id="${automationId}"]`);
+    if (selectedItem) selectedItem.classList.add('active', 'bg-light');
+    
+    // Re-init icons
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+  
+  // Back to list
+  container.querySelector('#back-to-list')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    detailPanel.style.display = 'none';
+    container.querySelectorAll('.automation-item').forEach(i => i.classList.remove('active', 'bg-light'));
+  });
   
   // Filter buttons
   container.querySelectorAll('[data-filter]').forEach(btn => {
@@ -378,19 +524,68 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   
-  // Automation actions
+  // Click automation item → show detail (NOT navigate away)
+  container.querySelectorAll('.automation-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+      // Don't trigger if clicking on dropdown actions
+      if (e.target.closest('.dropdown') || e.target.closest('[data-action]')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      showAutomationDetail(this.dataset.automationId);
+    });
+  });
+  
+  // Automation dropdown actions
   container.querySelectorAll('[data-action]').forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
+      e.stopPropagation();
       const action = this.dataset.action;
       const automationId = this.closest('.automation-item')?.dataset.automationId;
       
-      if (action === 'view') {
-        window.dispatchEvent(new CustomEvent('loadCanvas', {
-          detail: { type: 'workflow_designer', data: { workflow_id: automationId } }
-        }));
+      switch (action) {
+        case 'view':
+          showAutomationDetail(automationId);
+          break;
+        case 'edit':
+          window.dispatchEvent(new CustomEvent('sendMessage', {
+            detail: { message: `Edit automation #${automationId}` }
+          }));
+          break;
+        case 'test':
+          window.dispatchEvent(new CustomEvent('sendMessage', {
+            detail: { message: `Test run automation #${automationId}` }
+          }));
+          break;
+        case 'pause':
+          window.dispatchEvent(new CustomEvent('sendMessage', {
+            detail: { message: `Pause automation #${automationId}` }
+          }));
+          break;
+        case 'activate':
+          window.dispatchEvent(new CustomEvent('sendMessage', {
+            detail: { message: `Activate automation #${automationId}` }
+          }));
+          break;
       }
     });
+  });
+  
+  // Detail panel actions
+  container.querySelector('#detail-toggle-status')?.addEventListener('click', function() {
+    const id = detailPanel.dataset.currentId;
+    const auto = automationData[id];
+    const action = auto?.status === 'active' ? 'Pause' : 'Activate';
+    window.dispatchEvent(new CustomEvent('sendMessage', {
+      detail: { message: `${action} automation #${id}` }
+    }));
+  });
+  
+  container.querySelector('#detail-test-run')?.addEventListener('click', function() {
+    const id = detailPanel.dataset.currentId;
+    window.dispatchEvent(new CustomEvent('sendMessage', {
+      detail: { message: `Test run automation #${id}` }
+    }));
   });
   
   // Use recipe
@@ -407,6 +602,13 @@ document.addEventListener('DOMContentLoaded', function() {
   container.querySelector('#create-automation')?.addEventListener('click', function() {
     window.dispatchEvent(new CustomEvent('sendMessage', {
       detail: { message: 'Create a new automation' }
+    }));
+  });
+  
+  // Refresh dashboard
+  container.querySelector('#refresh-dashboard')?.addEventListener('click', function() {
+    window.dispatchEvent(new CustomEvent('loadCanvas', {
+      detail: { type: 'automation_dashboard', data: {} }
     }));
   });
   

@@ -132,6 +132,9 @@ gem "csv" # Support for CSV, needed by HTTParty
 gem "roo", "~> 2.10" # Excel/spreadsheet parsing (.xlsx, .xls, .ods)
 gem "docx", "~> 0.8" # Word document parsing (.docx)
 
+# Liquid templating engine (for website pages with module data binding)
+gem "liquid", "~> 5.5"
+
 # Markdown rendering
 gem "redcarpet"
 

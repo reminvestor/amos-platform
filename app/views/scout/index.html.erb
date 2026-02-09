@@ -3297,6 +3297,10 @@ document.addEventListener('turbo:load', function() {
                 // Show immediate "thinking" indicator with animated dots
                 console.log('🤔 Thinking indicator received');
                 showThinkingIndicator(data.message || 'Thinking');
+              } else if (data.type === 'thinking_done') {
+                // Explicit signal to hide thinking indicator
+                console.log('🤔 Thinking done — hiding indicator');
+                hideThinkingIndicator();
               } else if (data.type === 'working') {
                 // Show "working" indicator during tool execution
                 console.log('⚙️ Working indicator:', data.message);

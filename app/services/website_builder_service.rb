@@ -82,10 +82,40 @@ class WebsiteBuilderService
       status: 'draft'
     )
     
-    # Generate template HTML
-    page.update!(html_content: spec[:html_content] || page.generate_template_html)
+    # Generate template HTML — use Liquid templates for dynamic pages
+    html = spec[:html_content]
+    html ||= generate_liquid_template(page, app_module, spec) if app_module.present?
+    html ||= page.generate_template_html
+    
+    page.update!(html_content: html)
     
     page
+  end
+  
+  # Generate a Liquid template for dynamic pages bound to modules
+  def generate_liquid_template(page, app_module, spec)
+    fields = app_module.metadata&.dig('schema', 'fields') || []
+    # If no schema fields, try to get from module spec
+    if fields.empty?
+      # Walk the plan spec for this module's fields
+      plan = page.website&.application_plan
+      if plan
+        mod_spec = plan.plan_spec&.dig('modules')&.find { |m| m['slug'] == app_module.slug }
+        fields = mod_spec&.dig('fields') || []
+      end
+    end
+    
+    generator = WebsiteTemplateGenerator.new
+    generator.generate(
+      page_type: spec[:template] || page.template,
+      module_name: app_module.name,
+      module_slug: app_module.slug,
+      fields: fields,
+      options: spec.slice(:theme, :features)
+    )
+  rescue => e
+    Rails.logger.warn "[WebsiteBuilderService] Liquid template generation failed: #{e.message}"
+    nil
   end
   
   # ============================================

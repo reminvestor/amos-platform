@@ -26,7 +26,7 @@ class ApplicationPlan < ApplicationRecord
   
   # Status values
   STATUSES = %w[drafting pending_approval approved building completed failed cancelled].freeze
-  ARCHETYPES = %w[knowledge_base crm sales_pipeline inventory project_mgmt social_media custom].freeze
+  ARCHETYPES = %w[knowledge_base crm sales_pipeline inventory project_mgmt project social_media events finance hr real_estate helpdesk education fleet_management restaurant custom].freeze
   
   # Validations
   validates :name, presence: true

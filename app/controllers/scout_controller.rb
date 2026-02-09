@@ -682,7 +682,14 @@ class ScoutController < ApplicationController
     when :content
       # BedrockService sends :content, agent_loop may send :text - handle both
       text = chunk[:text] || chunk[:content]
-      stream_content_chunk(text) if text.present?
+      if text.present?
+        stream_content_chunk(text)
+      else
+        # Empty content = signal to stop thinking indicator (Brain starting)
+        stream_stop_thinking
+      end
+    when :thinking_done
+      stream_stop_thinking
     when :canvas_suggestion
       stream_update({
         type: "load_canvas",
@@ -4203,7 +4210,9 @@ class ScoutController < ApplicationController
     {
       content: rendered_content,
       title: canvas.name,
-      type: "module_#{canvas.slug}"
+      type: "module_#{canvas.slug}",
+      js_content: canvas.js_content,
+      css_content: canvas.css_content
     }
   rescue => e
     Rails.logger.error "[ModuleCanvas] Error loading canvas #{full_canvas_slug}: #{e.message}"
@@ -4261,6 +4270,12 @@ class ScoutController < ApplicationController
     canvas_metadata = canvas.metadata || {}
     icon = canvas_metadata['icon'] || canvas_metadata[:icon] || schema.dig('module', 'icon') || 'database'
     
+    # If the canvas has rich content (js_content), it's a self-contained canvas
+    # that fetches data from the API itself — just render the stored HTML/JS/CSS
+    if canvas.js_content.present?
+      return render_rich_module_canvas(canvas, data_context)
+    end
+    
     # Route to appropriate renderer based on canvas type
     case canvas.canvas_type
     when 'form'
@@ -4284,6 +4299,21 @@ class ScoutController < ApplicationController
     else # 'data_grid' or any other type
       render_module_list_canvas(canvas, data_context, app_module, schema, icon)
     end
+  end
+  
+  # Render a rich (AI-generated or CanvasGeneratorService) canvas
+  # These canvases have self-contained JS that calls the module API for data
+  def render_rich_module_canvas(canvas, data_context)
+    html = canvas.html_content || ''
+    js = canvas.js_content || ''
+    css = canvas.css_content || ''
+    
+    # Compose the full canvas: CSS in a <style> tag, HTML, JS in a <script> tag
+    output = ""
+    output += "<style>#{css}</style>\n" if css.present?
+    output += html
+    output += "\n<script>#{js}</script>" if js.present?
+    output
   end
 
   # Render a form canvas for creating/editing records

@@ -146,13 +146,15 @@ module Modules
         )
       end
 
-      # Called for webhook events
+      # Called for webhook events (including integration events like Stripe, HubSpot, etc.)
       def on_webhook(payload, entity, webhook_path)
         trigger_data = {
           event: 'webhook',
           payload: payload,
           path: webhook_path,
           entity_id: entity.id,
+          integration: payload[:integration] || payload["integration"],
+          event_type: payload[:event_type] || payload["event_type"],
           timestamp: Time.current.iso8601
         }
         
@@ -172,19 +174,47 @@ module Modules
           .to_a
         
         matching = automations.select do |automation|
-          automation.matches_trigger?(trigger_data.merge(match_config))
+          matches = automation.matches_trigger?(trigger_data.merge(match_config))
+          
+          # For webhook triggers, also check integration event_filter matching
+          if trigger_type == 'webhook' && !matches
+            matches = matches_integration_webhook?(automation, trigger_data)
+          end
+          
+          matches
         end
         
         Rails.logger.info "[AutomationBridge] Found #{matching.size} matching automations for #{trigger_type}"
+        
+        # Determine trigger source
+        trigger_source = trigger_data[:integration].present? ? "integration_#{trigger_data[:integration]}" : 'record'
         
         matching.each do |automation|
           Rails.logger.info "[AutomationBridge] Triggering automation: #{automation.name} (ID: #{automation.id})"
           
           # Run in background job for non-blocking execution
-          AutomationTriggerJob.perform_later(automation.id, trigger_data.deep_stringify_keys, { trigger_source: 'record' })
+          AutomationTriggerJob.perform_later(automation.id, trigger_data.deep_stringify_keys, { trigger_source: trigger_source })
         end
         
         matching.size
+      end
+
+      # Check if a webhook automation matches an integration event
+      # Compares the automation's trigger_config event_filter with the incoming event type
+      def matches_integration_webhook?(automation, trigger_data)
+        config = automation.trigger_config
+        return false unless config.is_a?(Hash)
+        
+        event_filter = config["event_filter"] || config[:event_filter]
+        return true if event_filter.blank?  # No filter = match all webhooks
+        
+        incoming_event = trigger_data[:event_type] || trigger_data["event_type"]
+        incoming_path = trigger_data[:path] || trigger_data["path"]
+        
+        # Match by event_filter against event_type or webhook_path
+        event_filter == incoming_event ||
+          incoming_path&.include?(event_filter) ||
+          incoming_path == config["webhook_path"] || incoming_path == config[:webhook_path]
       end
 
       def serialize_record(record)

@@ -183,7 +183,9 @@ class AutomationCode < ApplicationRecord
       matches_status_change?(event_data)
     when 'field_changed'
       matches_field_change?(event_data)
-    when 'record_created', 'record_updated', 'form_submit', 'webhook'
+    when 'webhook'
+      matches_webhook?(event_data)
+    when 'record_created', 'record_updated', 'form_submit'
       true  # These always match if the trigger type matches
     else
       false
@@ -308,6 +310,20 @@ class AutomationCode < ApplicationRecord
     return false unless field.present?
     
     event_data[:changes].key?(field) || event_data[:changes].key?(field.to_sym)
+  end
+
+  def matches_webhook?(event_data)
+    # If no event_filter configured, match all webhooks
+    event_filter = trigger_config['event_filter'] || trigger_config[:event_filter]
+    return true if event_filter.blank?
+    
+    # Match against incoming event type or path
+    incoming_event = event_data[:event_type] || event_data["event_type"]
+    incoming_path = event_data[:path] || event_data["path"]
+    
+    event_filter == incoming_event ||
+      incoming_path.to_s.include?(event_filter.to_s) ||
+      incoming_path == (trigger_config['webhook_path'] || trigger_config[:webhook_path])
   end
 
   def module_name

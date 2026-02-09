@@ -152,11 +152,27 @@ class ApplicationPlannerService
     when :sales_pipeline
       "Sales pipeline to manage leads, opportunities, and deal stages from prospect to close."
     when :inventory
-      "Inventory management system for tracking products, stock levels, and suppliers."
-    when :project_mgmt
-      "Project management system for tasks, sprints, and team collaboration."
+      "Inventory management system for tracking products, stock levels, suppliers, and purchase orders."
+    when :project, :project_mgmt
+      "Project management system for tasks, milestones, time tracking, and team collaboration."
     when :social_media
       "Social media command center for scheduling, publishing, and analyzing content."
+    when :events
+      "Event management system for planning events, managing registrations, and tracking attendees."
+    when :finance
+      "Financial tracking system for invoices, expenses, budgets, and payment management."
+    when :hr
+      "HR and people management system for employees, time off, recruitment, and onboarding."
+    when :real_estate
+      "Real estate management system for properties, tenants, maintenance, and showings."
+    when :helpdesk
+      "Help desk and support system for tickets, SLA tracking, and customer satisfaction."
+    when :education
+      "Learning management system for courses, students, enrollments, assignments, and grade tracking."
+    when :fleet_management
+      "Fleet management system for vehicles, drivers, trips, maintenance, and fuel tracking."
+    when :restaurant
+      "Restaurant management system for menu items, orders, tables, reservations, and kitchen inventory."
     else
       "Custom application: #{name}"
     end
@@ -197,14 +213,38 @@ class ApplicationPlannerService
     # Get core fields from archetype (uses :core_fields key in ArchetypeIntelligence)
     core_fields = archetype_data[:core_fields] || []
     
-    # Core module
+    # Get canvas views from archetype (or defaults)
+    canvas_views = archetype_data[:canvas_views] || %w[list form detail dashboard]
+    
+    # Primary module
     spec['modules'] << {
       'name' => name,
       'slug' => slug,
       'description' => archetype_data[:description] || "#{name} data management",
       'fields' => core_fields.map { |f| normalize_field(f) },
-      'views' => %w[list form detail dashboard]
+      'views' => canvas_views,
+      'is_primary' => true
     }
+    
+    # Sub-modules from archetype (multi-model relationships)
+    if archetype_data[:sub_models].present?
+      archetype_data[:sub_models].each do |sub_model|
+        sub_slug = "#{slug}_#{sub_model[:slug]}"
+        
+        # Build relationship spec with parent reference
+        relationship = build_relationship_spec(sub_model[:relationship], slug)
+        
+        spec['modules'] << {
+          'name' => sub_model[:name],
+          'slug' => sub_slug,
+          'description' => sub_model[:description],
+          'fields' => (sub_model[:fields] || []).map { |f| normalize_field(f) },
+          'views' => sub_model[:canvas_views] || %w[list form],
+          'is_primary' => false,
+          'relationship' => relationship
+        }
+      end
+    end
     
     # Agent
     spec['agent'] = {
@@ -249,13 +289,25 @@ class ApplicationPlannerService
       end
     end
     
-    Rails.logger.info "[ApplicationPlannerService] Built archetype plan: #{archetype} with #{spec['modules'].count} modules, " \
+    Rails.logger.info "[ApplicationPlannerService] Built archetype plan: #{archetype} with #{spec['modules'].count} modules " \
+                      "(1 primary + #{spec['modules'].count - 1} sub-models), " \
                       "#{spec['integrations'].count} integrations, #{spec['workflows'].count} workflows"
     
     spec
   end
   
   def build_custom_spec(spec, name, description, requirements)
+    # Try AI-driven schema design first
+    ai_spec = design_schema_with_ai(name, description, requirements)
+    if ai_spec && ai_spec['modules'].present?
+      return apply_ai_designed_schema(spec, name, ai_spec)
+    end
+
+    # Fallback to minimal custom spec
+    build_minimal_spec(spec, name, description)
+  end
+
+  def build_minimal_spec(spec, name, description)
     slug = name.parameterize.underscore
     
     # Minimal module with basic fields
@@ -281,6 +333,153 @@ class ApplicationPlannerService
     }
     
     spec
+  end
+
+  # Use PlatformBrain (Claude) to design a data schema for a custom app type
+  def design_schema_with_ai(name, description, requirements)
+    prompt = build_schema_design_prompt(name, description, requirements)
+
+    response = bedrock_client.converse(
+      model_id: "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      messages: [{ role: "user", content: [{ text: prompt }] }],
+      inference_config: { max_tokens: 4096, temperature: 0.3 },
+      system: [{ text: schema_design_system_prompt }]
+    )
+
+    raw_text = response.output.message.content
+                       .select { |b| b.respond_to?(:text) && b.text }
+                       .map(&:text)
+                       .join("\n")
+
+    parse_schema_design_response(raw_text)
+  rescue => e
+    Rails.logger.warn "[ApplicationPlannerService] AI schema design failed: #{e.message}"
+    nil
+  end
+
+  def schema_design_system_prompt
+    <<~PROMPT
+      You are a database schema architect for a business application platform.
+      Your job is to design data models (modules) for custom business applications.
+
+      OUTPUT FORMAT: Return ONLY a single JSON code block with this exact structure:
+      ```json
+      {
+        "modules": [
+          {
+            "name": "ModuleName",
+            "slug": "module_name",
+            "description": "What this module stores",
+            "is_primary": true,
+            "fields": [
+              { "name": "field_name", "field_type": "string|text|select|integer|decimal|boolean|date|datetime", "required": true, "options": ["opt1", "opt2"] }
+            ],
+            "views": ["list", "form", "detail", "dashboard", "kanban", "calendar"]
+          }
+        ],
+        "workflows": [
+          { "name": "Workflow Name", "trigger": "status_change|record_created|field_changed", "from_status": "x", "to_status": "y", "actions": ["action_name"] }
+        ],
+        "suggested_integrations": [
+          { "name": "integration_name", "description": "why" }
+        ]
+      }
+      ```
+
+      RULES:
+      - Always include a primary module (is_primary: true) and 1-3 sub-modules
+      - Sub-modules should have a "relationship" field: { "type": "belongs_to", "parent_model": "primary_slug", "parent_field": "parent_slug_id" }
+      - Every module needs at minimum: a name/title field (string, required), a status field (select), and a description/notes field (text)
+      - Use appropriate field types: dates for deadlines, decimals for money, selects for status/category
+      - The primary slug should be derived from the app name (lowercase, underscored)
+      - Sub-module slugs should be prefixed with the primary slug (e.g., "project_management_task")
+      - Include 2-3 relevant workflows
+      - Include 1-2 relevant integration suggestions
+      - Keep it practical — focus on what a real business user would need
+      - Views should match the data type: kanban for status-driven data, calendar for date-driven data
+    PROMPT
+  end
+
+  def build_schema_design_prompt(name, description, requirements)
+    req_text = if requirements.present?
+      "Additional requirements: #{requirements.to_json}"
+    else
+      ""
+    end
+
+    <<~PROMPT
+      Design a data schema for a custom business application:
+
+      Application Name: #{name}
+      Description: #{description || "A #{name.downcase} management system"}
+      #{req_text}
+
+      Create a complete schema with a primary module and relevant sub-modules, appropriate fields, workflows, and integration suggestions.
+    PROMPT
+  end
+
+  def parse_schema_design_response(raw_text)
+    # Extract JSON from the response
+    json_match = raw_text.match(/```json\s*\n(.*?)```/m) ||
+                 raw_text.match(/```\s*\n(\{.*?\})\s*```/m)
+
+    if json_match
+      JSON.parse(json_match.captures.first)
+    else
+      # Try parsing the whole response as JSON
+      JSON.parse(raw_text)
+    end
+  rescue JSON::ParserError => e
+    Rails.logger.warn "[ApplicationPlannerService] Failed to parse AI schema response: #{e.message}"
+    nil
+  end
+
+  def apply_ai_designed_schema(spec, name, ai_spec)
+    slug = name.parameterize.underscore
+
+    # Add modules from AI design
+    (ai_spec['modules'] || []).each do |mod|
+      mod_spec = normalize_module_spec(mod)
+      # Ensure slug is properly namespaced
+      mod_spec['slug'] = "#{slug}_#{mod_spec['slug']}" unless mod_spec['slug']&.start_with?(slug)
+      spec['modules'] << mod_spec
+    end
+
+    # If no modules were generated, add a minimal primary
+    if spec['modules'].empty?
+      return build_minimal_spec(spec, name, nil)
+    end
+
+    # Add agent
+    spec['agent'] = {
+      'name' => "#{name} Expert",
+      'slug' => "#{slug}_expert",
+      'description' => "AI expert for managing #{name.downcase}",
+      'capabilities' => default_agent_capabilities(name),
+      'personality' => 'helpful, knowledgeable, proactive'
+    }
+
+    # Add workflows from AI
+    if ai_spec['workflows'].present?
+      spec['workflows'] = ai_spec['workflows'].map { |w| normalize_workflow_spec(w) }
+    end
+
+    # Add suggested integrations from AI
+    if ai_spec['suggested_integrations'].present?
+      spec['integrations'] = ai_spec['suggested_integrations'].map { |i| normalize_integration_spec(i) }
+    end
+
+    Rails.logger.info "[ApplicationPlannerService] AI-designed schema for '#{name}': " \
+                      "#{spec['modules'].count} modules, #{spec['workflows']&.count || 0} workflows"
+    spec
+  end
+
+  def bedrock_client
+    @bedrock_client ||= Aws::BedrockRuntime::Client.new(
+      region: ENV["AWS_REGION"] || "us-east-1",
+      http_read_timeout: 120,
+      http_open_timeout: 30
+    )
   end
   
   def apply_requirements(spec, requirements)
@@ -370,13 +569,56 @@ class ApplicationPlannerService
   
   def normalize_module_spec(mod)
     mod = mod.deep_stringify_keys if mod.is_a?(Hash)
-    {
+    result = {
       'name' => mod['name'],
       'slug' => mod['slug'] || mod['name']&.parameterize&.underscore,
       'description' => mod['description'],
       'fields' => (mod['fields'] || []).map { |f| normalize_field(f) },
-      'views' => mod['views'] || %w[list form detail]
-    }.compact
+      'views' => mod['views'] || %w[list form detail],
+      'is_primary' => mod['is_primary'] || false
+    }
+    
+    # Preserve relationship info for sub-modules
+    if mod['relationship'].present?
+      result['relationship'] = mod['relationship']
+    end
+    
+    result.compact
+  end
+  
+  def build_relationship_spec(relationship, primary_slug)
+    return nil unless relationship.present?
+    
+    rel_type = relationship[:type].to_s
+    
+    case rel_type
+    when 'belongs_to'
+      parent_model = relationship[:parent_model]
+      parent_field = relationship[:parent_field]
+      
+      # If parent_model is specified, use it; otherwise default to primary module
+      parent_slug = if parent_model.present?
+                      "#{primary_slug}_#{parent_model.to_s.underscore}"
+                    else
+                      primary_slug
+                    end
+      
+      {
+        'type' => 'belongs_to',
+        'parent_slug' => parent_slug,
+        'foreign_key' => parent_field
+      }
+    when 'standalone'
+      { 'type' => 'standalone' }
+    when 'has_many'
+      {
+        'type' => 'has_many',
+        'child_slug' => relationship[:child_model].to_s.underscore,
+        'foreign_key' => relationship[:parent_field]
+      }
+    else
+      { 'type' => rel_type }
+    end
   end
   
   def normalize_integration_spec(integration)

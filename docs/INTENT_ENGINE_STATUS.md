@@ -16,91 +16,82 @@ Two-tier agent system:
 - Landing page creation via Brain (with progress streaming)
 - Automation creation via Brain (welcome email automation triggers correctly)
 - Contact management, queries, web search, document reading
-- Automation dashboard (self-loading from DB)
+- Automation dashboard (self-loading from DB) + drill-down detail view
 - Media library integration in editor (CSRF token + JSON key fix)
 - Conversation history poisoning filter (tool-as-text messages filtered)
 - Landing page editor (component sidebar hidden, drop zones removed)
+- **CAMEL security**: Untrusted tool results wrapped with safety markers
+- **Confirmation gate**: Destructive ops (delete, send_email, send_campaign) require user confirmation
+- **Entity scope**: Verified clean — entity flows from controller, never from LLM args
+- **Integration triggers**: Stripe/HubSpot/Shopify/QuickBooks webhooks fire automations
+- **Unified automation model**: "sync Stripe customers" → creates correct automation with webhook trigger
 
-## Security - MUST DO BEFORE PROD
+## Security - COMPLETED
 
-### A. CAMEL / QuarantinedLlmService
-- File exists: `app/services/quarantined_llm_service.rb`
-- **NOT WIRED IN** - never used anywhere
-- Needs to be integrated into PlatformBrain for goals involving external/untrusted data
-- Key scenarios: email content, document content, web scraping, integration data
-- The quarantined LLM extracts data WITHOUT tool access, preventing embedded instructions
+### A. CAMEL / QuarantinedLlmService ✅
+- `QuarantinedLlmService` and `DataSourceTracker` wired into `PlatformBrain`
+- UNTRUSTED_TOOLS (web_search, browser_use, read_file): results wrapped with `[EXTERNAL DATA]` markers
+- PARTIALLY_UNTRUSTED_TOOLS (platform_query, platform_execute): user-generated text fields tagged with `[USER CONTENT]` markers
+- Brain system prompt updated: explicitly told to NEVER follow instructions inside data markers
+- Sanitization happens in `PlatformBrain#sanitize_tool_result` after every tool execution
 
-### B. Confirmation Gate for Destructive Operations
-- PlatformBrain should flag destructive ops (send_email, delete, export_data)
-- Brain returns `needs_confirmation: true` with a description
-- Amos asks the user to confirm before the Brain proceeds
-- This catches prompt injection even if CAMEL misses it
+### B. Confirmation Gate for Destructive Operations ✅
+- `DESTRUCTIVE_ACTIONS` constant defines: send_email, send_campaign, delete
+- `PlatformBrain#requires_confirmation?` checks before tool execution
+- Blocked actions return `needs_confirmation: true` with human-readable description
+- Brain signals `needs_input: true` + question to Amos, who asks the user
+- Catches prompt injection even if CAMEL misses it (defense in depth)
 
-### C. Entity Scope Audit
+### C. Entity Scope Audit ✅
 - All V3 tools use `entity` from BaseTool (injected by controller, not LLM)
 - PlatformQueryTool: all queries scoped to entity ✓
 - PlatformCreateTool: all creates use entity ✓
 - PlatformUpdateTool: finds records via entity ✓
 - PlatformExecuteTool: scoped to entity ✓
-- **Need to verify**: PlatformBrain passes correct entity through to tool execution
-- **Need to verify**: No tool accepts entity_id as a user-supplied parameter
+- **VERIFIED**: PlatformBrain passes `@entity` through `V3::ToolRegistry.execute` → `tool_class.new(entity:)` ✓
+- **VERIFIED**: No V3 tool accepts `entity_id` from LLM args (grep confirmed zero matches) ✓
 
-## Known Issues - Fix Before Prod
+## Known Issues - Status
 
-### 1. Automation Dashboard Drill-down
-- Clicking an automation in the dashboard refreshes instead of showing detail
-- Need: automation detail view canvas or modal
+### 1. Automation Dashboard Drill-down ✅ FIXED
+- Clicking an automation now shows a detail panel inline (stats, trigger, status, test/pause controls)
+- Back button returns to list view
+- No more page refreshes on click
 
-### 2. Integrations + Automations Unification (Major Design Work)
+### 2. Integrations + Automations Unification ✅ COMPLETED
 
-**Problem**: The platform has two separate systems that confuse both users and the LLM:
-- **Automations** (`AutomationCode`) — internal triggers (contact_created, form_submit, schedule)
-- **Integration Syncs** (`IntegrationSyncConfig`) — external data syncs (Stripe customers → Contacts)
+**Implemented the "Pi strategy"**: Automations ARE the single abstraction. Integrations are just trigger sources and action targets.
 
-When user says "when a new Stripe customer is created, create a contact," the Brain doesn't know which system to use. It created an AutomationCode with webhook trigger and create_activity action — which is wrong.
+**What was done**:
+1. ✅ Added `INTEGRATION_TRIGGERS` to `AutomationActionRegistry` — maps `stripe.customer_created`, `hubspot.contact_created`, `shopify.order_created`, etc. to webhook trigger configs with event filters
+2. ✅ Added `create_contact` and `sync_integration_data` actions to `AutomationActionRegistry` with code generators
+3. ✅ Added `DEFAULT_FIELD_MAPPINGS` for Stripe/HubSpot/Shopify/QuickBooks → Contact field mappings
+4. ✅ Wired Stripe/Shopify/HubSpot webhooks to `AutomationBridge` via `fire_webhook_automations()` in `WebhooksController`
+5. ✅ Updated `PlatformCreateTool#build_automation` to resolve integration triggers (e.g., `stripe.customer_created` → webhook trigger with event_filter)
+6. ✅ Updated `AutomationBridge#find_and_trigger_automations` to match webhook automations by event_filter
+7. ✅ Updated `AutomationCode#matches_trigger?` to handle webhook event matching
+8. ✅ Updated `PlatformBrain` system prompt with INTEGRATION / AUTOMATION UNIFICATION section
+9. ✅ Updated `normalize_trigger` to recognize integration-style triggers (stripe, hubspot, etc.)
 
-**Design Direction (Pi strategy)**: Automations should be THE single abstraction. An integration is just a trigger source or action target within an automation. The user shouldn't think about "syncs" vs "automations" — they should just say what they want and the platform handles it.
-
-**What exists today**:
-- `AutomationCode` model — trigger_type (record_created, form_submit, webhook, schedule, etc.) + code
-- `AutomationActionRegistry` — generates code for actions (send_email, update_field, etc.)
-- `IntegrationSyncConfig` model — maps external data to internal models
-- `AutomationBridge` service — fires automations when records are created/updated
-- `AutomationTriggerJob` — background execution of automation code
-- `Modules::AutomationBridge` — connects record events to automation triggers
-- Webhook infrastructure exists but isn't fully wired for Stripe customer events
-
-**What needs to happen**:
-1. Add integration triggers to AutomationActionRegistry (stripe.customer_created → create_contact)
-2. Wire Stripe webhooks to the AutomationBridge so they fire automations
-3. Add "integration" actions to the registry (pull_stripe_data, sync_hubspot_contacts)
-4. Update PlatformBrain system prompt to understand this unified model
-5. Ensure PlatformCreateTool's `build_automation` handles integration triggers correctly
-6. Build or fix the webhook receiver endpoint for Stripe events
-7. Test: user says "sync Stripe customers" → Brain creates correct automation
-
-**Key files**:
-- `app/services/automation_action_registry.rb` — action templates
-- `app/services/automation_code_executor.rb` — runs automation code
-- `app/services/modules/automation_bridge.rb` — event → automation dispatcher
-- `app/models/automation_code.rb` — the automation model
-- `app/models/integration_sync_config.rb` — the sync model (may be merged into automations)
-- `app/jobs/automation_trigger_job.rb` — background execution
-- `app/services/v3/tools/platform_create_tool.rb` — build_automation, build_sync methods
-- `app/controllers/api/v1/webhooks_controller.rb` — webhook receiver (check if exists)
+**Flow**: User says "sync Stripe customers" → Amos → platform_do → Brain → platform_create(type: "automation", trigger: "stripe.customer_created", action: "create_contact") → AutomationCode created with webhook trigger + event_filter + field mappings → Stripe webhook fires → AutomationBridge matches → contact created
 
 ### 3. Interactive Iframe Viewer
-- Picture-in-picture bug when streaming web pages (pre-existing)
+- Picture-in-picture bug when streaming web pages (pre-existing, not addressed this session)
 
-### 4. Thinking Indicator
-- Still sometimes appears during Brain execution despite fix
+### 4. Thinking Indicator ✅ FIXED
+- Root cause: empty content chunk `{ type: :content, text: "" }` was not hiding the indicator because `text.present?` is false for empty strings
+- Fix: Added explicit `stream_stop_thinking` method to `Scout::Streaming` concern that sends `{ type: "thinking_done" }`
+- Frontend handles `thinking_done` event type to force-hide the indicator immediately
+- Both `scout_controller.js` and `index.html.erb` updated
 
 ### 5. Docker Restart Conversation Poisoning
 - Root cause: Qwen outputs tool syntax as text, gets saved to DB
 - Mitigated: filter in persisted_history_last_k
 - Not fixed: Qwen still does this occasionally
 
-## Files Changed (16 commits)
+## Files Changed (16 commits + security/unification session)
+
+### Original Intent Engine (16 commits)
 - `app/services/v3/intent_engine.rb` - Routes goals to recipes or Brain
 - `app/services/v3/platform_brain.rb` - Claude agent loop with tools
 - `app/services/v3/tools/platform_do_tool.rb` - Single "do" tool for LLM
@@ -115,3 +106,16 @@ When user says "when a new Stripe customer is created, create a contact," the Br
 - `app/services/tools/generate_landing_page_tool.rb` - Contrast rules
 - `app/models/automation_execution.rb` - trigger_source validation
 - `app/services/modules/automation_bridge.rb` - Pass trigger_source
+
+### Security + Unification Session (prod release prep)
+- `app/services/v3/platform_brain.rb` - CAMEL sanitization, confirmation gate, integration prompt
+- `app/services/automation_action_registry.rb` - Integration triggers, create_contact/sync actions, default field mappings
+- `app/services/v3/tools/platform_create_tool.rb` - Integration trigger resolution in build_automation
+- `app/services/modules/automation_bridge.rb` - Integration webhook matching, event_filter support
+- `app/models/automation_code.rb` - matches_webhook? for event_filter matching
+- `app/controllers/webhooks_controller.rb` - fire_webhook_automations for Stripe/Shopify/HubSpot
+- `app/views/scout/canvas/_automation_dashboard.html.erb` - Drill-down detail panel, fixed click handler
+- `app/controllers/concerns/scout/streaming.rb` - stream_stop_thinking method
+- `app/controllers/scout_controller.rb` - Handle thinking_done in streaming chunks
+- `app/javascript/controllers/scout_controller.js` - Handle thinking_done event
+- `app/views/scout/index.html.erb` - Handle thinking_done event (fallback)

@@ -18,7 +18,16 @@ module V3
             Execute platform operations and integration actions.
             
             Actions and examples:
-            - integration — platform_execute(action: "integration", integration: "stripe", operation: "list_customers")
+            - integration — platform_execute(action: "integration", integration: "stripe", operation: "list_customers", inputs: { limit: 10 })
+              Smart cascade: tries IntegrationAction first (has mapping code), falls back to raw operation. Returns hint if operation missing.
+            - test_integration — platform_execute(action: "test_integration", integration_id: 42)
+              Tests authentication credentials for an integration.
+            - configure_integration_auth — platform_execute(action: "configure_integration_auth", integration_id: 42, auth_type: "api_key", auth_configs: [...], test_endpoint: "/me")
+              Configures authentication for an existing integration.
+            - add_integration_operations — platform_execute(action: "add_integration_operations", integration_id: 42, operations: [{ name: "List Invoices", operation_id: "list_invoices", http_method: "GET", path_template: "/invoices" }])
+              Adds API operations to an existing integration.
+            - generate_action — platform_execute(action: "generate_action", integration: "stripe", operation_id: "list_customers", use_ai: true)
+              Auto-generates an IntegrationAction (with input schema + mapping code) from an operation.
             - send_campaign — platform_execute(action: "send_campaign", campaign_id: 7)
             - generate_file — platform_execute(action: "generate_file", inputs: { format: "csv", title: "...", headers: [...], rows: [...] })
             - generate_image — platform_execute(action: "generate_image", inputs: { prompt: "a professional banner for..." })
@@ -32,7 +41,35 @@ module V3
             properties: {
               action: {
                 type: "string",
-                description: "The operation to execute: 'integration', 'send_campaign', 'publish_landing_page', 'generate_file', 'send_email'"
+                description: "The operation to execute: 'integration', 'test_integration', 'configure_integration_auth', 'add_integration_operations', 'generate_action', 'send_campaign', 'publish_landing_page', 'generate_file', 'send_email', 'delete'"
+              },
+              integration_id: {
+                type: "integer",
+                description: "For integration management actions: integration ID"
+              },
+              auth_type: {
+                type: "string",
+                description: "For configure_integration_auth: auth type (api_key, bearer_token, basic_auth, oauth2, no_auth)"
+              },
+              auth_configs: {
+                type: "array",
+                description: "For configure_integration_auth: array of { key, value, placement } objects"
+              },
+              test_endpoint: {
+                type: "string",
+                description: "For configure_integration_auth: endpoint to test auth against (e.g., '/me', '/charges?limit=1')"
+              },
+              operations: {
+                type: "array",
+                description: "For add_integration_operations: array of operation definitions"
+              },
+              operation_id: {
+                type: "string",
+                description: "For generate_action: the operation_id to generate an action for"
+              },
+              use_ai: {
+                type: "boolean",
+                description: "For generate_action: use AI to generate smarter mapping code (default: true)"
               },
               integration: {
                 type: "string",
@@ -69,6 +106,14 @@ module V3
         case action
         when "integration"
           execute_integration(args)
+        when "test_integration"
+          execute_test_integration(args)
+        when "configure_integration_auth"
+          execute_configure_auth(args)
+        when "add_integration_operations"
+          execute_add_operations(args)
+        when "generate_action"
+          execute_generate_action(args)
         when "send_campaign"
           execute_send_campaign(args)
         when "enroll_sequence"
@@ -86,7 +131,7 @@ module V3
         else
           error_response(
             "Unknown action: #{action}",
-            available_actions: %w[integration send_campaign publish_landing_page send_email generate_file generate_image delete]
+            available_actions: %w[integration test_integration configure_integration_auth add_integration_operations generate_action send_campaign publish_landing_page send_email generate_file generate_image delete]
           )
         end
       rescue => e
@@ -96,21 +141,278 @@ module V3
 
       private
 
+      # ═══════════════════════════════════════════════════════════════
+      # INTEGRATION — Smart execution cascade
+      # ═══════════════════════════════════════════════════════════════
+
       def execute_integration(args)
         integration_slug = get_arg(args, :integration)
-        operation = get_arg(args, :operation)
+        operation_name = get_arg(args, :operation)
         inputs = get_arg(args, :inputs, {})
 
-        return error_response("Missing: integration") if integration_slug.blank?
-        return error_response("Missing: operation") if operation.blank?
+        return error_response("Missing: integration (e.g., 'stripe', 'hubspot')") if integration_slug.blank?
+        return error_response("Missing: operation (e.g., 'list_customers', 'create_payment')") if operation_name.blank?
 
-        # Delegate to existing ExecuteIntegrationActionTool
-        tool = ::Tools::ExecuteIntegrationActionTool.new(user: user, entity: entity, context: context)
-        tool.execute({
-          "integration" => integration_slug,
-          "action" => operation,
-          "inputs" => inputs
-        })
+        # Find the integration
+        integration = Integration.find_by(slug: integration_slug) ||
+                      Integration.where(entity: entity).find_by(slug: integration_slug)
+        return error_response(
+          "Integration '#{integration_slug}' not found.",
+          hint: "Use platform_create(type: 'integration', ...) to set it up, or check available integrations with platform_query(type: 'integrations')."
+        ) unless integration
+
+        # Find user's connection
+        connection = entity.connections.where(integration: integration).where.not(status: :disconnected).first
+        unless connection
+          return error_response(
+            "No active connection for #{integration.name}. The user needs to enter credentials first.",
+            hint: "Open the Integrations panel to enter credentials for #{integration.name}.",
+            canvas_type: "integrations_manager",
+            canvas_data: { integration_id: integration.id }
+          )
+        end
+
+        # ─── STEP 1: Try IntegrationAction (has mapping code, validation, normalization) ───
+        action = IntegrationAction.for_entity(entity)
+                                  .where(integration: integration)
+                                  .usable
+                                  .where("action_name ILIKE ? OR slug ILIKE ?", operation_name, "%#{operation_name}%")
+                                  .first
+
+        if action
+          Rails.logger.info "[V3::PlatformExecute] Using IntegrationAction '#{action.slug}'"
+          execution = action.execute!(
+            inputs: inputs.with_indifferent_access,
+            connection: connection,
+            user: user,
+            entity: entity
+          )
+
+          if execution.completed?
+            return success_response(
+              data: execution.normalized_response || execution.raw_response,
+              via: "action",
+              action: action.slug,
+              execution_id: execution.id,
+              message: "#{action.action_name} completed via #{integration.name}"
+            )
+          else
+            Rails.logger.warn "[V3::PlatformExecute] Action execution failed: #{execution.error_message}, trying direct operation"
+          end
+        end
+
+        # ─── STEP 2: Try direct IntegrationOperation ───
+        operation = integration.integration_operations.find_by(operation_id: operation_name) ||
+                    integration.integration_operations.find_by(operation_id: "#{integration_slug}.#{operation_name}") ||
+                    integration.integration_operations.where("name ILIKE ? OR operation_id ILIKE ?", operation_name, "%#{operation_name}%").first
+
+        if operation
+          Rails.logger.info "[V3::PlatformExecute] Using direct operation '#{operation.operation_id}'"
+
+          # Auto-generate an IntegrationAction for next time
+          begin
+            gen_result = Integrations::ActionGeneratorService.generate_for_operation(
+              operation, use_ai: true, entity_id: entity.id, user_id: user.id
+            )
+            if gen_result[:success]
+              Rails.logger.info "[V3::PlatformExecute] Auto-generated action '#{gen_result[:action].slug}' for future use"
+            end
+          rescue => e
+            Rails.logger.warn "[V3::PlatformExecute] Action auto-generation failed (non-fatal): #{e.message}"
+          end
+
+          # Execute directly
+          tool = ::Tools::ExecuteIntegrationActionTool.new(user: user, entity: entity, context: context)
+          result = tool.execute({
+            "integration" => integration_slug,
+            "action" => operation_name,
+            "inputs" => inputs
+          })
+
+          return result
+        end
+
+        # ─── STEP 3: Operation not found — guide the Brain to create it ───
+        available_ops = integration.integration_operations.pluck(:operation_id, :name).map { |id, name| "#{id} (#{name})" }
+
+        error_response(
+          "No operation '#{operation_name}' found for #{integration.name}.",
+          hint: "To add this operation: 1) Use web_search to find the #{integration.name} API docs for '#{operation_name}'. " \
+                "2) Call platform_execute(action: 'add_integration_operations', integration_id: #{integration.id}, operations: [{ name: '...', operation_id: '#{operation_name}', http_method: 'GET', path_template: '/...', description: '...' }]). " \
+                "3) Then retry this call.",
+          available_operations: available_ops.first(20),
+          integration_id: integration.id
+        )
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # INTEGRATION MANAGEMENT — Setup and configuration actions
+      # ═══════════════════════════════════════════════════════════════
+
+      def execute_test_integration(args)
+        integration_id = get_arg(args, :integration_id)
+        return error_response("Missing: integration_id") if integration_id.blank?
+
+        factory = Factories::IntegrationFactory.new(user: user, entity: entity)
+        result = factory.test_auth(integration_id: integration_id)
+
+        if result[:success]
+          success_response(
+            integration_id: integration_id,
+            status: "connected",
+            integration_agent: result[:integration_agent],
+            message: "Authentication test passed! #{result[:integration_agent] ? "Created expert agent: #{result[:integration_agent][:name]}." : ''}",
+            test_response_preview: result[:test_response].is_a?(Hash) ? result[:test_response].keys.first(5) : nil
+          )
+        else
+          error_response(
+            translate_integration_error(result),
+            integration_id: integration_id,
+            needs_credentials: result[:needs_credentials],
+            suggestion: result[:suggestion],
+            user_action: result[:user_action],
+            debug_info: result[:debug_info],
+            canvas_type: result[:needs_credentials] ? "integrations_manager" : nil,
+            canvas_data: result[:needs_credentials] ? { integration_id: integration_id } : nil
+          )
+        end
+      end
+
+      def execute_configure_auth(args)
+        integration_id = get_arg(args, :integration_id)
+        auth_type = get_arg(args, :auth_type)
+
+        return error_response("Missing: integration_id") if integration_id.blank?
+        return error_response("Missing: auth_type (api_key, bearer_token, basic_auth, oauth2, no_auth)") if auth_type.blank?
+
+        factory = Factories::IntegrationFactory.new(user: user, entity: entity)
+        result = factory.configure_auth(
+          integration_id: integration_id,
+          auth_type: auth_type,
+          auth_placement: get_arg(args, :auth_placement),
+          test_endpoint: get_arg(args, :test_endpoint),
+          auth_configs: get_arg(args, :auth_configs),
+          auth_header_name: get_arg(args, :auth_header_name),
+          authorize_url: get_arg(args, :authorize_url),
+          token_url: get_arg(args, :token_url),
+          scopes: get_arg(args, :scopes)
+        )
+
+        if result[:success]
+          success_response(
+            integration_id: integration_id,
+            auth_type: auth_type,
+            auth_configs_created: result[:auth_configs_created],
+            message: "Authentication configured as #{auth_type}. User should now enter credentials in the Integrations panel.",
+            canvas_type: "integrations_manager",
+            canvas_data: { integration_id: integration_id }
+          )
+        else
+          error_response("Auth configuration failed: #{factory.errors.join(', ')}", integration_id: integration_id)
+        end
+      end
+
+      def execute_add_operations(args)
+        integration_id = get_arg(args, :integration_id)
+        operations = get_arg(args, :operations)
+
+        return error_response("Missing: integration_id") if integration_id.blank?
+        return error_response("Missing: operations (array of operation definitions)") if operations.blank?
+
+        factory = Factories::IntegrationFactory.new(user: user, entity: entity)
+        result = factory.add_operations(integration_id: integration_id, operations: operations)
+
+        if result[:success]
+          ops_created = result[:operations_created] || []
+
+          # Auto-generate IntegrationActions for each operation
+          actions_generated = []
+          ops_created.each do |op|
+            begin
+              gen = Integrations::ActionGeneratorService.generate_for_operation(op, use_ai: true, entity_id: entity.id, user_id: user.id)
+              actions_generated << gen[:action].slug if gen[:success]
+            rescue => e
+              Rails.logger.warn "[V3::PlatformExecute] Action generation for #{op.name} failed: #{e.message}"
+            end
+          end
+
+          success_response(
+            integration_id: integration_id,
+            operations_created: ops_created.map { |op| { id: op.id, name: op.name, operation_id: op.operation_id, method: op.http_method, path: op.path_template } },
+            actions_generated: actions_generated,
+            message: "Added #{ops_created.length} operation(s). #{actions_generated.any? ? "Generated #{actions_generated.length} action mapping(s)." : ''}"
+          )
+        else
+          error_response("Failed to add operations: #{factory.errors.join(', ')}", integration_id: integration_id)
+        end
+      end
+
+      def execute_generate_action(args)
+        integration_slug = get_arg(args, :integration)
+        operation_id_str = get_arg(args, :operation_id)
+        use_ai = get_arg(args, :use_ai) != false # default true
+
+        return error_response("Missing: integration") if integration_slug.blank?
+        return error_response("Missing: operation_id") if operation_id_str.blank?
+
+        integration = Integration.find_by(slug: integration_slug) ||
+                      Integration.where(entity: entity).find_by(slug: integration_slug)
+        return error_response("Integration '#{integration_slug}' not found") unless integration
+
+        operation = integration.integration_operations.find_by(operation_id: operation_id_str) ||
+                    integration.integration_operations.find_by(operation_id: "#{integration_slug}.#{operation_id_str}") ||
+                    integration.integration_operations.where("name ILIKE ? OR operation_id ILIKE ?", operation_id_str, "%#{operation_id_str}%").first
+        return error_response("Operation '#{operation_id_str}' not found for #{integration.name}") unless operation
+
+        result = Integrations::ActionGeneratorService.generate_for_operation(
+          operation,
+          use_ai: use_ai,
+          entity_id: entity.id,
+          user_id: user.id,
+          auto_activate: true
+        )
+
+        if result[:success]
+          action = result[:action]
+          success_response(
+            action_id: action.id,
+            slug: action.slug,
+            action_name: action.action_name,
+            input_schema: action.input_schema,
+            status: action.status,
+            message: "Action '#{action.slug}' generated with #{use_ai ? 'AI-enhanced' : 'default'} mapping code. Ready to use."
+          )
+        else
+          error_response("Action generation failed: #{result[:error]}")
+        end
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # ERROR TRANSLATION — User-friendly integration errors
+      # ═══════════════════════════════════════════════════════════════
+
+      def translate_integration_error(result)
+        status = result[:status_code]
+        error = result[:error].to_s
+
+        case status
+        when 401
+          "Authentication failed. The API key or credentials may be invalid or expired. Please check them in the Integrations panel."
+        when 403
+          "Access denied. The credentials don't have permission for this operation. Check that the API key has the right scopes."
+        when 404
+          "The test endpoint was not found. The API URL or endpoint path may be incorrect."
+        when 429
+          "Rate limit exceeded. The API is temporarily blocking requests. Try again in a few minutes."
+        when 500..599
+          "The external service is having issues (#{status}). This is on their end — try again later."
+        else
+          if result[:needs_credentials]
+            "No credentials found. Open the Integrations panel to enter your API key or credentials."
+          else
+            "Connection test failed: #{error}"
+          end
+        end
       end
 
       def execute_send_campaign(args)

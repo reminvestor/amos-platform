@@ -49,8 +49,11 @@ module V3
         Rails.logger.info "[V3::IntentEngine] Recipe fast-path: #{recipe_class.recipe_name}"
         result = execute_recipe(recipe_class, goal, spec)
 
-        # If recipe succeeded, return it. If it failed, fall through to Brain.
-        if result.is_a?(Hash) && result[:success] != false
+        # Recipe can signal that it needs the Brain for multi-step work
+        if result.is_a?(Hash) && result[:route_to_brain]
+          Rails.logger.info "[V3::IntentEngine] Recipe requested Brain routing: #{result[:reason]}"
+          # Fall through to Brain below
+        elsif result.is_a?(Hash) && result[:success] != false
           return result
         else
           Rails.logger.info "[V3::IntentEngine] Recipe failed, falling through to Platform Brain"

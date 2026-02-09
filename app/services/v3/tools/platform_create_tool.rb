@@ -10,7 +10,7 @@ module V3
     #
     class PlatformCreateTool < ::Tools::BaseTool
       # Types that need special builder routing (not just DB creates)
-      BUILDER_TYPES = %w[landing_page website web_app workflow automation app module sync scheduled_task].freeze
+      BUILDER_TYPES = %w[landing_page website web_app workflow automation app module sync scheduled_task integration].freeze
 
       def self.metadata
         {
@@ -27,9 +27,15 @@ module V3
               Triggers: contact_created, form_submit, record_updated, status_changed, field_changed, schedule, webhook
               Actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user
             - sync — platform_create(type: "sync", data: { integration: "stripe", source: "customers", target: "Contact", schedule: "daily" })
+            - integration — platform_create(type: "integration", data: { name: "Stripe", base_url: "https://api.stripe.com/v1", documentation_url: "https://stripe.com/docs/api", auth_type: "basic_auth", auth_configs: [{ key: "Authorization", value: "Basic {api_key}:", placement: "header" }], test_endpoint: "/charges?limit=1", operations: [{ name: "List Customers", operation_id: "list_customers", http_method: "GET", path_template: "/customers", description: "List all customers" }] })
             - scheduled_task — platform_create(type: "scheduled_task", data: { name: "Weekly Report", prompt: "Generate a summary of this week's contacts", schedule: "weekly" })
             - landing_page — platform_create(type: "landing_page", data: { title: "My Page", description: "Lead gen page" })
             - app — platform_create(type: "app", data: { name: "CRM", description: "Contact management" })
+
+            Custom app records (after building an app):
+            - platform_create(type: "task", data: { title: "Fix bug", status: "todo", project_id: 5 })
+            - platform_create(type: "product", data: { name: "Widget", sku: "W-001", price: 29.99, quantity: 100 })
+            Any dynamic module type created via app building is supported. Use platform_query(type: "schema") to discover available types.
 
             Contact defaults: lifecycle_stage="lead", status="active".
           DESC
@@ -39,7 +45,7 @@ module V3
             properties: {
               type: {
                 type: "string",
-                description: "Object type to create (contact, contact_group, email_template, campaign, automation, sync, scheduled_task, landing_page, app, support_ticket)"
+                description: "Object type to create (contact, contact_group, email_template, campaign, automation, sync, integration, scheduled_task, landing_page, app, support_ticket)"
               },
               data: {
                 type: "object",
@@ -64,6 +70,10 @@ module V3
         if BUILDER_TYPES.include?(type)
           return execute_builder(type, data)
         end
+
+        # Check if type matches a dynamic module model
+        module_result = find_and_create_module_record(type, data)
+        return module_result if module_result
 
         # Standard data objects — delegate to CreateObjectTool
         create_tool = ::Tools::CreateObjectTool.new(user: user, entity: entity, context: context)
@@ -98,6 +108,8 @@ module V3
           build_app(data)
         when "sync"
           build_sync(data)
+        when "integration"
+          build_integration(data)
         when "scheduled_task"
           build_scheduled_task(data)
         else
@@ -241,14 +253,35 @@ module V3
         action = data["action"] || data[:action] || ""
         action_config = data["action_config"] || data[:action_config] || {}
         description = data["description"] || data[:description] || ""
+        integration = data["integration"] || data[:integration]
 
-        return error_response("Missing: trigger (e.g., 'contact_created', 'form_submitted')") if trigger.blank?
-        return error_response("Missing: action (e.g., 'send_email', 'add_to_campaign', 'update_field')") if action.blank?
+        return error_response("Missing: trigger (e.g., 'contact_created', 'form_submitted', 'stripe.customer_created')") if trigger.blank?
+        return error_response("Missing: action (e.g., 'send_email', 'add_to_campaign', 'create_contact')") if action.blank?
 
         Rails.logger.info "[V3::PlatformCreate] Building automation: #{name} (#{trigger} -> #{action})"
 
-        # Normalize trigger type
-        trigger_type = normalize_trigger(trigger)
+        # ═══ Integration trigger resolution ═══
+        # If the trigger looks like an integration event (e.g., "stripe.customer_created"),
+        # resolve it to the correct webhook trigger config
+        integration_trigger = AutomationActionRegistry.resolve_integration_trigger(trigger)
+        
+        if integration_trigger
+          trigger_type = integration_trigger[:trigger_type]  # "webhook"
+          integration ||= integration_trigger[:integration]
+          action_config = action_config.merge(
+            "event_filter" => integration_trigger[:event_filter],
+            "integration" => integration
+          )
+          
+          # Auto-populate field mappings for create_contact if not provided
+          if action == "create_contact" && (action_config["field_mappings"].blank? && action_config[:field_mappings].blank?)
+            source = data["source"] || data[:source] || infer_source_from_trigger(trigger)
+            defaults = AutomationActionRegistry.default_field_mappings(integration, source)
+            action_config["field_mappings"] = defaults if defaults.any?
+          end
+        else
+          trigger_type = normalize_trigger(trigger)
+        end
 
         # Generate deterministic code from action template
         begin
@@ -262,14 +295,22 @@ module V3
           return error_response(e.message)
         end
 
+        # Build trigger config
+        trigger_config_hash = { model: "Contact" }.merge(action_config)
+        if integration_trigger
+          trigger_config_hash[:integration] = integration
+          trigger_config_hash[:event_filter] = integration_trigger[:event_filter]
+          trigger_config_hash[:webhook_path] = "#{integration}/#{integration_trigger[:event_filter]}"
+        end
+
         # Create the AutomationCode record
         automation = AutomationCode.create!(
           entity: entity,
           created_by: user,
           name: name,
-          description: description.presence || "#{action.humanize} when #{trigger_type.humanize.downcase}",
+          description: description.presence || build_automation_description(action, trigger_type, integration),
           trigger_type: trigger_type,
-          trigger_config: { model: "Contact" }.merge(action_config),
+          trigger_config: trigger_config_hash,
           code: code,
           status: "active",
           is_tested: true,  # Template-generated code is pre-tested
@@ -280,18 +321,182 @@ module V3
 
         @context[:canvas_suggestion] = "automation_dashboard"
 
+        trigger_desc = integration_trigger ? "#{integration} #{trigger}" : trigger_type.humanize.downcase
         success_response(
           automation_id: automation.id,
           name: name,
           trigger: trigger_type,
+          integration: integration,
           action: action,
           status: "active",
-          message: "Automation '#{name}' is active! It will #{action.humanize.downcase} when #{trigger_type.humanize.downcase}.",
+          message: "Automation '#{name}' is active! It will #{action.humanize.downcase} when #{trigger_desc}.",
           canvas_type: "automation_dashboard"
         )
       rescue => e
         Rails.logger.error "[V3::PlatformCreate] Automation build failed: #{e.message}\n#{e.backtrace.first(3).join("\n")}"
         error_response("Automation creation failed: #{e.message}")
+      end
+
+      def build_automation_description(action, trigger_type, integration = nil)
+        prefix = integration ? "#{integration.titleize}: " : ""
+        "#{prefix}#{action.humanize} when #{trigger_type.humanize.downcase}"
+      end
+
+      def infer_source_from_trigger(trigger)
+        case trigger.to_s
+        when /customer/ then "customers"
+        when /order/ then "orders"
+        when /invoice/ then "invoices"
+        when /contact/ then "contacts"
+        when /deal/ then "deals"
+        else "customers"
+        end
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # INTEGRATION — Connect to external APIs
+      # ═══════════════════════════════════════════════════════════════
+
+      def build_integration(data)
+        name = data["name"] || data[:name]
+        base_url = data["base_url"] || data[:base_url]
+        documentation_url = data["documentation_url"] || data[:documentation_url] || data["docs_url"] || data[:docs_url]
+        auth_type = data["auth_type"] || data[:auth_type]
+        category = data["category"] || data[:category]
+        description = data["description"] || data[:description]
+        api_version = data["api_version"] || data[:api_version]
+        test_endpoint = data["test_endpoint"] || data[:test_endpoint]
+        auth_configs = data["auth_configs"] || data[:auth_configs]
+        auth_placement = data["auth_placement"] || data[:auth_placement]
+        auth_header_name = data["auth_header_name"] || data[:auth_header_name]
+        operations = data["operations"] || data[:operations]
+
+        # OAuth-specific
+        authorize_url = data["authorize_url"] || data[:authorize_url]
+        token_url = data["token_url"] || data[:token_url]
+        scopes = data["scopes"] || data[:scopes]
+
+        return error_response("Missing: name") if name.blank?
+        return error_response("Missing: base_url (the API base URL, e.g., 'https://api.stripe.com/v1')") if base_url.blank?
+        return error_response("Missing: documentation_url (URL to the API docs)") if documentation_url.blank?
+
+        Rails.logger.info "[V3::PlatformCreate] Building integration: #{name}"
+        stream_progress("Setting up #{name} integration...", percentage: 0)
+
+        factory = Factories::IntegrationFactory.new(user: user, entity: entity)
+
+        # ─── STAGE 1: Create foundation ───
+        stream_progress("Creating #{name} foundation...", percentage: 10)
+
+        foundation_result = factory.create_foundation(
+          name: name,
+          base_url: base_url,
+          documentation_url: documentation_url,
+          description: description,
+          category: category,
+          api_version: api_version
+        )
+
+        unless foundation_result[:success]
+          return error_response(
+            "Integration foundation failed: #{factory.errors.join(', ')}",
+            hint: "Check that the name is unique and the base_url is a valid public URL."
+          )
+        end
+
+        integration = foundation_result[:integration]
+        integration_id = integration.id
+
+        # ─── STAGE 2: Configure auth (if auth_type provided) ───
+        if auth_type.present?
+          stream_progress("Configuring #{auth_type} authentication...", percentage: 30)
+
+          auth_result = factory.configure_auth(
+            integration_id: integration_id,
+            auth_type: auth_type,
+            auth_placement: auth_placement,
+            test_endpoint: test_endpoint,
+            auth_configs: auth_configs,
+            auth_header_name: auth_header_name,
+            authorize_url: authorize_url,
+            token_url: token_url,
+            scopes: scopes
+          )
+
+          unless auth_result[:success]
+            return error_response(
+              "Auth configuration failed: #{factory.errors.join(', ')}",
+              integration_id: integration_id,
+              hint: "Integration was created but auth setup failed. You can retry with platform_execute(action: 'configure_integration_auth', ...)."
+            )
+          end
+        end
+
+        # ─── STAGE 3: Add operations (if provided) ───
+        operations_created = []
+        if operations.present? && operations.is_a?(Array) && operations.any?
+          stream_progress("Adding #{operations.length} API operations...", percentage: 60)
+
+          ops_result = factory.add_operations(
+            integration_id: integration_id,
+            operations: operations
+          )
+
+          if ops_result[:success]
+            operations_created = ops_result[:operations_created] || []
+
+            # Auto-generate IntegrationActions for each operation
+            stream_progress("Generating action mappings...", percentage: 80)
+            operations_created.each do |op|
+              begin
+                Integrations::ActionGeneratorService.generate_for_operation(op, use_ai: true, entity_id: entity.id, user_id: user.id)
+              rescue => e
+                Rails.logger.warn "[V3::PlatformCreate] Action generation for #{op.name} failed (non-fatal): #{e.message}"
+              end
+            end
+          else
+            Rails.logger.warn "[V3::PlatformCreate] Operations creation had errors: #{factory.errors.join(', ')}"
+          end
+        end
+
+        stream_progress("#{name} integration ready!", percentage: 100)
+
+        # Build the response
+        needs_credentials = auth_type.present? && auth_type != "no_auth"
+        credential_message = if needs_credentials
+          "Open the Integrations panel to enter your #{auth_type_label(auth_type)}."
+        else
+          "No authentication needed — you're all set!"
+        end
+
+        @context[:canvas_suggestion] = "integrations_manager"
+
+        success_response(
+          integration_id: integration_id,
+          name: name,
+          slug: integration.slug,
+          base_url: base_url,
+          auth_type: auth_type || "pending",
+          operations_count: operations_created.length,
+          operations: operations_created.map { |op| { id: op.id, name: op.name, method: op.http_method, path: op.path_template } },
+          needs_credentials: needs_credentials,
+          message: "#{name} integration created! #{credential_message}",
+          canvas_type: "integrations_manager",
+          canvas_data: { integration_id: integration_id }
+        )
+      rescue => e
+        Rails.logger.error "[V3::PlatformCreate] Integration build failed: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+        error_response("Integration creation failed: #{e.message}")
+      end
+
+      def auth_type_label(auth_type)
+        case auth_type.to_s
+        when "api_key" then "API key"
+        when "bearer_token" then "access token"
+        when "basic_auth" then "username and password (or API key)"
+        when "oauth2" then "OAuth credentials (client ID and secret)"
+        else "credentials"
+        end
       end
 
       # ═══════════════════════════════════════════════════════════════
@@ -352,6 +557,16 @@ module V3
         )
 
         Rails.logger.info "[V3::PlatformCreate] Sync config created: #{sync_config.id}"
+
+        # Create a ScheduledAgentTask if this is a scheduled sync
+        if sync_config.schedule_type == "scheduled" && sync_config.cron_expression.present?
+          begin
+            sync_config.create_scheduled_task!(user: user)
+            Rails.logger.info "[V3::PlatformCreate] Scheduled task created for sync #{sync_config.id}"
+          rescue => e
+            Rails.logger.warn "[V3::PlatformCreate] Scheduled task creation failed (non-fatal): #{e.message}"
+          end
+        end
 
         # Optionally run the first sync immediately
         first_sync_result = nil
@@ -450,7 +665,14 @@ module V3
       end
 
       def normalize_trigger(trigger)
-        case trigger.to_s.downcase
+        trigger_str = trigger.to_s.downcase
+        
+        # Check for integration-style triggers first (e.g., "stripe.customer_created")
+        if trigger_str.include?('.') && AutomationActionRegistry.resolve_integration_trigger(trigger_str)
+          return "webhook"
+        end
+        
+        case trigger_str
         when /contact.*created/, /new.*contact/, "contact_created", "record_created" then "record_created"
         when /form.*submit/, "form_submitted", "form_submit" then "form_submit"
         when /status.*change/, "status_changed" then "status_changed"
@@ -458,8 +680,78 @@ module V3
         when /schedule/, /cron/, /daily/, /weekly/, "scheduled" then "schedule"
         when /webhook/ then "webhook"
         when /record.*update/, "record_updated" then "record_updated"
+        when /stripe|hubspot|shopify|quickbooks/ then "webhook"  # Integration triggers → webhook
         else "manual"
         end
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # DYNAMIC MODULE RECORDS — CRUD for user-built app data
+      # ═══════════════════════════════════════════════════════════════
+
+      def find_and_create_module_record(type, data)
+        # Try to find a dynamic module model matching this type
+        # Supports: "task", "project_management_task", "project_management/Task", etc.
+        model_class = resolve_dynamic_model(type)
+        return nil unless model_class
+
+        Rails.logger.info "[V3::PlatformCreate] Creating dynamic module record: #{type}"
+
+        # Filter data to only include valid columns
+        valid_columns = model_class.column_names - %w[id created_at updated_at]
+        record_data = data.select { |k, _| valid_columns.include?(k.to_s) }
+        record_data['entity_id'] = entity.id
+
+        record = model_class.create!(record_data)
+
+        success_response(
+          id: record.id,
+          type: type,
+          record: record.attributes.except('entity_id'),
+          message: "Created #{type.titleize} record ##{record.id}"
+        )
+      rescue ActiveRecord::RecordInvalid => e
+        error_response("Validation failed: #{e.message}")
+      rescue => e
+        Rails.logger.error "[V3::PlatformCreate] Dynamic module create failed: #{e.message}"
+        error_response("Failed to create #{type}: #{e.message}")
+      end
+
+      def resolve_dynamic_model(type)
+        return nil unless entity
+
+        # Strategy 1: Check if type matches "module_slug/ModelName" format
+        if type.include?('/')
+          parts = type.split('/')
+          app_module = entity.app_modules.active.find_by(slug: parts[0])
+          return nil unless app_module
+          return Modules::DynamicModelLoader.instance.get_model(app_module, parts[1].classify)
+        end
+
+        # Strategy 2: Direct slug match (e.g., "project_management")
+        app_module = entity.app_modules.active.find_by(slug: type)
+        if app_module
+          model_class = Modules::DynamicModelLoader.instance.get_model(app_module, app_module.slug.classify)
+          return model_class if model_class
+        end
+
+        # Strategy 3: Check if type matches a sub-module slug (e.g., "project_management_task")
+        entity.app_modules.active.each do |mod|
+          mod.module_codes.where(code_type: 'model').each do |model_code|
+            model_name = model_code.name
+            # Match by model name (case-insensitive)
+            if model_name.underscore == type || model_name.underscore.pluralize == type
+              return Modules::DynamicModelLoader.instance.get_model(mod, model_name)
+            end
+            # Match by table name
+            table = model_code.schema_definition&.dig('table_name')
+            if table == type.pluralize || table == type
+              return Modules::DynamicModelLoader.instance.get_model(mod, model_name)
+            end
+          end
+        end
+
+        nil
       end
 
       # ═══════════════════════════════════════════════════════════════

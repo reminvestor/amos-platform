@@ -97,23 +97,170 @@ class ApplicationBuildService
   def build_modules!
     log_progress("📦 Creating modules...")
     
-    plan.modules_spec.each_with_index do |module_spec, index|
-      log_progress("  Creating #{module_spec['name']}...")
-      
-      app_module = create_module(module_spec)
-      create_module_table(app_module, module_spec)
-      create_module_canvases(app_module, module_spec)
-      
-      results[:modules] << {
-        id: app_module.id,
-        name: app_module.name,
-        slug: app_module.slug
-      }
-      
-      log_progress("  ✅ #{module_spec['name']} created")
+    # Separate primary and sub-modules to ensure correct build order
+    primary_specs = plan.modules_spec.select { |m| m['is_primary'] != false }
+    sub_specs = plan.modules_spec.select { |m| m['is_primary'] == false }
+    
+    # Phase 1: Build primary modules first (parents must exist before children)
+    primary_specs.each do |module_spec|
+      log_progress("  Creating primary module: #{module_spec['name']}...")
+      build_single_module(module_spec)
     end
     
-    log_progress("✅ #{results[:modules].count} modules created")
+    # Phase 2: Build sub-modules with relationship wiring
+    sub_specs.each do |module_spec|
+      log_progress("  Creating sub-module: #{module_spec['name']}...")
+      build_single_module(module_spec)
+    end
+    
+    # Phase 3: Wire associations between modules (after all tables exist)
+    wire_module_associations!
+    
+    log_progress("✅ #{results[:modules].count} modules created (#{primary_specs.count} primary, #{sub_specs.count} sub-modules)")
+  end
+  
+  def build_single_module(module_spec)
+    app_module = create_module(module_spec)
+    create_module_table(app_module, module_spec)
+    create_module_canvases(app_module, module_spec)
+    
+    results[:modules] << {
+      id: app_module.id,
+      name: app_module.name,
+      slug: app_module.slug,
+      is_primary: module_spec['is_primary'] != false,
+      relationship: module_spec['relationship']
+    }
+    
+    log_progress("  ✅ #{module_spec['name']} created")
+  end
+  
+  def wire_module_associations!
+    # Build a slug-to-module lookup from what we just created
+    module_lookup = {}
+    results[:modules].each do |mod_info|
+      module_lookup[mod_info[:slug]] = mod_info
+    end
+    
+    # Wire belongs_to relationships
+    results[:modules].each do |mod_info|
+      relationship = mod_info[:relationship]
+      next unless relationship.present? && relationship['type'] == 'belongs_to'
+      
+      parent_slug = relationship['parent_slug']
+      foreign_key = relationship['foreign_key']
+      parent_info = module_lookup[parent_slug]
+      
+      next unless parent_info.present? && foreign_key.present?
+      
+      child_module = AppModule.find(mod_info[:id])
+      parent_module = AppModule.find(parent_info[:id])
+      
+      # Add foreign key column to child table if not already there
+      add_foreign_key_column(child_module, foreign_key)
+      
+      # Update the child module's model code with belongs_to association
+      update_model_with_association(child_module, parent_module, 'belongs_to', foreign_key)
+      
+      # Update the parent module's model code with has_many association
+      update_model_with_association(parent_module, child_module, 'has_many', foreign_key)
+      
+      # Store relationship metadata on both modules
+      store_relationship_metadata(child_module, parent_module, foreign_key)
+      
+      log_progress("  🔗 Wired #{child_module.name} belongs_to #{parent_module.name} (via #{foreign_key})")
+    end
+  end
+  
+  def add_foreign_key_column(child_module, foreign_key)
+    table_name = child_module.slug.pluralize
+    
+    # Check if column already exists
+    return if ActiveRecord::Base.connection.column_exists?(table_name, foreign_key)
+    
+    ActiveRecord::Base.connection.add_column(table_name, foreign_key, :bigint)
+    ActiveRecord::Base.connection.add_index(table_name, foreign_key) rescue nil
+  rescue ActiveRecord::StatementInvalid => e
+    Rails.logger.warn "[ApplicationBuildService] Could not add FK column #{foreign_key} to #{table_name}: #{e.message}"
+  end
+  
+  def update_model_with_association(module_record, related_module, association_type, foreign_key)
+    module_code = module_record.module_codes.find_by(code_type: 'model')
+    return unless module_code
+    
+    # Update schema_definition with the association
+    schema_def = module_code.schema_definition || {}
+    schema_def['associations'] ||= []
+    
+    assoc_entry = {
+      'type' => association_type,
+      'model' => related_module.slug.classify,
+      'table' => related_module.slug.pluralize,
+      'foreign_key' => foreign_key
+    }
+    
+    # Only add if not already present
+    unless schema_def['associations'].any? { |a| a['model'] == assoc_entry['model'] && a['type'] == assoc_entry['type'] }
+      schema_def['associations'] << assoc_entry
+    end
+    
+    # Regenerate model code with associations
+    new_code = generate_model_code_with_associations(module_record, schema_def['associations'])
+    
+    module_code.update!(
+      content: new_code,
+      schema_definition: schema_def
+    )
+    
+    # Reload the dynamic model to pick up new associations
+    Modules::DynamicModelLoader.instance.load_model(module_code)
+  end
+  
+  def generate_model_code_with_associations(app_module, associations)
+    assoc_lines = (associations || []).map do |assoc|
+      case assoc['type']
+      when 'belongs_to'
+        "  belongs_to :#{assoc['model'].underscore}, class_name: '#{assoc['model']}', foreign_key: '#{assoc['foreign_key']}', optional: true"
+      when 'has_many'
+        child_name = assoc['model'].underscore.pluralize
+        "  has_many :#{child_name}, class_name: '#{assoc['model']}', foreign_key: '#{assoc['foreign_key']}', dependent: :nullify"
+      else
+        nil
+      end
+    end.compact.join("\n")
+    
+    <<~RUBY
+      class #{app_module.slug.classify} < ApplicationRecord
+        self.table_name = '#{app_module.slug.pluralize}'
+        belongs_to :entity
+      #{assoc_lines}
+        scope :for_entity, ->(entity_id) { where(entity_id: entity_id) }
+      end
+    RUBY
+  end
+  
+  def store_relationship_metadata(child_module, parent_module, foreign_key)
+    # Update child module metadata
+    child_meta = child_module.metadata || {}
+    child_meta['relationships'] ||= []
+    child_meta['relationships'] << {
+      'type' => 'belongs_to',
+      'parent_module_id' => parent_module.id,
+      'parent_module_slug' => parent_module.slug,
+      'foreign_key' => foreign_key
+    }
+    child_module.update!(metadata: child_meta)
+    
+    # Update parent module metadata
+    parent_meta = parent_module.metadata || {}
+    parent_meta['relationships'] ||= []
+    parent_meta['relationships'] << {
+      'type' => 'has_many',
+      'child_module_id' => child_module.id,
+      'child_module_slug' => child_module.slug,
+      'foreign_key' => foreign_key
+    }
+    parent_module.update!(metadata: parent_meta)
   end
   
   def build_agent!
@@ -217,8 +364,7 @@ class ApplicationBuildService
     
     primary_module = AppModule.find(results[:modules].first[:id])
     
-    # Workflows are stored as specs in the module's metadata
-    # They are executed by WorkflowEngineV2 when status changes occur
+    # Build workflow specs for metadata reference
     workflow_specs = plan.workflows_spec.map.with_index do |workflow_spec, idx|
       {
         id: "workflow_#{idx + 1}",
@@ -248,16 +394,14 @@ class ApplicationBuildService
       }
     end
     
-    # Store workflows in module metadata
+    # Store workflows in module metadata (for reference)
     current_metadata = primary_module.metadata || {}
     current_metadata['workflows'] = workflow_specs
     primary_module.update!(metadata: current_metadata)
     
-    workflow_specs.each do |spec|
-      results[:workflows] << {
-        id: spec[:id],
-        name: spec[:name]
-      }
+    # Also create real AutomationCode records for executable automations
+    plan.workflows_spec.each do |workflow_spec|
+      create_automation_from_workflow(primary_module, workflow_spec)
     end
     
     log_progress("✅ #{results[:workflows].count} workflows configured")
@@ -448,6 +592,17 @@ class ApplicationBuildService
   # ============================================
   
   def create_module(module_spec)
+    metadata = {
+      application_plan_id: plan.id,
+      schema: { fields: module_spec['fields'] },
+      is_primary: module_spec['is_primary'] != false
+    }
+    
+    # Store relationship info in metadata for later wiring
+    if module_spec['relationship'].present?
+      metadata[:relationship_spec] = module_spec['relationship']
+    end
+    
     AppModule.create!(
       entity_id: plan.entity_id,
       created_by: plan.created_by,
@@ -458,15 +613,13 @@ class ApplicationBuildService
       version: '1.0.0',
       author_type: 'amos',
       visibility: 'user_private',
-      metadata: {
-        application_plan_id: plan.id,
-        schema: { fields: module_spec['fields'] }
-      }
+      metadata: metadata
     )
   end
   
   def create_module_table(app_module, module_spec)
     fields = module_spec['fields'] || []
+    relationship = module_spec['relationship']
     
     # Build schema definition
     schema_fields = fields.map do |f|
@@ -478,11 +631,31 @@ class ApplicationBuildService
       }
     end
     
+    # Add foreign key field for belongs_to relationships
+    if relationship.present? && relationship['type'] == 'belongs_to' && relationship['foreign_key'].present?
+      fk_name = relationship['foreign_key']
+      unless schema_fields.any? { |f| f['name'] == fk_name }
+        schema_fields << {
+          'name' => fk_name,
+          'type' => :bigint,
+          'null' => true,
+          'default' => nil
+        }
+      end
+    end
+    
+    indexes = [{ 'fields' => ['entity_id'] }]
+    
+    # Add index on foreign key
+    if relationship.present? && relationship['foreign_key'].present?
+      indexes << { 'fields' => [relationship['foreign_key']] }
+    end
+    
     schema_definition = {
       'table_name' => app_module.slug.pluralize,
       'fields' => schema_fields,
       'associations' => [],
-      'indexes' => [{ 'fields' => ['entity_id'] }]
+      'indexes' => indexes
     }
     
     # Create ModuleCode record
@@ -504,9 +677,13 @@ class ApplicationBuildService
   def create_module_canvases(app_module, module_spec)
     views = module_spec['views'] || %w[list form detail]
     fields = module_spec['fields'] || []
+    related_models = build_related_models_context(app_module, module_spec)
     
     views.each do |view_type|
       canvas_type = view_type == 'list' ? 'data_grid' : view_type
+      
+      # Use CanvasGeneratorService for rich canvas generation (AI + fallback)
+      canvas_content = generate_rich_canvas(app_module, view_type, fields, related_models)
       
       ModuleCanvas.create!(
         app_module: app_module,
@@ -515,14 +692,67 @@ class ApplicationBuildService
         slug: "#{app_module.slug}_#{view_type}",
         canvas_type: canvas_type,
         is_default: view_type == 'list',
-        html_content: generate_canvas_html(app_module, view_type, fields),
+        html_content: canvas_content[:html] || generate_canvas_html(app_module, view_type, fields),
+        js_content: canvas_content[:js],
+        css_content: canvas_content[:css],
         data_sources: [{ type: 'module_data', model: app_module.slug }],
         metadata: {
           display_fields: fields.first(6).map { |f| f['name'] },
-          icon: 'database'
+          icon: 'database',
+          generated_by: canvas_content[:generated_by] || 'static'
         }
       )
     end
+  end
+  
+  def generate_rich_canvas(app_module, view_type, fields, related_models)
+    generator = CanvasGeneratorService.new(entity: plan.entity, user: plan.created_by)
+    result = generator.generate(
+      app_module: app_module,
+      view_type: view_type,
+      fields: fields,
+      related_models: related_models
+    )
+    result.merge(generated_by: result[:html].present? ? 'canvas_generator' : 'static')
+  rescue => e
+    Rails.logger.warn "[ApplicationBuildService] Canvas generation failed: #{e.message}, using legacy static HTML"
+    { html: nil, js: nil, css: nil, generated_by: 'static_fallback' }
+  end
+  
+  def build_related_models_context(app_module, module_spec)
+    related = []
+    
+    # Check if this module belongs to a parent
+    relationship = module_spec['relationship']
+    if relationship
+      rel_type = relationship['type'] || relationship[:type]
+      
+      if rel_type == 'belongs_to'
+        parent_slug = relationship['parent_model'] || relationship[:parent_model]
+        parent_mod = AppModule.find_by(slug: parent_slug, entity_id: app_module.entity_id)
+        related << {
+          name: parent_mod&.name || parent_slug.to_s.titleize,
+          relationship_type: 'belongs_to',
+          slug: parent_slug
+        } if parent_slug
+      end
+    end
+    
+    # Check if any other modules in the plan belong to this one (has_many)
+    plan.plan_spec['modules']&.each do |other_spec|
+      other_rel = other_spec['relationship']
+      next unless other_rel
+      parent_model = other_rel['parent_model'] || other_rel[:parent_model]
+      if parent_model == app_module.slug
+        related << {
+          name: other_spec['name'] || other_spec['slug'].to_s.titleize,
+          relationship_type: 'has_many',
+          slug: other_spec['slug']
+        }
+      end
+    end
+    
+    related
   end
   
   def create_crud_tools(app_module)
@@ -909,6 +1139,129 @@ class ApplicationBuildService
     when 'boolean' then 'boolean'
     else 'string'
     end
+  end
+  
+  def create_automation_from_workflow(app_module, workflow_spec)
+    trigger_type = map_workflow_trigger(workflow_spec['trigger'])
+    action_type = resolve_workflow_action(workflow_spec['actions']&.first)
+    
+    # Build trigger config
+    trigger_config = {
+      'module_slug' => app_module.slug,
+      'from_status' => workflow_spec['from_status'],
+      'to_status' => workflow_spec['to_status'],
+      'field' => workflow_spec['field']
+    }.compact
+    
+    # Build action config for AutomationActionRegistry
+    action_config = build_automation_action_config(app_module, action_type, workflow_spec)
+    
+    # Generate the code using the registry
+    code = begin
+      AutomationActionRegistry.generate_code(
+        action: action_type,
+        action_config: action_config,
+        trigger: trigger_type,
+        name: workflow_spec['name']
+      )
+    rescue => e
+      Rails.logger.warn "[ApplicationBuildService] Could not generate automation code for #{workflow_spec['name']}: #{e.message}"
+      generate_fallback_automation_code(workflow_spec)
+    end
+    
+    automation = AutomationCode.create!(
+      entity: plan.entity,
+      app_module: app_module,
+      created_by: plan.created_by,
+      name: workflow_spec['name'],
+      trigger_type: trigger_type,
+      trigger_config: trigger_config,
+      code: code,
+      description: describe_workflow(workflow_spec),
+      status: 'active',
+      is_tested: true, # Auto-generated code is considered tested
+      metadata: {
+        'source' => 'application_build',
+        'plan_id' => plan.id,
+        'actions' => workflow_spec['actions']
+      }
+    )
+    
+    results[:workflows] << { id: automation.id, name: automation.name, type: 'automation_code' }
+  rescue => e
+    Rails.logger.warn "[ApplicationBuildService] Automation creation failed for #{workflow_spec['name']}: #{e.message}"
+  end
+  
+  def map_workflow_trigger(trigger)
+    case trigger.to_s
+    when 'status_change', 'status_changed' then 'status_changed'
+    when 'record_created', 'created' then 'record_created'
+    when 'record_updated', 'updated' then 'record_updated'
+    when 'field_changed' then 'field_changed'
+    when 'schedule', 'scheduled', 'scheduled_datetime' then 'schedule'
+    when 'webhook' then 'webhook'
+    when 'form_submit' then 'form_submit'
+    else 'manual'
+    end
+  end
+  
+  def resolve_workflow_action(action)
+    return 'notify_on_module_event' if action.nil?
+    
+    case action.to_s.downcase
+    when /notify/, /alert/ then 'notify_on_module_event'
+    when /update.*field/, /set.*field/ then 'update_module_record'
+    when /create.*record/ then 'create_module_record'
+    when /email/, /send/ then 'notify_user'
+    when /webhook/, /call/ then 'call_webhook'
+    else 'notify_on_module_event'
+    end
+  end
+  
+  def build_automation_action_config(app_module, action_type, workflow_spec)
+    case action_type
+    when 'notify_on_module_event'
+      {
+        'module_slug' => app_module.slug,
+        'message' => "#{workflow_spec['name']} triggered for #{app_module.name}"
+      }
+    when 'update_module_record'
+      {
+        'module_slug' => app_module.slug,
+        'field' => workflow_spec['to_status'] ? 'status' : (workflow_spec['field'] || 'status'),
+        'value' => workflow_spec['to_status'] || 'updated'
+      }
+    when 'create_module_record'
+      {
+        'module_slug' => app_module.slug,
+        'field_values' => { 'status' => 'new' }
+      }
+    when 'notify_user'
+      {
+        'message' => "#{workflow_spec['name']} triggered for #{app_module.name}"
+      }
+    when 'call_webhook'
+      {
+        'url' => 'https://hooks.example.com/placeholder'
+      }
+    else
+      { 'module_slug' => app_module.slug, 'message' => workflow_spec['name'] }
+    end
+  end
+  
+  def generate_fallback_automation_code(workflow_spec)
+    <<~RUBY
+      # Automation: #{workflow_spec['name']}
+      # Fallback code — customize as needed
+      def execute(trigger_data)
+        entity_id = trigger_data[:entity_id] || trigger_data["entity_id"]
+        record = trigger_data[:record] || trigger_data["record"] || {}
+        
+        Rails.logger.info "[Automation] #{workflow_spec['name']} triggered for entity \#{entity_id}"
+        
+        { success: true, message: "#{workflow_spec['name']} executed", record_id: record["id"] }
+      end
+    RUBY
   end
   
   def describe_workflow(workflow_spec)

@@ -203,7 +203,9 @@
                 is_coming_soon = integration_metadata['status'] == 'coming_soon' || integration_metadata[:status] == 'coming_soon'
                 is_beta = integration_metadata['status'] == 'beta' || integration_metadata[:status] == 'beta'
               %>
-              <div data-integration-name="<%= integration[:name] %>"
+              <div id="integration-card-<%= integration[:id] %>"
+                   data-integration-id="<%= integration[:id] %>"
+                   data-integration-name="<%= integration[:name] %>"
                    data-integration-category="<%= category %>"
                    data-integration-description="<%= integration[:description] %>"
                    style="background: var(--bg-card); border: <%= integration[:is_connected] ? '1px solid #4ADE80' : (is_coming_soon ? '1px solid rgba(139, 92, 246, 0.4)' : '1px solid var(--border-primary)') %>; border-radius: 0.75rem; padding: 1.5rem; height: 100%; display: flex; flex-direction: column; <%= is_coming_soon ? 'opacity: 0.85;' : '' %>">
@@ -572,5 +574,23 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
   }
+
+  // Deep-link: auto-scroll to specific integration if integration_id is provided
+  <% if canvas_data[:integration_id].present? %>
+    setTimeout(() => {
+      const targetCard = document.getElementById('integration-card-<%= canvas_data[:integration_id] %>');
+      if (targetCard) {
+        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetCard.style.transition = 'box-shadow 0.3s ease, border-color 0.3s ease';
+        targetCard.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.4)';
+        targetCard.style.borderColor = '#7C3AED';
+        // Remove highlight after 5 seconds
+        setTimeout(() => {
+          targetCard.style.boxShadow = '';
+          targetCard.style.borderColor = '';
+        }, 5000);
+      }
+    }, 300);
+  <% end %>
 });
 </script>

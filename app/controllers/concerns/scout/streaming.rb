@@ -129,6 +129,26 @@ module Scout
       Rails.logger.error "Stream thinking indicator error: #{e.message}"
     end
 
+    # Stream explicit "stop thinking" signal to hide the thinking indicator
+    # Used when transitioning from thinking to Brain execution or content streaming
+    def stream_stop_thinking
+      return if @client_disconnected
+
+      data = JSON.generate({
+        type: "thinking_done",
+        timestamp: Time.current.to_f
+      })
+      chunk = "data: #{data}\n\n"
+
+      response.stream.write(chunk)
+      response.stream.flush if response.stream.respond_to?(:flush)
+    rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
+      Rails.logger.info "Client disconnected during stop_thinking: #{e.message}"
+      mark_client_disconnected!
+    rescue => e
+      Rails.logger.debug "Stream stop_thinking error: #{e.message}"
+    end
+
     # Stream "working" indicator - shows during tool execution with animated dots
     # Provides feedback during longer operations like creating landing pages
     def stream_working_indicator(tool_name = nil)

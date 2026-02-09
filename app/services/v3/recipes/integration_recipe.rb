@@ -2,37 +2,55 @@
 
 module V3
   module Recipes
-    # IntegrationRecipe - Execute integration actions and set up syncs
+    # IntegrationRecipe - Execute integration actions, set up syncs, and connect integrations
     #
     # Handles:
     # - Running integration operations (stripe list_charges, hubspot get_contacts, etc.)
     # - Setting up data syncs between integrations and platform
+    # - Connecting / setting up new integrations (routes to Brain for multi-step setup)
     #
     class IntegrationRecipe < Base
       ACTION_PATTERNS = [
         /\brun\s*(an?\s+)?integration/,
         /\bexecute\s*(an?\s+)?integration/,
-        /\b(stripe|hubspot|quickbooks|mailgun|coinbase)\s+\w+/,
-        /\blist\s+(stripe|hubspot)\s+/,
-        /\bget\s+(stripe|hubspot)\s+/,
-        /\bpull\s+(stripe|hubspot)\s+/,
-        /\bfetch\s+(stripe|hubspot)\s+/,
+        /\b(stripe|hubspot|quickbooks|mailgun|coinbase|shopify|trello|slack|mailchimp|sendgrid)\s+\w+/,
+        /\blist\s+(stripe|hubspot|shopify)\s+/,
+        /\bget\s+(stripe|hubspot|shopify)\s+/,
+        /\bpull\s+(stripe|hubspot|shopify)\s+/,
+        /\bfetch\s+(stripe|hubspot|shopify)\s+/,
+        /\bshow\s+(my\s+)?(stripe|hubspot|shopify)\s+/,
         /\brun\s+integration\s+action/,
         /\bintegration\s+action/,
       ].freeze
 
       SYNC_PATTERNS = [
-        /\bsync\s+(stripe|hubspot|quickbooks)/,
-        /\b(stripe|hubspot|quickbooks)\s+sync/,
+        /\bsync\s+(stripe|hubspot|quickbooks|shopify)/,
+        /\b(stripe|hubspot|quickbooks|shopify)\s+sync/,
         /\bset\s*up\s*(a\s+)?sync/,
         /\bcreate\s*(a\s+)?sync/,
-        /\bsync\s+\w+\s+(customers?|contacts?|invoices?|charges?)/,
-        /\bimport\s+from\s+(stripe|hubspot|quickbooks)/,
+        /\bsync\s+\w+\s+(customers?|contacts?|invoices?|charges?|orders?)/,
+        /\bimport\s+from\s+(stripe|hubspot|quickbooks|shopify)/,
+        /\bkeep\s+.*(updated?|synced?)\s+from/,
+      ].freeze
+
+      # Setup patterns — these need multi-step reasoning, so route to Brain
+      SETUP_PATTERNS = [
+        /\bconnect\s+(my\s+)?(stripe|hubspot|quickbooks|shopify|trello|slack|mailchimp|sendgrid|\w+)/,
+        /\bset\s*up\s+(my\s+)?(stripe|hubspot|quickbooks|shopify|trello|slack|mailchimp|\w+)\s*(integration)?/,
+        /\bintegrate\s+(with\s+)?(stripe|hubspot|quickbooks|shopify|trello|slack|mailchimp|\w+)/,
+        /\badd\s+(a\s+)?(new\s+)?integration/,
+        /\bcreate\s+(a\s+)?(new\s+)?integration/,
+        /\bconnect\s+(a\s+)?(new\s+)?api/,
+        /\bconnect\s+to\s+/,
+        /\bset\s*up\s+(a\s+)?(new\s+)?integration/,
+        /\blink\s+(my\s+)?\w+\s*(account)?/,
       ].freeze
 
       def self.matches?(goal, spec = {})
-        ACTION_PATTERNS.any? { |p| goal.match?(p) } ||
-          SYNC_PATTERNS.any? { |p| goal.match?(p) }
+        goal_lower = goal.to_s.downcase
+        ACTION_PATTERNS.any? { |p| goal_lower.match?(p) } ||
+          SYNC_PATTERNS.any? { |p| goal_lower.match?(p) } ||
+          SETUP_PATTERNS.any? { |p| goal_lower.match?(p) }
       end
 
       def self.priority
@@ -42,7 +60,11 @@ module V3
       def execute(spec:)
         goal_lower = (context[:original_goal] || "").downcase
 
-        if SYNC_PATTERNS.any? { |p| goal_lower.match?(p) }
+        if SETUP_PATTERNS.any? { |p| goal_lower.match?(p) }
+          # Setup goals need multi-step reasoning (web_search, create, configure auth, etc.)
+          # Route to the Brain which has the tools and intelligence to handle this
+          route_to_brain(spec)
+        elsif SYNC_PATTERNS.any? { |p| goal_lower.match?(p) }
           create_sync(spec)
         else
           run_integration_action(spec)
@@ -50,6 +72,18 @@ module V3
       end
 
       private
+
+      def route_to_brain(spec)
+        # Return a signal that tells IntentEngine to route this to PlatformBrain
+        # instead of handling it inline in the recipe
+        {
+          success: true,
+          route_to_brain: true,
+          goal: context[:original_goal],
+          spec: spec,
+          reason: "Integration setup requires multi-step reasoning with web research"
+        }
+      end
 
       def run_integration_action(spec)
         integration = spec_val(spec, :integration) || detect_integration(context[:original_goal] || "")
@@ -89,6 +123,11 @@ module V3
         when /quickbooks/ then "quickbooks"
         when /mailgun/ then "mailgun"
         when /coinbase/ then "coinbase"
+        when /shopify/ then "shopify"
+        when /trello/ then "trello"
+        when /slack/ then "slack"
+        when /mailchimp/ then "mailchimp"
+        when /sendgrid/ then "sendgrid"
         else nil
         end
       end

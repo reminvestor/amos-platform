@@ -1,0 +1,60 @@
+# Integration operation fixtures for testing
+stripe_list_customers:
+  integration: stripe
+  operation_id: "stripe.list_customers"
+  name: "List Customers"
+  description: "Retrieve a list of Stripe customers"
+  http_method: "GET"
+  path_template: "/customers"
+  is_enabled: true
+  is_idempotent: true
+  requires_confirmation: false
+  pagination_strategy: 1
+  request_schema: {}
+  response_schema: {}
+  examples: {}
+
+stripe_create_charge:
+  integration: stripe
+  operation_id: "stripe.create_charge"
+  name: "Create Charge"
+  description: "Create a new charge"
+  http_method: "POST"
+  path_template: "/charges"
+  is_enabled: true
+  is_idempotent: false
+  requires_confirmation: true
+  pagination_strategy: 0
+  request_schema: {}
+  response_schema: {}
+  examples: {}
+
+mailgun_send_message:
+  integration: mailgun
+  operation_id: "mailgun.send_message"
+  name: "Send Message"
+  description: "Send an email via Mailgun"
+  http_method: "POST"
+  path_template: "/messages"
+  is_enabled: true
+  is_idempotent: false
+  requires_confirmation: false
+  pagination_strategy: 0
+  request_schema: {}
+  response_schema: {}
+  examples: {}
+
+quickbooks_list_customers:
+  integration: quickbooks
+  operation_id: "quickbooks.list_customers"
+  name: "List Customers"
+  description: "Retrieve a list of QuickBooks customers"
+  http_method: "GET"
+  path_template: "/company/{companyId}/query"
+  is_enabled: true
+  is_idempotent: true
+  requires_confirmation: false
+  pagination_strategy: 2
+  request_schema: {}
+  response_schema: {}
+  examples: {}

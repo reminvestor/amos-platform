@@ -107,7 +107,7 @@ class WebhooksController < ApplicationController
     stripe_account_id = event.dig("account")
     connections = find_connections_for_webhook("stripe", stripe_account_id)
 
-    # Create scout message for processing
+    # Create scout message for processing + fire automations
     connections.each do |connection|
       ScoutMessage.create!(
         user_id: connection.entity.users.first.id,
@@ -121,6 +121,9 @@ class WebhooksController < ApplicationController
           payload: event
         }
       )
+
+      # Fire matching automations via AutomationBridge
+      fire_webhook_automations(connection.entity, "stripe", event)
     end
   end
 
@@ -216,6 +219,9 @@ class WebhooksController < ApplicationController
           payload: payload
         }
       )
+
+      # Fire matching automations
+      fire_webhook_automations(connection.entity, "shopify", { "type" => topic, "data" => { "object" => payload } })
     end
   end
 
@@ -240,6 +246,9 @@ class WebhooksController < ApplicationController
             payload: event
           }
         )
+
+        # Fire matching automations
+        fire_webhook_automations(connection.entity, "hubspot", { "type" => event["subscriptionType"], "data" => { "object" => event } })
       end
     end
   end
@@ -301,5 +310,29 @@ class WebhooksController < ApplicationController
               .where(integration: integration)
               .where("metadata->>'account_id' = ? OR metadata->>'shop_domain' = ? OR metadata->>'portal_id' = ? OR metadata->>'realm_id' = ?",
                      account_identifier.to_s, account_identifier.to_s, account_identifier.to_s, account_identifier.to_s)
+  end
+
+  # Fire automations that match this webhook event via AutomationBridge
+  # This unifies integrations with automations: a Stripe webhook event
+  # fires any automation with trigger_type=webhook that matches the event.
+  def fire_webhook_automations(entity, integration_slug, event)
+    event_type = event["type"].to_s
+    webhook_path = "#{integration_slug}/#{event_type}"
+
+    # Build payload for AutomationBridge
+    payload = {
+      integration: integration_slug,
+      event_type: event_type,
+      event_id: event["id"],
+      data: event.dig("data", "object") || event["data"] || event
+    }
+
+    # Fire through AutomationBridge's webhook handler
+    Modules::AutomationBridge.on_webhook(payload, entity, webhook_path)
+
+    Rails.logger.info "[Webhooks] Fired automations for #{webhook_path} on entity #{entity.id}"
+  rescue => e
+    Rails.logger.error "[Webhooks] Failed to fire automations for #{integration_slug}: #{e.message}"
+    # Don't fail the webhook if automation firing fails
   end
 end

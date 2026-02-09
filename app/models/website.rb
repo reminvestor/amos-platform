@@ -108,7 +108,8 @@ class Website < ApplicationRecord
   # RENDERING
   # ============================================
   
-  def render_page(page, data: {})
+  def render_page(page, data: {}, rendered_content: nil)
+    content = rendered_content || page.html_content
     layout = <<~HTML
       <!DOCTYPE html>
       <html lang="en">
@@ -125,7 +126,7 @@ class Website < ApplicationRecord
       <body>
         #{header_html || default_header}
         <main>
-          #{page.html_content}
+          #{content}
         </main>
         #{footer_html || default_footer}
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

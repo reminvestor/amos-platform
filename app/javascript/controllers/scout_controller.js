@@ -1021,6 +1021,10 @@ export default class extends Controller {
                   // Show immediate "thinking" indicator with animated dots
                   console.log('🤔 Thinking indicator received')
                   this.showThinkingIndicator(data.message || 'Thinking')
+                } else if (data.type === 'thinking_done') {
+                  // Explicit signal to hide thinking indicator (Brain execution starting)
+                  console.log('🤔 Thinking done — hiding indicator')
+                  this.hideThinkingIndicator(true)
                 } else if (data.type === 'working') {
                   // Show "working" indicator during tool execution
                   console.log('⚙️ Working indicator:', data.message)

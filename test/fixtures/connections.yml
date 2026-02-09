@@ -1,0 +1,12 @@
+# Connection fixtures for testing
+stripe_connected:
+  entity: one
+  integration: stripe
+  name: "Stripe Connection"
+  status: 1
+
+quickbooks_disconnected:
+  entity: one
+  integration: quickbooks
+  name: "QuickBooks Connection"
+  status: 0

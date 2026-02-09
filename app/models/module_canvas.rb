@@ -33,7 +33,7 @@ class ModuleCanvas < ApplicationRecord
   belongs_to :entity
 
   # Canvas types
-  CANVAS_TYPES = %w[module dashboard data_grid form report wizard custom].freeze
+  CANVAS_TYPES = %w[module dashboard data_grid form detail kanban calendar report wizard custom].freeze
   UI_MODES = %w[simple advanced].freeze
 
   # Validations
@@ -110,6 +110,8 @@ class ModuleCanvas < ApplicationRecord
       type: full_canvas_type,
       title: name,
       content: render_html(data_context),
+      js_content: js_content,
+      css_content: css_content,
       data: {
         module_slug: app_module.slug,
         canvas_slug: slug,

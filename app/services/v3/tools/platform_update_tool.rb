@@ -69,6 +69,10 @@ module V3
           return read_landing_page_sections(id)
         end
 
+        # Check if type matches a dynamic module model
+        module_result = find_and_update_module_record(type, id, data)
+        return module_result if module_result
+
         # Delegate to existing UpdateObjectTool
         update_tool = ::Tools::UpdateObjectTool.new(user: user, entity: entity, context: context)
         
@@ -215,6 +219,78 @@ module V3
           count: fields.length,
           message: "#{fields.length} custom field(s) on #{model_type}"
         )
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # DYNAMIC MODULE UPDATES
+      # ═══════════════════════════════════════════════════════════════
+
+      def find_and_update_module_record(type, id, data)
+        model_class = resolve_dynamic_model(type)
+        return nil unless model_class
+
+        Rails.logger.info "[V3::PlatformUpdate] Updating dynamic module record: #{type} ##{id}"
+
+        record = model_class.find_by(id: id, entity_id: entity.id)
+        return error_response("#{type.titleize} ##{id} not found") unless record
+
+        # Filter data to only include valid columns
+        valid_columns = model_class.column_names - %w[id entity_id created_at updated_at]
+        update_data = data.select { |k, _| valid_columns.include?(k.to_s) }
+
+        return error_response("No valid fields to update") if update_data.empty?
+
+        record.update!(update_data)
+
+        success_response(
+          id: record.id,
+          type: type,
+          updated_fields: update_data.keys,
+          record: record.attributes.except('entity_id'),
+          message: "Updated #{type.titleize} ##{id} (#{update_data.keys.join(', ')})"
+        )
+      rescue ActiveRecord::RecordInvalid => e
+        error_response("Validation failed: #{e.message}")
+      rescue => e
+        Rails.logger.error "[V3::PlatformUpdate] Dynamic module update failed: #{e.message}"
+        error_response("Failed to update #{type} ##{id}: #{e.message}")
+      end
+
+      def resolve_dynamic_model(type)
+        return nil unless entity
+
+        # Strategy 1: "module_slug/ModelName" format
+        if type.include?('/')
+          parts = type.split('/')
+          app_module = entity.app_modules.active.find_by(slug: parts[0])
+          return nil unless app_module
+          return Modules::DynamicModelLoader.instance.get_model(app_module, parts[1].classify)
+        end
+
+        # Strategy 2: Direct slug match
+        app_module = entity.app_modules.active.find_by(slug: type) ||
+                     entity.app_modules.active.find_by(slug: type.singularize)
+        if app_module
+          model_class = Modules::DynamicModelLoader.instance.get_model(app_module, app_module.slug.classify)
+          return model_class if model_class
+        end
+
+        # Strategy 3: Check sub-module slugs and model names
+        entity.app_modules.active.each do |mod|
+          mod.module_codes.where(code_type: 'model').each do |model_code|
+            model_name = model_code.name
+            if model_name.underscore == type || model_name.underscore == type.singularize ||
+               model_name.underscore.pluralize == type
+              return Modules::DynamicModelLoader.instance.get_model(mod, model_name)
+            end
+            table = model_code.schema_definition&.dig('table_name')
+            if table == type.pluralize || table == type
+              return Modules::DynamicModelLoader.instance.get_model(mod, model_name)
+            end
+          end
+        end
+
+        nil
       end
     end
   end

@@ -175,20 +175,47 @@ class IntegrationSyncConfig < ApplicationRecord
   private
 
   def fetch_from_integration(cursor, full_sync:)
-    # Build API params
-    params = full_sync ? {} : cursor.api_params
-    params.merge!(filter_conditions) if filter_conditions.present?
+    integration = connection.integration
 
-    # Use the integration executor
-    executor = UniversalIntegrationExecutor.new(connection)
-    
-    # Find the appropriate operation for listing this resource
-    operation = find_list_operation
-    
-    unless operation
-      return { success: false, error: "No list operation found for #{resource_type}" }
+    # Build API params from cursor (for incremental syncs)
+    cursor_params = full_sync ? {} : cursor.api_params
+
+    # ─── Try IntegrationAction first (has smart mapping code) ───
+    action = find_list_action(integration)
+    if action
+      Rails.logger.info "[SyncConfig] Using IntegrationAction '#{action.slug}' for fetch"
+
+      # Build normalized inputs that the action's mapping_code will translate
+      inputs = {}
+      inputs.merge!(cursor_params)
+      inputs.merge!(filter_conditions) if filter_conditions.present?
+
+      # Execute through the action (gets mapping, validation, response normalization)
+      execution = action.execute!(
+        inputs: inputs,
+        connection: connection,
+        user: entity.users.first, # Sync runs as entity owner
+        entity: entity
+      )
+
+      if execution.completed?
+        data = execution.normalized_response || execution.raw_response
+        return { success: true, records: extract_records(data) }
+      else
+        Rails.logger.warn "[SyncConfig] Action execution failed: #{execution.error_message}, falling back to direct operation"
+      end
     end
 
+    # ─── Fallback: direct operation execution ───
+    operation = find_list_operation(integration)
+    unless operation
+      return { success: false, error: "No list operation found for '#{resource_type}'. Add a list operation for this resource." }
+    end
+
+    params = cursor_params
+    params.merge!(filter_conditions) if filter_conditions.present?
+
+    executor = UniversalIntegrationExecutor.new(connection)
     result = executor.execute(operation, params)
 
     if result[:success]
@@ -198,12 +225,32 @@ class IntegrationSyncConfig < ApplicationRecord
     end
   end
 
-  def find_list_operation
-    connection.integration.integration_operations.find_by(
-      "name ILIKE ? OR name ILIKE ?",
-      "list_#{resource_type}",
-      "get_#{resource_type}"
-    )
+  def find_list_action(integration)
+    # Search for an action that lists this resource type
+    resource = resource_type.to_s.underscore
+    IntegrationAction
+      .where(integration: integration)
+      .for_entity(entity)
+      .usable
+      .where("action_name ILIKE ? OR action_name ILIKE ? OR slug ILIKE ?",
+             "list_#{resource}", "get_#{resource}", "%list_#{resource}%")
+      .first
+  end
+
+  def find_list_operation(integration)
+    ops = integration.integration_operations
+    resource = resource_type.to_s.underscore
+
+    # Try exact operation_id match first (e.g., "stripe.list_customers")
+    ops.find_by(operation_id: "#{integration.slug}.list_#{resource}") ||
+    # Try operation_id without prefix
+    ops.find_by(operation_id: "list_#{resource}") ||
+    # Try name match (case insensitive, multiple patterns)
+    ops.where(
+      "name ILIKE ? OR name ILIKE ? OR name ILIKE ? OR operation_id ILIKE ? OR operation_id ILIKE ?",
+      "list_#{resource}", "get_#{resource}", "list #{resource}",
+      "%list_#{resource}%", "%get_#{resource}%"
+    ).first
   end
 
   def extract_records(data)
