@@ -76,9 +76,12 @@ begin
   $redis = Redis.new(REDIS_OPTIONS)
   $redis.ping # Test connection
   Rails.logger.info("Redis connection established successfully")
-rescue Redis::BaseError => e
+rescue => e
+  # Catch ALL errors (Redis::BaseError, RedisClient::CannotConnectError,
+  # Errno::ECONNREFUSED, SocketError, etc.) so Rails can still boot
+  # for tasks like db:migrate that don't need Redis.
   Rails.logger.error("Failed to connect to Redis: #{e.message}")
-  Rails.logger.error(e.backtrace.join("\n"))
+  Rails.logger.error(e.backtrace.first(10).join("\n"))
   # Initialize with a dummy Redis that won't crash the app
   $redis = NullRedis.new
 end
@@ -86,16 +89,17 @@ end
 # Add a safe_redis method for global access to Redis
 def safe_redis
   begin
-    return $redis if $redis && $redis.ping == "PONG"
-  rescue Redis::BaseError => e
+    return $redis if $redis && !$redis.is_a?(NullRedis) && $redis.ping == "PONG"
+  rescue => e
     Rails.logger.error("Redis connection error: #{e.message}")
   end
 
   begin
     # Try to reconnect
     $redis = Redis.new(REDIS_OPTIONS)
+    $redis.ping
     $redis
-  rescue Redis::BaseError => e
+  rescue => e
     Rails.logger.error("Failed to reconnect to Redis: #{e.message}")
     # Return NullRedis if Redis is unavailable
     $redis = NullRedis.new
