@@ -238,9 +238,9 @@ module V3
         ## Custom Visualizations with Freeform Canvas
         
         When the user asks for a custom visualization, interactive timeline, chart, data display, infographic,
-        or any rich visual output that isn't a standard business landing page, use the **freeform** canvas:
+        or any rich visual output that isn't a standard business landing page, use the **freeform_canvas**:
         
-        load_canvas(canvas_name: "freeform", canvas_data: {
+        load_canvas(canvas_name: "freeform_canvas", canvas_data: {
           title: "Descriptive Title",
           html: "<div>...your full HTML markup...</div>",
           css: "body { font-family: sans-serif; } ...",
@@ -254,7 +254,7 @@ module V3
         
         The freeform canvas renders in a sandboxed iframe — you have full control over the HTML, CSS, and JS.
         Use this for timelines, org charts, interactive dashboards, data visualizations, educational displays, etc.
-        Do NOT use landing_page for non-business-page visualizations — use freeform instead.
+        Do NOT use landing_page for non-business-page visualizations — use freeform_canvas instead.
         
         ## Key Rules
         - When a tool succeeds, summarize the result for the user in plain text. Do NOT call more tools unless the user asked for more.
