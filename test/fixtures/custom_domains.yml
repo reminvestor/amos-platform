@@ -1,0 +1,19 @@
+# Custom domain fixtures for testing
+
+help_domain:
+  entity: two
+  user: two
+  domain_name: "help.example.com"
+  subdomain: "help"
+  cname_target: "help.example.com.cdn.amoslabs.com"
+  verification_token: "verify-help-123"
+  web_status: "verified"
+  web_verified_at: <%= 1.week.ago %>
+  ssl_status: "active"
+  ssl_provisioned_at: <%= 1.week.ago %>
+  email_status: "pending"
+  dns_records: {}
+  auto_dns_configured: false
+  is_primary: true
+  redirect_www: true
+  metadata: {}

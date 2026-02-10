@@ -155,7 +155,7 @@ class WebsiteTest < ActiveSupport::TestCase
 
   test "public_url uses custom_domain when present" do
     website = websites(:site_with_domain)
-    assert_equal "https://#{website.custom_domain}", website.public_url
+    assert_equal "https://help.example.com", website.public_url
   end
 
   test "public_url uses subdomain when no custom_domain" do

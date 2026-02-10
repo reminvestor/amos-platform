@@ -21,6 +21,8 @@ class ScoutE2eTest < ActionDispatch::IntegrationTest
   fixtures :users, :entities
 
   setup do
+    skip "E2E tests require SCOUT_E2E=true (makes real LLM calls)" unless ENV['SCOUT_E2E']
+
     @user = users(:one)
     @entity = entities(:one)
     @user.update!(entity: @entity) unless @user.entity_id == @entity.id

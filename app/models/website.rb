@@ -25,7 +25,7 @@ class Website < ApplicationRecord
   validates :theme, inclusion: { in: THEMES }, allow_nil: true
   validates :subdomain, uniqueness: true, allow_nil: true, 
             format: { with: /\A[a-z0-9-]+\z/, message: 'only lowercase letters, numbers, and hyphens' }
-  validates :custom_domain, uniqueness: true, allow_nil: true
+  validates :custom_domain_id, uniqueness: true, allow_nil: true
   
   # Scopes
   scope :published, -> { where(status: 'published') }
@@ -92,8 +92,9 @@ class Website < ApplicationRecord
   # ============================================
   
   def public_url
-    if custom_domain.present?
-      "https://#{custom_domain}"
+    domain_name = custom_domain&.domain_name || read_attribute(:custom_domain)
+    if domain_name.present?
+      "https://#{domain_name}"
     elsif subdomain.present?
       "https://#{subdomain}.amoslabs.com"
     else

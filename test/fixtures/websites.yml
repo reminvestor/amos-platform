@@ -39,7 +39,7 @@ site_with_domain:
   status: "published"
   theme: "minimal"
   subdomain: "help"
-  custom_domain: "help.example.com"
+  custom_domain: help_domain
   ssl_enabled: true
   google_analytics_id: "UA-12345678-1"
   published_at: <%= 1.week.ago %>

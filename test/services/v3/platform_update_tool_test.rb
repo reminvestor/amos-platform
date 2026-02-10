@@ -118,20 +118,31 @@ class V3::Tools::PlatformUpdateToolTest < ActiveSupport::TestCase
     assert_match(/Cannot add custom fields/i, result[:error])
   end
 
-  test "rejects duplicate custom field" do
+  test "handles duplicate custom field idempotently" do
     CustomFieldDefinition.create!(
       entity: @entity, model_type: "Contact", field_name: "dupe_field",
       field_type: "string", active: true
     )
 
+    # Same type → idempotent success
     result = @tool.execute({
       "type" => "schema",
       "id" => "contact",
       "data" => { "add_field" => { "name" => "dupe_field", "field_type" => "string" } }
     })
 
-    assert_equal false, result[:success]
-    assert_match(/already exists/i, result[:error])
+    assert result[:success] != false, "Same-type duplicate should be idempotent success"
+    assert result[:already_exists], "Should flag already_exists"
+
+    # Different type → error
+    result2 = @tool.execute({
+      "type" => "schema",
+      "id" => "contact",
+      "data" => { "add_field" => { "name" => "dupe_field", "field_type" => "integer" } }
+    })
+
+    assert_equal false, result2[:success]
+    assert_match(/already exists/i, result2[:error])
   ensure
     CustomFieldDefinition.where(entity: @entity, field_name: "dupe_field").destroy_all
   end

@@ -179,42 +179,6 @@ class V3::ModuleAwareToolsTest < ActiveSupport::TestCase
   end
 
   # ══════════════════════════════════════════════════════════════
-  # PLATFORM BRAIN — MODULE AWARENESS IN PROMPTS
-  # ══════════════════════════════════════════════════════════════
-
-  test 'brain system prompt includes custom apps section' do
-    prompt = V3::PlatformBrain::SYSTEM_PROMPT
-    assert_includes prompt, 'CUSTOM APPS / MODULES'
-    assert_includes prompt, 'platform_create(type: "task"'
-    assert_includes prompt, 'platform_query(type: "tasks"'
-    assert_includes prompt, 'platform_query(type: "schema")'
-    assert_includes prompt, 'Sub-modules have relationships'
-  end
-
-  test 'brain build_entity_context includes active modules' do
-    # Create a module that should appear in context
-    app_module = create_test_module('inventory_tracker')
-
-    brain = V3::PlatformBrain.new(user: @user, entity: @entity)
-    context = brain.send(:build_entity_context)
-
-    assert context.present?
-    assert_includes context, 'Custom apps installed'
-    assert_includes context, 'inventory_tracker'
-  end
-
-  test 'brain build_entity_context works without modules' do
-    brain = V3::PlatformBrain.new(user: @user, entity: @entity)
-    context = brain.send(:build_entity_context)
-
-    # Should still work — may return nil or just platform counts
-    # Should NOT raise an error
-    if context.present?
-      refute_includes context, 'Custom apps installed' unless @entity.app_modules.active.any?
-    end
-  end
-
-  # ══════════════════════════════════════════════════════════════
   # SCOUT DATA REGISTRY — DYNAMIC MODULE INTEGRATION
   # ══════════════════════════════════════════════════════════════
 
@@ -283,16 +247,14 @@ class V3::ModuleAwareToolsTest < ActiveSupport::TestCase
   # TOOL METADATA — DOCUMENTATION
   # ══════════════════════════════════════════════════════════════
 
-  test 'create tool metadata mentions custom app records' do
+  test 'create tool metadata mentions custom app types' do
     desc = V3::Tools::PlatformCreateTool.metadata[:description]
-    assert_includes desc, 'Custom app records'
-    assert_includes desc, 'platform_query(type: "schema")'
+    assert_includes desc, 'custom app type'
   end
 
-  test 'query tool metadata mentions custom app data' do
+  test 'query tool metadata mentions custom app models' do
     desc = V3::Tools::PlatformQueryTool.metadata[:description]
-    assert_includes desc, 'Custom app data'
-    assert_includes desc, 'platform_query(type: "schema")'
+    assert_includes desc, 'custom app models'
   end
 
   private

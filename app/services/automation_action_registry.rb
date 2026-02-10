@@ -351,6 +351,7 @@ class AutomationActionRegistry
 
     def generate_create_contact_code(config, name)
       field_mappings = config["field_mappings"] || config[:field_mappings] || {}
+      field_mappings = {} unless field_mappings.is_a?(Hash)
       integration = config["integration"] || config[:integration] || "unknown"
       source = config["source"] || config[:source] || "webhook"
 

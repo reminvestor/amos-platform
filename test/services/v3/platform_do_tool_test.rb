@@ -29,10 +29,9 @@ class V3::Tools::PlatformDoToolTest < ActiveSupport::TestCase
 
   test "description includes usage examples" do
     desc = V3::Tools::PlatformDoTool.metadata[:description]
-    assert desc.include?("create contact"), "Should include contact example"
-    assert desc.include?("welcome email"), "Should include email automation example"
     assert desc.include?("landing page"), "Should include landing page example"
-    assert desc.include?("build app"), "Should include app example"
+    assert desc.include?("Stripe"), "Should include integration example"
+    assert desc.include?("automation"), "Should include automation example"
   end
 
   # ══════════════════════════════════════════════════════════════

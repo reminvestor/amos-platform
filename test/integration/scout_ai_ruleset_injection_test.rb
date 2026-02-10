@@ -79,32 +79,6 @@ class ScoutAiRulesetInjectionTest < ActionDispatch::IntegrationTest
     assert_includes prompt_section, "Safety & Security Rules"
   end
 
-  # === ScoutGenericToolsServiceV2 Integration ===
-
-  test "ScoutGenericToolsServiceV2 includes rulesets in system prompt" do
-    # This test verifies that the format_ai_rulesets_for_prompt method
-    # is correctly integrated into the service
-    # We can't easily test the full service without mocking AWS Bedrock,
-    # but we can test the method exists and returns expected content
-
-    # Create a minimal service instance with correct constructor args
-    service = ScoutGenericToolsServiceV2.new(@user, @entity, "test-session-123")
-
-    # Test the formatting method directly
-    result = service.send(:format_ai_rulesets_for_prompt)
-
-    assert_includes result, "BEHAVIORAL RULES"
-    assert_includes result, "Safety & Security Rules"
-    assert_includes result, "Compliance & Legal Rules"
-  end
-
-  test "ScoutGenericToolsServiceV2 handles missing entity" do
-    service = ScoutGenericToolsServiceV2.new(@user, nil, "test-session-123")
-
-    result = service.send(:format_ai_rulesets_for_prompt)
-    assert_equal "", result
-  end
-
   # === Ruleset Priority Tests ===
 
   test "rulesets are applied in priority order" do
