@@ -116,3 +116,6 @@ security_report*.txt
 config/solana_token.yml
 config/solana_token.yml
 LOGIN_INFO.md
+
+# Shannon pentesting tool (cloned externally)
+/shannon/
