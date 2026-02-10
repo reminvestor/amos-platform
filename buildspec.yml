@@ -47,7 +47,7 @@ phases:
           --task-definition $NEW_TASK_DEF \
           --launch-type FARGATE \
           --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUPS],assignPublicIp=DISABLED}" \
-          --overrides '{"containerOverrides":[{"name":"agent-marketing","command":["bash","-c","./bin/rails db:migrate --trace 2>&1; EXIT=$?; echo EXIT_CODE=$EXIT; sleep 5; exit $EXIT"]},{"name":"solid-queue-worker","command":["echo","skip"]}]}' \
+          --overrides '{"containerOverrides":[{"name":"agent-marketing","command":["bash","-c","./bin/rails db:migrate --trace 2>&1; EXIT=$?; echo EXIT_CODE=$EXIT; sleep 5; exit $EXIT"]},{"name":"solid-queue-worker","command":["bash","-c","sleep 600"]}]}' \
           --region $AWS_DEFAULT_REGION \
           --query 'tasks[0].taskArn' \
           --output text)
