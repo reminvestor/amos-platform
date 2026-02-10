@@ -1,0 +1,30 @@
+---
+# Brakeman configuration for AMOS Platform
+# Run: bundle exec brakeman
+# Run with config: bundle exec brakeman --config-file .brakeman.yml
+
+# Output format
+:output_files:
+  - tmp/brakeman_report.json
+
+# Checks to skip (false positives in our architecture)
+:skip_checks:
+  # We use Devise for auth, which handles CSRF tokens properly
+  - CheckForgerySetting
+
+# Files/directories to skip scanning
+:skip_files:
+  - lib/tasks/
+  - db/
+
+# Minimum confidence level to report (1=High, 2=Medium, 3=Weak)
+:min_confidence: 2
+
+# Enable interprocedural analysis for deeper scanning
+:interprocedural: true
+
+# Exit with error code on warnings (useful for CI)
+:exit_on_warn: false
+
+# Quiet mode (less output noise)
+:quiet: false

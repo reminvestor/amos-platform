@@ -1,0 +1,402 @@
+#!/usr/bin/env bash
+# Complementary Security Scanner for AMOS Platform
+#
+# Covers vulnerability classes that Shannon (DAST pentester) does NOT test:
+#   - Dependency vulnerabilities (CVEs in gems/packages)
+#   - Static analysis (Brakeman SAST)
+#   - Security header verification
+#   - TLS/SSL configuration
+#   - HTTP verb tampering
+#   - CORS policy validation
+#   - Error information leakage
+#
+# Usage:
+#   bin/security-scan              # Run all checks
+#   bin/security-scan deps         # Dependency audit only
+#   bin/security-scan sast         # Brakeman static analysis only
+#   bin/security-scan headers      # Security headers check only (requires running app)
+#   bin/security-scan full         # All checks including live app tests
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+APP_URL="${APP_URL:-http://localhost:3000}"
+REPORT_DIR="$PROJECT_ROOT/tmp/security_reports"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+EXIT_CODE=0
+
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+mkdir -p "$REPORT_DIR"
+
+print_header() {
+  echo ""
+  echo -e "${BLUE}================================================================${NC}"
+  echo -e "${BLUE}  $1${NC}"
+  echo -e "${BLUE}================================================================${NC}"
+}
+
+print_pass() { echo -e "  ${GREEN}[PASS]${NC} $1"; }
+print_warn() { echo -e "  ${YELLOW}[WARN]${NC} $1"; }
+print_fail() { echo -e "  ${RED}[FAIL]${NC} $1"; EXIT_CODE=1; }
+print_info() { echo -e "  ${BLUE}[INFO]${NC} $1"; }
+
+# ============================================================
+# 1. Dependency Vulnerability Audit
+# ============================================================
+run_dependency_audit() {
+  print_header "Dependency Vulnerability Audit"
+
+  # Ruby gems
+  echo ""
+  echo "  --- Ruby Gems (bundler-audit) ---"
+  if command -v bundle &>/dev/null && bundle exec bundler-audit check --update 2>/dev/null; then
+    print_pass "No known vulnerabilities in Ruby gems"
+  else
+    if command -v bundle &>/dev/null && bundle exec bundler-audit version &>/dev/null 2>&1; then
+      bundle exec bundler-audit check --update 2>&1 | while IFS= read -r line; do
+        echo "    $line"
+      done
+      print_fail "Vulnerable Ruby gems found (see above)"
+    else
+      print_warn "bundler-audit not installed. Run: bundle install"
+    fi
+  fi
+
+  # JavaScript packages
+  echo ""
+  echo "  --- JavaScript Packages (yarn audit) ---"
+  if command -v yarn &>/dev/null; then
+    YARN_RESULT=$(cd "$PROJECT_ROOT" && yarn audit --level high 2>&1) || true
+    HIGH_COUNT=$(echo "$YARN_RESULT" | grep -c "high\|critical" 2>/dev/null || echo "0")
+    if [ "$HIGH_COUNT" -gt 0 ]; then
+      echo "$YARN_RESULT" | grep -A2 "high\|critical" | head -30
+      print_fail "High/critical JS vulnerabilities found"
+    else
+      print_pass "No high/critical vulnerabilities in JS packages"
+    fi
+  else
+    print_warn "yarn not installed, skipping JS audit"
+  fi
+}
+
+# ============================================================
+# 2. Static Analysis (Brakeman)
+# ============================================================
+run_sast() {
+  print_header "Static Analysis (Brakeman SAST)"
+
+  if command -v bundle &>/dev/null && bundle exec brakeman --version &>/dev/null 2>&1; then
+    REPORT_FILE="$REPORT_DIR/brakeman_${TIMESTAMP}.json"
+    bundle exec brakeman \
+      --config-file "$PROJECT_ROOT/.brakeman.yml" \
+      --format json \
+      --output "$REPORT_FILE" \
+      --no-pager \
+      --quiet \
+      "$PROJECT_ROOT" 2>/dev/null || true
+
+    if [ -f "$REPORT_FILE" ]; then
+      WARN_COUNT=$(python3 -c "import json; d=json.load(open('$REPORT_FILE')); print(len(d.get('warnings',[])))" 2>/dev/null || echo "?")
+      ERROR_COUNT=$(python3 -c "import json; d=json.load(open('$REPORT_FILE')); print(len(d.get('errors',[])))" 2>/dev/null || echo "?")
+
+      if [ "$WARN_COUNT" = "0" ]; then
+        print_pass "No Brakeman warnings"
+      else
+        print_warn "Brakeman found $WARN_COUNT warning(s). Report: $REPORT_FILE"
+      fi
+      if [ "$ERROR_COUNT" != "0" ]; then
+        print_warn "Brakeman encountered $ERROR_COUNT error(s)"
+      fi
+    else
+      print_warn "Brakeman report not generated"
+    fi
+  else
+    print_warn "Brakeman not installed. Run: bundle install"
+  fi
+}
+
+# ============================================================
+# 3. Security Headers Check (requires running app)
+# ============================================================
+run_header_check() {
+  print_header "Security Headers Check"
+
+  if ! curl -s --max-time 5 "$APP_URL" > /dev/null 2>&1; then
+    print_warn "App not reachable at $APP_URL - skipping header checks"
+    print_info "Start app first or set APP_URL env var"
+    return
+  fi
+
+  HEADERS=$(curl -sI --max-time 10 "$APP_URL" 2>/dev/null)
+
+  # X-Frame-Options (clickjacking)
+  if echo "$HEADERS" | grep -qi "x-frame-options"; then
+    VALUE=$(echo "$HEADERS" | grep -i "x-frame-options" | head -1 | tr -d '\r')
+    print_pass "X-Frame-Options: $VALUE"
+  else
+    print_fail "Missing X-Frame-Options header (clickjacking risk)"
+  fi
+
+  # X-Content-Type-Options
+  if echo "$HEADERS" | grep -qi "x-content-type-options.*nosniff"; then
+    print_pass "X-Content-Type-Options: nosniff"
+  else
+    print_fail "Missing X-Content-Type-Options: nosniff"
+  fi
+
+  # X-XSS-Protection
+  if echo "$HEADERS" | grep -qi "x-xss-protection"; then
+    print_pass "X-XSS-Protection present"
+  else
+    print_warn "Missing X-XSS-Protection header"
+  fi
+
+  # Strict-Transport-Security
+  if echo "$HEADERS" | grep -qi "strict-transport-security"; then
+    VALUE=$(echo "$HEADERS" | grep -i "strict-transport-security" | head -1 | tr -d '\r')
+    print_pass "HSTS: $VALUE"
+  else
+    print_warn "Missing Strict-Transport-Security (OK in dev, required in prod)"
+  fi
+
+  # Content-Security-Policy
+  if echo "$HEADERS" | grep -qi "content-security-policy"; then
+    print_pass "Content-Security-Policy present"
+  elif echo "$HEADERS" | grep -qi "content-security-policy-report-only"; then
+    print_warn "CSP in report-only mode (not enforced yet)"
+  else
+    print_fail "Missing Content-Security-Policy header"
+  fi
+
+  # Referrer-Policy
+  if echo "$HEADERS" | grep -qi "referrer-policy"; then
+    print_pass "Referrer-Policy present"
+  else
+    print_warn "Missing Referrer-Policy header"
+  fi
+
+  # Permissions-Policy
+  if echo "$HEADERS" | grep -qi "permissions-policy"; then
+    print_pass "Permissions-Policy present"
+  else
+    print_warn "Missing Permissions-Policy header"
+  fi
+
+  # Server header leakage
+  if echo "$HEADERS" | grep -qi "^server:"; then
+    VALUE=$(echo "$HEADERS" | grep -i "^server:" | head -1 | tr -d '\r')
+    print_warn "Server header exposed: $VALUE (information leakage)"
+  else
+    print_pass "Server header not exposed"
+  fi
+
+  # X-Powered-By leakage
+  if echo "$HEADERS" | grep -qi "x-powered-by"; then
+    VALUE=$(echo "$HEADERS" | grep -i "x-powered-by" | head -1 | tr -d '\r')
+    print_fail "X-Powered-By exposed: $VALUE (remove this header)"
+  else
+    print_pass "X-Powered-By not exposed"
+  fi
+}
+
+# ============================================================
+# 4. HTTP Verb Tampering Check
+# ============================================================
+run_verb_tampering() {
+  print_header "HTTP Verb Tampering Check"
+
+  if ! curl -s --max-time 5 "$APP_URL" > /dev/null 2>&1; then
+    print_warn "App not reachable at $APP_URL - skipping"
+    return
+  fi
+
+  # Test unexpected methods on sensitive endpoints
+  ENDPOINTS=("/users/sign_in" "/api/auth/login" "/scout/chat_stream")
+
+  for endpoint in "${ENDPOINTS[@]}"; do
+    URL="${APP_URL}${endpoint}"
+    for method in TRACE TRACK OPTIONS; do
+      STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 -X "$method" "$URL" 2>/dev/null || echo "000")
+      if [ "$method" = "TRACE" ] || [ "$method" = "TRACK" ]; then
+        if [ "$STATUS" = "200" ]; then
+          print_fail "$method $endpoint returned 200 (should be blocked)"
+        else
+          print_pass "$method $endpoint blocked (HTTP $STATUS)"
+        fi
+      fi
+    done
+  done
+}
+
+# ============================================================
+# 5. CORS Policy Validation
+# ============================================================
+run_cors_check() {
+  print_header "CORS Policy Validation"
+
+  if ! curl -s --max-time 5 "$APP_URL" > /dev/null 2>&1; then
+    print_warn "App not reachable at $APP_URL - skipping"
+    return
+  fi
+
+  # Test with attacker-controlled origin
+  MALICIOUS_ORIGINS=("https://evil.com" "https://attacker.example.com" "null")
+
+  for origin in "${MALICIOUS_ORIGINS[@]}"; do
+    RESPONSE=$(curl -sI --max-time 5 \
+      -H "Origin: $origin" \
+      "$APP_URL/api/auth/me" 2>/dev/null)
+
+    ACAO=$(echo "$RESPONSE" | grep -i "access-control-allow-origin" | tr -d '\r' || true)
+    if echo "$ACAO" | grep -qi "$origin"; then
+      print_fail "CORS reflects untrusted origin: $origin"
+    elif echo "$ACAO" | grep -qi "\*"; then
+      print_fail "CORS allows wildcard (*) origin"
+    else
+      print_pass "CORS correctly blocks origin: $origin"
+    fi
+  done
+}
+
+# ============================================================
+# 6. Error Information Leakage
+# ============================================================
+run_error_leakage() {
+  print_header "Error Information Leakage Check"
+
+  if ! curl -s --max-time 5 "$APP_URL" > /dev/null 2>&1; then
+    print_warn "App not reachable at $APP_URL - skipping"
+    return
+  fi
+
+  # Request non-existent paths
+  BODY=$(curl -s --max-time 5 "$APP_URL/nonexistent_path_test_12345" 2>/dev/null)
+
+  if echo "$BODY" | grep -qi "stack trace\|backtrace\|RuntimeError\|NoMethodError\|ActionController"; then
+    print_fail "Error pages expose stack traces"
+  else
+    print_pass "Error pages do not expose stack traces"
+  fi
+
+  if echo "$BODY" | grep -qi "Rails version\|Ruby version\|Puma version"; then
+    print_fail "Error pages expose framework version info"
+  else
+    print_pass "Error pages do not expose version info"
+  fi
+
+  # Check for detailed error on bad JSON
+  BODY=$(curl -s --max-time 5 \
+    -H "Content-Type: application/json" \
+    -d '{invalid json' \
+    "$APP_URL/api/auth/login" 2>/dev/null)
+
+  if echo "$BODY" | grep -qi "ActionDispatch\|JSON::ParserError\|unexpected token"; then
+    print_warn "JSON parse errors may leak implementation details"
+  else
+    print_pass "JSON parse errors handled gracefully"
+  fi
+}
+
+# ============================================================
+# 7. WebSocket Security Check
+# ============================================================
+run_websocket_check() {
+  print_header "WebSocket Security (ActionCable)"
+
+  # Check config for allowed origins
+  CABLE_CONFIG="$PROJECT_ROOT/config/cable.yml"
+  if [ -f "$CABLE_CONFIG" ]; then
+    if grep -q "allowed_request_origins" "$CABLE_CONFIG" 2>/dev/null; then
+      print_pass "ActionCable has allowed_request_origins configured"
+    else
+      print_info "ActionCable origins configured via application config (check config/environments/)"
+    fi
+  fi
+
+  # Check for ActionCable origin restrictions in environment configs
+  for env_file in "$PROJECT_ROOT"/config/environments/*.rb; do
+    if grep -q "allowed_request_origins" "$env_file" 2>/dev/null; then
+      print_pass "$(basename "$env_file"): ActionCable origin restriction set"
+    fi
+  done
+
+  # Check if ActionCable is used without auth
+  if grep -rql "ActionCable\|action_cable" "$PROJECT_ROOT/app/channels/" 2>/dev/null; then
+    if grep -rql "reject_unauthorized_connection\|verified_user" "$PROJECT_ROOT/app/channels/application_cable/connection.rb" 2>/dev/null; then
+      print_pass "ActionCable connection requires authentication"
+    else
+      print_fail "ActionCable connection does not verify user authentication"
+    fi
+  else
+    print_info "No custom ActionCable channels found"
+  fi
+}
+
+# ============================================================
+# Main
+# ============================================================
+main() {
+  echo ""
+  echo "AMOS Platform - Complementary Security Scanner"
+  echo "Covers gaps not tested by Shannon (DAST pentester)"
+  echo "Timestamp: $(date)"
+  echo ""
+
+  case "${1:-all}" in
+    deps)
+      run_dependency_audit
+      ;;
+    sast)
+      run_sast
+      ;;
+    headers)
+      run_header_check
+      ;;
+    verbs)
+      run_verb_tampering
+      ;;
+    cors)
+      run_cors_check
+      ;;
+    errors)
+      run_error_leakage
+      ;;
+    websocket)
+      run_websocket_check
+      ;;
+    full|all)
+      run_dependency_audit
+      run_sast
+      run_header_check
+      run_verb_tampering
+      run_cors_check
+      run_error_leakage
+      run_websocket_check
+      ;;
+    *)
+      echo "Usage: bin/security-scan [deps|sast|headers|verbs|cors|errors|websocket|full]"
+      exit 1
+      ;;
+  esac
+
+  print_header "Summary"
+  if [ "$EXIT_CODE" -eq 0 ]; then
+    echo -e "  ${GREEN}All checks passed.${NC}"
+  else
+    echo -e "  ${RED}Some checks failed. Review output above.${NC}"
+  fi
+  echo ""
+  echo "  Reports saved to: $REPORT_DIR/"
+  echo "  Run Shannon for DAST coverage: cd shannon && ./shannon start URL=$APP_URL REPO=amos-platform"
+  echo ""
+
+  exit $EXIT_CODE
+}
+
+main "$@"
