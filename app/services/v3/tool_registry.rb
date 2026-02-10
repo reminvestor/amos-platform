@@ -163,9 +163,12 @@ module V3
             - 'my_creations' — View all user's created assets
             - 'module_manager' — View installed apps/modules
             - 'dashboard' — Main dashboard
+            - 'freeform' — Custom visualization: timelines, charts, interactive displays, data dashboards, or any rich HTML content.
+              Pass canvas_data: { title: "Title", html: "<div>...</div>", css: "body { ... }", javascript: "// interactive code" }
+              Optional: library_css (e.g. CDN links), library_scripts (e.g. Chart.js CDN), data_script (inline data).
+              Use this instead of creating a landing page when the user wants a visualization, timeline, chart, or interactive display.
             
-            To CREATE or BUILD things, use platform_do instead.
-            Use load_canvas to VIEW things that already exist.
+            Use load_canvas to VIEW things that already exist, or to display custom visualizations via 'freeform'.
           DESC
           parameters: {
             type: "object",
@@ -196,6 +199,7 @@ module V3
           module_manager favorites
           automation_dashboard sequence_manager
           activities_viewer settings
+          freeform
         ]
       end
 

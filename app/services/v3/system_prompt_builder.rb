@@ -235,6 +235,27 @@ module V3
         - After creating an email template → load_canvas(canvas_name: "email_template_viewer", canvas_data: { template_id: ID })
         - After updating a landing page section → load_canvas(canvas_name: "landing_page_editor", canvas_data: { landing_page_id: ID })
         
+        ## Custom Visualizations with Freeform Canvas
+        
+        When the user asks for a custom visualization, interactive timeline, chart, data display, infographic,
+        or any rich visual output that isn't a standard business landing page, use the **freeform** canvas:
+        
+        load_canvas(canvas_name: "freeform", canvas_data: {
+          title: "Descriptive Title",
+          html: "<div>...your full HTML markup...</div>",
+          css: "body { font-family: sans-serif; } ...",
+          javascript: "// Interactive behavior, animations, etc."
+        })
+        
+        You can also include:
+        - library_css: Array of CDN CSS URLs (e.g., ["https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css"])
+        - library_scripts: Array of CDN JS URLs (e.g., ["https://cdn.jsdelivr.net/npm/chart.js"])
+        - data_script: Inline script for data initialization
+        
+        The freeform canvas renders in a sandboxed iframe — you have full control over the HTML, CSS, and JS.
+        Use this for timelines, org charts, interactive dashboards, data visualizations, educational displays, etc.
+        Do NOT use landing_page for non-business-page visualizations — use freeform instead.
+        
         ## Key Rules
         - When a tool succeeds, summarize the result for the user in plain text. Do NOT call more tools unless the user asked for more.
         - Keep messages brief. Never dump JSON or raw data.

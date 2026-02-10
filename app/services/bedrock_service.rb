@@ -72,7 +72,7 @@ class BedrockService
       endpoint_type: 'global'
     },
     'claude-opus-4-6' => {
-      id: 'global.anthropic.claude-opus-4-6-v1:0',
+      id: 'global.anthropic.claude-opus-4-6-v1',
       name: 'Claude Opus 4.6',
       description: 'Latest frontier model, enhanced reasoning and coding',
       max_tokens: 30000,
@@ -605,7 +605,7 @@ class BedrockService
     when "claude-opus-4-5", "claude-opus-4.5"
       "global.anthropic.claude-opus-4-5-20251101-v1:0" # Opus 4.5 inference profile
     when "claude-opus-4-6", "claude-opus-4.6"
-      "global.anthropic.claude-opus-4-6-v1:0" # Opus 4.6 - cross-region inference profile
+      "global.anthropic.claude-opus-4-6-v1" # Opus 4.6 - cross-region inference profile
     when "qwen-3-32b", "qwen-3.32b"
       "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
     when "qwen-3-coder-30b", "qwen-coder"
@@ -1006,7 +1006,7 @@ class BedrockService
     when "claude-opus-4-5", "claude-opus-4.5"
       "global.anthropic.claude-opus-4-5-20251101-v1:0" # Opus 4.5 inference profile
     when "claude-opus-4-6", "claude-opus-4.6"
-      "global.anthropic.claude-opus-4-6-v1:0" # Opus 4.6 - cross-region inference profile
+      "global.anthropic.claude-opus-4-6-v1" # Opus 4.6 - cross-region inference profile
     when "qwen-3-32b", "qwen-3.32b"
       "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
     when "qwen-3-coder-30b", "qwen-coder"
