@@ -52,11 +52,13 @@ phases:
           --task-definition $NEW_TASK_DEF \
           --launch-type FARGATE \
           --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUPS],assignPublicIp=DISABLED}" \
-          --overrides '{"containerOverrides":[{"name":"agent-marketing","command":["./bin/rails","db:migrate"]},{"name":"solid-queue-worker","command":["echo","skip"]}]}' \
+          --overrides '{"containerOverrides":[{"name":"agent-marketing","command":["bash","-c","./bin/rails db:migrate --trace 2>&1; EXIT=$?; echo EXIT_CODE=$EXIT; sleep 5; exit $EXIT"]},{"name":"solid-queue-worker","command":["echo","skip"]}]}' \
           --region $AWS_DEFAULT_REGION \
           --query 'tasks[0].taskArn' \
           --output text)
       - echo "Migration task started - $MIGRATION_TASK_ARN"
+      - MIGRATION_TASK_ID=$(echo $MIGRATION_TASK_ARN | awk -F'/' '{print $NF}')
+      - echo "Migration task ID - $MIGRATION_TASK_ID"
       - echo "Waiting for migration to complete..."
       - aws ecs wait tasks-stopped --cluster $CLUSTER_NAME --tasks $MIGRATION_TASK_ARN --region $AWS_DEFAULT_REGION
       - |
@@ -66,6 +68,26 @@ phases:
           --region $AWS_DEFAULT_REGION \
           --query 'tasks[0].containers[?name==`agent-marketing`].exitCode | [0]' \
           --output text)
+      - echo "Migration exit code: $MIGRATION_EXIT_CODE"
+      - |
+        echo "═══════════════════════════════════════════════════════"
+        echo "  MIGRATION CONTAINER LOGS (last 100 lines)"
+        echo "═══════════════════════════════════════════════════════"
+        TASK_DETAIL=$(aws ecs describe-tasks \
+          --cluster $CLUSTER_NAME \
+          --tasks $MIGRATION_TASK_ARN \
+          --region $AWS_DEFAULT_REGION \
+          --query 'tasks[0].{stopCode:stopCode,stoppedReason:stoppedReason}' \
+          --output json)
+        echo "Task details: $TASK_DETAIL"
+        echo "---"
+        aws logs get-log-events \
+          --log-group-name /ecs/agent-marketing \
+          --log-stream-name "ecs/agent-marketing/$MIGRATION_TASK_ID" \
+          --limit 100 \
+          --query 'events[*].message' \
+          --output text 2>&1 || echo "(no logs available)"
+        echo "═══════════════════════════════════════════════════════"
       - |
         if [ "$MIGRATION_EXIT_CODE" = "0" ]; then
           echo "✅ Migrations completed successfully!"
