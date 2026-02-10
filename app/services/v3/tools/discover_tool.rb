@@ -22,20 +22,15 @@ module V3
         {
           name: "discover",
           description: <<~DESC.strip,
-            Search for platform capabilities, skills, and knowledge.
-            Use this when you need to learn HOW to do something on the platform.
+            Search platform capabilities, skills, and knowledge.
             
-            Search categories:
-            - "skills": Find skill documents (how-to guides)
-            - "integrations": Find available integrations and actions
-            - "features": Find platform features
-            - "recipes": Find step-by-step workflows
+            Categories: "skills", "integrations", "features", "recipes"
             
             Examples:
-            - discover(query: "how to set up a Stripe integration")
-            - discover(query: "lead capture workflow", category: "recipes")
-            - discover(query: "email sequence best practices", category: "skills")
-            - discover(query: "what integrations are available")
+            - query: "how to set up a Stripe integration"
+            - query: "lead capture workflow", category: "recipes"
+            - query: "email sequence best practices", category: "skills"
+            - query: "what integrations are available"
           DESC
           category: "v3_core",
           input_schema: {
@@ -197,13 +192,13 @@ module V3
 
         # Static feature catalog — these describe platform capabilities
         features = [
-          { name: "Landing Pages & Websites", keywords: %w[landing page website build design], description: "Create landing pages and websites. Use platform_create(type: 'landing_page') for a single page, or platform_create(type: 'website') for multi-page sites. Edit with load_canvas(canvas_name: 'landing_page_editor', canvas_data: { landing_page_id: ID })." },
-          { name: "Workflows & Automations", keywords: %w[workflow automation trigger action automate flow], description: "Create automations that trigger actions. Use platform_create(type: 'workflow', data: { name: '...', trigger: '...', actions: [...] }). View in automation_dashboard." },
-          { name: "Applications / Web Apps", keywords: %w[app application webapp custom build software module], description: "Build custom applications with data models and interfaces. Use platform_create(type: 'app', data: { name: '...', description: '...' }). A web app is just a website with workflows attached to forms." },
+          { name: "Landing Pages & Websites", keywords: %w[landing page website build design], description: "Create landing pages and websites. Use the platform_create tool with type='landing_page' for a single page, or type='website' for multi-page sites. Edit with the load_canvas tool using canvas_name='landing_page_editor'." },
+          { name: "Workflows & Automations", keywords: %w[workflow automation trigger action automate flow], description: "Create automations that trigger actions. Use the platform_create tool with type='workflow'. View in the automation_dashboard canvas." },
+          { name: "Applications / Web Apps", keywords: %w[app application webapp custom build software module], description: "Build custom applications with data models and interfaces. Use the platform_create tool with type='app'. A web app is just a website with workflows attached to forms." },
           { name: "Email Campaigns", keywords: %w[email campaign send blast newsletter], description: "Create email templates, build campaigns, and send to contact groups." },
-          { name: "Email Sequences", keywords: %w[sequence drip follow-up nurture], description: "Automated email sequences with delays and triggers. Use load_canvas(canvas_name: 'sequence_manager')." },
+          { name: "Email Sequences", keywords: %w[sequence drip follow-up nurture], description: "Automated email sequences with delays and triggers. Use the load_canvas tool with canvas_name='sequence_manager'." },
           { name: "CRM / Contacts", keywords: %w[contact crm lead customer pipeline opportunity], description: "Manage contacts, opportunities, activities, and sales pipeline." },
-          { name: "Integrations", keywords: %w[integrate connect api stripe hubspot], description: "Connect external services. Use load_canvas(canvas_name: 'integrations_manager') or discover(query: 'integrations') to see all." },
+          { name: "Integrations", keywords: %w[integrate connect api stripe hubspot], description: "Connect external services. Use the load_canvas tool with canvas_name='integrations_manager'." },
           { name: "Bounty System", keywords: %w[bounty reward token contributor community], description: "Create bounties, track contributions, and award tokens." },
           { name: "Support Tickets", keywords: %w[ticket support help issue bug], description: "Track and resolve support issues." },
           { name: "Custom Modules", keywords: %w[module data model database schema], description: "Build custom data models and extend platform capabilities." },

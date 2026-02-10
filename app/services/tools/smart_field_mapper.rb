@@ -10,10 +10,10 @@ module Tools
   class SmartFieldMapper
     # Common field name corrections
     FIELD_MAPPINGS = {
-      # Contact fields
-      "lifecycle_stage" => "stage",
-      "lifecyclestage" => "stage",
-      "life_cycle_stage" => "stage",
+      # Contact fields — lifecycle_stage is the correct column name on Contact
+      "lifecyclestage" => "lifecycle_stage",
+      "life_cycle_stage" => "lifecycle_stage",
+      "stage" => "lifecycle_stage",  # Contacts use lifecycle_stage, not stage
       "subscription_status" => "status",
       "subscriber_status" => "status",
       "firstname" => "first_name",

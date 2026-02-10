@@ -124,12 +124,12 @@ module AmosAI
     end
 
     def get_business_context
-      business_profile = @entity.business_profiles&.first
+      biz = BusinessContext.for(@user, @entity)
 
       {
-        entity_name: @entity.name,
-        industry: business_profile&.industry,
-        business_profile: business_profile,
+        entity_name: biz.company_name,
+        industry: biz.industry,
+        business_profile: biz.profile,
         recent_campaigns: @user.campaigns.where(entity_id: @entity.id).recent.limit(3),
         recent_landing_pages: @user.landing_pages.where(entity_id: @entity.id).recent.limit(3),
         insights: BusinessInsight.where(entity_id: @entity.id).high_confidence.recent.limit(10)

@@ -2,13 +2,7 @@ class Entity::PoliciesController < Entity::BaseController
   before_action :set_policy, only: [ :show, :edit, :update, :destroy, :toggle ]
 
   def index
-    @policies = current_entity.policy_rules.order(created_at: :desc)
-
-    @stats = {
-      total: @policies.count,
-      active: @policies.where(is_active: true).count,
-      with_budgets: @policies.where.not(max_daily_calls: nil).count
-    }
+    redirect_to chat_mode_path, status: :moved_permanently
   end
 
   def show
@@ -22,7 +16,7 @@ class Entity::PoliciesController < Entity::BaseController
     @policy = current_entity.policy_rules.build(policy_params)
 
     if @policy.save
-      redirect_to entity_policies_path, notice: "AI usage policy created successfully."
+      redirect_to chat_mode_path, notice: "AI usage policy created successfully."
     else
       render :new
     end
@@ -33,7 +27,7 @@ class Entity::PoliciesController < Entity::BaseController
 
   def update
     if @policy.update(policy_params)
-      redirect_to entity_policies_path, notice: "Policy updated successfully."
+      redirect_to chat_mode_path, notice: "Policy updated successfully."
     else
       render :edit
     end
@@ -41,12 +35,12 @@ class Entity::PoliciesController < Entity::BaseController
 
   def destroy
     @policy.destroy
-    redirect_to entity_policies_path, notice: "Policy deleted successfully."
+    redirect_to chat_mode_path, notice: "Policy deleted successfully."
   end
 
   def toggle
     @policy.update(is_active: !@policy.is_active)
-    redirect_to entity_policies_path, notice: "Policy #{@policy.is_active ? 'enabled' : 'disabled'}."
+    redirect_to chat_mode_path, notice: "Policy #{@policy.is_active ? 'enabled' : 'disabled'}."
   end
 
   private

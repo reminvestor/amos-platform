@@ -3,43 +3,43 @@
 module V3
   # ToolRegistry - Registry of V3 tools
   #
-  # Intent Engine Architecture: The LLM sees 9 tools.
-  # The old CRUD tools (platform_create, platform_update, platform_execute)
-  # are kept as INTERNAL_TOOLS for use by recipes and the Platform Brain,
-  # but are NOT exposed to the LLM.
+  # Single-model architecture (Pi-inspired). One model, direct tool access.
+  # No respond_to_user — the model outputs text naturally when it wants to talk.
+  # No tool_choice: any — the model decides when to use tools vs when to respond.
+  # No Brain delegation — the model calls platform tools directly.
   #
-  # LLM-facing tools (Amos's toolkit):
-  #   platform_do    — "do something on the platform" (routes through IntentEngine → Platform Brain)
-  #   platform_query — "read platform data" (unchanged)
-  #   web_search     — search the internet for info (text results)
-  #   view_web_page  — open a website in the interactive viewer (user can browse)
-  #   read_file      — read uploaded documents and knowledge base content
-  #   bash           — math, computation, escape hatch
-  #   browser_use    — autonomous web browsing (Amos clicks/types on sites)
-  #   ask_user       — clarify with user
-  #   load_canvas    — show things to the user
+  # LLM-facing tools (Amos's full toolkit):
+  #   platform_create  — create any platform object
+  #   platform_update  — update any platform object
+  #   platform_query   — read any platform data
+  #   platform_execute — run actions (integrations, send email, delete, generate, publish)
+  #   web_search       — search the internet for info (text results)
+  #   view_web_page    — open a website in the interactive viewer
+  #   read_file        — read uploaded documents and knowledge base content
+  #   bash             — math, computation, escape hatch
+  #   browser_use      — autonomous web browsing
+  #   load_canvas      — show things to the user
   #
   class ToolRegistry
-    # Tools exposed to the LLM (what the model sees and can call)
-    # These are Amos's tools for interacting with the world OUTSIDE the platform,
-    # plus platform_do (which delegates to the Platform Brain) and platform_query.
+    extend V3::ToolSecurity
+
+    # Tools exposed to the LLM — the model's full toolkit
     LLM_TOOLS = {
-      "platform_do"      => V3::Tools::PlatformDoTool,
+      "platform_create"  => V3::Tools::PlatformCreateTool,
+      "platform_update"  => V3::Tools::PlatformUpdateTool,
       "platform_query"   => V3::Tools::PlatformQueryTool,
+      "platform_execute" => V3::Tools::PlatformExecuteTool,
       "web_search"       => ::Tools::WebSearchTool,
       "view_web_page"    => ::Tools::WebPageViewTool,
       "read_file"        => V3::Tools::ReadFileTool,
       "bash"             => V3::Tools::BashTool,
       "browser_use"      => V3::Tools::BrowserUseTool,
-      "ask_user"         => V3::Tools::AskUserTool,
       "load_canvas"      => nil, # Special: built inline in get_bedrock_tools
     }.freeze
 
-    # Internal tools: NOT exposed to LLM, but available for recipes/engine/Brain
+    # Internal tools: NOT exposed to LLM, available for backward compatibility
     INTERNAL_TOOLS = {
-      "platform_create"  => V3::Tools::PlatformCreateTool,
-      "platform_update"  => V3::Tools::PlatformUpdateTool,
-      "platform_execute" => V3::Tools::PlatformExecuteTool,
+      "platform_do"      => V3::Tools::PlatformDoTool,  # Kept for backward compat
       "discover"         => V3::Tools::DiscoverTool,
     }.freeze
 
@@ -79,10 +79,14 @@ module V3
 
       # Execute a V3 tool by name
       # Supports BOTH LLM tools and internal tools (for backward compat & recipes)
+      #
+      # Phase 6B: All tool execution now goes through the shared ToolSecurity layer
+      # (confirmation gate + CAMEL sanitization), regardless of whether the call
+      # comes from the AgentLoop directly or from the PlatformBrain.
       def execute(name, args, user:, entity:, context: {}, progress_callback: nil)
         tool_class = ALL_TOOLS[name]
 
-        # Check if it's a memory tool
+        # Check if it's a memory tool (no security needed -- internal data only)
         if tool_class.nil? && memory_tool?(name)
           return execute_memory_tool(name, args, user: user, entity: entity, context: context)
         end
@@ -92,13 +96,16 @@ module V3
         start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
         begin
-          tool = tool_class.new(
-            user: user,
-            entity: entity,
-            context: context,
-            progress_callback: progress_callback
-          )
-          result = tool.execute(args)
+          # Apply shared security: confirmation gate (pre) + CAMEL sanitization (post)
+          result = with_security(name, args) do
+            tool = tool_class.new(
+              user: user,
+              entity: entity,
+              context: context,
+              progress_callback: progress_callback
+            )
+            tool.execute(args)
+          end
 
           # Record metrics
           end_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -188,7 +195,7 @@ module V3
           pipeline_viewer contact_detail support_tickets wallet
           module_manager favorites
           automation_dashboard sequence_manager
-          activities_viewer
+          activities_viewer settings
         ]
       end
 

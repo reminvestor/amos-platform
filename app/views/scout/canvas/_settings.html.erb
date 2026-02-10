@@ -1,0 +1,943 @@
+<div class="scout-canvas settings-canvas">
+  <!-- Header -->
+  <div class="settings-bar d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-2">
+      <i data-lucide="settings" class="settings-header-icon" style="width: 24px; height: 24px;"></i>
+      <h4 class="mb-0">Settings</h4>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" onclick="window.settingsRefresh()" aria-label="Refresh settings">
+        <i data-lucide="refresh-cw" aria-hidden="true"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <ul class="nav nav-tabs settings-nav-tabs mb-0" role="tablist">
+    <% active_tab = (canvas_data || {})[:tab] || (canvas_data || {})["tab"] || "billing" %>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link <%= 'active' if active_tab == 'billing' %>" id="settings-billing-tab"
+              data-bs-toggle="tab" data-bs-target="#settings-tab-billing"
+              type="button" role="tab" aria-selected="<%= active_tab == 'billing' %>">
+        <i data-lucide="coins" aria-hidden="true"></i> Usage & Billing
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link <%= 'active' if active_tab == 'tools' %>" id="settings-tools-tab"
+              data-bs-toggle="tab" data-bs-target="#settings-tab-tools"
+              type="button" role="tab" aria-selected="<%= active_tab == 'tools' %>">
+        <i data-lucide="wrench" aria-hidden="true"></i> My Tools
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link <%= 'active' if active_tab == 'menu' %>" id="settings-menu-tab"
+              data-bs-toggle="tab" data-bs-target="#settings-tab-menu"
+              type="button" role="tab" aria-selected="<%= active_tab == 'menu' %>">
+        <i data-lucide="layout-grid" aria-hidden="true"></i> Menu Config
+      </button>
+    </li>
+    <% if current_user.entity_admin? %>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link <%= 'active' if active_tab == 'policies' %>" id="settings-policies-tab"
+                data-bs-toggle="tab" data-bs-target="#settings-tab-policies"
+                type="button" role="tab" aria-selected="<%= active_tab == 'policies' %>">
+          <i data-lucide="shield-alert" aria-hidden="true"></i> Policies
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link <%= 'active' if active_tab == 'privacy' %>" id="settings-privacy-tab"
+                data-bs-toggle="tab" data-bs-target="#settings-tab-privacy"
+                type="button" role="tab" aria-selected="<%= active_tab == 'privacy' %>">
+          <i data-lucide="shield-check" aria-hidden="true"></i> Privacy
+        </button>
+      </li>
+    <% end %>
+  </ul>
+
+  <!-- Tab Content -->
+  <div class="tab-content settings-tab-content">
+
+    <!-- ============================== -->
+    <!-- BILLING TAB                     -->
+    <!-- ============================== -->
+    <div class="tab-pane fade <%= 'show active' if active_tab == 'billing' %>" id="settings-tab-billing" role="tabpanel">
+      <div class="settings-section-content">
+        <%
+          billing_account = current_user.user_billing_account rescue nil
+          if billing_account
+            token_service = WorkTokenService.new(user: current_user, entity: current_entity)
+            usage_summary = token_service.usage_summary(days: 30) rescue {}
+            recent_txns = token_service.recent_transactions(limit: 8) rescue []
+            stats = {
+              balance: billing_account.work_token_balance,
+              usage_this_month: billing_account.usage_this_month,
+              spending_this_month: billing_account.spending_this_month_usd,
+              monthly_limit: billing_account.monthly_limit_usd,
+              lifetime_purchased: billing_account.lifetime_tokens_purchased,
+              lifetime_used: billing_account.lifetime_tokens_used,
+              free_remaining: billing_account.free_tokens_remaining
+            }
+          else
+            usage_summary = {}
+            recent_txns = []
+            stats = { balance: 0, usage_this_month: 0, spending_this_month: 0, monthly_limit: 0, lifetime_purchased: 0, lifetime_used: 0, free_remaining: 0 }
+          end
+        %>
+
+        <!-- Prominent CTA when no payment method on file -->
+        <% unless billing_account&.has_payment_method? %>
+          <div class="alert payment-cta-banner mb-4 p-3 rounded-3 border-0" style="background: linear-gradient(135deg, #f59e0b22, #f59e0b44); border-left: 4px solid #f59e0b !important;">
+            <div class="d-flex align-items-center gap-3">
+              <div class="flex-shrink-0">
+                <i data-lucide="credit-card" aria-hidden="true" style="width: 36px; height: 36px; color: #f59e0b;"></i>
+              </div>
+              <div class="flex-grow-1">
+                <h6 class="mb-1 fw-bold" style="color: var(--bs-body-color);">Add a Payment Method</h6>
+                <p class="mb-0 small" style="color: var(--bs-secondary-color);">
+                  Set up a credit card to purchase tokens and unlock auto-replenish.
+                  <% if stats[:free_remaining].to_i > 0 %>
+                    You still have <strong><%= number_with_delimiter(stats[:free_remaining]) %></strong> free tokens remaining.
+                  <% end %>
+                </p>
+              </div>
+              <div class="flex-shrink-0">
+                <button class="btn btn-warning btn-lg fw-bold px-4" onclick="window.scoutController?.loadScoutCanvas('payment_setup', {})">
+                  <i data-lucide="plus" aria-hidden="true" class="me-1"></i> Add Card
+                </button>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Balance Cards -->
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <div class="settings-stat-card stat-gold">
+              <div class="stat-icon-wrap stat-icon-gold">
+                <i data-lucide="coins" aria-hidden="true"></i>
+              </div>
+              <div>
+                <div class="stat-label">Current Balance</div>
+                <div class="stat-value stat-value-gold"><%= number_with_delimiter(stats[:balance]) %></div>
+                <% if stats[:free_remaining].to_i > 0 %>
+                  <div class="stat-sub text-success">
+                    <i data-lucide="gift" aria-hidden="true" style="width: 12px; height: 12px;"></i>
+                    Includes <%= number_with_delimiter(stats[:free_remaining]) %> free
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="settings-stat-card">
+              <div class="stat-icon-wrap stat-icon-info">
+                <i data-lucide="activity" aria-hidden="true"></i>
+              </div>
+              <div>
+                <div class="stat-label">Used This Month</div>
+                <div class="stat-value"><%= number_with_delimiter(stats[:usage_this_month]) %></div>
+                <div class="stat-sub">
+                  ~ $<%= number_with_precision(stats[:spending_this_month], precision: 2) %>
+                  <% if stats[:monthly_limit].to_f > 0 %>
+                    / $<%= stats[:monthly_limit] %> limit
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="settings-stat-card">
+              <div class="stat-icon-wrap stat-icon-success">
+                <i data-lucide="trending-up" aria-hidden="true"></i>
+              </div>
+              <div>
+                <div class="stat-label">Lifetime Used</div>
+                <div class="stat-value"><%= number_with_delimiter(stats[:lifetime_used]) %></div>
+                <div class="stat-sub"><%= number_with_delimiter(stats[:lifetime_purchased]) %> purchased</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Usage Quick Stats -->
+        <%
+          timeframe_start = 30.days.ago
+          ai_stats = {
+            conversations: current_user.scout_conversations.where(created_at: timeframe_start..).count,
+            messages: current_user.scout_messages.where(created_at: timeframe_start..).count,
+            workflows: current_user.task_sessions.where(created_at: timeframe_start..).count,
+            completed: current_user.task_sessions.where(status: "completed", created_at: timeframe_start..).count
+          }
+        %>
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="settings-mini-stat">
+              <i data-lucide="message-square" class="mini-stat-icon text-purple" aria-hidden="true"></i>
+              <div class="mini-stat-value"><%= ai_stats[:conversations] %></div>
+              <div class="mini-stat-label">Conversations</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="settings-mini-stat">
+              <i data-lucide="messages-square" class="mini-stat-icon text-info" aria-hidden="true"></i>
+              <div class="mini-stat-value"><%= ai_stats[:messages] %></div>
+              <div class="mini-stat-label">Messages</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="settings-mini-stat">
+              <i data-lucide="play-circle" class="mini-stat-icon text-muted" aria-hidden="true"></i>
+              <div class="mini-stat-value"><%= ai_stats[:workflows] %></div>
+              <div class="mini-stat-label">Workflows</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="settings-mini-stat">
+              <i data-lucide="check-circle" class="mini-stat-icon text-success" aria-hidden="true"></i>
+              <div class="mini-stat-value"><%= ai_stats[:completed] %></div>
+              <div class="mini-stat-label">Completed</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Usage by Category -->
+        <% by_category = usage_summary[:by_category] || {} %>
+        <% if by_category.any? %>
+          <div class="settings-card mb-4">
+            <h6 class="settings-card-title">
+              <i data-lucide="pie-chart" aria-hidden="true"></i> Token Usage by Category
+            </h6>
+            <% max_tokens = by_category.values.max || 1 %>
+            <% by_category.each do |category, tokens| %>
+              <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="small">
+                    <%= case category
+                        when 'ai_tokens' then 'AI Usage'
+                        when 'email' then 'Email'
+                        when 'storage' then 'Storage'
+                        when 'api_call' then 'API Calls'
+                        else category&.titleize || 'Other'
+                        end %>
+                  </span>
+                  <span class="badge bg-secondary"><%= number_with_delimiter(tokens) %></span>
+                </div>
+                <div class="progress" style="height: 5px;">
+                  <div class="progress-bar bg-primary" style="width: <%= (tokens.to_f / max_tokens * 100).round %>%"></div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <!-- Recent Transactions -->
+        <div class="settings-card">
+          <h6 class="settings-card-title">
+            <i data-lucide="history" aria-hidden="true"></i> Recent Transactions
+          </h6>
+          <% if recent_txns.any? %>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0 settings-table">
+                <tbody>
+                  <% recent_txns.each do |tx| %>
+                    <tr>
+                      <td style="width: 32px;"><%= tx.category_icon rescue '' %></td>
+                      <td>
+                        <div class="fw-medium"><%= tx.category_label rescue tx.category %></div>
+                        <div class="text-muted small"><%= truncate(tx.description, length: 40) %></div>
+                      </td>
+                      <td class="text-end <%= (tx.credit? rescue false) ? 'text-success' : 'text-danger' %>">
+                        <%= tx.formatted_amount rescue number_with_delimiter(tx.token_amount) %>
+                      </td>
+                      <td class="text-muted small text-end">
+                        <%= time_ago_in_words(tx.created_at) %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <div class="text-center py-4 text-muted">
+              <i data-lucide="inbox" aria-hidden="true" style="width: 32px; height: 32px;" class="mb-2"></i>
+              <p class="mb-0">No transactions yet</p>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Buy Tokens / Payment CTA -->
+        <% if billing_account %>
+          <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-primary btn-sm" onclick="window.scoutController?.loadScoutCanvas('payment_setup', {})">
+              <i data-lucide="plus" aria-hidden="true" class="me-1"></i> Buy Tokens
+            </button>
+            <% if billing_account.has_payment_method? %>
+              <button class="btn btn-outline-secondary btn-sm" onclick="window.scoutController?.loadScoutCanvas('payment_setup', {})">
+                <i data-lucide="settings" aria-hidden="true" class="me-1"></i> Payment Settings
+              </button>
+            <% else %>
+              <button class="btn btn-warning btn-sm fw-bold" onclick="window.scoutController?.loadScoutCanvas('payment_setup', {})">
+                <i data-lucide="credit-card" aria-hidden="true" class="me-1"></i> Add Payment Method
+              </button>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- TOOLS TAB                       -->
+    <!-- ============================== -->
+    <div class="tab-pane fade <%= 'show active' if active_tab == 'tools' %>" id="settings-tab-tools" role="tabpanel">
+      <div class="settings-section-content">
+        <% my_tools = current_user.tool_definitions.where(entity_id: current_entity.id).order(created_at: :desc) rescue [] %>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <p class="text-muted mb-0 small">Custom tools extend what Amos can do for you.</p>
+          <button class="btn btn-primary btn-sm" onclick="window.scoutSendMessage('I want to create a new custom tool')">
+            <i data-lucide="plus" aria-hidden="true" class="me-1"></i> Create Tool
+          </button>
+        </div>
+
+        <% if my_tools.any? %>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0 settings-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Security</th>
+                  <th>Description</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% my_tools.each do |tool| %>
+                  <tr>
+                    <td class="fw-medium"><%= tool.name %></td>
+                    <td><span class="badge bg-info"><%= tool.execution_type %></span></td>
+                    <td>
+                      <% case tool.security_rating %>
+                      <% when 'pass' %>
+                        <span class="badge bg-success" title="<%= tool.security_reason %>">Pass</span>
+                      <% when 'review' %>
+                        <span class="badge bg-warning" title="<%= tool.security_reason %>">Review</span>
+                      <% when 'fail' %>
+                        <span class="badge bg-danger" title="<%= tool.security_reason %>">Fail</span>
+                      <% else %>
+                        <span class="badge bg-secondary">Pending</span>
+                      <% end %>
+                    </td>
+                    <td class="text-muted"><%= tool.description&.truncate(50) %></td>
+                    <td class="text-end">
+                      <button class="btn btn-sm btn-outline-secondary" onclick="window.scoutSendMessage('Show me details for tool: <%= tool.name %>')">
+                        <i data-lucide="eye" aria-hidden="true"></i>
+                      </button>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="text-center py-5 text-muted">
+            <i data-lucide="wrench" aria-hidden="true" style="width: 40px; height: 40px;" class="mb-3"></i>
+            <h6>No Custom Tools Yet</h6>
+            <p class="small mb-3">Create your first tool to extend Amos's capabilities.</p>
+            <button class="btn btn-primary btn-sm" onclick="window.scoutSendMessage('Help me create a custom tool')">
+              <i data-lucide="plus" aria-hidden="true" class="me-1"></i> Create Tool
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- MENU CONFIG TAB                 -->
+    <!-- ============================== -->
+    <div class="tab-pane fade <%= 'show active' if active_tab == 'menu' %>" id="settings-tab-menu" role="tabpanel">
+      <div class="settings-section-content">
+        <%
+          current_space = current_user.active_space || 'work'
+          menu_config = current_user.menu_config_for_space(current_space) rescue nil
+          all_menu_items = [
+            { slug: 'work_inbox', name: 'Work Inbox', icon: 'inbox', category: 'Productivity' },
+            { slug: 'scheduled_tasks', name: 'Scheduled Tasks', icon: 'clock', category: 'Productivity' },
+            { slug: 'contact_viewer', name: 'Contacts', icon: 'users', category: 'Marketing' },
+            { slug: 'pipeline_viewer', name: 'Sales Pipeline', icon: 'git-branch', category: 'Insights' },
+            { slug: 'document_viewer', name: 'Documents', icon: 'folder', category: 'Content' },
+            { slug: 'media_library', name: 'Media Library', icon: 'image', category: 'Content' },
+            { slug: 'integrations_manager', name: 'Integrations', icon: 'plug', category: 'System' },
+            { slug: 'my_creations', name: 'Apps & Automations', icon: 'sparkles', category: 'Design' },
+            { slug: 'analytics_dashboard', name: 'Analytics', icon: 'bar-chart-2', category: 'Insights' },
+            { slug: 'campaign_viewer', name: 'Campaigns', icon: 'mail', category: 'Marketing' },
+            { slug: 'email_template_viewer', name: 'Email Templates', icon: 'file-text', category: 'Marketing' },
+            { slug: 'landing_page_viewer', name: 'Landing Pages', icon: 'layout', category: 'Marketing' },
+            { slug: 'sequence_manager', name: 'Email Sequences', icon: 'mail', category: 'Marketing' },
+            { slug: 'saved_visualizations', name: 'Saved Visualizations', icon: 'bookmark', category: 'Insights' },
+            { slug: 'automation_dashboard', name: 'Automations', icon: 'zap', category: 'Automation' },
+            { slug: 'module_manager', name: 'Installed Apps', icon: 'box', category: 'Apps' },
+            { slug: 'support_tickets', name: 'Support Tickets', icon: 'life-buoy', category: 'System' },
+            { slug: 'notes', name: 'Notes', icon: 'edit-3', category: 'Productivity' },
+            { slug: 'reminders', name: 'Reminders', icon: 'bell', category: 'Productivity' },
+            { slug: 'bookmarks', name: 'Bookmarks', icon: 'bookmark', category: 'Productivity' }
+          ]
+          visible_items = menu_config&.visible_items || all_menu_items.map { |i| i[:slug] }
+          hidden_items = menu_config&.hidden_items || []
+        %>
+
+        <p class="text-muted small mb-3">Choose which items appear in your sidebar. Changes are saved automatically.</p>
+
+        <!-- Communications settings -->
+        <%
+          entity = current_entity
+          slack_enabled = entity&.slack_notifications_enabled? rescue false
+          email_enabled = entity&.email_notifications_enabled? rescue false
+        %>
+        <div class="settings-card mb-4">
+          <h6 class="settings-card-title">
+            <i data-lucide="bell" aria-hidden="true"></i> Communications
+          </h6>
+          <div class="d-flex flex-column gap-2">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="slack-notif-toggle"
+                     <%= 'checked' if slack_enabled %>
+                     onchange="window.settingsTogglePlatformSetting('slack_notifications_enabled', this.checked)">
+              <label class="form-check-label" for="slack-notif-toggle">
+                <i data-lucide="hash" aria-hidden="true" style="width: 14px; height: 14px;" class="me-1"></i>
+                Slack Notifications
+              </label>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="email-notif-toggle"
+                     <%= 'checked' if email_enabled %>
+                     onchange="window.settingsTogglePlatformSetting('email_notifications_enabled', this.checked)">
+              <label class="form-check-label" for="email-notif-toggle">
+                <i data-lucide="mail" aria-hidden="true" style="width: 14px; height: 14px;" class="me-1"></i>
+                Email Notifications
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar Menu Items -->
+        <div class="settings-card">
+          <h6 class="settings-card-title">
+            <i data-lucide="layout-grid" aria-hidden="true"></i> Sidebar Shortcuts
+          </h6>
+          <div class="row g-2">
+            <% all_menu_items.group_by { |i| i[:category] }.each do |category, items| %>
+              <div class="col-12 mb-2">
+                <div class="text-muted small fw-bold mb-1"><%= category %></div>
+                <% items.each do |item| %>
+                  <div class="form-check form-switch d-inline-flex align-items-center me-3 mb-1">
+                    <input class="form-check-input" type="checkbox" id="menu-<%= item[:slug] %>"
+                           <%= 'checked' if visible_items.include?(item[:slug]) %>
+                           onchange="window.settingsToggleMenuItem('<%= item[:slug] %>', this.checked)">
+                    <label class="form-check-label small ms-1" for="menu-<%= item[:slug] %>">
+                      <i data-lucide="<%= item[:icon] %>" aria-hidden="true" style="width: 12px; height: 12px;" class="me-1"></i>
+                      <%= item[:name] %>
+                    </label>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <% if current_user.entity_admin? %>
+    <!-- ============================== -->
+    <!-- POLICIES TAB                    -->
+    <!-- ============================== -->
+    <div class="tab-pane fade <%= 'show active' if active_tab == 'policies' %>" id="settings-tab-policies" role="tabpanel">
+      <div class="settings-section-content">
+        <%
+          policies = current_entity.policy_rules.order(created_at: :desc) rescue []
+          policy_stats = {
+            total: policies.count,
+            active: policies.select(&:is_active).count,
+            with_budgets: policies.select { |p| p.max_daily_calls.present? || p.max_write_calls.present? }.count
+          }
+        %>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <p class="text-muted mb-0 small">Control how AI agents access and use your data.</p>
+          <button class="btn btn-primary btn-sm" onclick="window.scoutSendMessage('Help me create a new AI usage policy')">
+            <i data-lucide="plus" aria-hidden="true" class="me-1"></i> New Policy
+          </button>
+        </div>
+
+        <!-- Policy Stats -->
+        <div class="row g-3 mb-4">
+          <div class="col-4">
+            <div class="settings-mini-stat">
+              <i data-lucide="file-text" class="mini-stat-icon text-danger" aria-hidden="true"></i>
+              <div class="mini-stat-value"><%= policy_stats[:total] %></div>
+              <div class="mini-stat-label">Total</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="settings-mini-stat">
+              <i data-lucide="check-circle" class="mini-stat-icon text-success" aria-hidden="true"></i>
+              <div class="mini-stat-value"><%= policy_stats[:active] %></div>
+              <div class="mini-stat-label">Active</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="settings-mini-stat">
+              <i data-lucide="dollar-sign" class="mini-stat-icon text-info" aria-hidden="true"></i>
+              <div class="mini-stat-value"><%= policy_stats[:with_budgets] %></div>
+              <div class="mini-stat-label">With Budgets</div>
+            </div>
+          </div>
+        </div>
+
+        <% if policies.any? %>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0 settings-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Action</th>
+                  <th>Status</th>
+                  <th>Budgets</th>
+                  <th class="text-end">Toggle</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% policies.each do |policy| %>
+                  <tr>
+                    <td>
+                      <div class="fw-medium"><%= policy.name %></div>
+                      <% if policy.agent_role.present? %>
+                        <div class="text-muted small">For: <%= policy.agent_role %></div>
+                      <% end %>
+                    </td>
+                    <td><span class="badge bg-secondary"><%= policy.resource_type %></span></td>
+                    <td><span class="badge bg-info"><%= policy.action.titleize %></span></td>
+                    <td>
+                      <% if policy.is_active %>
+                        <span class="badge bg-success">Active</span>
+                      <% else %>
+                        <span class="badge bg-secondary">Inactive</span>
+                      <% end %>
+                    </td>
+                    <td class="text-muted small">
+                      <% if policy.max_daily_calls || policy.max_write_calls %>
+                        <%= "#{policy.max_daily_calls}/day" if policy.max_daily_calls %>
+                        <%= "#{policy.max_write_calls} writes" if policy.max_write_calls %>
+                      <% else %>
+                        None
+                      <% end %>
+                    </td>
+                    <td class="text-end">
+                      <%= button_to toggle_entity_policy_path(policy), method: :post,
+                          class: "btn btn-sm #{policy.is_active ? 'btn-outline-warning' : 'btn-outline-success'}",
+                          data: { turbo: false } do %>
+                        <i data-lucide="<%= policy.is_active ? 'pause-circle' : 'play-circle' %>" aria-hidden="true"></i>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="text-center py-5 text-muted">
+            <i data-lucide="shield-alert" aria-hidden="true" style="width: 40px; height: 40px;" class="mb-3"></i>
+            <h6>No Policies Defined</h6>
+            <p class="small mb-3">Create policies to control AI agent data access.</p>
+            <button class="btn btn-primary btn-sm" onclick="window.scoutSendMessage('Help me create an AI usage policy')">
+              <i data-lucide="plus" aria-hidden="true" class="me-1"></i> Create Policy
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- PRIVACY TAB                     -->
+    <!-- ============================== -->
+    <div class="tab-pane fade <%= 'show active' if active_tab == 'privacy' %>" id="settings-tab-privacy" role="tabpanel">
+      <div class="settings-section-content">
+        <%
+          privacy_settings = (current_entity&.settings || {})["privacy"] || {}
+          privacy_settings = privacy_settings.with_indifferent_access if privacy_settings.respond_to?(:with_indifferent_access)
+        %>
+
+        <p class="text-muted small mb-3">Control what data gets shared with AI and how it's used. Changes take effect immediately.</p>
+
+        <form id="settings-privacy-form" data-remote="true">
+          <div class="row g-4">
+            <!-- Data Sharing -->
+            <div class="col-md-6">
+              <div class="settings-card">
+                <h6 class="settings-card-title">
+                  <i data-lucide="share-2" aria-hidden="true"></i> Data Sharing with AI
+                </h6>
+                <div class="d-flex flex-column gap-2">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="priv-share-biz"
+                           name="privacy[share_business_profile]"
+                           <%= 'checked' if privacy_settings['share_business_profile'] %>
+                           onchange="window.settingsSavePrivacy()">
+                    <label class="form-check-label small" for="priv-share-biz">Share Business Profile</label>
+                    <div class="form-text">AI can access business name, industry, description</div>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="priv-share-contacts"
+                           name="privacy[share_contact_data]"
+                           <%= 'checked' if privacy_settings['share_contact_data'] %>
+                           onchange="window.settingsSavePrivacy()">
+                    <label class="form-check-label small" for="priv-share-contacts">Share Contact Data</label>
+                    <div class="form-text">AI can access contact names, emails, etc.</div>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="priv-share-campaigns"
+                           name="privacy[share_campaign_metrics]"
+                           <%= 'checked' if privacy_settings['share_campaign_metrics'] %>
+                           onchange="window.settingsSavePrivacy()">
+                    <label class="form-check-label small" for="priv-share-campaigns">Share Campaign Metrics</label>
+                    <div class="form-text">AI can analyze campaign performance data</div>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="priv-share-files"
+                           name="privacy[share_file_contents]"
+                           <%= 'checked' if privacy_settings['share_file_contents'] %>
+                           onchange="window.settingsSavePrivacy()">
+                    <label class="form-check-label small" for="priv-share-files">Share Uploaded Files</label>
+                    <div class="form-text">AI can read uploaded documents and images</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- PII Masking & Retention -->
+            <div class="col-md-6">
+              <div class="settings-card mb-3">
+                <h6 class="settings-card-title">
+                  <i data-lucide="eye-off" aria-hidden="true"></i> PII Masking
+                </h6>
+                <div class="d-flex flex-column gap-2">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="priv-mask-pii"
+                           name="privacy[mask_pii]"
+                           <%= 'checked' if privacy_settings['mask_pii'] %>
+                           onchange="window.settingsSavePrivacy()">
+                    <label class="form-check-label small" for="priv-mask-pii">Auto-mask PII</label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="priv-mask-emails"
+                           name="privacy[mask_emails]"
+                           <%= 'checked' if privacy_settings['mask_emails'] %>
+                           onchange="window.settingsSavePrivacy()">
+                    <label class="form-check-label small" for="priv-mask-emails">Mask Email Addresses</label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="priv-mask-phones"
+                           name="privacy[mask_phone_numbers]"
+                           <%= 'checked' if privacy_settings['mask_phone_numbers'] %>
+                           onchange="window.settingsSavePrivacy()">
+                    <label class="form-check-label small" for="priv-mask-phones">Mask Phone Numbers</label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="priv-mask-addresses"
+                           name="privacy[mask_addresses]"
+                           <%= 'checked' if privacy_settings['mask_addresses'] %>
+                           onchange="window.settingsSavePrivacy()">
+                    <label class="form-check-label small" for="priv-mask-addresses">Mask Physical Addresses</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-card">
+                <h6 class="settings-card-title">
+                  <i data-lucide="clock" aria-hidden="true"></i> Data Retention
+                </h6>
+                <div class="mb-2">
+                  <label class="form-label small" for="priv-retention">Retain AI conversation data for:</label>
+                  <select class="form-select form-select-sm" id="priv-retention" name="privacy[data_retention_days]"
+                          onchange="window.settingsSavePrivacy()">
+                    <option value="30" <%= 'selected' if privacy_settings['data_retention_days'].to_i == 30 %>>30 days</option>
+                    <option value="60" <%= 'selected' if privacy_settings['data_retention_days'].to_i == 60 %>>60 days</option>
+                    <option value="90" <%= 'selected' if privacy_settings['data_retention_days'].to_i == 90 %>>90 days</option>
+                    <option value="180" <%= 'selected' if privacy_settings['data_retention_days'].to_i == 180 %>>180 days</option>
+                    <option value="365" <%= 'selected' if privacy_settings['data_retention_days'].to_i == 365 %>>1 year</option>
+                  </select>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="priv-export"
+                         name="privacy[allow_data_export]"
+                         <%= 'checked' if privacy_settings['allow_data_export'] %>
+                         onchange="window.settingsSavePrivacy()">
+                  <label class="form-check-label small" for="priv-export">Allow Data Export</label>
+                  <div class="form-text">Users can download their AI conversation history</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="settings-privacy-status" class="small text-success mt-2" style="display: none;">
+            <i data-lucide="check" aria-hidden="true" style="width: 12px; height: 12px;"></i> Saved
+          </div>
+        </form>
+      </div>
+    </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+(function() {
+  // Refresh entire settings canvas
+  window.settingsRefresh = function() {
+    if (typeof window.scoutSendMessage === 'function') {
+      // Re-render by sending a load_canvas command
+      const scoutEl = document.querySelector('[data-controller="scout"]');
+      if (scoutEl && scoutEl.__stimulusController) {
+        scoutEl.__stimulusController.loadCanvas('settings');
+      }
+    }
+    location.reload();
+  };
+
+  // Toggle a platform setting (communications, etc.)
+  window.settingsTogglePlatformSetting = function(setting, value) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    const formData = new FormData();
+    formData.append(setting, value ? '1' : '0');
+
+    fetch('<%= update_platform_settings_ai_settings_menu_path %>', {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken, 'Accept': 'application/json' },
+      body: formData
+    }).then(r => r.json()).then(data => {
+      if (data.success) showSavedIndicator();
+    }).catch(err => console.error('Settings save failed:', err));
+  };
+
+  // Toggle a sidebar menu item
+  window.settingsToggleMenuItem = function(slug, visible) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    fetch('<%= toggle_ai_settings_menu_path %>', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-Token': csrfToken,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ item: slug, action_type: visible ? 'show' : 'hide' })
+    }).then(r => r.json()).then(data => {
+      if (data.success) showSavedIndicator();
+    }).catch(err => console.error('Menu toggle failed:', err));
+  };
+
+  // Save privacy settings
+  let privacyTimeout;
+  window.settingsSavePrivacy = function() {
+    clearTimeout(privacyTimeout);
+    privacyTimeout = setTimeout(doSavePrivacy, 500);
+  };
+
+  function doSavePrivacy() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    const form = document.getElementById('settings-privacy-form');
+    if (!form) return;
+
+    const data = {};
+    form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      const key = cb.name;
+      if (key) data[key] = cb.checked ? '1' : '0';
+    });
+    const retention = form.querySelector('select[name="privacy[data_retention_days]"]');
+    if (retention) data['privacy[data_retention_days]'] = retention.value;
+
+    fetch('<%= entity_privacy_path rescue "#" %>', {
+      method: 'PATCH',
+      headers: {
+        'X-CSRF-Token': csrfToken,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(data)
+    }).then(r => {
+      if (r.ok) showSavedIndicator();
+    }).catch(err => console.error('Privacy save failed:', err));
+  }
+
+  function showSavedIndicator() {
+    const el = document.getElementById('settings-privacy-status');
+    if (el) {
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 2000);
+    }
+  }
+
+  // Initialize Lucide icons after render
+  setTimeout(function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }, 50);
+})();
+</script>
+
+<!-- Styles (theme-aware: light + dark) -->
+<style>
+/* ── Base canvas ── */
+.settings-canvas {
+  padding: 0.5rem;
+  color: var(--scout-text, var(--bs-body-color));
+}
+
+/* ── Tab bar ── */
+.settings-nav-tabs {
+  border-bottom: 1px solid var(--scout-border, var(--bs-border-color));
+  gap: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+.settings-nav-tabs .nav-link {
+  color: var(--scout-text-muted, var(--bs-secondary-color));
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 0.6rem 1rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: color 0.15s, border-color 0.15s;
+}
+.settings-nav-tabs .nav-link i { width: 14px; height: 14px; }
+.settings-nav-tabs .nav-link:hover {
+  color: var(--scout-text, var(--bs-body-color));
+  border-bottom-color: var(--scout-border, var(--bs-border-color));
+}
+.settings-nav-tabs .nav-link.active {
+  color: var(--scout-primary, #7C3AED);
+  border-bottom-color: var(--scout-primary, #7C3AED);
+  background: transparent;
+}
+
+/* ── Tab content ── */
+.settings-tab-content {
+  padding-top: 1.25rem;
+}
+.settings-section-content {
+  max-width: 900px;
+}
+
+/* ── Stat cards ── */
+.settings-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  background: var(--scout-chat-bg, var(--bs-tertiary-bg));
+  border: 1px solid var(--scout-border, var(--bs-border-color));
+}
+.stat-gold { border-color: #EAB308; }
+.stat-icon-wrap {
+  width: 2.75rem; height: 2.75rem; border-radius: 0.625rem;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.stat-icon-wrap i { width: 1.25rem; height: 1.25rem; color: #fff; }
+.stat-icon-gold { background: linear-gradient(135deg, #EAB308, #FACC15); }
+.stat-icon-info { background: rgba(34, 211, 238, 0.15); border: 1px solid rgba(34, 211, 238, 0.25); }
+.stat-icon-info i { color: #22D3EE; }
+.stat-icon-success { background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.25); }
+.stat-icon-success i { color: #22C55E; }
+.stat-label { font-size: 0.8125rem; color: var(--scout-text-muted, var(--bs-secondary-color)); }
+.stat-value { font-size: 1.5rem; font-weight: 600; color: var(--scout-text, var(--bs-body-color)); line-height: 1.2; }
+.stat-value-gold { color: #EAB308; }
+.stat-sub { font-size: 0.75rem; color: var(--scout-text-muted, var(--bs-secondary-color)); }
+
+/* ── Mini stats ── */
+.settings-mini-stat {
+  text-align: center;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--scout-chat-bg, var(--bs-tertiary-bg));
+  border: 1px solid var(--scout-border, var(--bs-border-color));
+}
+.mini-stat-icon { width: 18px; height: 18px; margin-bottom: 0.25rem; }
+.mini-stat-value { font-size: 1.25rem; font-weight: 600; color: var(--scout-text, var(--bs-body-color)); }
+.mini-stat-label { font-size: 0.6875rem; color: var(--scout-text-muted, var(--bs-secondary-color)); }
+
+/* ── Generic card inside settings ── */
+.settings-card {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: var(--scout-chat-bg, var(--bs-tertiary-bg));
+  border: 1px solid var(--scout-border, var(--bs-border-color));
+}
+.settings-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--scout-text, var(--bs-body-color));
+}
+.settings-card-title i { width: 16px; height: 16px; }
+
+/* ── Table ── */
+.settings-table {
+  color: var(--scout-text, var(--bs-body-color));
+  font-size: 0.8125rem;
+}
+.settings-table th {
+  color: var(--scout-text-muted, var(--bs-secondary-color));
+  font-weight: 500;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom-color: var(--scout-border, var(--bs-border-color));
+}
+.settings-table td {
+  border-bottom-color: var(--scout-border, var(--bs-border-color));
+  vertical-align: middle;
+}
+
+/* ── Form overrides for dark/light ── */
+.settings-canvas .form-control,
+.settings-canvas .form-select {
+  color: var(--bs-body-color);
+  background-color: var(--bs-body-bg);
+  border-color: var(--bs-border-color);
+}
+[data-bs-theme="dark"] .settings-canvas .form-control,
+[data-bs-theme="dark"] .settings-canvas .form-select {
+  color: var(--scout-text, #e2e8f0);
+  background-color: var(--scout-tertiary, #27244B);
+  border-color: var(--scout-border, #3f3b6c);
+}
+[data-bs-theme="dark"] .settings-canvas .form-control:focus,
+[data-bs-theme="dark"] .settings-canvas .form-select:focus {
+  border-color: var(--scout-primary, #7C3AED);
+  box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.25);
+}
+
+/* ── Purple accent ── */
+.text-purple { color: #A78BFA; }
+.settings-header-icon { color: var(--scout-primary, #A78BFA); }
+
+/* ── Progress bar fix ── */
+.settings-canvas .progress {
+  background: var(--scout-chat-bg, var(--bs-secondary-bg));
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .settings-nav-tabs .nav-link { padding: 0.5rem 0.6rem; font-size: 0.75rem; }
+  .settings-stat-card { padding: 0.75rem; }
+  .stat-value { font-size: 1.25rem; }
+}
+</style>

@@ -41,50 +41,23 @@ Applications (or modules) are custom data-driven apps built on the platform. The
 ## Common Operations
 
 ### Query custom apps
-```
-platform_query(type: "app_modules", filters: { status: "active" })
-```
+Use the platform_query tool with type: "app_modules", filters: { status: "active" }
 
 ### Create an application
-```
-platform_create(type: "app_module", data: {
-  name: "Project Tracker",
-  slug: "project-tracker",
-  schema: {
-    fields: [
-      { name: "project_name", type: "text", required: true },
-      { name: "status", type: "select", options: ["planning", "active", "complete"] },
-      { name: "due_date", type: "date" },
-      { name: "owner", type: "reference", reference_type: "contact" },
-      { name: "budget", type: "currency" }
-    ]
-  }
-})
-```
+Use the platform_create tool with type: "app_module" and data containing:
+- name: "Project Tracker"
+- slug: "project-tracker"
+- schema: { fields: [{ name: "project_name", type: "text", required: true }, { name: "status", type: "select", options: ["planning", "active", "complete"] }, { name: "due_date", type: "date" }, { name: "owner", type: "reference", reference_type: "contact" }, { name: "budget", type: "currency" }] }
 
 ### Open app designer
-```
-load_canvas(canvas_name: "app_designer")
-load_canvas(canvas_name: "app_designer", canvas_data: { app_module_id: 42 })
-```
+Use the load_canvas tool with canvas_name: "app_designer"
+Or with canvas_name: "app_designer", canvas_data: { app_module_id: 42 }
 
 ### Create a record in a custom app
-```
-platform_create(type: "custom_object", data: {
-  app_module_id: 42,
-  data: {
-    project_name: "Website Redesign",
-    status: "planning",
-    due_date: "2026-03-15",
-    budget: 5000
-  }
-})
-```
+Use the platform_create tool with type: "custom_object" and data: { app_module_id: 42, data: { project_name: "Website Redesign", status: "planning", due_date: "2026-03-15", budget: 5000 } }
 
 ### Query records from a custom app
-```
-platform_query(type: "custom_objects", filters: { app_module_id: 42, "data.status": "active" })
-```
+Use the platform_query tool with type: "custom_objects", filters: { app_module_id: 42, "data.status": "active" }
 
 ## Design Patterns
 

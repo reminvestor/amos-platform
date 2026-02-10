@@ -4,17 +4,15 @@ class AiSettings::VoiceController < ApplicationController
   layout "customer_admin"
 
   def show
-    @tts_preferences = current_user.tts_preferences || {}
+    redirect_to chat_mode_path, status: :moved_permanently
   end
 
   def update
     # Voice settings are saved via API, this just handles form fallback
     if current_user.update(tts_preferences: voice_params)
-      redirect_to ai_settings_voice_path, notice: "Voice settings updated successfully."
+      redirect_to chat_mode_path, notice: "Voice settings updated successfully."
     else
-      @tts_preferences = current_user.tts_preferences || {}
-      flash.now[:alert] = "Failed to update voice settings."
-      render :show, status: :unprocessable_entity
+      redirect_to chat_mode_path, alert: "Failed to update voice settings."
     end
   end
 

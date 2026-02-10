@@ -265,6 +265,28 @@
                   </div>
                 </div>
 
+                <%# Billing Address for tax calculation %>
+                <div class="mb-4">
+                  <label class="form-label text-white">Street Address</label>
+                  <input type="text" class="form-control bg-dark text-white border-secondary" id="billing_street"
+                         placeholder="123 Main St, Apt 4"
+                         value="<%= @billing_account.billing_address&.dig('street') %>" required>
+                </div>
+                <div class="row mb-4">
+                  <div class="col-7">
+                    <label class="form-label text-white">Zip Code</label>
+                    <input type="text" class="form-control bg-dark text-white border-secondary" id="billing_zip"
+                           placeholder="78701" maxlength="10"
+                           value="<%= @billing_account.billing_address&.dig('zip') %>" required>
+                  </div>
+                  <div class="col-5">
+                    <label class="form-label text-muted">Country</label>
+                    <select class="form-select bg-dark text-white border-secondary" id="billing_country">
+                      <option value="US" selected>US</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div id="card-errors" class="text-danger small mb-3" role="alert"></div>
 
                 <%# Auto-replenishment Settings %>
@@ -363,9 +385,9 @@
               </p>
             </div>
           <% else %>
-            <a href="<%= settings_billing_path %>" class="btn btn-outline-secondary mt-3">
+            <a href="<%= chat_mode_path %>" class="btn btn-outline-secondary mt-3">
               <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
-              Back to Settings
+              Back to Chat
             </a>
           <% end %>
         </div>
@@ -590,6 +612,19 @@
           document.getElementById('button-text').classList.add('d-none');
           document.getElementById('spinner').classList.remove('d-none');
           
+          // Collect billing address
+          const billingStreet = document.getElementById('billing_street')?.value?.trim() || '';
+          const billingZip = document.getElementById('billing_zip')?.value?.trim() || '';
+          const billingCountry = document.getElementById('billing_country')?.value || 'US';
+
+          if (!billingStreet || !billingZip) {
+            cardErrors.textContent = 'Street address and zip code are required for tax purposes.';
+            submitButton.disabled = false;
+            document.getElementById('button-text').classList.remove('d-none');
+            document.getElementById('spinner').classList.add('d-none');
+            return;
+          }
+
           let setupIntentResult;
           try {
             setupIntentResult = await stripe.confirmCardSetup(
@@ -597,6 +632,13 @@
               {
                 payment_method: {
                   card: cardNumberElement,
+                  billing_details: {
+                    address: {
+                      line1: billingStreet,
+                      postal_code: billingZip,
+                      country: billingCountry
+                    }
+                  }
                 }
               }
             );
@@ -647,7 +689,12 @@
                   payment_method_id: setupIntent.payment_method,
                   auto_replenish_enabled: autoReplenish,
                   auto_replenish_amount_usd: parseInt(replenishAmount),
-                  monthly_limit_usd: parseInt(monthlyLimit)
+                  monthly_limit_usd: parseInt(monthlyLimit),
+                  billing_address: {
+                    street: billingStreet,
+                    zip: billingZip,
+                    country: billingCountry
+                  }
                 })
               });
               
@@ -656,7 +703,7 @@
                   // After onboarding payment setup, redirect to onboarding wizard
                   window.location.href = '<%= onboarding_path %>';
                 <% else %>
-                  window.location.href = '<%= settings_billing_path %>';
+                  window.location.href = '<%= chat_mode_path %>';
                 <% end %>
               } else {
                 let errorMessage = 'Failed to save payment method';

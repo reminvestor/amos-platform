@@ -57,30 +57,42 @@ module Tools
       rag_results = search_rag_database(query, top_k)
 
       if rag_results[:chunks].any?
-        Rails.logger.info "✅ Found results in RAG database (#{rag_results[:chunks].length} chunks)"
-        
-        # Group by document and extract unique documents with their IDs
-        documents_found = rag_results[:chunks].map do |chunk|
-          {
-            document_id: chunk[:rag_document_id],
-            title: chunk[:document_title],
-            filename: chunk.dig(:metadata, :filename)
-          }
-        end.uniq { |d| d[:document_id] }
-        
-        return success_response(
-          query: query,
-          source: 'rag',
-          results: rag_results[:chunks],
-          count: rag_results[:chunks].length,
-          documents: documents_found,
-          response_time_ms: rag_results[:response_time_ms],
-          message: "Found #{rag_results[:chunks].length} results from #{documents_found.length} document(s).",
-          cost: 0.0001,  # AWS Bedrock embedding cost
-          # Canvas routing - opens document store with search pre-filled
-          canvas_type: 'document_store',
-          canvas_data: { search: query }
-        )
+        # Filter out low-relevance results — similarity < 0.35 means the content is likely unrelated
+        min_relevance = 0.35
+        relevant_chunks = rag_results[:chunks].select do |chunk|
+          score = chunk[:similarity_score] || chunk[:combined_score] || 0
+          score >= min_relevance
+        end
+
+        if relevant_chunks.any?
+          Rails.logger.info "✅ Found #{relevant_chunks.length} relevant results in RAG database (filtered from #{rag_results[:chunks].length})"
+
+          # Group by document and extract unique documents with their IDs
+          documents_found = relevant_chunks.map do |chunk|
+            {
+              document_id: chunk[:rag_document_id],
+              title: chunk[:document_title],
+              filename: chunk.dig(:metadata, :filename)
+            }
+          end.uniq { |d| d[:document_id] }
+
+          return success_response(
+            query: query,
+            source: 'rag',
+            results: relevant_chunks,
+            count: relevant_chunks.length,
+            documents: documents_found,
+            response_time_ms: rag_results[:response_time_ms],
+            message: "Found #{relevant_chunks.length} results from #{documents_found.length} document(s).",
+            cost: 0.0001,  # AWS Bedrock embedding cost
+            # Canvas routing - opens document store with search pre-filled
+            canvas_type: 'document_store',
+            canvas_data: { search: query }
+          )
+        else
+          Rails.logger.info "⚠️ RAG returned #{rag_results[:chunks].length} results but all below relevance threshold (#{min_relevance})"
+          # Fall through to uploaded documents search, then "no results"
+        end
       end
 
       # STEP 3: Fall back to searching uploaded documents directly

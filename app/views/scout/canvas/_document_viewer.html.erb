@@ -23,7 +23,7 @@
       <div class="d-flex gap-2">
         <% if canvas_data[:from_search] %>
           <button class="btn btn-sm btn-outline-primary" 
-                  onclick="window.scoutSendMessage('search for documents: <%= j(canvas_data[:search_query] || 'my documents') %>')" 
+                  onclick="window.scoutLoadCanvas?.('document_viewer', { search_query: '<%= j(canvas_data[:search_query] || '') %>' })" 
                   aria-label="Back to search results">
             <i data-lucide="arrow-left" aria-hidden="true"></i>
             <span class="d-none d-sm-inline ms-1">Back to Search</span>

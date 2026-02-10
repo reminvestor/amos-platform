@@ -12,9 +12,23 @@
 #   # Returns { success: true, results: { ... } } or { success: false, error: "..." }
 #
 class ApplicationBuildService
-  attr_reader :plan, :results, :progress_callback
-  
-  def initialize(plan, progress_callback: nil)
+  attr_reader :plan, :results, :progress_callback, :cancellation_check
+
+  # Phase percentage ranges for progress tracking
+  # Each phase gets a slice of 0-100%
+  PHASE_RANGES = {
+    modules:         { start: 10, finish: 55 },
+    agent:           { start: 55, finish: 62 },
+    tools:           { start: 62, finish: 72 },
+    integrations:    { start: 72, finish: 78 },
+    workflows:       { start: 78, finish: 85 },
+    scheduled_tasks: { start: 85, finish: 88 },
+    webhooks:        { start: 88, finish: 91 },
+    website:         { start: 91, finish: 97 },
+    finalize:        { start: 97, finish: 100 }
+  }.freeze
+
+  def initialize(plan, progress_callback: nil, cancellation_check: nil)
     @plan = plan
     @results = {
       modules: [],
@@ -28,46 +42,55 @@ class ApplicationBuildService
       web_app: nil
     }
     @progress_callback = progress_callback
+    @cancellation_check = cancellation_check
+    @current_phase = nil
   end
   
+  # Resume a previously failed/paused build
+  def self.resume!(plan, progress_callback: nil, cancellation_check: nil)
+    new(plan, progress_callback: progress_callback, cancellation_check: cancellation_check).execute!
+  end
+
   def execute!
     validate_plan!
-    
-    plan.start_build!
-    log_progress("🚀 Starting build for #{plan.name}...")
-    
+
+    plan.start_build! unless plan.status == "building"
+    emit_progress("Starting build for #{plan.name}...", percentage: 5, phase: "planning")
+
     begin
-      ApplicationPlan.transaction do
-        # Phase 1: Create Modules (data layer)
-        build_modules!
-        
-        # Phase 2: Create Agent (AI layer)
-        build_agent!
-        
-        # Phase 3: Create/Register Tools
-        build_tools!
-        
-        # Phase 4: Wire up Integrations
-        wire_integrations!
-        
-        # Phase 5: Create Workflows
-        build_workflows!
-        
-        # Phase 6: Create Scheduled Tasks
-        build_scheduled_tasks!
-        
-        # Phase 7: Create Webhooks / Hub Hooks
-        build_webhooks!
-        
-        # Phase 8: Create Website (if specified)
-        build_website! if plan.has_website?
-        
-        # Phase 9: Complete
-        finalize_build!
-      end
-      
+      # Phase 1: Create Modules (data layer) — the heaviest phase
+      run_phase(:modules) { build_modules! }
+
+      # Phase 2: Create Agent (AI layer)
+      run_phase(:agent) { build_agent! }
+
+      # Phase 3: Create/Register Tools
+      run_phase(:tools) { build_tools! }
+
+      # Phase 4: Wire up Integrations
+      run_phase(:integrations) { wire_integrations! }
+
+      # Phase 5: Create Workflows
+      run_phase(:workflows) { build_workflows! }
+
+      # Phase 6: Create Scheduled Tasks
+      run_phase(:scheduled_tasks) { build_scheduled_tasks! }
+
+      # Phase 7: Create Webhooks / Hub Hooks
+      run_phase(:webhooks) { build_webhooks! }
+
+      # Phase 8: Create Website (if specified)
+      run_phase(:website) { build_website! } if plan.has_website?
+
+      # Phase 9: Complete
+      run_phase(:finalize) { finalize_build! }
+
       { success: true, results: results, plan: plan.reload }
-      
+
+    rescue BuildCancelled => e
+      handle_cancellation(e)
+      { success: :partial, results: results, plan: plan.reload, message: e.message }
+
     rescue => e
       handle_failure(e)
       { success: false, error: e.message, plan: plan.reload }
@@ -81,12 +104,18 @@ class ApplicationBuildService
   # ============================================
   
   def validate_plan!
-    unless plan.approved?
-      raise BuildError, "Plan must be approved before building (current status: #{plan.status})"
+    # Allow approved, building (resume), and paused (resume) plans
+    unless %w[approved building paused].include?(plan.status)
+      raise BuildError, "Plan must be approved/building/paused before building (current status: #{plan.status})"
     end
-    
+
     if plan.modules_spec.empty?
       raise BuildError, "Plan must have at least one module defined"
+    end
+
+    @resuming = %w[building paused].include?(plan.status)
+    if @resuming
+      Rails.logger.info "[ApplicationBuildService] Resuming build — completed phases: #{completed_phases.join(', ')}"
     end
   end
   
@@ -95,35 +124,39 @@ class ApplicationBuildService
   # ============================================
   
   def build_modules!
-    log_progress("📦 Creating modules...")
-    
+    log_progress("Creating modules...")
+
     # Separate primary and sub-modules to ensure correct build order
     primary_specs = plan.modules_spec.select { |m| m['is_primary'] != false }
     sub_specs = plan.modules_spec.select { |m| m['is_primary'] == false }
-    
-    # Phase 1: Build primary modules first (parents must exist before children)
-    primary_specs.each do |module_spec|
-      log_progress("  Creating primary module: #{module_spec['name']}...")
+    all_specs = primary_specs + sub_specs
+    total = all_specs.length
+
+    # Build primary modules first (parents must exist before children)
+    primary_specs.each_with_index do |module_spec, idx|
+      emit_phase_sub_progress(:modules, idx, total, "Creating #{module_spec['name']}...")
       build_single_module(module_spec)
     end
-    
-    # Phase 2: Build sub-modules with relationship wiring
-    sub_specs.each do |module_spec|
-      log_progress("  Creating sub-module: #{module_spec['name']}...")
+
+    # Build sub-modules with relationship wiring
+    sub_specs.each_with_index do |module_spec, idx|
+      overall_idx = primary_specs.length + idx
+      emit_phase_sub_progress(:modules, overall_idx, total, "Creating #{module_spec['name']}...")
       build_single_module(module_spec)
     end
-    
-    # Phase 3: Wire associations between modules (after all tables exist)
+
+    # Wire associations between modules (after all tables exist)
+    emit_phase_sub_progress(:modules, total, total, "Wiring module relationships...")
     wire_module_associations!
-    
-    log_progress("✅ #{results[:modules].count} modules created (#{primary_specs.count} primary, #{sub_specs.count} sub-modules)")
+
+    log_progress("#{results[:modules].count} modules created (#{primary_specs.count} primary, #{sub_specs.count} sub-modules)")
   end
   
   def build_single_module(module_spec)
     app_module = create_module(module_spec)
     create_module_table(app_module, module_spec)
     create_module_canvases(app_module, module_spec)
-    
+
     results[:modules] << {
       id: app_module.id,
       name: app_module.name,
@@ -131,8 +164,8 @@ class ApplicationBuildService
       is_primary: module_spec['is_primary'] != false,
       relationship: module_spec['relationship']
     }
-    
-    log_progress("  ✅ #{module_spec['name']} created")
+
+    log_progress("#{module_spec['name']} created")
   end
   
   def wire_module_associations!
@@ -168,7 +201,7 @@ class ApplicationBuildService
       # Store relationship metadata on both modules
       store_relationship_metadata(child_module, parent_module, foreign_key)
       
-      log_progress("  🔗 Wired #{child_module.name} belongs_to #{parent_module.name} (via #{foreign_key})")
+      log_progress("Wired #{child_module.name} belongs_to #{parent_module.name} (via #{foreign_key})")
     end
   end
   
@@ -265,8 +298,8 @@ class ApplicationBuildService
   
   def build_agent!
     return unless plan.has_agent?
-    
-    log_progress("🤖 Creating AI agent...")
+
+    log_progress("Creating AI agent...")
     
     agent_spec = plan.agent_spec
     primary_module = AppModule.find(results[:modules].first[:id])
@@ -307,11 +340,11 @@ class ApplicationBuildService
       slug: agent.slug
     }
     
-    log_progress("✅ Agent '#{agent.name}' created")
+    log_progress("Agent '#{agent.name}' created")
   end
   
   def build_tools!
-    log_progress("🔧 Registering tools...")
+    log_progress("Registering tools...")
     
     # Create CRUD tools for each module
     results[:modules].each do |mod_info|
@@ -326,13 +359,13 @@ class ApplicationBuildService
       results[:tools] << { id: tool.id, name: tool.name } if tool
     end
     
-    log_progress("✅ #{results[:tools].count} tools registered")
+    log_progress("#{results[:tools].count} tools registered")
   end
   
   def wire_integrations!
     return if plan.integrations_spec.empty?
     
-    log_progress("🔌 Wiring integrations...")
+    log_progress("Wiring integrations...")
     
     primary_module = AppModule.find(results[:modules].first[:id])
     
@@ -354,13 +387,13 @@ class ApplicationBuildService
       }
     end
     
-    log_progress("✅ #{results[:integrations].count} integrations wired")
+    log_progress("#{results[:integrations].count} integrations wired")
   end
   
   def build_workflows!
     return if plan.workflows_spec.empty?
     
-    log_progress("⚡ Creating workflows...")
+    log_progress("Creating workflows...")
     
     primary_module = AppModule.find(results[:modules].first[:id])
     
@@ -404,13 +437,13 @@ class ApplicationBuildService
       create_automation_from_workflow(primary_module, workflow_spec)
     end
     
-    log_progress("✅ #{results[:workflows].count} workflows configured")
+    log_progress("#{results[:workflows].count} workflows configured")
   end
   
   def build_scheduled_tasks!
     return if plan.scheduled_tasks_spec.empty?
     
-    log_progress("📅 Scheduling background tasks...")
+    log_progress("Scheduling background tasks...")
     
     primary_module = AppModule.find(results[:modules].first[:id])
     agent = AgentPlugin.find_by(id: results[:agent]&.dig(:id))
@@ -457,11 +490,11 @@ class ApplicationBuildService
       }
     end
     
-    log_progress("✅ #{results[:scheduled_tasks].count} scheduled tasks created")
+    log_progress("#{results[:scheduled_tasks].count} scheduled tasks created")
   end
   
   def build_website!
-    log_progress("🌐 Creating website...")
+    log_progress("Creating website...")
     
     website_spec = plan.website_spec
     primary_module = AppModule.find(results[:modules].first[:id])
@@ -492,11 +525,11 @@ class ApplicationBuildService
       build_web_app!(website, primary_module)
     end
     
-    log_progress("✅ Website created with #{website.page_count} pages (draft)")
+    log_progress("Website created with #{website.page_count} pages (draft)")
   end
   
   def build_web_app!(website, primary_module)
-    log_progress("🔐 Creating web app with authentication...")
+    log_progress("Creating web app with authentication...")
     
     web_app_spec = plan.plan_spec['web_app'] || {}
     website_builder = WebsiteBuilderService.new(entity: plan.entity, user: plan.created_by)
@@ -521,11 +554,11 @@ class ApplicationBuildService
       requires_auth: web_app.requires_auth
     }
     
-    log_progress("✅ Web app created with #{modules_to_expose.count} modules")
+    log_progress("Web app created with #{modules_to_expose.count} modules")
   end
   
   def finalize_build!
-    log_progress("🎉 Finalizing build...")
+    log_progress("Finalizing build...")
     
     # Update primary module status
     results[:modules].each do |mod_info|
@@ -539,7 +572,7 @@ class ApplicationBuildService
     # Complete the plan
     plan.complete!(results)
     
-    log_progress("✅ Build complete! Your #{plan.name} is live.")
+    log_progress("Build complete! Your #{plan.name} is live.")
   end
   
   def notify_hub_module_created(app_module)
@@ -556,7 +589,7 @@ class ApplicationBuildService
     hub_hooks = plan.plan_spec['hub_hooks'] || []
     return if hub_hooks.empty?
     
-    log_progress("🔗 Setting up webhooks...")
+    log_progress("Setting up webhooks...")
     
     primary_module = AppModule.find(results[:modules].first[:id])
     agent = AgentPlugin.find_by(id: results[:agent]&.dig(:id))
@@ -584,7 +617,7 @@ class ApplicationBuildService
       }
     end
     
-    log_progress("✅ #{results[:webhooks]&.count || 0} webhooks created")
+    log_progress("#{results[:webhooks]&.count || 0} webhooks created")
   end
   
   # ============================================
@@ -1277,22 +1310,99 @@ class ApplicationBuildService
     end
   end
   
-  def log_progress(message)
+  # ============================================
+  # PROGRESS & LIFECYCLE
+  # ============================================
+
+  # Run a build phase inside its own transaction, with cancellation checks.
+  # Skips phases that were already completed (for resume support).
+  def run_phase(phase_name)
+    @current_phase = phase_name
+
+    # Skip already-completed phases when resuming
+    if @resuming && completed_phases.include?(phase_name.to_s)
+      range = PHASE_RANGES[phase_name]
+      emit_progress("Skipping #{phase_name} (already completed)", percentage: range&.dig(:finish), phase: phase_name.to_s)
+      return
+    end
+
+    # Check for cancellation before starting each phase
+    check_cancellation!
+
+    # Each phase runs in its own transaction for crash resilience
+    ApplicationPlan.transaction do
+      yield
+    end
+
+    # Track completed phase
+    track_completed_phase(phase_name)
+  end
+
+  # Emit progress at a specific percentage within the current phase
+  def emit_phase_sub_progress(phase, step_index, total_steps, message)
+    range = PHASE_RANGES[phase]
+    return emit_progress(message) unless range && total_steps > 0
+
+    step_fraction = step_index.to_f / total_steps
+    pct = range[:start] + ((range[:finish] - range[:start]) * step_fraction)
+    emit_progress(message, percentage: pct.round, phase: phase.to_s)
+  end
+
+  # Emit a structured progress event to the callback
+  def emit_progress(message, percentage: nil, phase: nil)
     Rails.logger.info "[ApplicationBuildService] #{message}"
     plan.add_build_log(message)
-    progress_callback&.call(message)
+
+    if progress_callback
+      # The callback from PlatformCreateTool expects (message, percentage)
+      progress_callback.call(message, percentage)
+    end
   end
-  
+
+  # Simple log + plan log (no percentage)
+  def log_progress(message)
+    phase = @current_phase
+    range = PHASE_RANGES[phase]
+    pct = range ? range[:start] : nil
+    emit_progress(message, percentage: pct, phase: phase&.to_s)
+  end
+
+  def track_completed_phase(phase_name)
+    completed = plan.build_results&.dig("completed_phases") || []
+    completed << phase_name.to_s unless completed.include?(phase_name.to_s)
+    plan.update_column(:build_results, (plan.build_results || {}).merge("completed_phases" => completed))
+  rescue => e
+    Rails.logger.warn "[ApplicationBuildService] Could not track phase #{phase_name}: #{e.message}"
+  end
+
+  def check_cancellation!
+    return unless cancellation_check
+
+    if cancellation_check.call
+      raise BuildCancelled, "Build paused by user after completing: #{completed_phases.join(', ')}"
+    end
+  end
+
+  def completed_phases
+    plan.build_results&.dig("completed_phases") || []
+  end
+
+  def handle_cancellation(error)
+    Rails.logger.info "[ApplicationBuildService] Build paused: #{error.message}"
+    plan.update!(status: "paused", error_message: error.message)
+  end
+
   def handle_failure(error)
     Rails.logger.error "[ApplicationBuildService] Build failed: #{error.message}"
     Rails.logger.error error.backtrace.first(10).join("\n")
-    
+
     plan.fail!(
       error.message,
       { timestamp: Time.current.iso8601, error: error.message, backtrace: error.backtrace.first(5) }
     )
   end
-  
+
   class BuildError < StandardError; end
+  class BuildCancelled < StandardError; end
 end
 

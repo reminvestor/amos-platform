@@ -239,8 +239,7 @@ function scoutViewLandingPage(pageId) {
 }
 
 function scoutEditLandingPage(pageId) {
-  // Load the landing page generator canvas
-  window.scoutSendMessage?.(`Please help me edit landing page ID ${pageId}`);
+  window.scoutLoadCanvas?.('landing_page_details', { landing_page_id: pageId });
 }
 
 function scoutEditLandingPageInline(pageId) {

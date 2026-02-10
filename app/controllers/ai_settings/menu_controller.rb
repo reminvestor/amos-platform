@@ -5,9 +5,7 @@ class AiSettings::MenuController < ApplicationController
   layout "customer_admin"
 
   def show
-    @all_menu_items = available_menu_items
-    @spaces = SpaceDefinition.enabled.ordered
-    @entity = current_user.entity
+    redirect_to chat_mode_path, status: :moved_permanently
   end
   
   def update_platform_settings
@@ -25,12 +23,12 @@ class AiSettings::MenuController < ApplicationController
     
     if entity.save
       respond_to do |format|
-        format.html { redirect_to ai_settings_menu_path, notice: "Platform settings updated successfully." }
+        format.html { redirect_to chat_mode_path, notice: "Platform settings updated successfully." }
         format.json { render json: { success: true } }
       end
     else
       respond_to do |format|
-        format.html { redirect_to ai_settings_menu_path, alert: "Failed to update settings." }
+        format.html { redirect_to chat_mode_path, alert: "Failed to update settings." }
         format.json { render json: { success: false, errors: entity.errors.full_messages }, status: :unprocessable_entity }
       end
     end
@@ -54,12 +52,12 @@ class AiSettings::MenuController < ApplicationController
 
     if config.save
       respond_to do |format|
-        format.html { redirect_to ai_settings_menu_path(space: space), notice: "Menu configuration saved successfully." }
+        format.html { redirect_to chat_mode_path, notice: "Menu configuration saved successfully." }
         format.json { render json: { success: true, config: config.as_json } }
       end
     else
       respond_to do |format|
-        format.html { redirect_to ai_settings_menu_path(space: space), alert: "Failed to save menu configuration." }
+        format.html { redirect_to chat_mode_path, alert: "Failed to save menu configuration." }
         format.json { render json: { success: false, errors: config.errors.full_messages }, status: :unprocessable_entity }
       end
     end
@@ -89,7 +87,7 @@ class AiSettings::MenuController < ApplicationController
     config.reset_to_defaults!
 
     respond_to do |format|
-      format.html { redirect_to ai_settings_menu_path, notice: "Menu reset to defaults for #{space.titleize} space." }
+      format.html { redirect_to chat_mode_path, notice: "Menu reset to defaults for #{space.titleize} space." }
       format.json { render json: { success: true, config: config.as_json } }
     end
   end

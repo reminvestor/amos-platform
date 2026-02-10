@@ -323,7 +323,7 @@
     <!-- Top navigation -->
     <nav class="navbar navbar-expand navbar-dark bg-primary fixed-top">
       <div class="container-fluid">
-        <a class="navbar-brand d-flex align-items-center" href="<%= advanced_mode_path %>">
+        <a class="navbar-brand d-flex align-items-center" href="<%= chat_mode_path %>">
           <i data-lucide="mail-open" class="me-2"></i>
           AMOS Labs
         </a>
@@ -383,7 +383,7 @@
       <ul class="nav flex-column">
         <!-- Dashboard -->
         <li class="nav-item2">
-          <a class="sidebar-link <%= current_page?(advanced_mode_path) ? 'active' : '' %>" href="<%= advanced_mode_path %>">
+          <a class="sidebar-link <%= current_page?(chat_mode_path) ? 'active' : '' %>" href="<%= chat_mode_path %>">
             <i data-lucide="layout-dashboard" class="me-2" aria-hidden="true"></i>
             <span class="nav-link-text">Dashboard</span>
           </a>
@@ -460,7 +460,7 @@
           </a>
         </li>
         <li class="nav-item2">
-          <a class="sidebar-link <%= request.path.start_with?('/tools') ? 'active' : '' %>" href="<%= tools_path %>">
+          <a class="sidebar-link" href="<%= chat_mode_path %>">
             <i data-lucide="wrench" class="me-2" aria-hidden="true"></i>
             <span class="nav-link-text">Tools</span>
           </a>
@@ -523,7 +523,7 @@
                 </a>
               </li>
               <li class="nav-item2">
-                <a class="sidebar-link small <%= current_page?(edit_business_profile_path) ? 'active' : '' %>" href="<%= edit_business_profile_path %>">
+                <a class="sidebar-link small" href="<%= chat_mode_path %>">
                   <i data-lucide="building" class="me-2" aria-hidden="true"></i>
                   <span class="nav-link-text">Business Profile</span>
                 </a>
@@ -551,19 +551,19 @@
             </a>
           </li>
           <li class="nav-item2">
-            <a class="sidebar-link <%= request.path.start_with?('/entity/observability') ? 'active' : '' %>" href="<%= entity_observability_path %>">
+            <a class="sidebar-link" href="<%= chat_mode_path %>">
               <i data-lucide="bar-chart" class="me-2" aria-hidden="true"></i>
               <span class="nav-link-text">Analytics</span>
             </a>
           </li>
           <li class="nav-item2">
-            <a class="sidebar-link <%= request.path.start_with?('/entity/policies') ? 'active' : '' %>" href="<%= entity_policies_path %>">
+            <a class="sidebar-link" href="<%= chat_mode_path %>">
               <i data-lucide="shield" class="me-2" aria-hidden="true"></i>
               <span class="nav-link-text">AI Policies</span>
             </a>
           </li>
           <li class="nav-item2">
-            <a class="sidebar-link <%= request.path.start_with?('/entity/privacy') ? 'active' : '' %>" href="<%= entity_privacy_path %>">
+            <a class="sidebar-link" href="<%= chat_mode_path %>">
               <i data-lucide="shield-check" class="me-2" aria-hidden="true"></i>
               <span class="nav-link-text">Privacy Controls</span>
             </a>

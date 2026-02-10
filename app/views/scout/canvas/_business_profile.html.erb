@@ -1,6 +1,6 @@
 <div class="scout-canvas business-profile">
 
-  <!-- Top-level tabs: Business Profile / Members -->
+  <!-- Top-level tabs: Business Profile / Style Guidelines / Members -->
   <div class="settings-bar d-flex align-items-center justify-content-between mb-3">
     <ul class="nav nav-tabs settings-tabs mb-0" role="tablist">
       <li class="nav-item" role="presentation">
@@ -9,16 +9,16 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
+        <button class="nav-link" id="style-tab" data-bs-toggle="tab" data-bs-target="#tab-style" type="button" role="tab" aria-label="Style guidelines">
+          <i data-lucide="palette" class="me-1" aria-hidden="true"></i> Style Guidelines
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
         <button class="nav-link" id="members-tab" data-bs-toggle="tab" data-bs-target="#tab-members" type="button" role="tab" aria-label="Team members">
           <i data-lucide="users" class="me-1" aria-hidden="true"></i> Members
         </button>
       </li>
     </ul>
-    <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" onclick="window.scoutSendMessage('Please help me optimize my business profile')" aria-label="AI optimize business profile">
-        <i data-lucide="wand-2" aria-hidden="true"></i> AI Optimize
-      </button>
-    </div>
   </div>
 
   <div class="profile-content tab-content">
@@ -168,6 +168,69 @@
       </div>
     </div>
   </div>
+    </div>
+
+    <!-- Style Guidelines Tab -->
+    <div class="tab-pane fade" id="tab-style" role="tabpanel" aria-labelledby="style-tab">
+      <div class="profile-card border-0 shadow-sm">
+        <h5 class="section-title">Visual Style Guidelines</h5>
+        <p class="text-muted small mb-3">Define your brand's visual identity for AI-generated content like landing pages and emails.</p>
+
+        <%= form_with model: business_profile, url: business_profile_path, method: :patch, local: false, id: "style-form", data: { turbo: false } do |f| %>
+          <div class="mb-3">
+            <label class="form-label" for="business_profile_style_colors">Brand Colors</label>
+            <textarea name="business_profile[style_colors]" id="business_profile_style_colors"
+                      class="form-control" rows="3"
+                      placeholder="#7C3AED&#10;#A78BFA&#10;#22C55E"><%= business_profile.style_guidelines&.dig('colors')&.join("\n") %></textarea>
+            <div class="form-text">Enter one hex color per line</div>
+            <div id="bp-color-preview" class="d-flex flex-wrap gap-2 mt-2">
+              <% if business_profile.style_guidelines&.dig('colors').present? %>
+                <% business_profile.style_guidelines['colors'].each do |color| %>
+                  <div class="bp-color-swatch" style="background-color: <%= color %>;" title="<%= color %>"></div>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="business_profile_style_typography">Typography Style</label>
+            <input type="text" name="business_profile[style_typography]" id="business_profile_style_typography"
+                   class="form-control"
+                   value="<%= business_profile.style_guidelines&.dig('typography') %>"
+                   placeholder="e.g. Modern sans-serif, Classic serif, Clean and minimal">
+            <div class="form-text">Describe your preferred typography style</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="business_profile_style_aesthetic">Overall Aesthetic</label>
+            <input type="text" name="business_profile[style_aesthetic]" id="business_profile_style_aesthetic"
+                   class="form-control"
+                   value="<%= business_profile.style_guidelines&.dig('aesthetic') %>"
+                   placeholder="e.g. Professional and trustworthy, Bold and energetic, Calm and reassuring">
+            <div class="form-text">Describe the mood and feel of your brand</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="business_profile_style_logo_url">Logo URL (optional)</label>
+            <input type="text" name="business_profile[style_logo_url]" id="business_profile_style_logo_url"
+                   class="form-control"
+                   value="<%= business_profile.style_guidelines&.dig('logo_url') %>"
+                   placeholder="/assets/your-logo.png or https://...">
+            <div class="form-text">URL to your logo image</div>
+          </div>
+
+          <div class="alert alert-info small py-2 mb-3">
+            <i data-lucide="lightbulb" aria-hidden="true" style="width: 14px; height: 14px;" class="me-1"></i>
+            These guidelines are automatically used when generating landing pages, emails, and other content.
+          </div>
+
+          <div class="text-end">
+            <button type="submit" class="btn btn-primary" aria-label="Save style guidelines">
+              <i data-lucide="save" aria-hidden="true"></i> Save Style Guidelines
+            </button>
+          </div>
+        <% end %>
+      </div>
     </div>
 
     <div class="tab-pane fade" id="tab-members" role="tabpanel" aria-labelledby="members-tab">
@@ -380,6 +443,14 @@
 .kb-saved-row.kb-editing { grid-template-columns: 1fr; }
 .kb-saved-row.kb-editing .kb-saved-label { display: none; }
 
+/* Style Guidelines color swatches */
+.bp-color-swatch {
+  width: 32px; height: 32px; border-radius: 6px;
+  border: 2px solid var(--bs-border-color);
+  transition: transform 0.15s;
+}
+.bp-color-swatch:hover { transform: scale(1.15); }
+
 /* Add Section button variant */
 .btn-add-section { color: var(--scout-primary); border: 1px solid var(--scout-primary); background: transparent; }
 .btn-add-section:hover { background: var(--scout-primary); color: #fff; }
@@ -548,4 +619,18 @@
       return;
     }
   });
+
+  // Live color preview for Style Guidelines
+  (function() {
+    const colorInput = document.getElementById('business_profile_style_colors');
+    const colorPreview = document.getElementById('bp-color-preview');
+    if (colorInput && colorPreview) {
+      colorInput.addEventListener('input', function() {
+        const colors = this.value.split('\n').map(c => c.trim()).filter(c => c.startsWith('#') && c.length >= 4);
+        colorPreview.innerHTML = colors.map(color =>
+          '<div class="bp-color-swatch" style="background-color: ' + color + ';" title="' + color + '"></div>'
+        ).join('');
+      });
+    }
+  })();
 </script>

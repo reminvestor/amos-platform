@@ -53,7 +53,8 @@ module V3AgentSupport
       user: current_user,
       entity: current_entity,
       session_id: session[:scout_session_id],
-      model: model
+      model: model,
+      client_ip: (request.remote_ip rescue nil)
     )
 
     # Get conversation history

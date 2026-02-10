@@ -25,22 +25,20 @@ module V3
         {
           name: "platform_query",
           description: <<~DESC.strip,
-            Query any platform data. Use type to specify what to query.
+            Read-only query for platform data. Use for viewing existing records.
+            For actions that CHANGE data, use platform_create/platform_update/platform_execute.
             
             Examples:
-            - platform_query(type: "contacts", filters: { lifecycle_stage: "lead" }, limit: 10)
-            - platform_query(type: "landing_pages", id: 123)
-            - platform_query(type: "schema", object: "contacts")
-            - platform_query(type: "stats")
-            - platform_query(type: "integrations")
-            - platform_query(type: "integration_operations", integration: "stripe")
-            - platform_query(type: "integration_actions", integration: "stripe", search: "customers")
-            - platform_query(type: "documents", search: "contract terms")
-            
-            Custom app data (after building an app):
-            - platform_query(type: "tasks", filters: { status: "in_progress" })
-            - platform_query(type: "products", search: "widget")
-            - platform_query(type: "schema") — lists ALL types including custom app models
+            - type: "contacts", filters: { lifecycle_stage: "lead" }, limit: 10
+            - type: "landing_pages", id: 123
+            - type: "schema", object: "contacts"
+            - type: "stats"
+            - type: "integrations"
+            - type: "custom_domains" — list all custom domains and their status
+            - type: "custom_domains", id: 123 — get specific domain with DNS records
+            - type: "documents", search: "contract terms"
+            - type: "tasks", filters: { status: "in_progress" }
+            - type: "schema" — lists ALL types including custom app models
           DESC
           category: "v3_core",
           input_schema: {
@@ -48,7 +46,7 @@ module V3
             properties: {
               type: {
                 type: "string",
-                description: "Object type to query (e.g., 'contacts', 'campaigns', 'landing_pages', 'schema', 'stats', 'integrations', 'integration_operations', 'integration_actions')"
+                description: "Object type to query (e.g., 'contacts', 'campaigns', 'landing_pages', 'schema', 'stats', 'integrations', 'custom_domains', 'integration_operations', 'integration_actions')"
               },
               id: {
                 type: ["string", "integer"],
@@ -106,6 +104,8 @@ module V3
           query_documents(args)
         when "usage", "credits", "tokens", "balance"
           query_usage
+        when "custom_domains", "custom_domain", "domains", "domain"
+          query_custom_domains(args)
         else
           query_data(type, args)
         end
@@ -144,7 +144,7 @@ module V3
             built_in_types: built_in.map { |t| t[:type] },
             module_types: dynamic.map { |t| { type: t[:type], description: t[:description], module_slug: t[:module_slug] } },
             count: type_info.length,
-            message: "#{type_info.length} object types available (#{built_in.length} built-in, #{dynamic.length} from custom apps). Query any type with platform_query(type: 'typename')."
+            message: "#{type_info.length} object types available (#{built_in.length} built-in, #{dynamic.length} from custom apps). Query any type using the platform_query tool with type='typename'."
           )
         else
           # Get schema for specific object type
@@ -156,7 +156,7 @@ module V3
             if model_class
               fields = model_class.columns.map { |c| { name: c.name, type: c.type.to_s } }
               fields.reject! { |f| %w[id entity_id created_at updated_at].include?(f[:name]) }
-              return success_response(
+              result = {
                 object_type: object,
                 description: "Dynamic module: #{object.titleize}",
                 fields: fields,
@@ -164,7 +164,18 @@ module V3
                 filterable_fields: model_class.column_names,
                 creatable: true,
                 dynamic: true
-              )
+              }
+
+              # Auto-include custom fields for dynamic modules too
+              custom_fields = CustomFieldDefinition.where(entity: entity, model_type: model_class.name, active: true).ordered rescue []
+              if custom_fields.any?
+                result[:custom_fields] = custom_fields.map do |f|
+                  { field_name: f.field_name, field_type: f.field_type, label: f.label, required: f.required? }.compact
+                end
+                result[:custom_field_count] = custom_fields.length
+              end
+
+              return success_response(result)
             end
           end
 
@@ -182,6 +193,24 @@ module V3
           }
           response[:dynamic] = true if config[:dynamic]
           response[:module_slug] = config[:module_slug] if config[:module_slug]
+
+          # Auto-include custom fields for this entity + model type
+          # so the Brain sees the full schema in ONE query (no separate custom field lookup needed)
+          model_type = config[:model] || object.classify
+          custom_fields = CustomFieldDefinition.where(entity: entity, model_type: model_type, active: true).ordered rescue []
+          if custom_fields.any?
+            response[:custom_fields] = custom_fields.map do |f|
+              {
+                field_name: f.field_name,
+                field_type: f.field_type,
+                label: f.label,
+                display_type: f.display_type,
+                required: f.required?,
+                options: f.option_values.presence
+              }.compact
+            end
+            response[:custom_field_count] = custom_fields.length
+          end
 
           success_response(response)
         end
@@ -245,6 +274,49 @@ module V3
           today_transactions: today_summary&.transaction_count || 0,
           message: "Balance: #{account.work_token_balance.to_i.abs} tokens. Today: #{today_summary&.tokens_used || 0} tokens used."
         )
+      end
+
+      def query_custom_domains(args)
+        domain_id = get_arg(args, :id) || get_arg(args, :domain_id)
+
+        if domain_id.present?
+          # Single domain detail
+          domain = entity.custom_domains.find_by(id: domain_id)
+          return error_response("Custom domain not found: #{domain_id}") unless domain
+
+          return success_response(
+            domain: format_domain(domain),
+            dns_records: domain.dns_records,
+            message: "Domain: #{domain.full_domain} — Web: #{domain.web_status}, Email: #{domain.email_status}, SSL: #{domain.ssl_status}"
+          )
+        end
+
+        # List all domains
+        domains = entity.custom_domains.order(created_at: :desc)
+
+        success_response(
+          domains: domains.map { |d| format_domain(d) },
+          count: domains.count,
+          message: domains.any? ?
+            "#{domains.count} custom domain(s) configured." :
+            "No custom domains configured yet. Use platform_create(type: 'custom_domain') to add one."
+        )
+      end
+
+      def format_domain(domain)
+        {
+          id: domain.id,
+          domain_name: domain.domain_name,
+          subdomain: domain.subdomain,
+          full_domain: domain.full_domain,
+          cname_target: domain.cname_target,
+          web_status: domain.web_status,
+          email_status: domain.email_status,
+          ssl_status: domain.ssl_status,
+          is_primary: domain.is_primary,
+          fully_configured: domain.fully_configured?,
+          created_at: domain.created_at
+        }
       end
 
       def query_integrations(args)
@@ -471,7 +543,7 @@ module V3
             count: results.length,
             search_type: "semantic",
             message: results.any? ? 
-              "Found #{results.length} relevant section(s). Use platform_query(type: 'documents', id: X) to read full document." :
+              "Found #{results.length} relevant section(s). Use the platform_query tool with type='documents' and the document id to read the full document." :
               "No matching content found."
           )
         rescue => e

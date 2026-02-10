@@ -141,25 +141,19 @@ module Agents
       end
       
       # 2. Always include BusinessProfile data - this is the primary source of business context
-      if entity
-        profile = entity.business_profiles.first rescue nil
-        
-        if profile
-          # Add rich business context from profile
-          insights << { category: 'company', content: "Company Name: #{profile.company_name}" } if profile.company_name.present?
-          insights << { category: 'industry', content: "Industry: #{profile.industry}" } if profile.industry.present?
-          insights << { category: 'description', content: "About the business: #{profile.description}" } if profile.description.present?
-          insights << { category: 'audience', content: "Target Audience: #{profile.target_audience}" } if profile.target_audience.present?
-          insights << { category: 'value_prop', content: "Value Proposition: #{profile.value_proposition}" } if profile.value_proposition.present?
-          insights << { category: 'services', content: "Services offered: #{profile.services}" } if profile.services.present?
-          insights << { category: 'products', content: "Products: #{profile.products}" } if profile.products.present?
-          insights << { category: 'tone', content: "Brand voice/tone: #{profile.tone_of_voice}" } if profile.tone_of_voice.present?
-          insights << { category: 'differentiators', content: "Key differentiators: #{profile.key_differentiators}" } if profile.key_differentiators.present?
-          insights << { category: 'mission', content: "Mission: #{profile.mission}" } if profile.mission.present?
-        elsif entity.respond_to?(:name) && entity.name.present?
-          # Fallback to entity name
-          insights << { category: 'company', content: "Company Name: #{entity.name}" }
-        end
+      biz = BusinessContext.for(user, entity)
+      if biz.present?
+        ctx = biz.to_h
+        insights << { category: 'company', content: "Company Name: #{ctx[:company_name]}" } if ctx[:company_name].present?
+        insights << { category: 'industry', content: "Industry: #{ctx[:industry]}" } if ctx[:industry].present?
+        insights << { category: 'description', content: "About the business: #{ctx[:description]}" } if ctx[:description].present?
+        insights << { category: 'audience', content: "Target Audience: #{ctx[:target_audience]}" } if ctx[:target_audience].present?
+        insights << { category: 'tone', content: "Brand voice/tone: #{ctx[:tone_of_voice]}" } if ctx[:tone_of_voice].present?
+        insights << { category: 'value_prop', content: "Value Proposition: #{ctx[:value_proposition]}" } if ctx[:value_proposition].present?
+        insights << { category: 'services', content: "Services offered: #{ctx[:services]}" } if ctx[:services].present?
+        insights << { category: 'mission', content: "Mission: #{ctx[:mission]}" } if ctx[:mission].present?
+      elsif entity&.name.present?
+        insights << { category: 'company', content: "Company Name: #{entity.name}" }
       end
       
       insights

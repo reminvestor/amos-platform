@@ -14,12 +14,13 @@ module V3
             Update any existing platform object by type and ID. Only specified fields change.
             
             Also supports schema extensions:
-            - Add custom field: platform_update(type: "schema", id: "contact", data: { add_field: { name: "industry", field_type: "string" } })
-            - Remove custom field: platform_update(type: "schema", id: "contact", data: { remove_field: "industry" })
+            - Add custom field: type="schema", id="contact", data={ add_field: { name: "industry", field_type: "string" } }
+            - Remove custom field: type="schema", id="contact", data={ remove_field: "industry" }
             
-            Other examples:
-            - platform_update(type: "contact", id: 42, data: { lifecycle_stage: "customer" })
-            - platform_update(type: "landing_page", id: 189, data: { section: "hero", instruction: "Center the text" })
+            Examples:
+            - type: "contact", id: 42, data: { lifecycle_stage: "customer" }
+            - type: "landing_page", id: 189, data: { section: "hero", instruction: "Center the text" }
+            - type: "landing_page", id: 189, data: { instruction: "Redesign with a dark theme and bold typography" }
           DESC
           category: "v3_core",
           input_schema: {
@@ -67,6 +68,12 @@ module V3
         # Landing page section reading — route to specialized tool
         if type == "landing_page" && (data["read_sections"] || data[:read_sections])
           return read_landing_page_sections(id)
+        end
+
+        # Landing page with instruction but no section — the model wants to regenerate/restyle
+        # the entire page. Route to GenerateLandingPageTool as an update.
+        if type == "landing_page" && (data["instruction"] || data[:instruction])
+          return regenerate_landing_page(id, data)
         end
 
         # Check if type matches a dynamic module model
@@ -118,6 +125,74 @@ module V3
         tool.execute({ "landing_page_id" => landing_page_id.to_i })
       end
 
+      # When the model provides an instruction without a section, it wants to regenerate
+      # the entire landing page with new content/style. We re-run the generator on the
+      # existing page, treating the instruction + any other data fields as the new spec.
+      def regenerate_landing_page(landing_page_id, data)
+        lp = LandingPage.find_by(id: landing_page_id, entity: entity)
+        return error_response("Landing page ##{landing_page_id} not found") unless lp
+
+        instruction = data["instruction"] || data[:instruction]
+        description = data["description"] || data[:description] || lp.description
+
+        Rails.logger.info "[V3::PlatformUpdate] Regenerating landing page ##{landing_page_id} with instruction: #{instruction.to_s.truncate(100)}"
+
+        # Build generation args from existing page + new instructions
+        gen_args = {
+          "title" => lp.title,
+          "description" => "#{description}\n\nAdditional instructions: #{instruction}",
+          "page_type" => "lead_generation"
+        }
+
+        # Pass through any extra design/content keys the model provided
+        %w[theme brand_voice color_scheme sections key_details business_info design_preferences
+           headline cta_text tone_of_voice aesthetic_style layout_preference].each do |key|
+          val = data[key] || data[key.to_sym]
+          gen_args[key] = val if val.present?
+        end
+
+        generator = ::Tools::GenerateLandingPageTool.new(
+          user: user,
+          entity: entity,
+          context: context
+        )
+
+        # Generate new HTML
+        result = generator.execute(gen_args)
+
+        # If generation succeeded, update the existing landing page with the new HTML
+        if result.is_a?(Hash) && result[:success] != false
+          new_page_id = result[:landing_page_id] || result[:id]
+
+          # If the generator created a NEW page, copy its HTML to the original and delete the new one
+          if new_page_id && new_page_id != landing_page_id
+            new_page = LandingPage.find_by(id: new_page_id)
+            if new_page
+              lp.update!(
+                html_content: new_page.html_content,
+                description: description
+              )
+              new_page.destroy
+            end
+          end
+
+          @context[:canvas_suggestion] = "landing_page_editor"
+
+          success_response(
+            id: lp.id,
+            title: lp.title,
+            message: "Landing page '#{lp.title}' has been regenerated with your instructions.",
+            canvas_type: "landing_page_editor",
+            canvas_data: { landing_page_id: lp.id }
+          )
+        else
+          result
+        end
+      rescue => e
+        Rails.logger.error "[V3::PlatformUpdate] Landing page regeneration failed: #{e.message}"
+        error_response("Failed to regenerate landing page: #{e.message}")
+      end
+
       # ═══════════════════════════════════════════════════════════════
       # CUSTOM FIELD MANAGEMENT
       # ═══════════════════════════════════════════════════════════════
@@ -131,15 +206,59 @@ module V3
           )
         end
 
-        if data["add_field"] || data[:add_field]
+        # Batch: add_fields (plural) — create many fields in one call
+        if data["add_fields"] || data[:add_fields]
+          fields_array = data["add_fields"] || data[:add_fields]
+          return batch_add_custom_fields(model_type, fields_array)
+        elsif data["add_field"] || data[:add_field]
           add_custom_field(model_type, data["add_field"] || data[:add_field])
         elsif data["remove_field"] || data[:remove_field]
           remove_custom_field(model_type, data["remove_field"] || data[:remove_field])
         elsif data["list_fields"] || data[:list_fields]
           list_custom_fields(model_type)
         else
-          error_response("Specify add_field, remove_field, or list_fields")
+          error_response("Specify add_field, add_fields (batch), remove_field, or list_fields")
         end
+      end
+
+      # Batch add multiple custom fields in one tool call (turns 26 calls into 1)
+      def batch_add_custom_fields(model_type, fields_array)
+        return error_response("add_fields must be an array") unless fields_array.is_a?(Array)
+
+        created = 0
+        already_existed = 0
+        failed = []
+
+        fields_array.each_with_index do |field_data, idx|
+          result = add_custom_field(model_type, field_data)
+          if result.is_a?(Hash) && result[:success] != false
+            if result.dig(:data, :already_exists)
+              already_existed += 1
+            else
+              created += 1
+            end
+          else
+            error_msg = result.is_a?(Hash) ? (result[:error] || result.dig(:data, :error)) : result.to_s
+            failed << { index: idx, name: field_data[:name] || field_data["name"], error: error_msg }
+          end
+        end
+
+        summary = "#{created} fields created"
+        summary += ", #{already_existed} already existed" if already_existed > 0
+        summary += ", #{failed.length} failed" if failed.any?
+
+        Rails.logger.info "[V3::PlatformUpdate] Batch custom fields on #{model_type}: #{summary}"
+
+        success_response(
+          model: model_type,
+          batch: true,
+          total: fields_array.length,
+          created: created,
+          already_existed: already_existed,
+          failed: failed.length,
+          errors: failed.first(5),
+          message: "Custom fields on #{model_type}: #{summary}"
+        )
       end
 
       def add_custom_field(model_type, field_data)
@@ -155,16 +274,50 @@ module V3
         options = field_data[:options] || []
         default_value = field_data[:default]
 
-        # Check for duplicate
-        existing = CustomFieldDefinition.find_by(entity: entity, model_type: model_type, field_name: name.downcase.gsub(/\s+/, '_'))
+        sanitized_name = name.downcase.gsub(/\s+/, '_')
+
+        # Idempotent: if same field already exists with same type, return success
+        existing = CustomFieldDefinition.find_by(entity: entity, model_type: model_type, field_name: sanitized_name)
         if existing
-          return error_response("Custom field '#{name}' already exists on #{model_type}")
+          if existing.field_type == field_type
+            Rails.logger.info "[V3::PlatformUpdate] Custom field '#{name}' already exists on #{model_type} — idempotent success"
+            return success_response(
+              field_id: existing.id,
+              model: model_type,
+              field_name: existing.field_name,
+              field_type: existing.field_type,
+              label: existing.label,
+              already_exists: true,
+              message: "Custom field '#{existing.label}' already exists on #{model_type} (same type: #{field_type}). No action needed."
+            )
+          else
+            return error_response(
+              "Custom field '#{name}' already exists on #{model_type} with type '#{existing.field_type}' (requested: '#{field_type}'). " \
+              "Remove the existing field first if you need to change the type."
+            )
+          end
+        end
+
+        # Auto-correct invalid field types to nearest valid type
+        unless CustomFieldDefinition::FIELD_TYPES.include?(field_type)
+          corrected = case field_type.downcase
+                      when "number", "int", "float", "numeric" then "integer"
+                      when "bool", "checkbox", "toggle" then "boolean"
+                      when "datetime", "timestamp" then "datetime"
+                      when "list", "multi", "multiselect", "tags" then "array"
+                      when "object", "hash", "map", "struct" then "json"
+                      when "textarea", "longtext", "memo" then "text"
+                      when "ref", "belongs_to", "link", "foreign_key" then "reference"
+                      else "string"
+                      end
+          Rails.logger.info "[V3::PlatformUpdate] Auto-corrected field type '#{field_type}' → '#{corrected}' for '#{name}'"
+          field_type = corrected
         end
 
         field_def = CustomFieldDefinition.create!(
           entity: entity,
           model_type: model_type,
-          field_name: name.downcase.gsub(/\s+/, '_'),
+          field_name: sanitized_name,
           field_type: field_type,
           field_label: label,
           field_description: description,
@@ -183,6 +336,11 @@ module V3
           field_type: field_def.field_type,
           label: field_def.label,
           message: "Custom field '#{field_def.label}' added to #{model_type}. You can now set it via custom_fields: { #{field_def.field_name}: value }"
+        )
+      rescue ActiveRecord::RecordInvalid => e
+        error_response(
+          "Failed to add custom field '#{name}': #{e.message}. " \
+          "Valid field_type values: #{CustomFieldDefinition::FIELD_TYPES.join(', ')}"
         )
       end
 

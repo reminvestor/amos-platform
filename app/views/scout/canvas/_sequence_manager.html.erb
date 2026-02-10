@@ -517,23 +517,16 @@
 <script>
 // Sequence Manager JavaScript
 function sequenceRefresh() {
-  if (window.scoutSendMessage) {
-    window.scoutSendMessage('Show me my email sequences');
-  } else {
-    window.location.reload();
-  }
+  window.scoutLoadCanvas?.('sequence_manager', {}, true);
 }
 
 function sequenceCreate() {
-  if (window.scoutSendMessage) {
-    window.scoutSendMessage('I want to create a new email sequence');
-  }
+  // Open the sequence manager with a create action
+  window.scoutLoadCanvas?.('sequence_manager', { action: 'create' }, true);
 }
 
 function sequenceView(id) {
-  if (window.scoutSendMessage) {
-    window.scoutSendMessage(`Show me details for email sequence ${id}`);
-  }
+  window.scoutLoadCanvas?.('sequence_manager', { sequence_id: id }, true);
 }
 
 async function sequenceActivate(id) {
@@ -607,10 +600,8 @@ async function sequenceResume(id) {
 
 function sequenceMenu(event, id) {
   event.stopPropagation();
-  // Could implement dropdown menu here
-  if (window.scoutSendMessage) {
-    window.scoutSendMessage(`Show me options for email sequence ${id}`);
-  }
+  // Open the sequence detail view where all options are available
+  window.scoutLoadCanvas?.('sequence_manager', { sequence_id: id }, true);
 }
 
 function sequenceShowTab(tab) {

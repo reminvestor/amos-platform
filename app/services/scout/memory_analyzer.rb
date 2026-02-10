@@ -1,93 +1,36 @@
 # Scout::MemoryAnalyzer
 #
 # Analyzes explicit "remember this" requests from users and determines
-# the best place to store the information:
+# the best place to store the information.
 #
-# - UserMemory: Preferences, communication style, personal facts
+# Phase 5C: Replaced fragile regex-based categorization with AI-powered
+# classification. A single Haiku call categorizes AND extracts the core
+# memory in one shot, then routes to the appropriate storage model:
+#
+# - UserMemory: Preferences, communication style, personal facts, goals, dates
 # - BusinessInsight: Business facts, metrics, decisions
 # - ScoutLearning: Patterns, workflows, "how I like things done"
-# - MemoryBookmark: Specific outputs to revisit
-# - ImportantMemory: General important facts that don't fit elsewhere
 #
 module Scout
   class MemoryAnalyzer
-    MEMORY_CATEGORIES = {
-      user_preference: {
-        patterns: [
-          /i (prefer|like|want|always want|don't like|hate|never want)/i,
-          /call me/i,
-          /my (name|title|role) is/i,
-          /i('m| am) (a|an|the)/i,
-          /(always|never) (do|use|send|show|include)/i,
-          /my (style|tone|preference)/i
-        ],
-        storage: :user_memory,
-        memory_type: 'preference'
-      },
-      business_fact: {
-        patterns: [
-          /our (company|business|team|product|service)/i,
-          /we (have|are|sell|offer|provide)/i,
-          /(revenue|sales|customers|employees|clients)/i,
-          /our (target|audience|market|industry)/i,
-          /(pricing|cost|budget|goal|target)/i,
-          /we('re| are) (based|located|headquartered)/i
-        ],
-        storage: :business_insight,
-        memory_type: 'fact'
-      },
-      business_decision: {
-        patterns: [
-          /we('ve| have) decided/i,
-          /our (decision|choice|plan) is/i,
-          /going (forward|with)/i,
-          /we('re| are) (going to|planning to)/i,
-          /(approved|confirmed|finalized)/i
-        ],
-        storage: :business_insight,
-        memory_type: 'decision'
-      },
-      workflow_pattern: {
-        patterns: [
-          /when (i|we) (ask|want|need)/i,
-          /(always|usually|typically) (do|start|use)/i,
-          /the (way|process|workflow)/i,
-          /step (one|1|first)/i,
-          /(before|after) (you|we|i)/i
-        ],
-        storage: :scout_learning,
-        memory_type: 'task_pattern'
-      },
-      contact_info: {
-        patterns: [
-          /(email|phone|address|website|url)/i,
-          /@[a-z0-9.-]+\.[a-z]{2,}/i,  # email pattern
-          /\d{3}[-.]?\d{3}[-.]?\d{4}/,  # phone pattern
-          /https?:\/\//i
-        ],
-        storage: :user_memory,
-        memory_type: 'fact'
-      },
-      important_date: {
-        patterns: [
-          /(birthday|anniversary|deadline|launch|event)/i,
-          /(january|february|march|april|may|june|july|august|september|october|november|december)/i,
-          /\d{1,2}\/\d{1,2}/,
-          /(next|this) (week|month|quarter|year)/i
-        ],
-        storage: :user_memory,
-        memory_type: 'fact'
-      },
-      goal: {
-        patterns: [
-          /(goal|objective|target|aim)/i,
-          /want to (achieve|reach|hit|get)/i,
-          /trying to/i,
-          /(increase|decrease|improve|grow|reduce)/i
-        ],
-        storage: :user_memory,
-        memory_type: 'goal'
-      }
+    # Valid categories the AI can return
+    VALID_CATEGORIES = %w[
+      user_preference
+      business_fact
+      business_decision
+      workflow_pattern
+      goal
+      important_memory
+    ].freeze
+
+    # Map categories to storage destinations
+    CATEGORY_STORAGE = {
+      "user_preference"   => { storage: :user_memory, memory_type: "preference" },
+      "business_fact"     => { storage: :business_insight, memory_type: "fact" },
+      "business_decision" => { storage: :business_insight, memory_type: "decision" },
+      "workflow_pattern"  => { storage: :scout_learning, memory_type: "task_pattern" },
+      "goal"              => { storage: :user_memory, memory_type: "goal" },
+      "important_memory"  => { storage: :user_memory, memory_type: "fact" },
     }.freeze
 
     attr_reader :user, :entity
@@ -101,117 +44,107 @@ module Scout
     def analyze_and_store(content:, context: nil, source: 'explicit')
       return { success: false, error: "Nothing to remember" } if content.blank?
 
-      # Determine the best category
-      category = determine_category(content)
-      
-      # Extract the core fact/preference to remember
-      extracted = extract_memory_content(content, category)
-      
+      # Use AI to categorize and extract in one call
+      analysis = analyze_with_ai(content, context)
+
+      category = analysis[:category]
+      extracted_content = analysis[:core_memory]
+      confidence = analysis[:confidence]
+
       # Store in the appropriate place
+      config = CATEGORY_STORAGE[category] || CATEGORY_STORAGE["important_memory"]
       result = store_memory(
-        category: category,
-        content: extracted[:content],
+        storage: config[:storage],
+        memory_type: config[:memory_type],
+        content: extracted_content,
         raw_content: content,
         context: context,
         source: source,
-        confidence: extracted[:confidence]
+        confidence: confidence
       )
 
       {
         success: true,
-        category: category,
-        storage: MEMORY_CATEGORIES.dig(category, :storage) || :important_memory,
-        content: extracted[:content],
+        category: category.to_sym,
+        storage: config[:storage],
+        content: extracted_content,
         message: result[:message]
       }
     end
 
     private
 
-    def determine_category(content)
-      # Check each category's patterns
-      MEMORY_CATEGORIES.each do |category, config|
-        if config[:patterns].any? { |pattern| content.match?(pattern) }
-          return category
-        end
-      end
-
-      # Default to general important memory
-      :important_memory
-    end
-
-    def extract_memory_content(content, category)
-      # Use AI to extract the core memory if content is complex
-      if content.length > 100 || content.include?("\n")
-        extract_with_ai(content, category)
-      else
-        # Simple content - use as-is with light cleanup
-        {
-          content: clean_memory_content(content),
-          confidence: 0.9
-        }
-      end
-    end
-
-    def clean_memory_content(content)
-      # Remove common prefixes
-      content = content.gsub(/^(remember( that)?|don't forget|note( that)?|keep in mind( that)?)[:\s]*/i, '')
-      content = content.gsub(/^(please|always|make sure( to)?)[:\s]*/i, '')
-      content.strip.gsub(/\s+/, ' ')
-    end
-
-    def extract_with_ai(content, category)
+    # Single AI call to categorize AND extract the core memory
+    def analyze_with_ai(content, context)
       ai_service = BedrockService.new(user: @user, entity: @entity)
 
+      context_note = context.present? ? "\nAdditional context: #{context}" : ""
+
       prompt = <<~PROMPT
-        Extract the core fact or preference to remember from this user request.
-        
-        User said: "#{content}"
-        
-        Category detected: #{category}
-        
-        Return JSON:
+        Analyze this user request to remember something and classify it.
+
+        User said: "#{content}"#{context_note}
+
+        Return JSON with exactly these fields:
         {
-          "core_memory": "The essential fact/preference in 1-2 sentences",
-          "confidence": 0.0-1.0
+          "category": "one of: user_preference, business_fact, business_decision, workflow_pattern, goal, important_memory",
+          "core_memory": "The essential fact/preference in 1-2 concise sentences",
+          "confidence": 0.8
         }
-        
+
+        Category guide:
+        - user_preference: Personal preferences, communication style, name, role ("call me X", "I prefer brief responses")
+        - business_fact: Company info, metrics, audience, industry ("we have 50 employees", "our target market is...")
+        - business_decision: Decisions made ("we decided to use Stripe", "approved the Q4 budget")
+        - workflow_pattern: How things should be done ("always start emails with...", "when I ask for a report, include...")
+        - goal: Objectives and targets ("increase open rates to 30%", "launch by March")
+        - important_memory: Anything that doesn't fit above
+
         Focus on what should be remembered long-term. Be concise.
       PROMPT
 
       response = ai_service.send_message(
-        "You extract memories from user requests. Return only JSON.",
+        "You classify and extract memories. Return only JSON.",
         [{ role: "user", content: prompt }],
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 200
+        max_tokens: 250
       )
 
       json_match = response.match(/\{[\s\S]*\}/m)
       if json_match
         data = JSON.parse(json_match[0])
+        category = data['category'].to_s
+        category = "important_memory" unless VALID_CATEGORIES.include?(category)
+
         {
-          content: data['core_memory'],
-          confidence: data['confidence'] || 0.8
+          category: category,
+          core_memory: data['core_memory'] || clean_memory_content(content),
+          confidence: (data['confidence'] || 0.85).to_f.clamp(0.0, 1.0)
         }
       else
-        {
-          content: clean_memory_content(content),
-          confidence: 0.7
-        }
+        fallback_analysis(content)
       end
     rescue => e
-      Rails.logger.warn "Memory extraction failed: #{e.message}"
+      Rails.logger.warn "[MemoryAnalyzer] AI analysis failed: #{e.message}"
+      fallback_analysis(content)
+    end
+
+    # Fallback if AI call fails — simple cleanup, store as important_memory
+    def fallback_analysis(content)
       {
-        content: clean_memory_content(content),
-        confidence: 0.6
+        category: "important_memory",
+        core_memory: clean_memory_content(content),
+        confidence: 0.7
       }
     end
 
-    def store_memory(category:, content:, raw_content:, context:, source:, confidence:)
-      config = MEMORY_CATEGORIES[category] || {}
-      storage = config[:storage] || :important_memory
-      memory_type = config[:memory_type] || 'fact'
+    def clean_memory_content(content)
+      content = content.gsub(/^(remember( that)?|don't forget|note( that)?|keep in mind( that)?)[:\s]*/i, '')
+      content = content.gsub(/^(please|always|make sure( to)?)[:\s]*/i, '')
+      content.strip.gsub(/\s+/, ' ')
+    end
 
+    def store_memory(storage:, memory_type:, content:, raw_content:, context:, source:, confidence:)
       case storage
       when :user_memory
         store_user_memory(content, memory_type, source, confidence)
@@ -220,7 +153,7 @@ module Scout
       when :scout_learning
         store_scout_learning(content, memory_type, source, confidence)
       else
-        store_important_memory(content, raw_content, context, source, confidence)
+        store_user_memory(content, 'fact', source, confidence)
       end
     end
 
@@ -239,17 +172,16 @@ module Scout
         user: @user,
         entity: @entity,
         memory_type: memory_type,
-        category: 'explicit',  # User explicitly asked to remember
+        category: 'explicit',
         content: content,
         source: source,
-        confidence: [confidence, 0.95].min  # Explicit requests are high confidence
+        confidence: [confidence, 0.95].min
       )
 
-      { message: "✅ I'll remember: #{content.truncate(100)}", id: memory.id }
+      { message: "I'll remember: #{content.truncate(100)}", id: memory.id }
     end
 
     def store_business_insight(content, memory_type, source, confidence)
-      # Check for existing insight
       existing = BusinessInsight.where(entity: @entity)
                                .where("content ILIKE ?", "%#{content.first(50)}%")
                                .first
@@ -267,9 +199,8 @@ module Scout
         source: source
       )
 
-      { message: "✅ Noted about your business: #{content.truncate(100)}", id: insight.id }
+      { message: "Noted about your business: #{content.truncate(100)}", id: insight.id }
     rescue => e
-      # Fallback to UserMemory if BusinessInsight fails
       Rails.logger.warn "BusinessInsight creation failed: #{e.message}, falling back to UserMemory"
       store_user_memory(content, 'fact', source, confidence)
     end
@@ -284,23 +215,7 @@ module Scout
         confidence: [confidence, 0.95].min
       )
 
-      { message: "✅ I'll do it that way: #{content.truncate(100)}", id: learning.id }
-    end
-
-    def store_important_memory(content, raw_content, context, source, confidence)
-      # Store as high-priority UserMemory with special category
-      memory = UserMemory.create!(
-        user: @user,
-        entity: @entity,
-        memory_type: 'fact',
-        category: 'important',  # Special category for explicit "remember this"
-        key: "important_#{Time.current.to_i}",
-        content: content,
-        source: source,
-        confidence: 0.95  # Explicit requests are always high confidence
-      )
-
-      { message: "✅ I'll remember: #{content.truncate(100)}", id: memory.id }
+      { message: "I'll do it that way: #{content.truncate(100)}", id: learning.id }
     end
   end
 end

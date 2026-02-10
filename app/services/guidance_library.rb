@@ -133,10 +133,14 @@ class GuidanceLibrary
   
   # Inject learned experiences from TaskExperience model
   # These are distilled from comparing successful vs failed task executions
+  # Cached for 5 minutes per entity+task_type to avoid 4 DB queries per request
   def self.inject_learned_experiences(task_type, entity)
     return nil unless defined?(TaskExperience)
     
-    TaskExperience.for_prompt(entity: entity, task_type: task_type.to_s, limit: 5)
+    cache_key = "guidance:experiences:#{entity.id}:#{task_type}"
+    Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
+      TaskExperience.for_prompt(entity: entity, task_type: task_type.to_s, limit: 5)
+    end
   rescue => e
     Rails.logger.warn "[GuidanceLibrary] Failed to load experiences: #{e.message}"
     nil

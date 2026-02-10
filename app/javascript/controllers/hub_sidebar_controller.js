@@ -720,7 +720,8 @@ export default class extends Controller {
       'favorites': 'favorites',                       // User favorites
       'user_settings': 'user_profile',                // User settings
       'business_settings': 'business_profile',        // Business settings (admin)
-      'settings': 'user_profile'
+      'settings': 'settings',                          // Unified settings canvas
+      'payment_setup': 'payment_setup'                 // Stripe payment setup
     }
     
     const actualCanvas = canvasMap[canvasType] || canvasType

@@ -29,26 +29,17 @@ Workflows are visual automations that respond to triggers and execute actions. T
 ## Common Operations
 
 ### Query workflows
-```
-platform_query(type: "workflows", filters: { status: "active" })
-platform_query(type: "automation_recipes", search: "lead")
-```
+Use the platform_query tool with:
+- type: "workflows", filters: { status: "active" }
+- type: "automation_recipes", search: "lead"
 
 ### Create a workflow
-```
-platform_create(type: "workflow", data: {
-  name: "Welcome Email Sequence",
-  trigger_type: "form_submission",
-  trigger_config: { form_id: 123 },
-  status: "draft"
-})
-```
+Use the platform_create tool with type: "workflow", data: { name: "Welcome Email Sequence", trigger_type: "form_submission", trigger_config: { form_id: 123 }, status: "draft" }
 
 ### Open workflow designer
-```
-load_canvas(canvas_name: "workflow_designer")
-load_canvas(canvas_name: "workflow_designer", canvas_data: { workflow_id: 42 })
-```
+Use the load_canvas tool with:
+- canvas_name: "workflow_designer"
+- canvas_name: "workflow_designer", canvas_data: { workflow_id: 42 }
 
 ## Trigger Types
 | Type | Description | Config |
@@ -71,15 +62,9 @@ load_canvas(canvas_name: "workflow_designer", canvas_data: { workflow_id: 42 })
 - `delay` — Wait before next step
 
 ## Pre-built Recipes
-Automation recipes are templates. Query them with:
-```
-platform_query(type: "automation_recipes")
-```
+Automation recipes are templates. Use the platform_query tool with type: "automation_recipes" to list them.
 
-Instantiate a recipe into a workflow with:
-```
-platform_execute(operation: "instantiate_recipe", params: { recipe_id: 5 })
-```
+Instantiate a recipe into a workflow with the platform_execute tool using operation: "instantiate_recipe", params: { recipe_id: 5 }
 
 ## Tips
 - Start with a clear trigger — what event starts this?

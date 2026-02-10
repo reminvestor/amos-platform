@@ -9,6 +9,7 @@ class Website < ApplicationRecord
   belongs_to :entity
   belongs_to :created_by, class_name: 'User'
   belongs_to :application_plan, optional: true
+  belongs_to :custom_domain, optional: true
   
   has_many :website_pages, dependent: :destroy
   has_one :web_app, dependent: :nullify

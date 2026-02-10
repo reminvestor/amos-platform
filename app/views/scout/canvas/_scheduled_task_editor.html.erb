@@ -648,7 +648,7 @@ Provide a concise digest with key highlights and why each item matters." require
       window.scoutLoadCanvas('scheduled_tasks', {}, true);
     } else {
       // Fallback - shouldn't happen but just in case
-      window.scoutSendMessage('Show my scheduled tasks');
+      window.scoutLoadCanvas?.('scheduled_tasks', {});
     }
   };
   

@@ -24,32 +24,20 @@ Contacts are the core of the platform's CRM. Every person the organization inter
 ## Common Operations
 
 ### Query contacts
-```
-platform_query(type: "contacts", filters: { status: "active" }, limit: 20)
-platform_query(type: "contacts", search: "john@example.com")
-platform_query(type: "contacts", filters: { lifecycle_stage: "customer" })
-```
+Use the platform_query tool with these parameters:
+- type: "contacts", filters: { status: "active" }, limit: 20
+- type: "contacts", search: "john@example.com"
+- type: "contacts", filters: { lifecycle_stage: "customer" }
 
 ### Create a contact
-```
-platform_create(type: "contact", data: {
-  email: "jane@example.com",
-  first_name: "Jane",
-  last_name: "Doe",
-  status: "active",
-  lead: true
-})
-```
+Use the platform_create tool with type: "contact" and data:
+- email: "jane@example.com", first_name: "Jane", last_name: "Doe", status: "active", lead: true
 
 ### Update a contact
-```
-platform_update(type: "contact", id: 42, data: { lifecycle_stage: "customer" })
-```
+Use the platform_update tool with type: "contact", id: 42, data: { lifecycle_stage: "customer" }
 
 ### Add to group
-```
-platform_update(type: "contact", id: 42, data: { contact_group_ids: [1, 2] })
-```
+Use the platform_update tool with type: "contact", id: 42, data: { contact_group_ids: [1, 2] }
 
 ## Important Notes
 - Status must be lowercase: active, inactive, unsubscribed, bounced

@@ -238,7 +238,13 @@ class User < ApplicationRecord
 
   # Ensure user has a business profile
   def ensure_business_profile
-    return business_profile if business_profile.present?
+    if business_profile.present?
+      # Backfill entity_id if missing (legacy profiles may not have it)
+      if business_profile.entity_id.nil? && entity_id.present?
+        business_profile.update_column(:entity_id, entity_id)
+      end
+      return business_profile
+    end
 
     create_business_profile(
       entity: entity,

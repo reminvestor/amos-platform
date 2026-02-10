@@ -72,7 +72,7 @@ class BedrockService
       endpoint_type: 'global'
     },
     'claude-opus-4-6' => {
-      id: 'anthropic.claude-opus-4-6-v1',
+      id: 'global.anthropic.claude-opus-4-6-v1:0',
       name: 'Claude Opus 4.6',
       description: 'Latest frontier model, enhanced reasoning and coding',
       max_tokens: 30000,
@@ -81,7 +81,7 @@ class BedrockService
       supports_vision: true,
       supports_tools: true,
       supports_caching: false,
-      endpoint_type: 'regional'
+      endpoint_type: 'global'
     },
     'qwen-3-32b' => {
       id: 'qwen.qwen3-32b-v1:0', # ON_DEMAND direct
@@ -605,7 +605,7 @@ class BedrockService
     when "claude-opus-4-5", "claude-opus-4.5"
       "global.anthropic.claude-opus-4-5-20251101-v1:0" # Opus 4.5 inference profile
     when "claude-opus-4-6", "claude-opus-4.6"
-      "anthropic.claude-opus-4-6-v1" # Opus 4.6 - latest frontier
+      "global.anthropic.claude-opus-4-6-v1:0" # Opus 4.6 - cross-region inference profile
     when "qwen-3-32b", "qwen-3.32b"
       "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
     when "qwen-3-coder-30b", "qwen-coder"
@@ -1006,7 +1006,7 @@ class BedrockService
     when "claude-opus-4-5", "claude-opus-4.5"
       "global.anthropic.claude-opus-4-5-20251101-v1:0" # Opus 4.5 inference profile
     when "claude-opus-4-6", "claude-opus-4.6"
-      "anthropic.claude-opus-4-6-v1" # Opus 4.6 - latest frontier
+      "global.anthropic.claude-opus-4-6-v1:0" # Opus 4.6 - cross-region inference profile
     when "qwen-3-32b", "qwen-3.32b"
       "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
     when "qwen-3-coder-30b", "qwen-coder"
@@ -1379,7 +1379,7 @@ class BedrockService
     end
   end
 
-  def send_message_streaming(system_prompt, messages, model: "qwen3-next-80b", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, &block)
+  def send_message_streaming(system_prompt, messages, model: "qwen3-next-80b", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, tool_choice: nil, &block)
     # Track attempted models for fallback
     attempted_models = []
     current_model = model
@@ -1539,16 +1539,20 @@ class BedrockService
           Rails.logger.info "💾 Prompt caching enabled for tools (~2500 tokens)"
         end
 
+        # Use provided tool_choice or default to auto
+        effective_tool_choice = tool_choice || { auto: {} }
+
         payload[:tool_config] = {
           tools: formatted_tools,
-          tool_choice: { auto: {} }
+          tool_choice: effective_tool_choice
         }
 
         # DEBUG: Log tool names being sent (exclude cache checkpoint if present)
         tool_spec_tools = formatted_tools.select { |t| t.key?(:tool_spec) }
         tool_names = tool_spec_tools.map { |t| t.dig(:tool_spec, :name) }
         caching_status = use_caching ? "with caching" : "no caching"
-        Rails.logger.info "🔧 Sending #{tool_names.length} tools to Claude (#{caching_status}): #{tool_names.join(', ')}"
+        choice_mode = effective_tool_choice.keys.first.to_s
+        Rails.logger.info "🔧 Sending #{tool_names.length} tools to Claude (#{caching_status}, tool_choice: #{choice_mode}): #{tool_names.join(', ')}"
       end
 
       # Buffer for accumulating content

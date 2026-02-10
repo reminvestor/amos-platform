@@ -1,112 +1,50 @@
 # frozen_string_literal: true
 
 class BillingController < ApplicationController
-  layout 'customer_admin'
+  layout :choose_layout
   
   before_action :authenticate_user!
   before_action :set_billing_account
   before_action :set_config
 
+  # Old Advanced Mode views — redirect to Chat Mode
   def index
-    @timeframe = params[:timeframe] || "30d"
-    @timeframe_start = case @timeframe
-    when "today" then 24.hours.ago
-    when "7d" then 7.days.ago
-    when "30d" then 30.days.ago
-    else 30.days.ago
-    end
-    
-    # Usage summary
-    @usage_summary = @work_token_service.usage_summary(days: 30)
-    @recent_transactions = @work_token_service.recent_transactions(limit: 10)
-    
-    # Purchase history
-    @purchases = @billing_account.work_token_purchases.completed.recent.limit(5)
-    
-    # Daily usage for chart
-    @daily_usage = WorkTokenUsageSummary
-      .where(user_billing_account: @billing_account)
-      .last_30_days
-      .daily_totals
-    
-    # Calculate billing stats
-    @stats = {
-      balance: @billing_account.work_token_balance,
-      usage_this_month: @billing_account.usage_this_month,
-      spending_this_month: @billing_account.spending_this_month_usd,
-      monthly_limit: @billing_account.monthly_limit_usd,
-      lifetime_purchased: @billing_account.lifetime_tokens_purchased,
-      lifetime_used: @billing_account.lifetime_tokens_used,
-      free_remaining: @billing_account.free_tokens_remaining
-    }
-    
-    # Observability stats (merged from entity/observability)
-    @ai_stats = {
-      conversations: current_user.scout_conversations.where(created_at: @timeframe_start..).count,
-      messages: current_user.scout_messages.where(created_at: @timeframe_start..).count,
-      workflows_started: current_user.task_sessions.where(created_at: @timeframe_start..).count,
-      workflows_completed: current_user.task_sessions.where(status: "completed", created_at: @timeframe_start..).count,
-      workflows_failed: current_user.task_sessions.where(status: "failed", created_at: @timeframe_start..).count,
-      estimated_tokens: current_user.scout_messages.where(created_at: @timeframe_start..).count * 500,
-      estimated_cost: (current_user.scout_messages.where(created_at: @timeframe_start..).count * 500 * 0.00002).round(2)
-    }
-
-    # Integration Usage
-    @integration_stats = {
-      active_connections: current_user.connections.where(status: "connected").count,
-      api_calls: IntegrationLog.joins(connection: :entity)
-                               .where(connections: { entity_id: current_user.entity_id })
-                               .where(created_at: @timeframe_start..).count,
-      failed_calls: IntegrationLog.joins(connection: :entity)
-                                  .where(connections: { entity_id: current_user.entity_id })
-                                  .where("response_status >= 400")
-                                  .where(created_at: @timeframe_start..).count
-    }
-
-    # Campaign Stats
-    @campaign_stats = {
-      total: current_user.campaigns.where(entity: current_user.entity, created_at: @timeframe_start..).count,
-      sent: current_user.campaigns.where(entity: current_user.entity, status: "sent", created_at: @timeframe_start..).count,
-      draft: current_user.campaigns.where(entity: current_user.entity, status: "draft", created_at: @timeframe_start..).count
-    }
+    redirect_to chat_mode_path, status: :moved_permanently
   end
 
   def settings
-    # Payment method details
-    @payment_method = @billing_account.payment_method_details
+    redirect_to chat_mode_path, status: :moved_permanently
   end
 
   def update_settings
     if @billing_account.update(billing_settings_params)
-      redirect_to settings_billing_path, notice: 'Billing settings updated successfully.'
+      redirect_to chat_mode_path, notice: 'Billing settings updated successfully.'
     else
-      @payment_method = @billing_account.payment_method_details
-      render :settings, status: :unprocessable_entity
+      redirect_to chat_mode_path, alert: 'Failed to update billing settings.'
     end
   end
 
   def purchase
-    # Show purchase options
-    @tiers = @config.purchase_tiers
+    redirect_to chat_mode_path, status: :moved_permanently
   end
 
   def create_purchase
     # Only admins can purchase tokens for shared pool
     if @using_shared_pool && !@is_billing_admin
-      redirect_to billing_path, alert: 'Only team admins can purchase tokens for the shared pool.'
+      redirect_to chat_mode_path, alert: 'Only team admins can purchase tokens for the shared pool.'
       return
     end
 
     amount = params[:amount].to_i
 
     if amount <= 0
-      redirect_to purchase_billing_path, alert: 'Please select a valid amount.'
+      redirect_to chat_mode_path, alert: 'Please select a valid amount.'
       return
     end
 
     # Check monthly limit
     unless @billing_account.within_monthly_limit?
-      redirect_to purchase_billing_path, alert: "This purchase would exceed your monthly limit of $#{@billing_account.monthly_limit_usd}."
+      redirect_to chat_mode_path, alert: "This purchase would exceed your monthly limit of $#{@billing_account.monthly_limit_usd}."
       return
     end
 
@@ -118,9 +56,9 @@ class BillingController < ApplicationController
       
       token_count = @config.usd_to_tokens(amount)
       pool_type = @using_shared_pool ? "team" : ""
-      redirect_to billing_path, notice: "Successfully purchased #{number_with_delimiter(token_count)} #{pool_type} AMOS Work Tokens!"
+      redirect_to chat_mode_path, notice: "Successfully purchased #{number_with_delimiter(token_count)} #{pool_type} AMOS Work Tokens!"
     rescue StandardError => e
-      redirect_to purchase_billing_path, alert: "Payment failed: #{e.message}"
+      redirect_to chat_mode_path, alert: "Payment failed: #{e.message}"
     end
   end
 
@@ -128,7 +66,7 @@ class BillingController < ApplicationController
   def setup_payment
     # Only admins can set up payment for shared pool
     if @using_shared_pool && !@is_billing_admin
-      redirect_to billing_path, alert: 'Only team admins can manage payment methods for the shared pool.'
+      redirect_to chat_mode_path, alert: 'Only team admins can manage payment methods for the shared pool.'
       return
     end
 
@@ -178,13 +116,42 @@ class BillingController < ApplicationController
       Rails.logger.info "[Billing] Payment method attached successfully"
       
       # Update billing settings if provided
+      update_attrs = {}
       if params[:auto_replenish_enabled].present?
-        Rails.logger.info "[Billing] Updating billing settings: auto_replenish=#{params[:auto_replenish_enabled]}, amount=#{params[:auto_replenish_amount_usd]}, limit=#{params[:monthly_limit_usd]}"
-        unless @billing_account.update(
+        update_attrs.merge!(
           auto_replenish_enabled: params[:auto_replenish_enabled],
           auto_replenish_amount_usd: params[:auto_replenish_amount_usd] || 20,
           monthly_limit_usd: params[:monthly_limit_usd] || 100
         )
+      end
+
+      # Save billing address for tax calculation
+      if params[:billing_address].present?
+        address = params[:billing_address]
+        update_attrs[:billing_address] = {
+          street: address[:street],
+          zip: address[:zip],
+          country: address[:country] || 'US'
+        }
+
+        # Also update the Stripe customer with the address
+        begin
+          Stripe::Customer.update(@billing_account.stripe_customer_id, {
+            address: {
+              line1: address[:street],
+              postal_code: address[:zip],
+              country: address[:country] || 'US'
+            }
+          })
+          Rails.logger.info "[Billing] Updated Stripe customer address: zip=#{address[:zip]}"
+        rescue => e
+          Rails.logger.warn "[Billing] Failed to update Stripe customer address: #{e.message}"
+        end
+      end
+
+      if update_attrs.any?
+        Rails.logger.info "[Billing] Updating billing settings: #{update_attrs.keys.join(', ')}"
+        unless @billing_account.update(update_attrs)
           Rails.logger.error "[Billing] Failed to update settings: #{@billing_account.errors.full_messages}"
         end
       end
@@ -193,7 +160,7 @@ class BillingController < ApplicationController
       if request.format.json? || request.content_type&.include?('json')
         render json: { success: true, message: 'Payment method added successfully.' }
       else
-        redirect_to settings_billing_path, notice: 'Payment method added successfully.'
+        redirect_to chat_mode_path, notice: 'Payment method added successfully.'
       end
     rescue Stripe::StripeError => e
       Rails.logger.error "[Billing] Stripe error: #{e.message}"
@@ -216,19 +183,11 @@ class BillingController < ApplicationController
 
   def remove_payment_method
     @billing_account.remove_payment_method!
-    redirect_to settings_billing_path, notice: 'Payment method removed.'
+    redirect_to chat_mode_path, notice: 'Payment method removed.'
   end
 
-  # Transaction history
   def transactions
-    @transactions = @billing_account.work_token_transactions
-      .recent
-      .page(params[:page])
-      .per(50)
-    
-    # Apply filters
-    @transactions = @transactions.where(transaction_type: params[:type]) if params[:type].present?
-    @transactions = @transactions.for_category(params[:category]) if params[:category].present?
+    redirect_to chat_mode_path, status: :moved_permanently
   end
 
   # Usage breakdown
@@ -253,13 +212,8 @@ class BillingController < ApplicationController
       .reduce({}) { |acc, b| acc.merge(b) { |_, v1, v2| v1 + v2 } }
   end
 
-  # Purchase history / invoices
   def invoices
-    @purchases = @billing_account.work_token_purchases
-      .completed
-      .order(created_at: :desc)
-      .page(params[:page])
-      .per(20)
+    redirect_to chat_mode_path, status: :moved_permanently
   end
 
   # View a single receipt
@@ -268,6 +222,15 @@ class BillingController < ApplicationController
   end
 
   private
+
+  def choose_layout
+    case action_name
+    when 'setup_payment', 'receipt'
+      'minimal'
+    else
+      'customer_admin'
+    end
+  end
 
   def set_billing_account
     entity = current_user.entity

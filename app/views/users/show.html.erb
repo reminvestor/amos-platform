@@ -43,7 +43,7 @@
           <% if current_user.entity %>
             <dt class="col-sm-3" style="color: white;">Entity</dt>
             <dd class="col-sm-9">
-              <%= link_to current_user.entity.name, advanced_mode_path, style: "color: #A78BFA;" %>
+              <%= link_to current_user.entity.name, chat_mode_path, style: "color: #A78BFA;" %>
             </dd>
           <% end %>
         </dl>
@@ -236,7 +236,7 @@
       <div class="admin-card mb-4">
         <h4 style="color: white; margin-bottom: 1.5rem;">Quick Links</h4>
         <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-          <%= link_to edit_business_profile_path, class: "admin-btn admin-btn-outline", style: "justify-content: flex-start;" do %>
+          <%= link_to chat_mode_path, class: "admin-btn admin-btn-outline", style: "justify-content: flex-start;" do %>
             <i data-lucide="briefcase"></i>
             <span>Business Settings</span>
           <% end %>

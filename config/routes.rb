@@ -6,6 +6,10 @@ Rails.application.routes.draw do
   get "health", to: "health#index"
   get "health_check", to: "health#up"
 
+  # Custom domain routes (must come before :subdomain wildcard route)
+  # The SubdomainRouter middleware rewrites custom domain requests to /lp/custom/:domain_id
+  get "/lp/custom/:domain_id", to: "lp#show_custom_domain", as: :landing_page_custom_domain
+
   # Landing page subdomain routes
   # The SubdomainRouter middleware rewrites *.lp.{domain} requests to /lp/:subdomain
   get "/lp/:subdomain", to: "lp#show", as: :landing_page_subdomain
@@ -980,8 +984,8 @@ Rails.application.routes.draw do
     # Chat Mode (AMOS AI Conversational Interface)
     get "/chat", to: "scout#index", as: :chat_mode
 
-    # Advanced Mode (Traditional Dashboard with Sidebar)
-    get "/advanced", to: "dashboard#index", as: :advanced_mode
+    # Advanced Mode removed — redirect to Chat for bookmarked URLs
+    get "/advanced", to: redirect("/chat"), as: :advanced_mode
 
     # Entity-level management (for entity owners/admins)
     namespace :entity do

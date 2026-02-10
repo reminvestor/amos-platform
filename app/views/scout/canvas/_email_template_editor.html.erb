@@ -464,7 +464,13 @@
     })
     .then(data => {
       // Show success message
-      window.scoutSendMessage?.('✅ Email template saved successfully!');
+      // Show inline success notification instead of chat message
+      const notice = document.createElement('div');
+      notice.className = 'alert alert-success alert-dismissible fade show';
+      notice.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:9999;min-width:250px;';
+      notice.innerHTML = '<strong>Saved!</strong> Email template saved successfully. <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+      document.body.appendChild(notice);
+      setTimeout(() => notice.remove(), 3000);
 
       // If in HTML mode, sync the content back to WYSIWYG
       if (currentMode === 'html') {
@@ -488,7 +494,14 @@
 
     if (!email) return;
 
-    window.scoutSendMessage?.(`Send a test email for template ${templateId} to ${email}`);
+    // Direct API call to send test email
+    fetch(`/api/v1/campaigns`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content },
+      body: JSON.stringify({ email_template_id: templateId, test_email: email, send_test: true })
+    }).then(r => r.json()).then(d => {
+      alert(d.success ? 'Test email sent!' : (d.message || 'Failed to send test'));
+    }).catch(e => alert('Error: ' + e.message));
   }
 
   // Add event listeners

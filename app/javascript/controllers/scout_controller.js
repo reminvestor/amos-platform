@@ -754,17 +754,20 @@ export default class extends Controller {
                   
                   // Check if this is a SHORT status message (not actual content)
                   // Status messages are brief internal updates, not user-facing content
-                  const isShortStatusMessage = data.message && data.message.length < 50 && (
+                  const isShortStatusMessage = data.message && data.message.length < 80 && (
                     data.message.startsWith('💬 Message') || 
                     data.message.startsWith('📋 Processing') ||
                     data.message.startsWith('🔍 Searching') ||
+                    data.message.startsWith('Processing results') ||
+                    data.message.startsWith('Starting execution') ||
+                    data.message.startsWith('Working') ||
                     data.message === 'streaming' ||
                     data.message === '💬 streaming'
                   )
                   
                   if (!isShortStatusMessage && data.message && data.message.trim()) {
-                    // Hide thinking indicator - actual content is starting
-                    this.hideThinkingIndicator()
+                    // Collapse thinking indicator to completed badge - actual content is starting
+                    this.collapseThinkingIndicator()
                     
                     // This is actual content from Amos - stream it
                     console.log('📝 Amos content received via update:', data.message)
@@ -1000,6 +1003,18 @@ export default class extends Controller {
                       console.log("📝 Already streaming, not resetting")
                     }
                   }
+                } else if (data.type === 'clear_content') {
+                  // Clear previously streamed content (model wrote a text tool call that's being recovered)
+                  console.log('🧹 Clearing streamed content (text tool call recovery)')
+                  if (this.streamingMessageElement) {
+                    // Remove the streaming message bubble that contained the raw tool call text
+                    const messageContainer = this.streamingMessageElement.closest('.message')
+                    if (messageContainer) {
+                      messageContainer.remove()
+                    }
+                    this.streamingMessageElement = null
+                  }
+                  this.currentStreamingContent = undefined
                 } else if (data.type === 'thinking') {
                   // Show immediate "thinking" indicator with animated dots
                   console.log('🤔 Thinking indicator received')
@@ -1034,8 +1049,9 @@ export default class extends Controller {
                   // Also show in thinking UI for detailed view
                   this.addToolThinkingStep(friendlyName)
                 } else if (data.type === 'tool_result' || data.type === 'tool_end') {
-                  // Tool messages are now saved server-side and will appear via intermediate_message
+                  // Tool completed — collapse the indicator to a completed badge
                   console.log('✅ Tool completed:', data.name || data.tool_name)
+                  this.collapseThinkingIndicator()
                 } else if (data.type === 'progress') {
                   // Progress updates from long-running tools with percentage
                   console.log('📊 Progress:', data.tool, data.message, data.percentage + '%')
@@ -1120,6 +1136,12 @@ export default class extends Controller {
                   // Initialize streaming if not already started
                   if (this.currentStreamingContent === undefined) {
                     console.log('📝 First content chunk received - initializing streaming')
+                    
+                    // Collapse the thinking indicator into a compact completed badge
+                    // so the user sees the tool ran, but the streaming response takes priority
+                    this.collapseThinkingIndicator()
+                    this.hideToolThinking(0)
+                    
                     this.currentStreamingContent = ''
                     
                     // Find the last AI message or create a new one
@@ -1397,8 +1419,9 @@ export default class extends Controller {
       this.currentStreamReader = null
       this.currentChatAbortController = null
       
-      // Hide tool thinking UI if still showing
+      // Clean up any remaining tool indicators
       this.hideToolThinking(0)
+      this.hideThinkingIndicator(true)
 
       // Re-enable the chat input
       this.enableChatInput()
@@ -3966,6 +3989,70 @@ export default class extends Controller {
     if (indicator) {
       indicator.remove()
     }
+  }
+
+  // Collapse the thinking indicator into a compact "completed" badge
+  // instead of leaving it as a full chat bubble during streaming.
+  // This makes it clear the tool ran, while not blocking the streaming content.
+  collapseThinkingIndicator() {
+    // Cancel any pending hide timeout
+    if (this.thinkingIndicatorHideTimeout) {
+      clearTimeout(this.thinkingIndicatorHideTimeout)
+      this.thinkingIndicatorHideTimeout = null
+    }
+    
+    this.thinkingIndicatorShownAt = null
+    
+    const indicator = this.thinkingIndicatorElement || document.getElementById('thinking-indicator')
+    if (!indicator) return
+    
+    // Get the current tool name from the indicator text, clean up trailing "..."
+    const textSpan = indicator.querySelector('.thinking-text')
+    const toolName = textSpan ? textSpan.textContent.trim().replace(/\.{2,}$/, '') : 'Tool'
+    
+    // Replace the full indicator bubble with a compact completed badge
+    const badge = document.createElement('div')
+    badge.className = 'message tool-completed-badge'
+    badge.innerHTML = `
+      <div class="tool-badge-content">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--scout-primary, #7c3aed); flex-shrink: 0;">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span>${this.escapeHtmlInline(toolName)}</span>
+      </div>
+    `
+    
+    // Inject badge styles if not already present
+    if (!document.querySelector('#tool-badge-styles')) {
+      const styles = document.createElement('style')
+      styles.id = 'tool-badge-styles'
+      styles.textContent = `
+        .tool-completed-badge {
+          padding: 0.2rem 0.75rem 0.2rem 3.25rem;
+          margin: 0.15rem 0;
+          opacity: 0.7;
+          transition: opacity 0.3s ease;
+        }
+        .tool-completed-badge:hover {
+          opacity: 1;
+        }
+        .tool-badge-content {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          font-size: 0.8rem;
+          color: var(--text-secondary, #6b7280);
+          font-style: italic;
+        }
+      `
+      document.head.appendChild(styles)
+    }
+    
+    // Replace the full indicator with the compact badge
+    indicator.replaceWith(badge)
+    
+    this.thinkingIndicatorElement = null
+    console.log('🤔 Collapsed thinking indicator to completed badge:', toolName)
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

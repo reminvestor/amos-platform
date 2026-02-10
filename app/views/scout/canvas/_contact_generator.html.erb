@@ -320,35 +320,55 @@ const contactGenerator = {
   }
 };
 
-function scoutSaveContact() {
+async function scoutSaveContact() {
   if (!contactGenerator.validateForm()) {
     alert('Please fix the validation errors before saving.');
     return;
   }
-  
   const formData = contactGenerator.getFormData();
-  const message = contactGenerator.isEditing 
-    ? `Update contact with: ${JSON.stringify(formData)}`
-    : `Create new contact: ${formData.first_name} ${formData.last_name} (${formData.email})`;
-  
-  window.scoutSendMessage?.(message);
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  try {
+    const resp = await fetch('/api/v1/contacts_list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify(formData)
+    });
+    const data = await resp.json();
+    if (resp.ok || data.success) {
+      window.scoutLoadCanvas?.('contact_detail', { contact_id: data.id || data.data?.id });
+    } else {
+      alert(data.errors?.join(', ') || data.message || 'Failed to save contact');
+    }
+  } catch (e) { alert('Error: ' + e.message); }
 }
 
-function scoutSaveAndAdd() {
+async function scoutSaveAndAdd() {
   if (!contactGenerator.validateForm()) {
     alert('Please fix the validation errors before saving.');
     return;
   }
-  
   const formData = contactGenerator.getFormData();
-  const message = `Create new contact: ${formData.first_name} ${formData.last_name} (${formData.email}) and prepare to add another`;
-  
-  window.scoutSendMessage?.(message);
-  
-  // Clear form after save for next contact
-  setTimeout(() => {
-    contactGenerator.clearForm();
-  }, 2000);
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  try {
+    const resp = await fetch('/api/v1/contacts_list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify(formData)
+    });
+    const data = await resp.json();
+    if (resp.ok || data.success) {
+      contactGenerator.clearForm();
+      // Show brief success notice
+      const notice = document.createElement('div');
+      notice.className = 'alert alert-success';
+      notice.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:9999;min-width:250px;';
+      notice.textContent = `Contact ${formData.first_name} ${formData.last_name} saved! Add another.`;
+      document.body.appendChild(notice);
+      setTimeout(() => notice.remove(), 3000);
+    } else {
+      alert(data.errors?.join(', ') || data.message || 'Failed to save contact');
+    }
+  } catch (e) { alert('Error: ' + e.message); }
 }
 
 function scoutClearForm() {
@@ -362,11 +382,13 @@ function scoutBackToContacts() {
 }
 
 function scoutImportContacts() {
-  window.scoutSendMessage?.("Help me import multiple contacts from a file");
+  // Navigate to contact viewer which has the import modal built in
+  window.scoutLoadCanvas?.('contact_viewer', { action: 'import' });
 }
 
 function scoutCreateGroup() {
-  window.scoutSendMessage?.("Create a new contact group");
+  // Navigate to contact viewer — group creation is a standard CRUD action
+  window.scoutLoadCanvas?.('contact_viewer', { action: 'create_group' });
 }
 
 function scoutValidateEmail() {

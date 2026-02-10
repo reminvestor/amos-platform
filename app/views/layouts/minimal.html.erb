@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AMOS - <%= yield(:title).presence || 'Setup' %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <!-- Apply theme immediately to prevent flash -->
+    <script>
+      (function() {
+        var theme = localStorage.getItem('amos_theme_preference');
+        if (!theme) {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute('data-bs-theme', theme);
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/assets/admin_dark.css" data-turbo-track="reload">
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+
+  <body style="min-height: 100vh;">
+    <!-- Minimal top bar -->
+    <nav class="navbar navbar-dark py-2" style="background: var(--admin-bg, #0F172A);">
+      <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="<%= chat_mode_path %>">
+          <%= image_tag "amos_labs_logo_new.png", style: "height: 28px;", alt: "AMOS" rescue "" %>
+          <span class="fw-semibold" style="font-size: 1rem;">AMOS</span>
+        </a>
+        <a href="<%= chat_mode_path %>" class="btn btn-outline-light btn-sm">
+          <i data-lucide="arrow-left" style="width: 14px; height: 14px;" class="me-1"></i>
+          Back to Chat
+        </a>
+      </div>
+    </nav>
+
+    <!-- Flash messages -->
+    <% if flash[:notice] %>
+      <div class="alert alert-success alert-dismissible fade show m-3" role="alert">
+        <%= flash[:notice] %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    <% end %>
+    <% if flash[:alert] %>
+      <div class="alert alert-danger alert-dismissible fade show m-3" role="alert">
+        <%= flash[:alert] %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    <% end %>
+
+    <!-- Content -->
+    <%= yield %>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      });
+    </script>
+  </body>
+</html>

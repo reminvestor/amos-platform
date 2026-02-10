@@ -1,5 +1,5 @@
 class BusinessProfile < ApplicationRecord
-  belongs_to :entity
+  belongs_to :entity, optional: true
   belongs_to :user, optional: true
 
   validates :name, presence: true
@@ -8,6 +8,9 @@ class BusinessProfile < ApplicationRecord
 
   # Initialize empty knowledge base
   before_validation :initialize_knowledge_base, on: :create
+
+  # When business name changes, sync to Entity so there's one authoritative name
+  after_save :sync_entity_name, if: -> { saved_change_to_name? && name.present? }
 
   # Serialized jsonb field
   def knowledge_base_data
@@ -45,5 +48,23 @@ class BusinessProfile < ApplicationRecord
 
   def initialize_knowledge_base
     self.knowledge_base ||= {}
+  end
+
+  # Keep Entity.name in sync with the user-editable business name.
+  # BusinessProfile.name is the authoritative, user-editable source.
+  # Entity.name is set once during onboarding and otherwise not editable.
+  def sync_entity_name
+    target_entity = entity || user&.entity
+    return unless target_entity
+
+    # Also backfill entity_id if missing
+    if entity_id.nil? && target_entity.id.present?
+      update_column(:entity_id, target_entity.id)
+    end
+
+    if target_entity.name != name
+      target_entity.update_column(:name, name)
+      Rails.logger.info "🔄 Synced Entity##{target_entity.id} name to '#{name}' from BusinessProfile##{id}"
+    end
   end
 end

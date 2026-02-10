@@ -53,6 +53,7 @@ class LandingPage < ApplicationRecord
   belongs_to :user
   belongs_to :entity
   belongs_to :campaign, optional: true
+  belongs_to :custom_domain, optional: true
 
   # Chat and versioning
   has_many :landing_page_chat_messages, dependent: :destroy

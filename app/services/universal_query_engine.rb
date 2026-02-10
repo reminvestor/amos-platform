@@ -60,8 +60,8 @@ class UniversalQueryEngine
     # Build base query with entity scoping
     query = build_scoped_query(model_class, object_config)
 
-    # Apply filters
-    query = apply_filters(query, params[:filters], object_config)
+    # Apply filters (pass object_type for registry lookup)
+    query = apply_filters(query, params[:filters], object_config, object_type)
 
     # Apply ordering (default to most recent first)
     query = apply_ordering(query, params[:order_by], object_config)
@@ -100,11 +100,14 @@ class UniversalQueryEngine
     end
   end
 
-  def apply_filters(query, filters, object_config)
+  def apply_filters(query, filters, object_config, object_type = nil)
     return query unless filters.is_a?(Hash)
 
     # Validate and clean filters
-    validated_filters = ScoutDataRegistry.validate_filters(object_config[:model], filters)
+    # Use the object_type key (e.g., "contacts") not the model class name (e.g., "Contact")
+    # so ScoutDataRegistry can find the config and its queryable/filterable fields
+    filter_key = object_type || object_config[:model]
+    validated_filters = ScoutDataRegistry.validate_filters(filter_key, filters)
 
     validated_filters.each do |field, value|
       query = apply_field_filter(query, field, value)

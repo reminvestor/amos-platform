@@ -612,75 +612,284 @@
 }
 </style>
 
+<!-- ═══ Activity Quick-Entry Modal ═══ -->
+<div id="activityModal" class="canvas-modal" style="display: none;">
+  <div class="canvas-modal-backdrop" onclick="closeActivityModal()"></div>
+  <div class="canvas-modal-content" style="max-width: 480px;">
+    <div class="canvas-modal-header">
+      <h3 id="activityModalTitle">
+        <i data-lucide="file-text"></i>
+        Log Activity
+      </h3>
+      <button class="canvas-modal-close" onclick="closeActivityModal()">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="canvas-modal-body">
+      <input type="hidden" id="activityContactId">
+      <input type="hidden" id="activityType">
+
+      <!-- Subject (tasks, meetings, emails) -->
+      <div id="activitySubjectGroup" class="mb-3" style="display: none;">
+        <label class="form-label small fw-semibold">Subject</label>
+        <input type="text" id="activitySubject" class="form-control form-control-sm" placeholder="Brief subject line">
+      </div>
+
+      <!-- Description / Notes (all types) -->
+      <div class="mb-3">
+        <label class="form-label small fw-semibold" id="activityDescLabel">Notes</label>
+        <textarea id="activityDescription" class="form-control form-control-sm" rows="3" placeholder="Add details..."></textarea>
+      </div>
+
+      <!-- Outcome (calls only) -->
+      <div id="activityOutcomeGroup" class="mb-3" style="display: none;">
+        <label class="form-label small fw-semibold">Outcome</label>
+        <select id="activityOutcome" class="form-select form-select-sm">
+          <option value="connected">Connected</option>
+          <option value="left_voicemail">Left Voicemail</option>
+          <option value="no_answer">No Answer</option>
+          <option value="busy">Busy</option>
+          <option value="wrong_number">Wrong Number</option>
+        </select>
+      </div>
+
+      <!-- Due date (tasks, meetings) -->
+      <div id="activityDueGroup" class="mb-3" style="display: none;">
+        <label class="form-label small fw-semibold" id="activityDueLabel">Due Date</label>
+        <input type="datetime-local" id="activityDueAt" class="form-control form-control-sm">
+      </div>
+    </div>
+    <div class="canvas-modal-footer">
+      <button onclick="closeActivityModal()" class="canvas-btn secondary">Cancel</button>
+      <button onclick="submitActivity()" id="activitySubmitBtn" class="canvas-btn primary">
+        <i data-lucide="check"></i>
+        <span id="activitySubmitLabel">Save</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Lifecycle Promote Modal ═══ -->
+<div id="promoteModal" class="canvas-modal" style="display: none;">
+  <div class="canvas-modal-backdrop" onclick="closePromoteModal()"></div>
+  <div class="canvas-modal-content" style="max-width: 400px;">
+    <div class="canvas-modal-header">
+      <h3><i data-lucide="arrow-up-right"></i> Promote Lifecycle Stage</h3>
+      <button class="canvas-modal-close" onclick="closePromoteModal()"><i data-lucide="x"></i></button>
+    </div>
+    <div class="canvas-modal-body">
+      <label class="form-label small fw-semibold">New Stage</label>
+      <select id="promoteStage" class="form-select form-select-sm">
+        <option value="subscriber">Subscriber</option>
+        <option value="lead">Lead</option>
+        <option value="mql">MQL</option>
+        <option value="sql">SQL</option>
+        <option value="opportunity">Opportunity</option>
+        <option value="customer">Customer</option>
+        <option value="evangelist">Evangelist</option>
+      </select>
+    </div>
+    <div class="canvas-modal-footer">
+      <button onclick="closePromoteModal()" class="canvas-btn secondary">Cancel</button>
+      <button onclick="submitPromote()" id="promoteSubmitBtn" class="canvas-btn primary">
+        <i data-lucide="arrow-up-right"></i> Promote
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+const apiHeaders = { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken };
+
+// ── Navigation ──
 function contactDetailBack() {
   window.scoutLoadCanvas?.('contact_viewer');
 }
 
 function contactDetailEdit(contactId) {
-  window.scoutSendMessage?.(`Edit contact ${contactId}`);
-}
-
-function contactDetailLogNote(contactId) {
-  window.scoutSendMessage?.(`Log a note for contact ${contactId}`);
-}
-
-function contactDetailLogCall(contactId) {
-  window.scoutSendMessage?.(`Log a call for contact ${contactId}`);
-}
-
-function contactDetailLogEmail(contactId) {
-  window.scoutSendMessage?.(`Log an email for contact ${contactId}`);
-}
-
-function contactDetailSendEmail(contactId) {
-  window.scoutSendMessage?.(`Send an email to contact ${contactId}`);
-}
-
-function contactDetailCreateTask(contactId) {
-  window.scoutSendMessage?.(`Create a task for contact ${contactId}`);
-}
-
-function contactDetailScheduleMeeting(contactId) {
-  window.scoutSendMessage?.(`Schedule a meeting with contact ${contactId}`);
-}
-
-function contactDetailCreateOpportunity(contactId) {
-  window.scoutSendMessage?.(`Create an opportunity for contact ${contactId}`);
+  // Reload the contact detail canvas in edit mode (future: inline editing)
+  window.scoutLoadCanvas?.('contact_detail', { contact_id: contactId, edit: true });
 }
 
 function contactDetailViewOpportunity(opportunityId) {
-  window.scoutSendMessage?.(`Show me opportunity ${opportunityId}`);
+  window.scoutLoadCanvas?.('pipeline_viewer', { opportunity_id: opportunityId });
 }
 
+// ── Activity Modal System ──
+function openActivityModal(contactId, type, title, icon) {
+  document.getElementById('activityContactId').value = contactId;
+  document.getElementById('activityType').value = type;
+  document.getElementById('activityModalTitle').innerHTML = `<i data-lucide="${icon}"></i> ${title}`;
+  document.getElementById('activityDescription').value = '';
+  document.getElementById('activitySubject').value = '';
+
+  // Show/hide fields based on type
+  const showSubject = ['email', 'task', 'meeting'].includes(type);
+  const showOutcome = type === 'call';
+  const showDue = ['task', 'meeting'].includes(type);
+  document.getElementById('activitySubjectGroup').style.display = showSubject ? '' : 'none';
+  document.getElementById('activityOutcomeGroup').style.display = showOutcome ? '' : 'none';
+  document.getElementById('activityDueGroup').style.display = showDue ? '' : 'none';
+  document.getElementById('activityDueLabel').textContent = type === 'meeting' ? 'Date & Time' : 'Due Date';
+
+  // Set defaults
+  if (showDue) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    document.getElementById('activityDueAt').value = tomorrow.toISOString().slice(0, 16);
+  }
+
+  const labels = { note: 'Log Note', call: 'Log Call', email: 'Log Email', task: 'Create Task', meeting: 'Schedule' };
+  document.getElementById('activitySubmitLabel').textContent = labels[type] || 'Save';
+  document.getElementById('activityDescLabel').textContent = type === 'note' ? 'Note' : 'Details';
+
+  document.getElementById('activityModal').style.display = 'flex';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  document.getElementById(showSubject ? 'activitySubject' : 'activityDescription').focus();
+}
+
+function closeActivityModal() {
+  document.getElementById('activityModal').style.display = 'none';
+}
+
+async function submitActivity() {
+  const contactId = document.getElementById('activityContactId').value;
+  const type = document.getElementById('activityType').value;
+  const description = document.getElementById('activityDescription').value;
+  const subject = document.getElementById('activitySubject').value;
+  const outcome = document.getElementById('activityOutcome').value;
+  const dueAt = document.getElementById('activityDueAt').value;
+  const btn = document.getElementById('activitySubmitBtn');
+
+  btn.disabled = true;
+
+  const endpoints = {
+    note:    '/api/v1/activities/log_note',
+    call:    '/api/v1/activities/log_call',
+    email:   '/api/v1/activities/log_email',
+    task:    '/api/v1/activities/create_task',
+    meeting: '/api/v1/activities/schedule_meeting'
+  };
+
+  const body = { contact_id: contactId, description: description };
+  if (subject) body.subject = subject;
+  if (type === 'call') body.outcome = outcome;
+  if (dueAt && ['task', 'meeting'].includes(type)) body.due_at = dueAt;
+  if (type === 'meeting') body.scheduled_at = dueAt;
+
+  try {
+    const resp = await fetch(endpoints[type], {
+      method: 'POST',
+      headers: apiHeaders,
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (data.success || resp.ok) {
+      closeActivityModal();
+      // Refresh the contact detail to show the new activity in the timeline
+      window.scoutLoadCanvas?.('contact_detail', { contact_id: contactId }, true);
+    } else {
+      alert(data.message || data.errors?.join(', ') || 'Failed to save activity');
+    }
+  } catch (e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Activity button wrappers ──
+function contactDetailLogNote(contactId)        { openActivityModal(contactId, 'note',    'Log Note',         'file-text'); }
+function contactDetailLogCall(contactId)        { openActivityModal(contactId, 'call',    'Log Call',         'phone'); }
+function contactDetailLogEmail(contactId)       { openActivityModal(contactId, 'email',   'Log Email',        'mail'); }
+function contactDetailCreateTask(contactId)     { openActivityModal(contactId, 'task',    'Create Task',      'check-square'); }
+function contactDetailScheduleMeeting(contactId){ openActivityModal(contactId, 'meeting', 'Schedule Meeting', 'calendar'); }
+
+function contactDetailSendEmail(contactId) {
+  // Send email opens the campaign editor pre-targeted at this contact
+  window.scoutLoadCanvas?.('campaign_editor', { contact_id: contactId });
+}
+
+function contactDetailCreateOpportunity(contactId) {
+  window.scoutLoadCanvas?.('pipeline_viewer', { action: 'create', contact_id: contactId });
+}
+
+// ── Complete Task — direct API call ──
+async function contactDetailCompleteTask(activityId) {
+  try {
+    const resp = await fetch(`/api/v1/activities/${activityId}/complete`, {
+      method: 'POST',
+      headers: apiHeaders
+    });
+    const data = await resp.json();
+    if (data.success || resp.ok) {
+      // Refresh to update timeline
+      const contactId = document.getElementById('activityContactId')?.value ||
+                        document.querySelector('[data-contact-id]')?.dataset?.contactId;
+      const contactIdFromUrl = '<%= contact.id %>';
+      window.scoutLoadCanvas?.('contact_detail', { contact_id: contactIdFromUrl }, true);
+    } else {
+      alert(data.message || 'Failed to complete task');
+    }
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+// ── Promote Lifecycle — modal + API ──
 function contactDetailPromoteLifecycle(contactId) {
-  window.scoutSendMessage?.(`Promote contact ${contactId} to the next lifecycle stage`);
+  document.getElementById('promoteModal').style.display = 'flex';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
+function closePromoteModal() {
+  document.getElementById('promoteModal').style.display = 'none';
+}
+
+async function submitPromote() {
+  const stage = document.getElementById('promoteStage').value;
+  const contactId = '<%= contact.id %>';
+  const btn = document.getElementById('promoteSubmitBtn');
+  btn.disabled = true;
+
+  try {
+    const resp = await fetch(`/api/v1/contacts_list/${contactId}`, {
+      method: 'PATCH',
+      headers: apiHeaders,
+      body: JSON.stringify({ lifecycle_stage: stage })
+    });
+    if (resp.ok) {
+      closePromoteModal();
+      window.scoutLoadCanvas?.('contact_detail', { contact_id: contactId }, true);
+    } else {
+      const data = await resp.json().catch(() => ({}));
+      alert(data.errors?.join(', ') || 'Failed to update lifecycle stage');
+    }
+  } catch (e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Assign Contact ──
 function contactDetailAssign(contactId) {
-  window.scoutSendMessage?.(`Assign contact ${contactId} to a team member`);
+  // For now load the detail in assign mode; future: inline team picker
+  window.scoutLoadCanvas?.('contact_detail', { contact_id: contactId, action: 'assign' });
 }
 
-function contactDetailCompleteTask(activityId) {
-  window.scoutSendMessage?.(`Complete task ${activityId}`);
-}
-
+// ── Timeline Filter ──
 function filterTimeline() {
   const filter = document.getElementById('activityTypeFilter').value;
   const items = document.querySelectorAll('.timeline-item');
-  
   items.forEach(item => {
-    if (!filter || item.dataset.type === filter) {
-      item.style.display = '';
-    } else {
-      item.style.display = 'none';
-    }
+    item.style.display = (!filter || item.dataset.type === filter) ? '' : 'none';
   });
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 });
 </script>

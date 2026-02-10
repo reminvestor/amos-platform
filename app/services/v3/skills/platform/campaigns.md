@@ -20,33 +20,13 @@ Campaigns send emails to contact groups using email templates.
 ## Common Operations
 
 ### Create campaign with template
-```
-# 1. Create the template
-platform_create(type: "email_template", data: {
-  name: "Summer Sale",
-  subject: "Don't miss our summer sale!",
-  body: "<h1>Summer Sale</h1><p>Save up to 50%!</p>"
-})
-
-# 2. Create the campaign
-platform_create(type: "campaign", data: {
-  name: "Summer Sale Blast",
-  email_template_id: <template_id>
-})
-
-# 3. Add recipients
-platform_update(type: "campaign", id: <campaign_id>, data: {
-  add_contact_group_ids: [1, 2]
-})
-
-# 4. Send
-platform_execute(action: "send_campaign", campaign_id: <campaign_id>)
-```
+Step 1: Use platform_create tool with type="email_template", data: { name: "Summer Sale", subject: "Don't miss our summer sale!", body: "<h1>Summer Sale</h1><p>Save up to 50%!</p>" }
+Step 2: Use platform_create tool with type="campaign", data: { name: "Summer Sale Blast", email_template_id: <template_id> }
+Step 3: Use platform_update tool with type="campaign", id=<campaign_id>, data: { add_contact_group_ids: [1, 2] }
+Step 4: Use platform_execute tool with action="send_campaign", campaign_id=<campaign_id>
 
 ### Check campaign performance
-```
-platform_query(type: "campaigns", filters: { status: "sent" }, include: ["metrics"])
-```
+Use the platform_query tool with type="campaigns", filters: { status: "sent" }, include: ["metrics"]
 
 ## Important Notes
 - Campaign needs a template AND at least one contact group before sending

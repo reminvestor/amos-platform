@@ -6,18 +6,14 @@ class AiSettings::ScoutController < ApplicationController
   layout "customer_admin"
 
   def show
-    @available_tools = load_available_tools
-    @tool_categories = categorize_tools(@available_tools)
+    redirect_to chat_mode_path, status: :moved_permanently
   end
 
   def update
     if @configuration.update(configuration_params)
-      redirect_to ai_settings_scout_path, notice: "Scout settings updated successfully."
+      redirect_to chat_mode_path, notice: "Scout settings updated successfully."
     else
-      @available_tools = load_available_tools
-      @tool_categories = categorize_tools(@available_tools)
-      flash.now[:alert] = "Failed to update settings: #{@configuration.errors.full_messages.join(', ')}"
-      render :show, status: :unprocessable_entity
+      redirect_to chat_mode_path, alert: "Failed to update settings: #{@configuration.errors.full_messages.join(', ')}"
     end
   end
 
@@ -25,7 +21,7 @@ class AiSettings::ScoutController < ApplicationController
 
   def require_entity_admin!
     unless current_user.entity_admin?
-      redirect_to advanced_mode_path, alert: "You need to be an entity admin to access AI settings."
+      redirect_to chat_mode_path, alert: "You need to be an entity admin to access AI settings."
     end
   end
 

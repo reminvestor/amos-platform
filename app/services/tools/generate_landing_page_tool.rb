@@ -313,22 +313,32 @@ module Tools
       business_info = context[:business_info] || {}
       design_prefs = context[:design_preferences] || {}
 
+      # Extract business profile early — used in multiple fallback chains below
+      business_profile = context[:business_profile] || {}
+
       # Get actual values with intelligent fallbacks
       business_name = context[:business_name] ||
                      key_details[:company_name] ||
                      key_details["company_name"] ||
+                     business_profile[:company_name] ||
                      title
 
+      # Value proposition for hero headline — prefer explicit value prop, then business profile,
+      # then title (which is usually user-facing). Avoid using raw 'description' as a headline
+      # since it's often a technical purpose statement like "Form to capture agency interest..."
       value_prop = business_info[:value_proposition] ||
                   business_info["value_proposition"] ||
                   key_details[:value_proposition] ||
                   key_details["value_proposition"] ||
-                  description
+                  business_profile[:value_proposition] ||
+                  business_profile[:description] ||
+                  title
 
       target_audience = business_info[:target_audience] ||
                        business_info["target_audience"] ||
                        key_details[:target_audience] ||
                        key_details["target_audience"] ||
+                       business_profile[:target_audience] ||
                        "businesses"
 
       cta_text = context[:cta_text] ||
@@ -788,10 +798,12 @@ module Tools
 
         === PERSONALIZATION (CRITICAL - Make this feel custom, not generic!) ===
         - Company name in logo/header: "#{business_name}" (NOT generic placeholders)
-        #{headline.present? ? "- EXACT Hero headline to use: \"#{headline}\"" : "- Hero headline should incorporate: \"#{value_prop}\""}
+        #{headline.present? ? "- EXACT Hero headline to use: \"#{headline}\"" : "- Hero headline should be a compelling marketing headline inspired by: \"#{value_prop}\""}
+        #{description.present? ? "- Page purpose/context: #{description}" : ""}
         - CTA buttons should say: "#{cta_text}"
         - Content should speak directly to: "#{target_audience}"
         - Use industry-specific language and terminology
+        - NEVER use the raw description as the hero headline. Write a compelling, benefit-driven headline instead.
         #{key_benefits.any? ? "- Feature section MUST include these exact benefits:\n  #{key_benefits.first(6).map { |b| "• #{b}" }.join("\n  ")}" : ""}
         #{unique_selling_points.any? ? "- Unique selling points to highlight:\n  #{unique_selling_points.first(5).map { |u| "• #{u}" }.join("\n  ")}" : ""}
         #{color_scheme.present? ? "- Use this EXACT color palette throughout: #{color_scheme}" : ""}
@@ -835,15 +847,13 @@ module Tools
           { role: "user", content: prompt }
         ]
 
-        # Use Qwen 3 Coder for HTML generation - specialized for code/markup tasks
-        # Using Qwen3-Next-80B - our best performing model (9.2/10 benchmarks, 131K context)
-        # Switched from qwen-3-coder-30b which was returning empty responses
-        Rails.logger.info "🚀 Using Qwen3-Next-80B for landing page generation"
+        # Use Claude Sonnet for HTML generation — better code quality and instruction following
+        Rails.logger.info "🚀 Using Claude Sonnet 4.5 for landing page generation"
         response = ai_service.complete(
           messages: messages,
           max_tokens: 8192,
           temperature: 0.7,
-          model: 'qwen3-next-80b'
+          model: 'claude-sonnet-4-5'
         )
 
         # Strip markdown code blocks if AI wrapped the HTML
@@ -1199,29 +1209,7 @@ module Tools
 
     # Gather business profile data for personalization
     def gather_business_profile_context
-      return {} unless entity
-      
-      profile = entity.business_profiles.first rescue nil
-      return {} unless profile
-      
-      {
-        company_name: profile.company_name,
-        industry: profile.industry,
-        description: profile.description,
-        target_audience: profile.target_audience,
-        value_proposition: profile.value_proposition,
-        tone_of_voice: profile.tone_of_voice,
-        key_differentiators: profile.key_differentiators,
-        services: profile.services,
-        products: profile.products,
-        website: profile.website,
-        tagline: profile.tagline,
-        mission: profile.mission,
-        # Brand settings if available
-        brand_colors: entity.brand_settings&.dig('colors'),
-        brand_fonts: entity.brand_settings&.dig('fonts'),
-        logo_url: entity.logo_url
-      }.compact
+      BusinessContext.for(user, entity).to_h
     rescue => e
       Rails.logger.warn "Could not gather business profile: #{e.message}"
       {}
@@ -1229,27 +1217,25 @@ module Tools
     
     # Gather relevant conversation context
     def gather_conversation_context
-      return {} unless @context
+      return {} unless user && entity
       
-      # Get session ID and recent conversation if available
-      session_id = @context[:session_id]
-      return {} unless session_id
-      
-      # Try to get recent conversation history
-      recent_messages = ScoutConversation.where(session_id: session_id)
-                                          .order(created_at: :desc)
-                                          .limit(10)
-                                          .pluck(:role, :content) rescue []
+      # Query ScoutMessage using user/entity (reliable) since session_id formats vary
+      # (AgentLoop uses a UUID, UnifiedMemory uses "unified_X_X_date")
+      recent_messages = ScoutMessage.where(user_id: user.id, entity_id: entity.id)
+                                    .where("created_at > ?", 1.hour.ago)
+                                    .order(created_at: :desc)
+                                    .limit(10)
+                                    .pluck(:role, :content) rescue []
       
       # Also check for any user inputs from agent interactions
-      user_inputs = @context[:user_inputs] || {}
+      user_inputs = @context&.dig(:user_inputs) || {}
       
       {
         recent_conversation: recent_messages.reverse.map { |role, content| 
           { role: role, content: content&.truncate(500) }
         },
         user_inputs: user_inputs,
-        session_context: @context[:metadata] || {}
+        session_context: @context&.dig(:metadata) || {}
       }.compact
     rescue => e
       Rails.logger.warn "Could not gather conversation context: #{e.message}"

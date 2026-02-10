@@ -7,15 +7,7 @@ class AiSettings::SecurityController < ApplicationController
   layout "customer_admin"
 
   def show
-    @tool_policies = ToolPolicyService.all_policies_for_entity(current_entity)
-    @quarantine_llm_enabled = current_entity.respond_to?(:quarantine_llm_enabled) && 
-                               current_entity.quarantine_llm_enabled
-    @policy_categories = categorize_policies(@tool_policies)
-    @pending_confirmations_count = PendingToolConfirmation
-      .where(entity: current_entity)
-      .pending
-      .not_expired
-      .count
+    redirect_to chat_mode_path, status: :moved_permanently
   end
 
   def update
@@ -36,10 +28,10 @@ class AiSettings::SecurityController < ApplicationController
       end
     end
 
-    redirect_to ai_settings_security_path, notice: "Security settings updated successfully."
+    redirect_to chat_mode_path, notice: "Security settings updated successfully."
   rescue => e
     Rails.logger.error "[SecuritySettings] Update failed: #{e.message}"
-    redirect_to ai_settings_security_path, alert: "Failed to update settings: #{e.message}"
+    redirect_to chat_mode_path, alert: "Failed to update settings: #{e.message}"
   end
 
   def reset_to_defaults
@@ -49,7 +41,7 @@ class AiSettings::SecurityController < ApplicationController
     # Reset Q-LLM to default (off)
     current_entity.update!(quarantine_llm_enabled: false) if current_entity.respond_to?(:quarantine_llm_enabled)
 
-    redirect_to ai_settings_security_path, notice: "Security settings reset to defaults."
+    redirect_to chat_mode_path, notice: "Security settings reset to defaults."
   end
 
   def expire_pending
@@ -58,14 +50,14 @@ class AiSettings::SecurityController < ApplicationController
       .where(status: 'pending')
       .update_all(status: 'expired', resolved_at: Time.current)
 
-    redirect_to ai_settings_security_path, notice: "Expired #{count} pending confirmations."
+    redirect_to chat_mode_path, notice: "Expired #{count} pending confirmations."
   end
 
   private
 
   def require_entity_admin!
     unless current_user.entity_admin?
-      redirect_to advanced_mode_path, alert: "You need to be an entity admin to access AI settings."
+      redirect_to chat_mode_path, alert: "You need to be an entity admin to access AI settings."
     end
   end
 

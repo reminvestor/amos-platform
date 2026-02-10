@@ -60,6 +60,10 @@ module Scout
     
     # Build the complete context for a new message
     # Returns a hash with all layers, ready for prompt construction
+    #
+    # Phase 5C: Cross-session memory is always-on (no regex gates).
+    # L3 segments are always fetched for cross-session context.
+    # L4 (RAG deep search) only triggers for explicit deep-history requests.
     def build_context(current_message = nil, options = {})
       start_time = Time.current
       
@@ -81,9 +85,6 @@ module Scout
       # L1: Always loaded (instant)
       l1_messages = fetch_l1_messages
       
-      # Check if we need deeper context based on the message
-      needs_history = cross_session_enabled? && needs_historical_context?(current_message)
-      
       context = {
         l1: l1_messages,
         l2: nil,
@@ -104,14 +105,15 @@ module Scout
         Rails.logger.info "🧠 Using pre-warmed proactive memories (#{proactive[:segments]&.count || 0} segments)"
       end
       
-      # L2-L4: Only fetch if cross-session memory is enabled AND not already loaded
-      if needs_history && context[:l3].blank?
-        # Parallel fetch for speed
+      # L3: Always fetch relevant segments if cross-session is enabled (no regex gate)
+      # This is cheap (~5ms Postgres query) and ensures continuity across sessions.
+      if cross_session_enabled? && context[:l3].blank?
         threads = []
         
         threads << Thread.new { context[:l3] = fetch_relevant_segments(current_message) }
         
-        if deep_history_requested?(current_message)
+        # L4 (RAG deep search): Only for explicit deep-history requests (expensive)
+        if current_message.present? && deep_history_requested?(current_message)
           threads << Thread.new { context[:l4] = search_long_term_memory(current_message) }
         end
         

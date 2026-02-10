@@ -215,7 +215,7 @@
                       <% end %>
                       <div class="mt-2">
                         <button class="btn btn-sm btn-outline-secondary"
-                                onclick="window.scoutSendMessage?.('Show me all versions for landing page <%= landing_page.id %>')"
+                                onclick="window.scoutLoadCanvas?.('version_history', { landing_page_id: '<%= landing_page.id %>' })"
                                 aria-label="View all versions">
                           <i data-lucide="history" class="me-1" aria-hidden="true"></i>View All Versions
                         </button>
@@ -380,10 +380,10 @@ function revertToVersion(landingPageId, versionId) {
   // Send message to Scout to revert the landing page
   const message = `Revert landing page ${landingPageId} to version ${versionId}`;
   
-  if (window.scoutSendMessage) {
-    window.scoutSendMessage(message);
+  if (window.scoutLoadCanvas) {
+    window.scoutLoadCanvas('landing_page_details', { landing_page_id: landingPageId, revert_to: versionId }, true);
   } else {
-    console.error('Scout sendMessage function not available');
+    console.error('Scout loadCanvas function not available');
     alert('Unable to revert: Scout communication not available');
   }
 }

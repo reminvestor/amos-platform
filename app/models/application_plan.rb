@@ -25,7 +25,7 @@ class ApplicationPlan < ApplicationRecord
   has_one :agent_plugin, dependent: :nullify
   
   # Status values
-  STATUSES = %w[drafting pending_approval approved building completed failed cancelled].freeze
+  STATUSES = %w[drafting pending_approval approved building paused completed failed cancelled].freeze
   ARCHETYPES = %w[knowledge_base crm sales_pipeline inventory project_mgmt project social_media events finance hr real_estate helpdesk education fleet_management restaurant custom].freeze
   
   # Validations
@@ -106,8 +106,14 @@ class ApplicationPlan < ApplicationRecord
   end
   
   def start_build!
-    raise InvalidTransition, "Cannot start build from #{status}" unless approved?
+    unless approved? || paused? || building?
+      raise InvalidTransition, "Cannot start build from #{status}"
+    end
     update!(status: 'building', build_started_at: Time.current)
+  end
+
+  def paused?
+    status == 'paused'
   end
   
   def complete!(results)

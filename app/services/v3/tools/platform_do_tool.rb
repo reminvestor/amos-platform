@@ -2,51 +2,38 @@
 
 module V3
   module Tools
-    # PlatformDoTool - The universal "do something" tool
+    # PlatformDoTool - Complex multi-step workflow executor
     #
-    # This is the primary action tool in the Intent Engine architecture.
-    # The LLM translates user intent into a goal + spec, and this tool
-    # delegates to the IntentEngine which either:
-    #   1. Matches a pre-built Recipe (fast, zero LLM cost)
-    #   2. Falls back to LLM decomposition for novel requests
+    # Phase 6A/6C: This tool is now for COMPLEX workflows only.
+    # Simple single-object CRUD goes through platform_create/platform_update directly.
     #
-    # The LLM's job is to understand WHAT the user wants.
-    # The platform's job (via IntentEngine) is to figure out HOW.
-    #
-    # This replaces direct LLM calls to platform_create, platform_update,
-    # and platform_execute -- but those tools still exist internally
-    # and are used by recipes under the hood.
+    # platform_do delegates to IntentEngine -> PlatformBrain (Claude agent loop).
+    # Use it for goals that require multiple steps, planning, or external integrations.
     #
     class PlatformDoTool < ::Tools::BaseTool
       def self.metadata
         {
           name: "platform_do",
           description: <<~DESC.strip,
-            Execute a goal on the platform. Describe WHAT you want to accomplish and the platform figures out HOW.
+            Execute a complex, multi-step goal on the platform. The execution engine plans and executes the steps.
 
-            This is your primary action tool. Use it for anything that changes platform state:
-            creating, updating, deleting, sending, publishing, syncing, building.
+            Use this for workflows that require MULTIPLE steps, planning, or external integrations:
+            - Building complete landing pages with multiple sections
+            - Setting up automations (template + trigger + action)
+            - Integration operations (pulling data from Stripe, syncing with HubSpot)
+            - Any goal that needs to query first, then create/update based on results
+            - Compound goals ("pull customers from Stripe AND add as contacts")
 
-            The goal is a short description of what to accomplish. The spec provides the details.
+            For SIMPLE single-object operations, prefer platform_create or platform_update instead (faster, no delegation).
+
+            Put a short action summary in `goal` and the user's FULL detailed request in `spec.user_request`.
+            Do NOT paraphrase — pass the user's exact words so the execution engine has all the details.
 
             Examples:
-            - platform_do(goal: "create contact", spec: { first_name: "Jane", email: "jane@example.com" })
-            - platform_do(goal: "welcome email automation", spec: { trigger: "new_lead", subject: "Welcome!", body: "<h1>Hi!</h1>" })
-            - platform_do(goal: "build landing page", spec: { title: "Summer Sale", description: "Promo page for summer campaign" })
-            - platform_do(goal: "send campaign", spec: { campaign_id: 7 })
-            - platform_do(goal: "create automation", spec: { name: "Follow Up", trigger: "form_submit", action: "send_email", template_id: 5 })
-            - platform_do(goal: "sync stripe customers", spec: { integration: "stripe", source: "customers", target: "Contact" })
-            - platform_do(goal: "delete contact", spec: { type: "contact", id: 42 })
-            - platform_do(goal: "update contact", spec: { type: "contact", id: 42, data: { lifecycle_stage: "customer" } })
-            - platform_do(goal: "build app", spec: { name: "CRM", description: "Contact management system" })
-            - platform_do(goal: "publish landing page", spec: { landing_page_id: 15 })
-            - platform_do(goal: "create scheduled task", spec: { name: "Weekly Report", prompt: "Summarize contacts", schedule: "weekly" })
-            - platform_do(goal: "generate csv", spec: { title: "Export", headers: ["Name", "Email"], rows: [["Jane", "jane@co.com"]] })
-            - platform_do(goal: "edit landing page section", spec: { landing_page_id: 189, section: "hero", instruction: "Center the text" })
-            - platform_do(goal: "add custom field", spec: { model: "contact", field_name: "industry", field_type: "string" })
-            - platform_do(goal: "run integration action", spec: { integration: "stripe", operation: "list_charges", inputs: { limit: 10 } })
-            - platform_do(goal: "create contact group and add contacts", spec: { group_name: "VIPs", contact_ids: [1, 2, 3] })
-            - platform_do(goal: "set up drip campaign", spec: { name: "Onboarding", emails: [{ subject: "Day 1", delay: 0 }, { subject: "Day 3", delay: 3 }] })
+            - goal: "build landing page", spec: { user_request: "create a page for email signups with bright colors", title: "Join Us" }
+            - goal: "pull last 10 stripe customers", spec: { integration: "stripe", operation: "list_customers", inputs: { limit: 10 } }
+            - goal: "welcome email automation", spec: { user_request: "set up an automation that sends a welcome email when a new contact is created" }
+            - goal: "extend CRM schema", spec: { user_request: "Add fields for Middle Name, Preferred Name, marital status..." }
           DESC
           category: "v3_core",
           input_schema: {
@@ -54,7 +41,7 @@ module V3
             properties: {
               goal: {
                 type: "string",
-                description: "What you want to accomplish (e.g., 'create contact', 'welcome email automation', 'build landing page', 'sync stripe customers')"
+                description: "What you want to accomplish (e.g., 'create contact', 'create 5 new contacts', 'welcome email automation', 'build landing page', 'run integration action')"
               },
               spec: {
                 type: "object",

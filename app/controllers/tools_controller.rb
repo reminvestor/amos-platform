@@ -6,8 +6,7 @@ class ToolsController < ApplicationController
   before_action :authorize_destroy!, only: [:destroy]
 
   def index
-    @my_tools = ToolDefinition.where(created_by: current_user).order(created_at: :desc)
-    @public_tools = ToolDefinition.public_tools
+    redirect_to chat_mode_path, status: :moved_permanently
   end
 
   def show
@@ -41,7 +40,7 @@ class ToolsController < ApplicationController
 
   def destroy
     @tool.destroy
-    redirect_to tools_path, notice: 'Tool deleted successfully.'
+    redirect_to chat_mode_path, notice: 'Tool deleted successfully.'
   end
 
   private

@@ -62,11 +62,13 @@ class ScoutDataRegistry
       model: "Contact",
       description: "Contact list with engagement history and metrics",
       queryable_fields: [
-        "id", "email", "first_name", "last_name", "created_at", "updated_at",
-        "opted_out", "opted_out_at", "last_engagement_at"
+        "id", "email", "first_name", "last_name", "lifecycle_stage", "status",
+        "lead_score", "lead_source", "phone", "company",
+        "created_at", "updated_at", "opted_out", "opted_out_at", "last_engagement_at"
       ],
       filterable_fields: [
-        "created_at", "updated_at", "opted_out", "last_engagement_at"
+        "id", "email", "first_name", "last_name", "created_at", "updated_at",
+        "opted_out", "last_engagement_at", "lifecycle_stage", "status"
       ],
       metrics: [
         "total_campaigns_received", "total_opens", "total_clicks", "engagement_score",
@@ -78,11 +80,14 @@ class ScoutDataRegistry
       scoped_by: "entity_id",
       creatable: true,
       creation_schema: {
-        required: [ "email" ],
-        optional: [ "first_name", "last_name", "contact_group_ids" ],
+        required: [ "email", "first_name", "last_name" ],
+        optional: [ "lifecycle_stage", "status", "phone", "company", "lead_source", "lead_score", "contact_group_ids", "custom_fields", "tags" ],
         defaults: {
+          lifecycle_stage: "lead",
+          status: "active",
           opted_out: false
-        }
+        },
+        notes: "lifecycle_stage values: subscriber, lead, mql, sql, opportunity, customer, evangelist, other. status values: active, inactive, unsubscribed, bounced. tags are stored as custom_fields automatically."
       }
     },
 

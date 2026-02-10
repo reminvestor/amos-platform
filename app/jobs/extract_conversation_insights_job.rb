@@ -313,6 +313,7 @@ class ExtractConversationInsightsJob < ApplicationJob
 
   def update_business_profile(updates)
     profile = @entity.business_profiles&.first
+    profile ||= @user&.business_profile rescue nil
     return unless profile
 
     updates.each do |field, value|

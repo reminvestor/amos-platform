@@ -451,8 +451,10 @@ module Tools
         "sequence_manager",
         # Support & Evolution canvases
         "support_tickets",
-        # Token Economy
-        "wallet"
+        # Payment & Billing
+        "payment_setup",
+        # Unified Settings
+        "settings"
       ]
 
       # Add module canvases if entity is provided

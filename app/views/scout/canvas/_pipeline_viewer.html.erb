@@ -677,12 +677,7 @@ async function pipelineMoveStage(opportunityId, newStage) {
 }
 
 function pipelineRefresh() {
-  // Ask Scout to refresh the pipeline view
-  if (window.scoutSendMessage) {
-    window.scoutSendMessage('Show me the sales pipeline');
-  } else {
-    window.location.reload();
-  }
+  window.scoutLoadCanvas?.('pipeline_viewer', {}, true);
 }
 
 function pipelineCreateOpportunity() {
@@ -756,9 +751,8 @@ async function submitOpportunity(event) {
 }
 
 function pipelineViewOpportunity(id) {
-  if (window.scoutSendMessage) {
-    window.scoutSendMessage(`Show me details for opportunity ${id}`);
-  }
+  // Load pipeline viewer focused on this opportunity (future: opportunity detail canvas)
+  window.scoutLoadCanvas?.('pipeline_viewer', { opportunity_id: id, expanded: true }, true);
 }
 
 function pipelineCloseWon(id, name) {

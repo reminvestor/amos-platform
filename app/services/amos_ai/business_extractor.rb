@@ -77,14 +77,11 @@ module AmosAI
     def format_current_business_context
       context_parts = []
 
-      context_parts << "Entity: #{@entity.name}" if @entity.name.present?
-      context_parts << "Industry: #{@entity.industry}" if @entity.industry.present?
-
-      # Get existing business profile
-      business_profile = @entity.business_profiles&.first
-      if business_profile&.business_info.present?
-        context_parts << "Business Profile: #{business_profile.business_info.to_json}"
-      end
+      biz = BusinessContext.for(@user, @entity)
+      context_parts << "Business: #{biz.company_name}"
+      context_parts << "Industry: #{biz.industry}" if biz.industry.present?
+      context_parts << "Description: #{biz.description}" if biz.description.present?
+      context_parts << "Target Audience: #{biz.target_audience}" if biz.target_audience.present?
 
       # Get recent insights to avoid duplicates
       recent_insights = BusinessInsight.where(entity: @entity)

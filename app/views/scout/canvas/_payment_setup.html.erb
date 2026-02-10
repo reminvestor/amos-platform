@@ -1,0 +1,496 @@
+<%
+  billing_account = current_user.user_billing_account rescue nil
+  config = BillingConfiguration.current
+  uplift_multiplier = 1 + (config.uplift_percentage / 100.0)
+  is_onboarding = billing_account && !billing_account.has_payment_method?
+
+  # Create Stripe SetupIntent for the form
+  if billing_account
+    billing_account.ensure_stripe_customer!
+    metadata = {
+      user_id: current_user.id,
+      billing_account_type: 'user'
+    }
+    metadata[:user_billing_account_id] = billing_account.id
+    begin
+      setup_intent = Stripe::SetupIntent.create(
+        customer: billing_account.stripe_customer_id,
+        payment_method_types: ['card'],
+        metadata: metadata
+      )
+    rescue => e
+      setup_intent = nil
+      stripe_error = e.message
+    end
+  end
+  publishable_key = ENV['STRIPE_PUBLISHABLE_KEY']
+%>
+
+<div class="scout-canvas payment-setup-canvas">
+  <div class="settings-bar d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+      <div style="width: 2rem; height: 2rem; border-radius: 0.5rem; background: linear-gradient(135deg, #EAB308 0%, #FACC15 100%); display: flex; align-items: center; justify-content: center;">
+        <i data-lucide="coins" style="width: 1.1rem; height: 1.1rem; color: white;" aria-hidden="true"></i>
+      </div>
+      <h4 class="mb-0">Payment Setup</h4>
+    </div>
+  </div>
+
+  <% if stripe_error %>
+    <div class="alert alert-danger">
+      <i data-lucide="alert-triangle" aria-hidden="true" class="me-1"></i>
+      Payment system error: <%= stripe_error %>. Please try again later.
+    </div>
+  <% elsif !billing_account %>
+    <div class="alert alert-warning">
+      <i data-lucide="info" aria-hidden="true" class="me-1"></i>
+      No billing account found. Please contact support.
+    </div>
+  <% else %>
+
+  <div class="payment-setup-content" style="overflow-y: auto; max-height: calc(100vh - 160px);">
+    <div class="row g-3">
+      <!-- Left Column: Pricing Info -->
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body">
+            <h6 class="fw-bold mb-2"><i data-lucide="calculator" class="me-1 text-primary" style="width:16px;height:16px;" aria-hidden="true"></i> How Pricing Works</h6>
+            <p class="text-muted small mb-2">
+              AMOS uses <strong class="text-warning">Work Tokens</strong> to track your usage across all services.
+              Work tokens are based on <strong>actual AI Model and Compute costs</strong>.
+            </p>
+            <div class="d-flex align-items-center gap-2 p-2 rounded mb-2" style="background: var(--bs-tertiary-bg);">
+              <div style="width:2rem;height:2rem;border-radius:.4rem;background:#EAB308;display:flex;align-items:center;justify-content:center;">
+                <i data-lucide="coins" style="width:1rem;height:1rem;color:white;" aria-hidden="true"></i>
+              </div>
+              <div>
+                <div class="fw-semibold small">100,000 Work Tokens &asymp; $1.00</div>
+                <div class="text-muted" style="font-size:0.75rem;">Simple, transparent usage-based pricing</div>
+              </div>
+            </div>
+            <ul class="list-unstyled small mb-0">
+              <li class="d-flex align-items-start gap-2 mb-1">
+                <i data-lucide="bot" class="text-info mt-1" style="width:.9rem;height:.9rem;" aria-hidden="true"></i>
+                <div><strong>AI Conversations</strong> &ndash; Claude, Qwen, Llama models</div>
+              </li>
+              <li class="d-flex align-items-start gap-2 mb-1">
+                <i data-lucide="mail" class="text-success mt-1" style="width:.9rem;height:.9rem;" aria-hidden="true"></i>
+                <div><strong>Email Sending</strong> &ndash; ~10 tokens per email</div>
+              </li>
+              <li class="d-flex align-items-start gap-2 mb-1">
+                <i data-lucide="hard-drive" class="text-info mt-1" style="width:.9rem;height:.9rem;" aria-hidden="true"></i>
+                <div><strong>Storage</strong> &ndash; ~2,300 tokens per GB/month</div>
+              </li>
+              <li class="d-flex align-items-start gap-2">
+                <i data-lucide="plug" class="text-warning mt-1" style="width:.9rem;height:.9rem;" aria-hidden="true"></i>
+                <div><strong>Integrations</strong> &ndash; API calls to HubSpot, Salesforce, etc.</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- AI Model Pricing -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body p-0">
+            <h6 class="fw-bold px-3 pt-3 mb-2"><i data-lucide="sparkles" class="me-1 text-info" style="width:16px;height:16px;" aria-hidden="true"></i> AI Model Pricing</h6>
+            <table class="table table-sm mb-0 small">
+              <thead>
+                <tr class="text-muted"><th>Model</th><th class="text-end">~Cost per 1K tokens</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Claude Haiku 4.5 <span class="badge bg-success">Fast</span></td><td class="text-end text-muted">~$<%= number_with_precision(0.0005 * uplift_multiplier, precision: 4) %></td></tr>
+                <tr><td>Claude Sonnet 4.5 <span class="badge bg-primary">Default</span></td><td class="text-end text-muted">~$<%= number_with_precision(0.0075 * uplift_multiplier, precision: 4) %></td></tr>
+                <tr><td>Claude Opus 4 <span class="badge bg-warning text-dark">Premium</span></td><td class="text-end text-muted">~$<%= number_with_precision(0.0375 * uplift_multiplier, precision: 4) %></td></tr>
+                <tr><td>Qwen 3 32B <span class="badge bg-info">Budget</span></td><td class="text-end text-muted">~$<%= number_with_precision(0.0003 * uplift_multiplier, precision: 4) %></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- What You Get -->
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <h6 class="fw-bold mb-2"><i data-lucide="gift" class="me-1 text-success" style="width:16px;height:16px;" aria-hidden="true"></i> What You Get</h6>
+            <div class="d-flex align-items-center gap-2 p-2 rounded mb-2" style="background: rgba(34,197,94,0.08);">
+              <i data-lucide="sparkles" style="width:1rem;height:1rem;color:#22C55E;" aria-hidden="true"></i>
+              <span class="small fw-semibold"><%= number_with_delimiter(config.free_tokens_on_signup) %> Free Tokens to get started!</span>
+            </div>
+            <ul class="list-unstyled small mb-0">
+              <li class="d-flex align-items-center gap-1 mb-1"><i data-lucide="check-circle" class="text-success" style="width:.85rem;height:.85rem;" aria-hidden="true"></i> Auto-replenish when balance is low</li>
+              <li class="d-flex align-items-center gap-1 mb-1"><i data-lucide="check-circle" class="text-success" style="width:.85rem;height:.85rem;" aria-hidden="true"></i> Set monthly spending limits</li>
+              <li class="d-flex align-items-center gap-1 mb-1"><i data-lucide="check-circle" class="text-success" style="width:.85rem;height:.85rem;" aria-hidden="true"></i> Detailed usage tracking</li>
+              <li class="d-flex align-items-center gap-1"><i data-lucide="check-circle" class="text-success" style="width:.85rem;height:.85rem;" aria-hidden="true"></i> Cancel anytime &ndash; no commitments</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Payment Form -->
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <h6 class="fw-bold mb-3">
+              <i data-lucide="credit-card" class="me-1 text-primary" style="width:16px;height:16px;" aria-hidden="true"></i>
+              <%= billing_account.has_payment_method? ? 'Update Payment Method' : 'Add Payment Method' %>
+            </h6>
+
+            <% if billing_account.free_tokens_remaining > 0 && !billing_account.has_payment_method? %>
+              <div class="alert alert-info small py-2 mb-3">
+                <i data-lucide="info" style="width:14px;height:14px;" aria-hidden="true" class="me-1"></i>
+                You have <strong><%= number_with_delimiter(billing_account.free_tokens_remaining) %> free tokens</strong>. Add a card to enable auto-replenishment when they run out.
+              </div>
+            <% end %>
+
+            <form id="canvas-payment-form">
+              <input type="hidden" id="canvas-csrf-token-value" value="<%= form_authenticity_token %>">
+
+              <div class="mb-3">
+                <label class="form-label small fw-semibold">Card Number</label>
+                <div id="canvas-card-number-element" class="form-control" style="padding: 10px; min-height: 40px;"></div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-6">
+                  <label class="form-label small fw-semibold">Expiration</label>
+                  <div id="canvas-card-expiry-element" class="form-control" style="padding: 10px; min-height: 40px;"></div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label small fw-semibold">CVC</label>
+                  <div id="canvas-card-cvc-element" class="form-control" style="padding: 10px; min-height: 40px;"></div>
+                </div>
+              </div>
+
+              <!-- Billing Address (required for tax calculation) -->
+              <div class="mb-3">
+                <label class="form-label small fw-semibold">Street Address</label>
+                <input type="text" class="form-control form-control-sm" id="canvas_billing_street"
+                       placeholder="123 Main St, Apt 4"
+                       value="<%= billing_account.billing_address&.dig('street') %>" required>
+              </div>
+              <div class="row mb-3">
+                <div class="col-7">
+                  <label class="form-label small fw-semibold">Zip Code</label>
+                  <input type="text" class="form-control form-control-sm" id="canvas_billing_zip"
+                         placeholder="78701" maxlength="10"
+                         value="<%= billing_account.billing_address&.dig('zip') %>" required>
+                </div>
+                <div class="col-5">
+                  <label class="form-label small fw-semibold text-muted">Country</label>
+                  <select class="form-select form-select-sm" id="canvas_billing_country">
+                    <option value="US" selected>US</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="canvas-card-errors" class="text-danger small mb-2" role="alert"></div>
+
+              <!-- Auto-replenishment -->
+              <div class="mb-3 p-2 rounded" style="background: var(--bs-tertiary-bg);">
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="canvas_auto_replenish" checked>
+                  <label class="form-check-label small" for="canvas_auto_replenish">
+                    <strong>Enable auto-replenishment</strong>
+                  </label>
+                  <div class="text-muted" style="font-size:0.75rem;">Automatically add tokens when balance is low</div>
+                </div>
+                <div id="canvas-replenish-settings">
+                  <label class="form-label text-muted" style="font-size:0.75rem;">Replenish amount</label>
+                  <div class="d-flex flex-column gap-1">
+                    <% config.purchase_tiers.first(4).each do |tier| %>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="canvas_replenish_amount"
+                               id="canvas_replenish_<%= tier['amount_usd'] %>"
+                               value="<%= tier['amount_usd'] %>"
+                               <%= tier['amount_usd'] == 20 ? 'checked' : '' %>>
+                        <label class="form-check-label d-flex justify-content-between w-100 small" for="canvas_replenish_<%= tier['amount_usd'] %>">
+                          <span>$<%= tier['amount_usd'] %></span>
+                          <span class="text-muted"><%= number_with_delimiter(tier['tokens']) %> tokens</span>
+                        </label>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Monthly Limit -->
+              <div class="mb-3">
+                <label class="form-label small fw-semibold">Monthly spending limit</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" id="canvas_monthly_limit" value="<%= config.default_monthly_limit_usd %>" min="10" max="10000">
+                  <span class="input-group-text">/month</span>
+                </div>
+                <div class="text-muted" style="font-size:0.75rem;">We'll pause usage when you hit this limit</div>
+              </div>
+
+              <button type="submit" id="canvas-submit-button" class="btn btn-primary w-100" disabled>
+                <span id="canvas-button-text">
+                  <i data-lucide="shield-check" style="width:14px;height:14px;" class="me-1" aria-hidden="true"></i>
+                  <%= billing_account.has_payment_method? ? 'Update Card' : 'Add Card & Get Started' %>
+                </span>
+                <span id="canvas-spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+              </button>
+            </form>
+
+            <div class="mt-3 text-center">
+              <p class="text-muted mb-1" style="font-size:0.75rem;">
+                <i data-lucide="lock" style="width:12px;height:12px;" aria-hidden="true"></i>
+                Secured by Stripe. We never see your card details.
+              </p>
+              <div class="d-flex justify-content-center align-items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="height:20px;width:auto;opacity:0.6;"><path fill="#1565C0" d="M45,35c0,2.209-1.791,4-4,4H7c-2.209,0-4-1.791-4-4V13c0-2.209,1.791-4,4-4h34c2.209,0,4,1.791,4,4V35z"/><path fill="#FFF" d="M15.186 19l-2.626 7.832c0 0-.667-3.313-.733-3.729-1.495-3.411-3.701-3.221-3.701-3.221L10.726 30v-.002h3.161L18.258 19H15.186zM17.689 30L20.56 30 22.296 19 19.389 19zM38.008 19h-3.021l-4.71 11h2.852l.588-1.571h3.596L37.619 30h2.613L38.008 19zM34.513 26.328l1.563-4.157.818 4.157H34.513zM26.369 22.206c0-.606.498-1.057 1.926-1.057.928 0 1.991.674 1.991.674l.466-2.309c0 0-1.358-.515-2.691-.515-3.019 0-4.576 1.444-4.576 3.272 0 3.306 3.979 2.853 3.979 4.551 0 .291-.231.964-1.888.964-1.662 0-2.759-.609-2.759-.609l-.495 2.216c0 0 1.063.606 3.117.606 2.059 0 4.915-1.54 4.915-3.752C30.354 23.586 26.369 23.394 26.369 22.206z"/><path fill="#FFC107" d="M12.212,24.945l-0.966-4.748c0,0-0.437-1.029-1.573-1.029c-1.136,0-4.44,0-4.44,0S10.894,20.84,12.212,24.945z"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="height:20px;width:auto;opacity:0.6;"><path fill="#3F51B5" d="M45,35c0,2.209-1.791,4-4,4H7c-2.209,0-4-1.791-4-4V13c0-2.209,1.791-4,4-4h34c2.209,0,4,1.791,4,4V35z"/><circle cx="30" cy="24" r="10" fill="#FF9800"/><circle cx="18" cy="24" r="10" fill="#F44336"/></svg>
+              </div>
+            </div>
+
+            <% if billing_account.has_payment_method? %>
+              <div class="mt-3 pt-3 border-top">
+                <h6 class="fw-bold small mb-2">Current Payment Method</h6>
+                <% pm = billing_account.payment_method_details rescue nil %>
+                <% if pm.present? %>
+                  <div class="d-flex align-items-center gap-2">
+                    <i data-lucide="credit-card" style="width:16px;height:16px;" class="text-muted" aria-hidden="true"></i>
+                    <span class="small"><%= pm[:brand]&.capitalize %> ending in <%= pm[:last4] %></span>
+                    <span class="text-muted small">Exp <%= pm[:exp_month] %>/<%= pm[:exp_year] %></span>
+                  </div>
+                <% else %>
+                  <span class="text-muted small">Card on file</span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% end %>
+</div>
+
+<style>
+.payment-setup-canvas {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 1rem 1rem 1rem;
+  background: var(--scout-bg, var(--bs-body-bg));
+}
+.payment-setup-canvas .settings-bar { flex-shrink: 0; }
+.payment-setup-canvas .payment-setup-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.payment-setup-canvas .card { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color) !important; }
+/* Stripe element containers need theme-aware background */
+.payment-setup-canvas #canvas-card-number-element,
+.payment-setup-canvas #canvas-card-expiry-element,
+.payment-setup-canvas #canvas-card-cvc-element {
+  background: var(--bs-body-bg);
+  border-color: var(--bs-border-color);
+}
+</style>
+
+<script>
+(function() {
+  let canvasStripeInitialized = false;
+  let canvasStripeLoadAttempts = 0;
+  const MAX_ATTEMPTS = 20;
+
+  function loadStripeScript() {
+    return new Promise((resolve, reject) => {
+      if (typeof Stripe !== 'undefined') { resolve(); return; }
+      if (document.querySelector('script[src*="js.stripe.com"]')) {
+        waitForStripe(resolve, reject); return;
+      }
+      const s = document.createElement('script');
+      s.src = 'https://js.stripe.com/v3/';
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Failed to load Stripe.js'));
+      document.head.appendChild(s);
+    });
+  }
+
+  function waitForStripe(resolve, reject) {
+    canvasStripeLoadAttempts++;
+    if (typeof Stripe !== 'undefined') resolve();
+    else if (canvasStripeLoadAttempts > MAX_ATTEMPTS) reject(new Error('Stripe.js timeout'));
+    else setTimeout(() => waitForStripe(resolve, reject), 100);
+  }
+
+  async function initCanvasStripe() {
+    if (canvasStripeInitialized) return;
+    const container = document.getElementById('canvas-card-number-element');
+    if (!container) return;
+    if (container.querySelector('iframe')) { canvasStripeInitialized = true; return; }
+
+    try { await loadStripeScript(); } catch (e) {
+      const err = document.getElementById('canvas-card-errors');
+      if (err) err.textContent = 'Failed to load payment system. Please reload.';
+      return;
+    }
+
+    const publishableKey = '<%= publishable_key %>';
+    if (!publishableKey) {
+      const err = document.getElementById('canvas-card-errors');
+      if (err) err.textContent = 'Payment system configuration error.';
+      return;
+    }
+
+    const stripe = Stripe(publishableKey);
+    const elements = stripe.elements();
+
+    // Detect theme for Stripe element styling
+    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    const style = {
+      base: {
+        color: isDark ? '#e2e8f0' : '#1e293b',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontSmoothing: 'antialiased',
+        fontSize: '15px',
+        '::placeholder': { color: isDark ? '#64748b' : '#94a3b8' },
+        iconColor: isDark ? '#64748b' : '#94a3b8'
+      },
+      invalid: { color: '#ef4444', iconColor: '#ef4444' },
+      complete: { color: '#22c55e', iconColor: '#22c55e' }
+    };
+
+    const cardNumber = elements.create('cardNumber', { style, showIcon: true });
+    const cardExpiry = elements.create('cardExpiry', { style });
+    const cardCvc = elements.create('cardCvc', { style });
+
+    try {
+      cardNumber.mount('#canvas-card-number-element');
+      cardExpiry.mount('#canvas-card-expiry-element');
+      cardCvc.mount('#canvas-card-cvc-element');
+      canvasStripeInitialized = true;
+    } catch (e) { console.error('Stripe mount error:', e); return; }
+
+    const submitBtn = document.getElementById('canvas-submit-button');
+    const cardErrors = document.getElementById('canvas-card-errors');
+    let numOk = false, expOk = false, cvcOk = false;
+
+    function updateBtn() { submitBtn.disabled = !(numOk && expOk && cvcOk); }
+
+    cardNumber.on('change', e => { numOk = e.complete; updateBtn(); cardErrors.textContent = e.error ? e.error.message : ''; });
+    cardExpiry.on('change', e => { expOk = e.complete; updateBtn(); if (e.error) cardErrors.textContent = e.error.message; });
+    cardCvc.on('change', e => { cvcOk = e.complete; updateBtn(); if (e.error) cardErrors.textContent = e.error.message; });
+    cardNumber.on('ready', () => cardNumber.focus());
+
+    // Auto-replenish toggle
+    const autoCheck = document.getElementById('canvas_auto_replenish');
+    const replenishDiv = document.getElementById('canvas-replenish-settings');
+    if (autoCheck && replenishDiv) {
+      autoCheck.addEventListener('change', function() { replenishDiv.style.display = this.checked ? 'block' : 'none'; });
+    }
+
+    // Form submission
+    const form = document.getElementById('canvas-payment-form');
+    if (form) {
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const clientSecret = '<%= setup_intent&.client_secret %>';
+        if (!clientSecret) { cardErrors.textContent = 'Payment setup failed. Please reload.'; return; }
+
+        submitBtn.disabled = true;
+        document.getElementById('canvas-button-text').classList.add('d-none');
+        document.getElementById('canvas-spinner').classList.remove('d-none');
+
+        // Collect billing address
+        const billingStreet = document.getElementById('canvas_billing_street')?.value?.trim() || '';
+        const billingZip = document.getElementById('canvas_billing_zip')?.value?.trim() || '';
+        const billingCountry = document.getElementById('canvas_billing_country')?.value || 'US';
+
+        if (!billingStreet || !billingZip) {
+          cardErrors.textContent = 'Street address and zip code are required for tax purposes.';
+          submitBtn.disabled = false;
+          document.getElementById('canvas-button-text').classList.remove('d-none');
+          document.getElementById('canvas-spinner').classList.add('d-none');
+          return;
+        }
+
+        let result;
+        try {
+          result = await stripe.confirmCardSetup(clientSecret, {
+            payment_method: {
+              card: cardNumber,
+              billing_details: {
+                address: {
+                  line1: billingStreet,
+                  postal_code: billingZip,
+                  country: billingCountry
+                }
+              }
+            }
+          });
+        } catch (err) {
+          cardErrors.textContent = 'Payment processing error. Please try again.';
+          submitBtn.disabled = false;
+          document.getElementById('canvas-button-text').classList.remove('d-none');
+          document.getElementById('canvas-spinner').classList.add('d-none');
+          return;
+        }
+
+        if (result.error) {
+          cardErrors.textContent = result.error.message;
+          submitBtn.disabled = false;
+          document.getElementById('canvas-button-text').classList.remove('d-none');
+          document.getElementById('canvas-spinner').classList.add('d-none');
+        } else {
+          const autoReplenish = document.getElementById('canvas_auto_replenish').checked;
+          const replenishAmt = document.querySelector('input[name="canvas_replenish_amount"]:checked')?.value || 20;
+          const monthlyLimit = document.getElementById('canvas_monthly_limit').value || 100;
+
+          let csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                          document.getElementById('canvas-csrf-token-value')?.value;
+          try {
+            const resp = await fetch('<%= confirm_payment_method_billing_path %>', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+              body: JSON.stringify({
+                payment_method_id: result.setupIntent.payment_method,
+                auto_replenish_enabled: autoReplenish,
+                auto_replenish_amount_usd: parseInt(replenishAmt),
+                monthly_limit_usd: parseInt(monthlyLimit),
+                billing_address: {
+                  street: billingStreet,
+                  zip: billingZip,
+                  country: billingCountry
+                }
+              })
+            });
+            if (resp.ok) {
+              // Show success in canvas, reload settings
+              document.getElementById('canvas-button-text').innerHTML = '<i data-lucide="check-circle" style="width:14px;height:14px;" class="me-1"></i> Card Added!';
+              document.getElementById('canvas-button-text').classList.remove('d-none');
+              document.getElementById('canvas-spinner').classList.add('d-none');
+              submitBtn.classList.remove('btn-primary');
+              submitBtn.classList.add('btn-success');
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+              // Reload the settings canvas after a moment
+              setTimeout(function() {
+                if (window.scoutController?.loadScoutCanvas) {
+                  window.scoutController.loadScoutCanvas('settings', { tab: 'billing' });
+                }
+              }, 1500);
+            } else {
+              let msg = 'Failed to save payment method';
+              try { const d = await resp.json(); msg = d.error || msg; } catch(_) {}
+              cardErrors.textContent = msg;
+              submitBtn.disabled = false;
+              document.getElementById('canvas-button-text').classList.remove('d-none');
+              document.getElementById('canvas-spinner').classList.add('d-none');
+            }
+          } catch (fetchErr) {
+            cardErrors.textContent = fetchErr.message || 'Network error.';
+            submitBtn.disabled = false;
+            document.getElementById('canvas-button-text').classList.remove('d-none');
+            document.getElementById('canvas-spinner').classList.add('d-none');
+          }
+        }
+      });
+    }
+  }
+
+  // Initialize after DOM insertion
+  setTimeout(initCanvasStripe, 150);
+  if (typeof lucide !== 'undefined') setTimeout(() => lucide.createIcons(), 50);
+})();
+</script>

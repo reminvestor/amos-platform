@@ -329,6 +329,33 @@
   </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div id="deleteContactModal" class="canvas-modal" style="display: none;">
+  <div class="canvas-modal-backdrop" onclick="closeDeleteModal()"></div>
+  <div class="canvas-modal-content" style="max-width: 420px;">
+    <div class="canvas-modal-header">
+      <h3>
+        <i data-lucide="trash-2"></i>
+        Delete Contact
+      </h3>
+      <button class="canvas-modal-close" onclick="closeDeleteModal()">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="canvas-modal-body">
+      <p>Are you sure you want to delete <strong id="deleteContactName"></strong>?</p>
+      <p class="text-muted small">This action cannot be undone. All associated data will be permanently removed.</p>
+    </div>
+    <div class="canvas-modal-footer">
+      <button onclick="closeDeleteModal()" class="canvas-btn secondary">Cancel</button>
+      <button onclick="confirmDeleteContact()" id="deleteConfirmBtn" class="canvas-btn" style="background: #ef4444; color: white;">
+        <i data-lucide="trash-2"></i>
+        Delete
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 // Contact viewer functionality
 function scoutCreateContact() {
@@ -336,25 +363,76 @@ function scoutCreateContact() {
 }
 
 function scoutViewContact(contactId) {
-  window.scoutSendMessage?.(`Show me details for contact ${contactId}`);
+  window.scoutLoadCanvas?.('contact_detail', { contact_id: contactId });
 }
 
 function scoutEditContact(contactId) {
-  window.scoutSendMessage?.(`Edit contact ${contactId}`);
+  window.scoutLoadCanvas?.('contact_detail', { contact_id: contactId, edit: true });
 }
 
+// ── Delete: modal confirmation → direct API call ──
+let pendingDeleteContactId = null;
+
 function scoutDeleteContact(contactId) {
-  if (confirm('Are you sure you want to delete this contact?')) {
-    window.scoutSendMessage?.(`Delete contact ${contactId}`);
+  pendingDeleteContactId = contactId;
+  // Find contact name from the table row
+  const row = document.querySelector(`tr[data-contact-id="${contactId}"]`);
+  const name = row?.querySelector('td:nth-child(2) .fw-semibold')?.textContent?.trim() || 'this contact';
+  document.getElementById('deleteContactName').textContent = name;
+  document.getElementById('deleteContactModal').style.display = 'flex';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeDeleteModal() {
+  document.getElementById('deleteContactModal').style.display = 'none';
+  pendingDeleteContactId = null;
+}
+
+async function confirmDeleteContact() {
+  if (!pendingDeleteContactId) return;
+  const contactId = pendingDeleteContactId;
+  const btn = document.getElementById('deleteConfirmBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader"></i> Deleting...';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  try {
+    const response = await fetch(`/api/v1/contacts_list/${contactId}`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.ok || response.status === 204) {
+      // Remove the row from the table with a fade
+      const row = document.querySelector(`tr[data-contact-id="${contactId}"]`);
+      if (row) {
+        row.style.transition = 'opacity 0.3s ease';
+        row.style.opacity = '0';
+        setTimeout(() => row.remove(), 300);
+      }
+      closeDeleteModal();
+    } else {
+      const data = await response.json().catch(() => ({}));
+      alert(data.message || data.error || 'Failed to delete contact');
+    }
+  } catch (error) {
+    alert('Failed to delete contact: ' + error.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="trash-2"></i> Delete';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 }
 
 function scoutAddToGroup(contactId) {
-  window.scoutSendMessage?.(`Add contact ${contactId} to a group`);
+  window.scoutLoadCanvas?.('contact_detail', { contact_id: contactId, action: 'add_to_group' });
 }
 
 function scoutSendEmail(contactId) {
-  window.scoutSendMessage?.(`Create an email campaign for contact ${contactId}`);
+  window.scoutLoadCanvas?.('contact_detail', { contact_id: contactId, action: 'send_email' });
 }
 
 function scoutImportContacts() {
@@ -505,13 +583,39 @@ if (dropzone) {
   });
 }
 
+// ── Export: direct client-side CSV download ──
 function scoutExportContacts() {
-  const selectedContacts = getSelectedContacts();
-  if (selectedContacts.length > 0) {
-    window.scoutSendMessage?.(`Export ${selectedContacts.length} selected contacts`);
-  } else {
-    window.scoutSendMessage?.("Export all contacts to a file");
-  }
+  const selectedIds = getSelectedContacts();
+  const rows = document.querySelectorAll('#contactsTable tr');
+  const csvRows = [['Name', 'Email', 'Company', 'Source', 'Groups', 'Added']];
+
+  rows.forEach(row => {
+    const contactId = row.dataset.contactId;
+    // If contacts are selected, only export those; otherwise export all visible
+    if (selectedIds.length > 0 && !selectedIds.includes(contactId)) return;
+    if (row.style.display === 'none') return;
+
+    const name = row.querySelector('td:nth-child(2) .fw-semibold')?.textContent?.trim() || '';
+    const email = row.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
+    const company = row.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
+    const source = row.querySelector('td:nth-child(5)')?.textContent?.trim() || '';
+    const groups = Array.from(row.querySelectorAll('td:nth-child(6) .canvas-badge'))
+                        .map(b => b.textContent.trim()).join('; ');
+    const added = row.querySelector('td:nth-child(7)')?.textContent?.trim() || '';
+
+    csvRows.push([name, email, company, source, groups, added].map(v =>
+      '"' + (v || '').replace(/"/g, '""') + '"'
+    ));
+  });
+
+  const csv = csvRows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `contacts_export_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function scoutSelectAllContacts() {
@@ -531,7 +635,8 @@ function scoutToggleAllContacts(checkbox) {
 }
 
 function scoutLoadMoreContacts() {
-  window.scoutSendMessage?.("Load more contacts");
+  // Reload the contact viewer with a higher page/limit
+  window.scoutLoadCanvas?.('contact_viewer', { page: 2 }, true);
 }
 
 function getSelectedContacts() {

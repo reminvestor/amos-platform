@@ -10,34 +10,28 @@ module V3
     #
     class PlatformCreateTool < ::Tools::BaseTool
       # Types that need special builder routing (not just DB creates)
-      BUILDER_TYPES = %w[landing_page website web_app workflow automation app module sync scheduled_task integration].freeze
+      BUILDER_TYPES = %w[landing_page website web_app workflow automation app module sync scheduled_task integration custom_domain].freeze
 
       def self.metadata
         {
           name: "platform_create",
           description: <<~DESC.strip,
-            Create any platform object. This is the universal creation tool.
+            Create any platform object. Pass type and data.
 
-            Types and examples:
-            - contact — platform_create(type: "contact", data: { first_name: "Jane", last_name: "Doe", email: "j@example.com" })
-            - contact_group — platform_create(type: "contact_group", data: { name: "VIP Customers" })
-            - email_template — platform_create(type: "email_template", data: { name: "Welcome", subject: "Welcome!", body: "<h1>Hi!</h1>" })
-            - campaign — platform_create(type: "campaign", data: { name: "Summer Sale", email_template_id: 5 })
-            - automation — platform_create(type: "automation", data: { name: "Welcome Flow", trigger: "contact_created", action: "send_email", action_config: { template_id: 5 } })
-              Triggers: contact_created, form_submit, record_updated, status_changed, field_changed, schedule, webhook
-              Actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user
-            - sync — platform_create(type: "sync", data: { integration: "stripe", source: "customers", target: "Contact", schedule: "daily" })
-            - integration — platform_create(type: "integration", data: { name: "Stripe", base_url: "https://api.stripe.com/v1", documentation_url: "https://stripe.com/docs/api", auth_type: "basic_auth", auth_configs: [{ key: "Authorization", value: "Basic {api_key}:", placement: "header" }], test_endpoint: "/charges?limit=1", operations: [{ name: "List Customers", operation_id: "list_customers", http_method: "GET", path_template: "/customers", description: "List all customers" }] })
-            - scheduled_task — platform_create(type: "scheduled_task", data: { name: "Weekly Report", prompt: "Generate a summary of this week's contacts", schedule: "weekly" })
-            - landing_page — platform_create(type: "landing_page", data: { title: "My Page", description: "Lead gen page" })
-            - app — platform_create(type: "app", data: { name: "CRM", description: "Contact management" })
+            Types: contact, contact_group, email_template, campaign, automation, sync, integration, scheduled_task, landing_page, app, custom_domain, or any custom app type.
 
-            Custom app records (after building an app):
-            - platform_create(type: "task", data: { title: "Fix bug", status: "todo", project_id: 5 })
-            - platform_create(type: "product", data: { name: "Widget", sku: "W-001", price: 29.99, quantity: 100 })
-            Any dynamic module type created via app building is supported. Use platform_query(type: "schema") to discover available types.
+            Examples:
+            - type: "contact", data: { first_name: "Jane", email: "j@example.com", lifecycle_stage: "customer" }
+            - type: "contact_group", data: { name: "VIP Customers" }
+            - type: "email_template", data: { name: "Welcome", subject: "Welcome!", body: "<h1>Hi!</h1>" }
+            - type: "campaign", data: { name: "Summer Sale", email_template_id: 5 }
+            - type: "automation", data: { name: "Welcome Flow", trigger: "contact_created", action: "send_email", action_config: { template_id: 5 } }
+            - type: "landing_page", data: { title: "My Page", description: "Lead gen page" }
+            - type: "app", data: { name: "CRM", description: "Contact management" }
 
-            Contact defaults: lifecycle_stage="lead", status="active".
+            Automation triggers: contact_created, form_submit, record_updated, status_changed, field_changed, schedule, webhook
+            Automation actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user
+            Contact fields: email (required), first_name, last_name, lifecycle_stage, status, phone, company, custom_fields.
           DESC
           category: "v3_core",
           input_schema: {
@@ -49,7 +43,7 @@ module V3
               },
               data: {
                 type: "object",
-                description: "Object data. Fields depend on type. Use platform_query(type='schema', object='typename') to see available fields for data objects."
+                description: "Object data. Fields depend on type. Use the platform_query tool with type='schema' and object='typename' to see available fields."
               }
             },
             required: %w[type data]
@@ -65,6 +59,15 @@ module V3
 
         return error_response("Missing required field: type") if type.blank?
         return error_response("Missing required field: data") if data.blank?
+
+        # ═══ BATCH CREATE: detect plural array in data ═══
+        # If data contains a "contacts", "email_templates", etc. array, batch-create all items.
+        # This turns 10 tool calls into 1.
+        plural_key = type.pluralize.to_s
+        items_array = data[plural_key] || data[plural_key.to_sym] || data["items"] || data[:items]
+        if items_array.is_a?(Array) && items_array.length > 1
+          return batch_create(type, items_array, data)
+        end
 
         # Route builder types to specialized handlers
         if BUILDER_TYPES.include?(type)
@@ -91,6 +94,56 @@ module V3
       private
 
       # ═══════════════════════════════════════════════════════════════
+      # BATCH CREATE — turn N tool calls into 1
+      # ═══════════════════════════════════════════════════════════════
+
+      def batch_create(type, items, parent_data = {})
+        plural_type = type.pluralize
+        create_tool = ::Tools::CreateObjectTool.new(user: user, entity: entity, context: context)
+
+        # Shared fields from parent data (e.g., contact_group_ids, tags) applied to all items
+        shared_fields = parent_data.except(plural_type, plural_type.to_sym, "items", :items)
+
+        created = 0
+        updated = 0
+        errors_list = []
+
+        items.each_with_index do |item_data, idx|
+          item_data = item_data.merge(shared_fields) if shared_fields.any?
+          begin
+            result = create_tool.execute({ "object_type" => plural_type, "data" => item_data })
+            if result.is_a?(Hash)
+              if result[:updated] || result.dig(:data, :updated)
+                updated += 1
+              else
+                created += 1
+              end
+            else
+              created += 1
+            end
+          rescue => e
+            errors_list << { index: idx, error: e.message }
+          end
+        end
+
+        summary = "Batch #{plural_type}: #{created} created, #{updated} updated (existing)"
+        summary += ", #{errors_list.length} failed" if errors_list.any?
+
+        Rails.logger.info "[V3::PlatformCreate] #{summary}"
+
+        success_response(
+          object_type: plural_type,
+          batch: true,
+          total: items.length,
+          created: created,
+          updated: updated,
+          failed: errors_list.length,
+          errors: errors_list.first(5),  # Cap error details to avoid bloating response
+          message: summary
+        )
+      end
+
+      # ═══════════════════════════════════════════════════════════════
       # BUILDER ROUTING
       # ═══════════════════════════════════════════════════════════════
 
@@ -112,6 +165,8 @@ module V3
           build_integration(data)
         when "scheduled_task"
           build_scheduled_task(data)
+        when "custom_domain"
+          build_custom_domain(data)
         else
           error_response("Unknown builder type: #{type}")
         end
@@ -653,6 +708,48 @@ module V3
         error_response("Scheduled task creation failed: #{e.message}")
       end
 
+      # ═══════════════════════════════════════════════════════════════
+      # CUSTOM DOMAIN — Register a custom domain for landing pages, websites, emails
+      # ═══════════════════════════════════════════════════════════════
+
+      def build_custom_domain(data)
+        domain_name = data["domain_name"] || data[:domain_name] || data["domain"] || data[:domain]
+        subdomain = data["subdomain"] || data[:subdomain]
+        connection_id = data["connection_id"] || data[:connection_id]
+
+        return error_response("Missing: domain_name (e.g., 'example.com')") if domain_name.blank?
+
+        # Find GoDaddy connection if specified
+        connection = nil
+        if connection_id.present?
+          connection = entity.connections.find_by(id: connection_id)
+        end
+
+        service = CustomDomainService.new(entity: entity, user: user)
+        result = service.register_domain(domain_name, subdomain: subdomain, connection: connection)
+
+        if result[:success]
+          domain = result[:custom_domain]
+
+          success_response(
+            custom_domain_id: domain.id,
+            domain_name: domain.domain_name,
+            full_domain: domain.full_domain,
+            cname_target: domain.cname_target,
+            web_status: domain.web_status,
+            instructions: result[:instructions],
+            message: "Domain '#{domain.full_domain}' registered! " \
+                     "Point a CNAME record to #{domain.cname_target} to connect it.",
+            canvas_type: "custom_domains"
+          )
+        else
+          error_response(result[:error] || result[:errors]&.join(", ") || "Domain registration failed")
+        end
+      rescue => e
+        Rails.logger.error "[V3::PlatformCreate] Custom domain creation failed: #{e.message}"
+        error_response("Custom domain creation failed: #{e.message}")
+      end
+
       def schedule_to_cron(schedule)
         case schedule.to_s.downcase
         when "hourly" then "0 * * * *"
@@ -774,18 +871,37 @@ module V3
             requirements: data.except("name", "description", :name, :description)
           )
 
-          stream_progress("Building app '#{name}'...", percentage: 30)
+          stream_progress("Building app '#{name}'...", percentage: 10)
 
           # Approve and build immediately (no user-facing plan review)
           plan.update!(status: "approved")
-          builder = ApplicationBuildService.new(plan)
+
+          # Wire progress callback so build steps stream to the user in real-time
+          build_progress = ->(msg, pct = nil) { stream_progress(msg, percentage: pct) }
+
+          # Wire cancellation check — if the user sends a new message during the build,
+          # pause gracefully so the agent can respond to them
+          build_start_time = Time.current
+          cancel_check = -> {
+            ScoutMessage.where(
+              user_id: user.id,
+              entity_id: entity.id,
+              role: "user"
+            ).where("created_at > ?", build_start_time).exists?
+          }
+
+          builder = ApplicationBuildService.new(
+            plan,
+            progress_callback: build_progress,
+            cancellation_check: cancel_check
+          )
           result = builder.execute!
 
-          if result[:success]
+          if result[:success] == true
             stream_progress("App '#{name}' is ready!", percentage: 100)
 
             # Find the built module to open its canvas
-            built_module = plan.app_modules.first
+            built_module = plan.reload.app_modules.first
             canvas_data = if built_module
                             { app_module_id: built_module.id }
                           else
@@ -800,6 +916,16 @@ module V3
               message: "App '#{name}' is built and ready to use!",
               canvas_type: built_module ? "module_manager" : nil,
               canvas_data: canvas_data
+            )
+          elsif result[:success] == :partial
+            # Build was paused by user — report what was completed
+            completed = result[:results][:modules]&.map { |m| m[:name] } || []
+            success_response(
+              app_id: plan.id,
+              name: name,
+              modules: result[:results][:modules]&.map { |m| { id: m[:id], name: m[:name], slug: m[:slug] } } || [],
+              message: "Build paused. Completed so far: #{completed.join(', ')}. You can ask me to resume it anytime.",
+              partial: true
             )
           else
             error_response("App build failed: #{result[:error]}")

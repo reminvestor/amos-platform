@@ -73,26 +73,55 @@ module Tools
           create_activity(data)
         end
 
+        # Determine if this was a find-or-create merge vs a new record
+        was_existing = @was_existing || false
+        @was_existing = nil  # reset for next call
+
         response = {
           object_type: object_type,
           id: result.id,
-          created: true,
+          created: !was_existing,
+          updated: was_existing,
           record: serialize_record(result)
         }
+        response[:note] = "Existing record found and updated (matched by email)" if was_existing
         
         # Include corrections so Amos can inform the user what was adjusted
         if @field_corrections&.any?
           response[:auto_corrections] = @field_corrections.map { |c| 
             "Set #{c[:corrected_field]} to '#{c[:corrected_value]}' (#{c[:reason]})"
           }
-          response[:note] = "Some values were automatically adjusted: #{response[:auto_corrections].join('; ')}"
+          note = response[:note] || ""
+          note += ". " if note.present?
+          note += "Some values were automatically adjusted: #{response[:auto_corrections].join('; ')}"
+          response[:note] = note
         end
         
         success_response(response)
       rescue ActiveRecord::RecordInvalid => e
+        # Rich error: include valid values so the Brain can self-correct in one try
+        enriched_errors = e.record.errors.map do |error|
+          msg = error.full_message
+          case error.attribute.to_s
+          when 'status'
+            valid = e.record.class.const_get(:STATUSES) rescue nil
+            msg += " (valid: #{valid.join(', ')})" if valid
+          when 'lifecycle_stage'
+            valid = e.record.class.const_get(:LIFECYCLE_STAGES).keys rescue nil
+            msg += " (valid: #{valid.join(', ')})" if valid
+          when 'lead_source'
+            valid = e.record.class.const_get(:LEAD_SOURCES) rescue nil
+            msg += " (valid: #{valid.join(', ')})" if valid
+          when 'stage'
+            valid = e.record.class.const_get(:STAGES).keys rescue nil
+            msg += " (valid: #{valid.join(', ')})" if valid
+          end
+          msg
+        end
+
         error_response(
-          "Validation failed: #{e.message}",
-          validation_errors: e.record.errors.full_messages
+          "Validation failed: #{enriched_errors.join(', ')}",
+          validation_errors: enriched_errors
         )
       rescue => e
         Rails.logger.error "CreateObjectTool error: #{e.message}"
@@ -201,29 +230,63 @@ module Tools
       if data[:status].present?
         data[:status] = data[:status].downcase
       end
-      # status and lifecycle_stage defaults are set by Contact model callbacks
 
       # Remove deprecated lead boolean -- lifecycle_stage handles this now
       data.delete(:lead)
 
+      # Smart name defaults: extract from email if missing
+      if data[:email].present?
+        if data[:first_name].blank? || data[:last_name].blank?
+          prefix = data[:email].split('@').first.to_s
+          parts = prefix.split(/[._-]/).map(&:capitalize)
+          data[:first_name] = parts.first || "Contact" if data[:first_name].blank?
+          data[:last_name] = parts.length > 1 ? parts.last : data[:first_name] if data[:last_name].blank?
+        end
+      end
+
+      # Strip unknown attributes — store them as custom_fields so data isn't lost
+      valid_columns = Contact.column_names.map(&:to_sym)
+      unknown_attrs = data.keys - valid_columns - [:contact_group_ids]
+      if unknown_attrs.any?
+        custom_fields = (data[:custom_fields] || {}).symbolize_keys
+        unknown_attrs.each do |attr|
+          custom_fields[attr] = data.delete(attr)
+        end
+        data[:custom_fields] = custom_fields
+        Rails.logger.info "[CreateContact] Moved unknown attrs to custom_fields: #{unknown_attrs.join(', ')}"
+      end
+
+      # ═══ FIND-OR-UPDATE-OR-CREATE by email ═══
+      # If a contact with this email already exists for this entity, merge new data
+      # instead of crashing on a duplicate. This saves the LLM from having to check first.
+      existing = data[:email].present? ? entity.contacts.find_by(email: data[:email]) : nil
+
+      if existing
+        # Merge: only overwrite fields that are provided and non-blank
+        update_data = data.except(:email) # don't update the email itself
+        update_data.reject! { |_k, v| v.blank? }
+        
+        # Merge custom_fields additively (don't overwrite existing custom fields)
+        if update_data[:custom_fields].present? && existing.custom_fields.present?
+          update_data[:custom_fields] = existing.custom_fields.merge(update_data[:custom_fields].stringify_keys)
+        end
+
+        existing.update!(update_data) if update_data.any?
+        Rails.logger.info "♻️ Found existing contact #{existing.email} (ID: #{existing.id}) — merged new data"
+        @was_existing = true
+        return existing
+      end
+
+      # New contact
       contact = Contact.new(data)
       contact.entity = entity
-      contact.user = user  # AUTO-SET user_id - fixes "User must exist" error
+      contact.user = user
       
       begin
         contact.save!
       rescue ActiveRecord::RecordInvalid => e
-        # Provide helpful guidance for Amos to self-correct
         error_msg = e.record.errors.full_messages.join(', ')
-        hints = []
-        e.record.errors.attribute_names.each do |attr|
-          case attr.to_s
-          when 'status'
-            hints << "Valid status values: active, inactive, unsubscribed, bounced. For sales stages, use lifecycle_stage."
-          when 'lifecycle_stage'
-            hints << "Valid lifecycle_stage values: subscriber, lead, mql, sql, opportunity, customer, evangelist, other."
-          end
-        end
+        hints = build_validation_hints(e.record)
         hint = hints.any? ? " HINT: #{hints.join(' ')}" : ""
         raise ActiveRecord::RecordInvalid.new(e.record), "#{error_msg}.#{hint}"
       end
@@ -232,7 +295,40 @@ module Tools
       contact
     end
 
+    # Build helpful hints from validation errors so the Brain can self-correct in one try
+    def build_validation_hints(record)
+      hints = []
+      record.errors.each do |error|
+        case error.attribute.to_s
+        when 'status'
+          hints << "Valid status values: #{Contact::STATUSES.join(', ')}."
+        when 'lifecycle_stage'
+          hints << "Valid lifecycle_stage values: #{Contact::LIFECYCLE_STAGES.keys.join(', ')}."
+        when 'lead_source'
+          hints << "Valid lead_source values: #{Contact::LEAD_SOURCES.join(', ')}."
+        when 'email'
+          hints << "Email must be present and valid (e.g., user@example.com)."
+        when 'first_name', 'last_name'
+          hints << "#{error.attribute.to_s.titleize} is required."
+        end
+      end
+      hints.uniq
+    end
+
     def create_contact_group(data)
+      data = data.symbolize_keys
+      name = data[:name]
+
+      # Find-or-create by name: if group already exists, return it
+      if name.present?
+        existing = entity.contact_groups.find_by(name: name)
+        if existing
+          Rails.logger.info "♻️ Contact group '#{name}' already exists (ID: #{existing.id}) — returning existing"
+          @was_existing = true
+          return existing
+        end
+      end
+
       group = ContactGroup.new(data)
       group.entity = entity
       group.save!
@@ -242,6 +338,19 @@ module Tools
     end
 
     def create_email_template(data)
+      data = data.symbolize_keys
+      name = data[:name]
+
+      # Find-or-create by name: if template already exists, return it
+      if name.present?
+        existing = entity.email_templates.find_by(name: name)
+        if existing
+          Rails.logger.info "♻️ Email template '#{name}' already exists (ID: #{existing.id}) — returning existing"
+          @was_existing = true
+          return existing
+        end
+      end
+
       template = EmailTemplate.new(data)
       template.user = user
       template.entity = entity
@@ -558,8 +667,8 @@ module Tools
           email: record.email,
           first_name: record.first_name,
           last_name: record.last_name,
+          lifecycle_stage: record.lifecycle_stage,
           status: record.status,
-          lead: record.lead,
           created_at: record.created_at
         }
       when ContactGroup

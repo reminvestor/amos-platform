@@ -40,7 +40,6 @@ module ApplicationHelper
   }.freeze
 
   # Sections that should ALWAYS be visible regardless of user config
-  # Note: 'media' is included so it shows in Advanced Mode for all spaces
   ALWAYS_VISIBLE_SECTIONS = %w[ai settings tasks media].freeze
   
   # Items that should ALWAYS be visible regardless of user config

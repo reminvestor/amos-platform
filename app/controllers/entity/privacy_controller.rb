@@ -1,8 +1,7 @@
 class Entity::PrivacyController < Entity::BaseController
 
   def show
-    # Privacy settings stored in entity settings
-    @privacy_settings = current_entity.settings["privacy"] || default_privacy_settings
+    redirect_to chat_mode_path, status: :moved_permanently
   end
 
   def update
@@ -23,7 +22,10 @@ class Entity::PrivacyController < Entity::BaseController
     current_entity.settings["privacy"] = privacy_settings
     current_entity.save!
 
-    redirect_to entity_privacy_path, notice: "Privacy settings updated successfully."
+    respond_to do |format|
+      format.json { render json: { success: true, message: "Privacy settings updated successfully." } }
+      format.html { redirect_to chat_mode_path, notice: "Privacy settings updated successfully." }
+    end
   end
 
   private

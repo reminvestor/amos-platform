@@ -191,11 +191,16 @@
           Business Settings
         </button>
       <% end %>
-      <div class="hub-user-menu-divider"></div>
-      <a href="<%= advanced_mode_path %>" class="hub-user-menu-item">
-        <i data-lucide="layout-dashboard"></i>
-        Advanced Mode
-      </a>
+      <button class="hub-user-menu-item" data-canvas="settings" data-action="click->hub-sidebar#loadCanvas">
+        <i data-lucide="settings"></i>
+        Settings
+      </button>
+      <% if current_user.admin? %>
+        <a href="<%= admin_dashboard_path %>" class="hub-user-menu-item">
+          <i data-lucide="shield"></i>
+          Admin Portal
+        </a>
+      <% end %>
       <div class="hub-user-menu-divider"></div>
       <a href="/users/sign_out" class="hub-user-menu-item hub-logout" data-turbo-method="delete">
         <i data-lucide="log-out"></i>
@@ -2325,6 +2330,28 @@
 
 .hub-sidebar.collapsed .hub-user-avatar {
   margin: 0;
+}
+
+/* When collapsed, allow the user menu to escape the sidebar overflow */
+.hub-sidebar.collapsed .hub-sidebar-footer {
+  position: relative;
+  overflow: visible;
+}
+
+.hub-sidebar.collapsed .hub-user-info {
+  position: relative;
+}
+
+/* Pop the user menu out to the right, over the chat area */
+.hub-sidebar.collapsed .hub-user-menu {
+  position: fixed;
+  left: 68px;
+  right: auto;
+  bottom: 12px;
+  width: 220px;
+  z-index: 9999;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 
 /* Expand button hidden by default - not needed with slim sidebar */

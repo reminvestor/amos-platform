@@ -60,10 +60,11 @@ class V3::SystemPromptBuilderTest < ActiveSupport::TestCase
     assert prompt.length > 0
   end
 
-  test "accepts intent mode" do
-    prompt = @builder.build(intent_mode: :create)
+  test "builds prompt without intent mode" do
+    prompt = @builder.build(message: "create a landing page")
 
     assert prompt.is_a?(String)
+    assert prompt.length > 0
   end
 
   test "does not reference deprecated concepts" do

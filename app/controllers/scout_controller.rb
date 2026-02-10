@@ -109,6 +109,8 @@ class ScoutController < ApplicationController
     end
 
     begin
+      # Load history BEFORE saving user message to avoid duplication
+      conversation_history = persisted_history_last_k(20)
       save_scout_message("user", user_message)
 
       # V3 agent loop (non-streaming for JSON endpoint)
@@ -119,10 +121,9 @@ class ScoutController < ApplicationController
         user: current_user,
         entity: current_entity,
         session_id: @session_id,
-        model: model
+        model: model,
+        client_ip: real_client_ip
       )
-
-      conversation_history = persisted_history_last_k(20)
 
       result = agent.process_message_streaming(
         user_message,
@@ -193,6 +194,9 @@ class ScoutController < ApplicationController
         metadata[:file_urls] = file_urls
       end
 
+      # Load history BEFORE saving user message to avoid duplication
+      conversation_history = persisted_history_last_k(20)
+
       # Save user message with file info
       save_scout_message("user", enhanced_message, metadata: metadata)
 
@@ -214,7 +218,7 @@ class ScoutController < ApplicationController
       end
 
       # Process the message with 20-message active window
-      result = interactive_service.process_message(user_message, persisted_history_last_k(20), current_canvas)
+      result = interactive_service.process_message(user_message, conversation_history, current_canvas)
 
       # If workflow is awaiting input and we captured a message, use that
       if result[:awaiting_input] && workflow_message
@@ -481,7 +485,8 @@ class ScoutController < ApplicationController
       agent = V3::AgentLoop.new(
         user: current_user,
         entity: current_entity,
-        session_id: @session_id
+        session_id: @session_id,
+        client_ip: real_client_ip
       )
 
       prompt = "Continue the current workflow with these inputs: #{user_inputs.to_json}"
@@ -596,7 +601,11 @@ class ScoutController < ApplicationController
     # Build enhanced message with file attachments
     enhanced_message = build_v3_enhanced_message(message, file_urls)
 
-    # Save user message
+    # Get conversation history BEFORE saving user message to avoid duplication
+    # (the agent loop will add the current message separately)
+    conversation_history = persisted_history_last_k(20)
+
+    # Save user message (after loading history so it's not included twice)
     save_scout_message("user", enhanced_message)
 
     # Determine model - default to qwen for auto mode (fast/cheap)
@@ -620,11 +629,9 @@ class ScoutController < ApplicationController
       user: current_user,
       entity: current_entity,
       session_id: @session_id,
-      model: model
+      model: model,
+      client_ip: real_client_ip
     )
-
-    # Get conversation history
-    conversation_history = persisted_history_last_k(20)
 
     # Process with streaming
     result = agent.process_message_streaming(
@@ -690,12 +697,28 @@ class ScoutController < ApplicationController
       end
     when :thinking_done
       stream_stop_thinking
+    when :clear_content
+      # Clear previously streamed content (e.g., when model output a text tool call that's being recovered)
+      stream_update({ type: "clear_content" })
+    when :working
+      # Show working indicator during tool execution
+      stream_working_indicator(chunk[:tool_name])
     when :canvas_suggestion
       stream_update({
         type: "load_canvas",
         canvas: chunk[:canvas],
         canvas_data: chunk[:data] || {}
       })
+    when :progress
+      # Forward build/tool progress events to the frontend
+      stream_update({
+        type: "progress",
+        tool: chunk[:tool],
+        message: chunk[:message],
+        percentage: chunk[:percentage],
+        phase: chunk[:phase],
+        detail: chunk[:detail]
+      }.compact)
     when :ask_user
       stream_update(chunk[:question])
     when :status
@@ -747,7 +770,11 @@ class ScoutController < ApplicationController
       version: "v3"
     })
 
-    Rails.logger.info "[V3] Complete. Tools: #{result[:tools_used]&.join(', ')}, Model: #{result[:model_used]}"
+    if result[:escalated]
+      Rails.logger.info "[V3] Complete (ESCALATED: #{result[:original_model]} -> #{result[:model_used]}). Tools: #{result[:tools_used]&.join(', ')}"
+    else
+      Rails.logger.info "[V3] Complete. Tools: #{result[:tools_used]&.join(', ')}, Model: #{result[:model_used]}"
+    end
   end
 
   def process_response_html_v3(content)
@@ -1056,9 +1083,23 @@ class ScoutController < ApplicationController
       when "wallet"
         canvas_content = render_wallet_canvas(canvas_data)
         canvas_title = "AMOS Wallet"
+      when "payment_setup"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/payment_setup",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Payment Setup"
       when "business_profile"
         canvas_content = render_business_profile_canvas(canvas_data)
         canvas_title = "Business Settings"
+      when "settings"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/settings",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Settings"
       when "email_template_viewer"
         canvas_content = render_email_template_viewer(canvas_data)
         canvas_title = "Email Templates"
@@ -3392,16 +3433,15 @@ class ScoutController < ApplicationController
         metadata: metadata
       )
 
-    # Mirror the last 50 in cache for fast UI render (keyed by user/entity)
+    # Invalidate the conversation cache so next load gets fresh data
+    # (Don't re-query 50 messages here — that's wasteful. Let the next page load do it.)
     cache_key = "scout_conversation_#{current_user.id}_#{current_entity.id}"
-    conversation = persisted_history_last_k(50)
-    Rails.cache.write(cache_key, conversation, expires_in: 12.hours)
+    Rails.cache.delete(cache_key)
     
-    # Trigger proactive memory fetch for next response (only for user messages)
-    # Use unified session key for continuous chat
+    # Background tasks (debounced, non-blocking)
     unified_session_key = "unified_#{current_user.id}_#{current_entity.id}_#{Date.current}"
     
-    if role == 'user' && message.present?
+    if role == 'user' && message.present? && message.length > 10
       trigger_proactive_memory_fetch(unified_session_key, message)
     end
     

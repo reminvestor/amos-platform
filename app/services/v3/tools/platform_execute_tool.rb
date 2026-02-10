@@ -17,23 +17,22 @@ module V3
           description: <<~DESC.strip,
             Execute platform operations and integration actions.
             
-            Actions and examples:
-            - integration — platform_execute(action: "integration", integration: "stripe", operation: "list_customers", inputs: { limit: 10 })
-              Smart cascade: tries IntegrationAction first (has mapping code), falls back to raw operation. Returns hint if operation missing.
-            - test_integration — platform_execute(action: "test_integration", integration_id: 42)
-              Tests authentication credentials for an integration.
-            - configure_integration_auth — platform_execute(action: "configure_integration_auth", integration_id: 42, auth_type: "api_key", auth_configs: [...], test_endpoint: "/me")
-              Configures authentication for an existing integration.
-            - add_integration_operations — platform_execute(action: "add_integration_operations", integration_id: 42, operations: [{ name: "List Invoices", operation_id: "list_invoices", http_method: "GET", path_template: "/invoices" }])
-              Adds API operations to an existing integration.
-            - generate_action — platform_execute(action: "generate_action", integration: "stripe", operation_id: "list_customers", use_ai: true)
-              Auto-generates an IntegrationAction (with input schema + mapping code) from an operation.
-            - send_campaign — platform_execute(action: "send_campaign", campaign_id: 7)
-            - generate_file — platform_execute(action: "generate_file", inputs: { format: "csv", title: "...", headers: [...], rows: [...] })
-            - generate_image — platform_execute(action: "generate_image", inputs: { prompt: "a professional banner for..." })
-            - publish_landing_page — platform_execute(action: "publish_landing_page", landing_page_id: 15)
-            - delete — platform_execute(action: "delete", type: "contact", id: 42)
-            - send_email — platform_execute(action: "send_email", inputs: { to: "...", subject: "...", body: "..." })
+            Actions:
+            - integration: Run an integration operation (smart cascade: tries IntegrationAction first, falls back to raw operation)
+            - test_integration: Test integration credentials
+            - configure_integration_auth: Set up integration authentication
+            - add_integration_operations: Add API operations to an integration
+            - generate_action: Auto-generate an IntegrationAction from an operation
+            - send_campaign: Send an email campaign
+            - generate_file: Generate CSV/PDF/Excel files
+            - generate_image: Generate an image from a prompt
+            - publish_landing_page: Publish a landing page
+            - delete: Delete a record by type and ID
+            - send_email: Send a single email
+            - verify_domain: Verify a custom domain's DNS (CNAME) configuration
+            - verify_email_domain: Start or check email sending verification for a custom domain
+            - set_primary_domain: Set a custom domain as the primary domain
+            - assign_domain: Assign a custom domain to a landing page or website
           DESC
           category: "v3_core",
           input_schema: {
@@ -41,7 +40,7 @@ module V3
             properties: {
               action: {
                 type: "string",
-                description: "The operation to execute: 'integration', 'test_integration', 'configure_integration_auth', 'add_integration_operations', 'generate_action', 'send_campaign', 'publish_landing_page', 'generate_file', 'send_email', 'delete'"
+                description: "The operation to execute: 'integration', 'test_integration', 'configure_integration_auth', 'add_integration_operations', 'generate_action', 'send_campaign', 'publish_landing_page', 'generate_file', 'send_email', 'delete', 'verify_domain', 'verify_email_domain', 'set_primary_domain', 'assign_domain'"
               },
               integration_id: {
                 type: "integer",
@@ -90,6 +89,14 @@ module V3
                 type: "array",
                 items: { type: "integer" },
                 description: "For operations on multiple contacts"
+              },
+              domain_id: {
+                type: "integer",
+                description: "For domain actions: the custom domain ID"
+              },
+              domain_name: {
+                type: "string",
+                description: "For domain actions: the domain name (e.g., 'example.com')"
               }
             },
             required: ["action"]
@@ -128,10 +135,18 @@ module V3
           execute_generate_image(args)
         when "delete"
           execute_delete(args)
+        when "verify_domain"
+          execute_verify_domain(args)
+        when "verify_email_domain"
+          execute_verify_email_domain(args)
+        when "set_primary_domain"
+          execute_set_primary_domain(args)
+        when "assign_domain"
+          execute_assign_domain(args)
         else
           error_response(
             "Unknown action: #{action}",
-            available_actions: %w[integration test_integration configure_integration_auth add_integration_operations generate_action send_campaign publish_landing_page send_email generate_file generate_image delete]
+            available_actions: %w[integration test_integration configure_integration_auth add_integration_operations generate_action send_campaign publish_landing_page send_email generate_file generate_image delete verify_domain verify_email_domain set_primary_domain assign_domain]
           )
         end
       rescue => e
@@ -158,7 +173,7 @@ module V3
                       Integration.where(entity: entity).find_by(slug: integration_slug)
         return error_response(
           "Integration '#{integration_slug}' not found.",
-          hint: "Use platform_create(type: 'integration', ...) to set it up, or check available integrations with platform_query(type: 'integrations')."
+          hint: "Use the platform_create tool with type='integration' to set it up, or use platform_query with type='integrations' to check available integrations."
         ) unless integration
 
         # Find user's connection
@@ -764,6 +779,151 @@ module V3
           name: record_name,
           message: "#{type.titleize} '#{record_name}' has been deleted."
         )
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # CUSTOM DOMAIN ACTIONS
+      # ═══════════════════════════════════════════════════════════════
+
+      def execute_verify_domain(args)
+        domain = find_custom_domain(args)
+        return domain if domain.is_a?(Hash) && domain[:success] == false
+
+        service = CustomDomainService.new(custom_domain: domain)
+        result = service.verify_web_dns
+
+        if result[:success]
+          success_response(
+            custom_domain_id: domain.id,
+            domain_name: domain.full_domain,
+            web_status: domain.reload.web_status,
+            ssl_status: domain.ssl_status,
+            message: result[:message],
+            canvas_type: "custom_domains"
+          )
+        else
+          error_response(
+            "Domain verification failed: #{result[:error]}",
+            expected_cname: result[:expected],
+            instructions: result[:instructions]
+          )
+        end
+      end
+
+      def execute_verify_email_domain(args)
+        domain = find_custom_domain(args)
+        return domain if domain.is_a?(Hash) && domain[:success] == false
+
+        service = SesDomainService.new(custom_domain: domain)
+
+        if domain.email_status == "pending"
+          # Start verification — creates SES identity, returns DNS records
+          result = service.start_verification
+
+          if result[:success]
+            success_response(
+              custom_domain_id: domain.id,
+              domain_name: domain.domain_name,
+              email_status: domain.reload.email_status,
+              dns_records: result[:dns_records],
+              instructions: result[:instructions],
+              message: "Email verification started for #{domain.domain_name}. " \
+                       "DNS records need to be configured (DKIM, SPF, DMARC). " \
+                       "Verification will be checked automatically.",
+              canvas_type: "custom_domains"
+            )
+          else
+            error_response("Email verification failed: #{result[:error]}")
+          end
+        else
+          # Check existing verification status
+          result = service.check_verification_status
+
+          success_response(
+            custom_domain_id: domain.id,
+            domain_name: domain.domain_name,
+            email_status: domain.reload.email_status,
+            verified: result[:verified],
+            message: result[:verified] ?
+              "Email sending is verified for #{domain.domain_name}!" :
+              "Email verification in progress. #{result[:message]}",
+            canvas_type: "custom_domains"
+          )
+        end
+      end
+
+      def execute_set_primary_domain(args)
+        domain = find_custom_domain(args)
+        return domain if domain.is_a?(Hash) && domain[:success] == false
+
+        domain.update!(is_primary: true)
+
+        success_response(
+          custom_domain_id: domain.id,
+          domain_name: domain.full_domain,
+          is_primary: true,
+          message: "#{domain.full_domain} is now your primary domain.",
+          canvas_type: "custom_domains"
+        )
+      end
+
+      def execute_assign_domain(args)
+        domain = find_custom_domain(args)
+        return domain if domain.is_a?(Hash) && domain[:success] == false
+
+        unless domain.fully_configured?
+          return error_response(
+            "Domain #{domain.full_domain} is not fully configured yet. " \
+            "Web status: #{domain.web_status}, SSL status: #{domain.ssl_status}. " \
+            "Verify the domain first."
+          )
+        end
+
+        assign_type = get_arg(args, :type)&.to_s&.downcase&.singularize
+        assign_id = get_arg(args, :id) || get_arg(args, :landing_page_id) || get_arg(args, :website_id)
+
+        return error_response("Missing: type (landing_page or website) and id") if assign_type.blank? || assign_id.blank?
+
+        service = CustomDomainService.new(custom_domain: domain)
+
+        case assign_type
+        when "landing_page"
+          lp = entity.landing_pages.find_by(id: assign_id)
+          return error_response("Landing page not found: #{assign_id}") unless lp
+          result = service.assign_to_landing_page(lp)
+        when "website"
+          ws = entity.websites.find_by(id: assign_id)
+          return error_response("Website not found: #{assign_id}") unless ws
+          result = service.assign_to_website(ws)
+        else
+          return error_response("Unsupported type: #{assign_type}. Use 'landing_page' or 'website'.")
+        end
+
+        if result[:success]
+          success_response(
+            custom_domain_id: domain.id,
+            assigned_to: { type: assign_type, id: assign_id },
+            url: result[:url],
+            message: "#{assign_type.titleize} is now available at #{result[:url]}"
+          )
+        else
+          error_response(result[:error])
+        end
+      end
+
+      # Helper: find CustomDomain from args (by domain_id, custom_domain_id, or domain_name)
+      def find_custom_domain(args)
+        domain_id = get_arg(args, :domain_id) || get_arg(args, :custom_domain_id) || get_arg(args, :id)
+        domain_name = get_arg(args, :domain_name) || get_arg(args, :domain)
+
+        domain = if domain_id.present?
+          entity.custom_domains.find_by(id: domain_id)
+        elsif domain_name.present?
+          entity.custom_domains.find_by(domain_name: domain_name.downcase)
+        end
+
+        return error_response("Custom domain not found. Provide domain_id or domain_name.") unless domain
+        domain
       end
     end
   end

@@ -4,7 +4,7 @@ class BusinessProfilesController < ApplicationController
   layout 'customer_admin'
 
   def edit
-    # Show the edit form
+    redirect_to chat_mode_path, status: :moved_permanently
   end
 
   def update
@@ -15,10 +15,10 @@ class BusinessProfilesController < ApplicationController
 
     respond_to do |format|
       if @business_profile.update(business_profile_params)
-        format.html { redirect_to edit_business_profile_path, notice: "Business profile was successfully updated." }
+        format.html { redirect_to chat_mode_path, notice: "Business profile was successfully updated." }
         format.json { render json: { success: true, message: "Business profile updated successfully" }, status: :ok }
       else
-        format.html { render :edit, status: :unprocessable_entity }
+        format.html { redirect_to chat_mode_path, alert: "Failed to update business profile." }
         format.json { render json: { success: false, errors: @business_profile.errors }, status: :unprocessable_entity }
       end
     end
@@ -30,9 +30,9 @@ class BusinessProfilesController < ApplicationController
 
     if section_name.present? && content.present?
       @business_profile.add_knowledge_section(section_name, content)
-      redirect_to edit_business_profile_path, notice: "Knowledge base was successfully updated."
+      redirect_to chat_mode_path, notice: "Knowledge base was successfully updated."
     else
-      redirect_to edit_business_profile_path, alert: "Section name and content are required."
+      redirect_to chat_mode_path, alert: "Section name and content are required."
     end
   end
 
