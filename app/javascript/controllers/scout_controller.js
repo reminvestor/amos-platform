@@ -361,7 +361,10 @@ export default class extends Controller {
     // Allow interrupting an in-flight stream with new context.
     // If Scout is currently streaming, abort it and immediately start a new request.
     this.interruptStreamingIfNeeded()
-    
+
+    // Remove stale quick reply buttons from previous messages
+    this.chatMessagesTarget.querySelectorAll('.message-suggestions.quick-replies').forEach(el => el.remove())
+
     // Add user message to chat
     this.addMessage(message, "user")
     
@@ -1318,6 +1321,9 @@ export default class extends Controller {
           console.log("⚠️ No sources found. finalResponseData.sources:", finalResponseData?.sources)
         }
 
+        // Render quick reply buttons for suggested actions
+        this.renderQuickReplies(finalResponseData.message)
+
         // Check if Scout suggested a canvas to load (handle both 'canvas' and 'canvas_type' keys)
         const suggestedCanvas = finalResponseData.canvas || finalResponseData.canvas_type
         const canvasData = finalResponseData.canvas_data || {}
@@ -1383,10 +1389,13 @@ export default class extends Controller {
           }
         }
         
+        // Render quick reply buttons for suggested actions
+        this.renderQuickReplies(this.currentStreamingContent)
+
         // Clear streaming content for next message
         this.currentStreamingContent = undefined
         this.streamingMessageElement = null
-        
+
         // Re-enable input after successful response
         this.enableChatInput()
         this.hideStreamingWindow()
@@ -1596,6 +1605,88 @@ export default class extends Controller {
       console.log("✅ Source badges rendered successfully with icons")
     } catch (error) {
       console.error("❌ Error rendering source badges:", error)
+    }
+  }
+
+  // Render quick reply buttons when the AI suggests actions or asks yes/no questions
+  renderQuickReplies(messageText) {
+    try {
+      if (!messageText) return
+
+      // Look at the tail of the message where suggestions typically appear
+      const tail = messageText.slice(-500)
+
+      let suggestions = []
+
+      // First, try to extract explicitly quoted suggestions (e.g., Say "Yes" or "Build it")
+      const promptPattern = /\b(say|type|reply|respond|choose|select|enter|confirm|tell me)\b.*[""\u201C]/i
+      if (promptPattern.test(tail)) {
+        const quotePattern = /[""\u201C]([^""\u201D]{1,40})[""\u201D]/g
+        let match
+        while ((match = quotePattern.exec(tail)) !== null) {
+          const phrase = match[1].trim()
+          if (phrase.length >= 1) suggestions.push(phrase)
+        }
+      }
+
+      // Fallback: detect yes/no questions and auto-generate buttons
+      if (suggestions.length === 0) {
+        const lastQuestion = tail.match(/[^.!?\n]*\?[^.!?\n]*/g)
+        if (lastQuestion) {
+          const question = lastQuestion[lastQuestion.length - 1].trim().toLowerCase()
+          const yesNoPattern = /\b(would you|do you|shall i|should i|want me to|ready to|like me to|like to|can i|may i|proceed|continue|go ahead|want to)\b/i
+          if (yesNoPattern.test(question)) {
+            suggestions = ['Yes', 'No']
+          }
+        }
+      }
+
+      if (suggestions.length === 0) return
+
+      // Deduplicate and cap at 5
+      suggestions = [...new Set(suggestions)].slice(0, 5)
+
+      // Find the last AI message
+      const messages = this.chatMessagesTarget.querySelectorAll('.message')
+      let lastAiMessage = null
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].classList.contains('ai-message')) {
+          lastAiMessage = messages[i]
+          break
+        }
+      }
+      if (!lastAiMessage) return
+
+      // Don't add duplicates
+      if (lastAiMessage.querySelector('.message-suggestions')) return
+
+      // Build the button container
+      const container = document.createElement('div')
+      container.className = 'message-suggestions quick-replies'
+
+      suggestions.forEach(text => {
+        const btn = document.createElement('span')
+        btn.className = 'suggestion-btn quick-reply-btn'
+        btn.textContent = text
+        btn.setAttribute('role', 'button')
+        btn.setAttribute('tabindex', '0')
+        btn.addEventListener('click', () => {
+          this.chatInputTarget.value = text
+          this.sendMessage({ preventDefault: () => {} })
+        })
+        btn.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            btn.click()
+          }
+        })
+        container.appendChild(btn)
+      })
+
+      lastAiMessage.appendChild(container)
+      console.log(`✅ Quick reply buttons rendered: ${suggestions.join(', ')}`)
+    } catch (error) {
+      console.error("❌ Error rendering quick replies:", error)
     }
   }
 
