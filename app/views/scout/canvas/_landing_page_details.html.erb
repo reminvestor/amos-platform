@@ -370,8 +370,8 @@ function showCopySuccess(button) {
   }, 2000);
 }
 
-function revertToVersion(landingPageId, versionId) {
-  if (!confirm('Are you sure you want to revert to this version? This will create a backup of the current content.')) {
+async function revertToVersion(landingPageId, versionId) {
+  if (!await showConfirm('Are you sure you want to revert to this version? This will create a backup of the current content.', { title: 'Revert Version', dangerous: true })) {
     return;
   }
   
@@ -384,7 +384,7 @@ function revertToVersion(landingPageId, versionId) {
     window.scoutSendMessage(message);
   } else {
     console.error('Scout sendMessage function not available');
-    alert('Unable to revert: Scout communication not available');
+    showError('Unable to revert: Scout communication not available');
   }
 }
 
@@ -394,7 +394,7 @@ function togglePublishStatus(pageId, newStatus) {
     ? 'Publish this landing page? It will be publicly accessible.'
     : 'Unpublish this landing page? It will no longer be publicly accessible.';
   
-  if (!confirm(confirmMsg)) return;
+  if (!await showConfirm(confirmMsg)) return;
   
   fetch(`/landing_pages/${pageId}/${action}`, {
     method: 'POST',

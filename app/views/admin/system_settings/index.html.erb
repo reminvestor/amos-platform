@@ -163,7 +163,7 @@ function initTestButtons() {
       if (!csrfTokenInput) {
         const tokenValue = '<%= form_authenticity_token %>';
         if (!tokenValue || tokenValue === '') {
-          alert('Error: CSRF token not found. Please refresh the page.');
+          showError('CSRF token not found. Please refresh the page.');
           this.disabled = false;
           this.innerHTML = originalHTML;
           return;
@@ -193,9 +193,9 @@ function initTestButtons() {
           }
 
           if (data.success) {
-            alert('Success: ' + data.message);
+            showSuccess(data.message);
           } else {
-            alert('Error: ' + data.message);
+            showError(data.message);
           }
         })
         .catch(error => {
@@ -206,7 +206,7 @@ function initTestButtons() {
             lucide.createIcons();
           }
 
-          alert('Error testing API key: ' + error);
+          showError('Error testing API key: ' + error);
         });
       }
     });

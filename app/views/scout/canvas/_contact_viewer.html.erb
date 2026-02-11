@@ -343,8 +343,8 @@ function scoutEditContact(contactId) {
   window.scoutSendMessage?.(`Edit contact ${contactId}`);
 }
 
-function scoutDeleteContact(contactId) {
-  if (confirm('Are you sure you want to delete this contact?')) {
+async function scoutDeleteContact(contactId) {
+  if (await showConfirm('Are you sure you want to delete this contact?', { title: 'Delete Contact', dangerous: true })) {
     window.scoutSendMessage?.(`Delete contact ${contactId}`);
   }
 }
@@ -407,7 +407,7 @@ async function submitImport() {
   const file = fileInput.files[0];
   
   if (!file) {
-    alert('Please select a file first');
+    showWarning('Please select a file first');
     return;
   }
 

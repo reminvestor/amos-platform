@@ -110,14 +110,14 @@
   if (window._bookmarkItemsInitialized) return;
   window._bookmarkItemsInitialized = true;
 
-  document.addEventListener('click', function(e) {
+  document.addEventListener('click', async function(e) {
     const deleteBtn = e.target.closest('.delete-bookmark-btn');
     if (!deleteBtn) return;
 
     const bookmarkId = deleteBtn.dataset.bookmarkId;
     const item = deleteBtn.closest('.bookmark-item');
 
-    if (!confirm('Delete this bookmark?')) return;
+    if (!await showConfirm('Delete this bookmark?', { title: 'Delete Bookmark', dangerous: true })) return;
 
     item.classList.add('removing');
 

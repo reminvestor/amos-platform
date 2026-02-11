@@ -137,7 +137,7 @@
 
   function previewVersion(versionId, encodedContent) {
     if (!encodedContent) {
-      alert('Version content not available');
+      showWarning('Version content not available');
       return;
     }
     
@@ -169,7 +169,7 @@
       
     } catch (e) {
       console.error('Error decoding version content:', e);
-      alert('Unable to preview this version');
+      showError('Unable to preview this version');
     }
   }
   
@@ -181,7 +181,7 @@
   }
 
   async function restoreVersion(landingPageId, versionId, versionDate) {
-    if (!confirm(`Are you sure you want to restore this version from ${versionDate}?\n\nA backup of the current version will be saved before restoring.`)) {
+    if (!await showConfirm(`Are you sure you want to restore this version from ${versionDate}? A backup of the current version will be saved before restoring.`, { title: 'Restore Version', dangerous: true })) {
       return;
     }
     
@@ -206,11 +206,11 @@
         }
       } else {
         const data = await response.json().catch(() => ({}));
-        alert(data.error || 'Failed to restore version');
+        showError(data.error || 'Failed to restore version');
       }
     } catch (e) {
       console.error('Restore error:', e);
-      alert('Failed to restore version. Please try again.');
+      showError('Failed to restore version. Please try again.');
     }
   }
 </script>

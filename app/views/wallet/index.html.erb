@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', function() {
 async function connectWallet() {
   try {
     if (!window.amosWallet) {
-      alert('Wallet integration not loaded. Please refresh the page.');
+      showError('Wallet integration not loaded. Please refresh the page.');
       return;
     }
 
@@ -201,15 +201,15 @@ async function connectWallet() {
       onWalletConnected(window.amosWallet.publicKey);
       refreshBalance();
     } else if (response.error) {
-      alert('Connection failed: ' + response.error);
+      showError('Connection failed: ' + response.error);
     }
   } catch (error) {
     console.error('Wallet connection error:', error);
     
     if (error.message.includes('No Solana wallet')) {
-      alert('Please install Phantom wallet: https://phantom.app');
+      showInfo('Please install Phantom wallet: https://phantom.app');
     } else {
-      alert('Failed to connect: ' + error.message);
+      showError('Failed to connect: ' + error.message);
     }
   }
 }
@@ -289,7 +289,7 @@ async function claimTokens() {
   const amount = parseFloat(document.getElementById('claim-amount').value);
   
   if (!amount || amount < 100) {
-    alert('Minimum claim is 100 AMOS');
+    showWarning('Minimum claim is 100 AMOS');
     return;
   }
   

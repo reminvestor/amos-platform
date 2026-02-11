@@ -656,14 +656,14 @@
         if (!resp.ok || !data.success) {
           const msg = data.error || 'Failed to sync login session';
           console.warn('[BrowserSession] Sync proxy session failed:', msg);
-          alert(msg);
+          showError(msg);
           return;
         }
         console.log('[BrowserSession] Sync proxy session success');
       })
       .catch((err) => {
         console.warn('[BrowserSession] Sync proxy session request failed:', err);
-        alert('Failed to sync login session');
+        showError('Failed to sync login session');
       });
   };
 

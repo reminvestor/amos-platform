@@ -322,7 +322,7 @@ const contactGenerator = {
 
 function scoutSaveContact() {
   if (!contactGenerator.validateForm()) {
-    alert('Please fix the validation errors before saving.');
+    showWarning('Please fix the validation errors before saving.');
     return;
   }
   
@@ -336,7 +336,7 @@ function scoutSaveContact() {
 
 function scoutSaveAndAdd() {
   if (!contactGenerator.validateForm()) {
-    alert('Please fix the validation errors before saving.');
+    showWarning('Please fix the validation errors before saving.');
     return;
   }
   
@@ -351,8 +351,8 @@ function scoutSaveAndAdd() {
   }, 2000);
 }
 
-function scoutClearForm() {
-  if (confirm('Are you sure you want to clear all form data?')) {
+async function scoutClearForm() {
+  if (await showConfirm('Are you sure you want to clear all form data?', { title: 'Clear Form', dangerous: true })) {
     contactGenerator.clearForm();
   }
 }
@@ -374,7 +374,7 @@ function scoutValidateEmail() {
   if (email) {
     window.scoutSendMessage?.(`Validate email address: ${email}`);
   } else {
-    alert('Please enter an email address first.');
+    showWarning('Please enter an email address first.');
   }
 }
 
@@ -383,7 +383,7 @@ function scoutFindSocial() {
   if (email) {
     window.scoutSendMessage?.(`Find social media profiles for: ${email}`);
   } else {
-    alert('Please enter an email address first.');
+    showWarning('Please enter an email address first.');
   }
 }
 
@@ -392,7 +392,7 @@ function scoutCheckDuplicates() {
   if (email) {
     window.scoutSendMessage?.(`Check for duplicate contacts with email: ${email}`);
   } else {
-    alert('Please enter an email address first.');
+    showWarning('Please enter an email address first.');
   }
 }
 
@@ -401,7 +401,7 @@ function scoutPreFillData() {
   if (email) {
     window.scoutSendMessage?.(`Auto-fill contact data from email: ${email}`);
   } else {
-    alert('Please enter an email address first.');
+    showWarning('Please enter an email address first.');
   }
 }
 

@@ -340,8 +340,8 @@ function scoutEditCampaign(campaignId) {
   window.scoutSendMessage?.(`Load the campaign editor for campaign ID ${campaignId}`);
 }
 
-function scoutDeleteCampaign(campaignId) {
-  if (confirm('Are you sure you want to delete this campaign?')) {
+async function scoutDeleteCampaign(campaignId) {
+  if (await showConfirm('Are you sure you want to delete this campaign?', { title: 'Delete Campaign', dangerous: true })) {
     window.scoutSendMessage?.(`Delete campaign ${campaignId}`);
   }
 }
@@ -354,8 +354,8 @@ function scoutDuplicateCampaign(campaignId) {
   window.scoutSendMessage?.(`Duplicate campaign ${campaignId}`);
 }
 
-function scoutSendCampaign(campaignId) {
-  if (confirm('Are you ready to send this campaign?')) {
+async function scoutSendCampaign(campaignId) {
+  if (await showConfirm('Are you ready to send this campaign?', { title: 'Send Campaign' })) {
     window.scoutSendMessage?.(`Send campaign ${campaignId} now`);
   }
 }

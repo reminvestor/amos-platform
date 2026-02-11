@@ -153,7 +153,7 @@ export default class extends Controller {
       messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     } else {
       // Fallback: show the message for the user to type
-      alert("Please tell AMOS: " + message)
+      showInfo("Please tell AMOS: " + message)
     }
   }
 

@@ -321,7 +321,7 @@
       messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     } else {
       console.warn('Could not find message-input or message-form');
-      alert('Please type this in the chat: ' + message);
+      showInfo('Please type this in the chat: ' + message);
     }
   }
   
@@ -380,7 +380,7 @@
       btn.onclick = async function(e) {
         e.preventDefault();
         const slug = btn.getAttribute('data-slug');
-        if (confirm('Are you sure you want to deactivate this app?')) {
+        if (await showConfirm('Are you sure you want to deactivate this app?', { title: 'Deactivate App', dangerous: true })) {
           try {
             const response = await fetch('/modules/' + slug + '/deactivate', {
               method: 'POST',
@@ -404,7 +404,7 @@
       btn.onclick = async function(e) {
         e.preventDefault();
         const slug = btn.getAttribute('data-slug');
-        if (confirm('Are you sure you want to DELETE this app? This cannot be undone.')) {
+        if (await showConfirm('Are you sure you want to DELETE this app? This cannot be undone.', { title: 'Delete App', dangerous: true })) {
           try {
             const response = await fetch('/modules/' + slug, {
               method: 'DELETE',

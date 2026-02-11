@@ -677,8 +677,8 @@
     // Reset conversation button
     const resetButton = document.getElementById('reset-conversation');
     if (resetButton) {
-      resetButton.addEventListener('click', function() {
-        if (confirm('Are you sure you want to reset the conversation? This will clear the chat history.')) {
+      resetButton.addEventListener('click', async function() {
+        if (await showConfirm('Are you sure you want to reset the conversation? This will clear the chat history.', { title: 'Reset Conversation', dangerous: true })) {
           fetch(`<%= reset_conversation_crawler_job_path(@crawler_job) %>`, {
             method: 'POST',
             headers: {

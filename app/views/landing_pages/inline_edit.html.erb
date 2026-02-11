@@ -452,7 +452,7 @@
   
   function saveInlineChanges() {
     if ((!changes.text || changes.text.length === 0) && (!changes.images || changes.images.length === 0)) {
-      alert('No changes to save');
+      showInfo('No changes to save');
       return;
     }
     
@@ -501,11 +501,11 @@
           alert.remove();
         }, 3000);
       } else {
-        alert('Error saving changes: ' + (data.error || 'Unknown error'));
+        showError('Error saving changes: ' + (data.error || 'Unknown error'));
       }
     })
     .catch(error => {
-      alert('Error saving changes: ' + error.message);
+      showError('Error saving changes: ' + error.message);
     });
   }
 </script>

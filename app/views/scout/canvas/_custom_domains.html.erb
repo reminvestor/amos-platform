@@ -438,7 +438,7 @@
     var connectionId = document.getElementById('godaddyConnectionSelect').value;
     
     if (!domainName) {
-      alert('Please enter a domain name');
+      showWarning('Please enter a domain name');
       return;
     }
     
@@ -466,8 +466,8 @@
     sendToAmos('Set custom domain ID ' + domainId + ' as primary');
   }
   
-  function deleteDomain(domainId) {
-    if (confirm('Are you sure you want to remove this domain?')) {
+  async function deleteDomain(domainId) {
+    if (await showConfirm('Are you sure you want to remove this domain?', { title: 'Remove Domain', dangerous: true })) {
       sendToAmos('Delete custom domain ID ' + domainId);
     }
   }
@@ -479,7 +479,7 @@
   function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(function() {
       // Show brief feedback
-      alert('Copied: ' + text);
+      showSuccess('Copied: ' + text);
     });
   }
   
@@ -490,7 +490,7 @@
       window.scoutSendMessage(message);
     } else {
       console.warn('Scout controller not available');
-      alert('Please type in the chat: ' + message);
+      showInfo('Please type in the chat: ' + message);
     }
   }
   

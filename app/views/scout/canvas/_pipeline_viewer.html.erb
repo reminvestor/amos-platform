@@ -761,8 +761,8 @@ function pipelineViewOpportunity(id) {
   }
 }
 
-function pipelineCloseWon(id, name) {
-  if (confirm(`Mark "${name}" as Won?`)) {
+async function pipelineCloseWon(id, name) {
+  if (await showConfirm(`Mark "${name}" as Won?`, { title: 'Mark as Won' })) {
     fetch(`/api/v1/opportunities/${id}/close_won`, {
       method: 'POST',
       headers: {
@@ -845,7 +845,7 @@ function showPipelineNotification(message, type = 'info') {
   if (window.showNotification) {
     window.showNotification(message, type);
   } else {
-    alert(message);
+    showInfo(message);
   }
 }
 

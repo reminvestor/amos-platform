@@ -317,12 +317,12 @@ function viewSubmissionDetails(submissionId) {
       if (data.success) {
         displaySubmissionDetails(data.submission);
       } else {
-        alert('Failed to load submission details');
+        showError('Failed to load submission details');
       }
     })
     .catch(error => {
       console.error('Error loading submission details:', error);
-      alert('Error loading submission details');
+      showError('Error loading submission details');
     });
 }
 
@@ -398,8 +398,8 @@ function displaySubmissionDetails(submission) {
   contactBtn.onclick = () => contactSubmitter(submission);
 }
 
-function processSubmission(submissionId) {
-  if (!confirm('Mark this submission as processed?')) return;
+async function processSubmission(submissionId) {
+  if (!await showConfirm('Mark this submission as processed?', { title: 'Process Submission' })) return;
   
   fetch(`/api/v1/landing_page_submissions/${submissionId}/process`, {
     method: 'POST',
@@ -415,17 +415,17 @@ function processSubmission(submissionId) {
       loadScoutCanvas('form_submissions', {});
       showNotification('Submission marked as processed', 'success');
     } else {
-      alert('Failed to process submission');
+      showError('Failed to process submission');
     }
   })
   .catch(error => {
     console.error('Error processing submission:', error);
-    alert('Error processing submission');
+    showError('Error processing submission');
   });
 }
 
-function markAsSpam(submissionId) {
-  if (!confirm('Mark this submission as spam?')) return;
+async function markAsSpam(submissionId) {
+  if (!await showConfirm('Mark this submission as spam?', { title: 'Mark as Spam', dangerous: true })) return;
   
   fetch(`/api/v1/landing_page_submissions/${submissionId}/spam`, {
     method: 'POST',
@@ -441,12 +441,12 @@ function markAsSpam(submissionId) {
       loadScoutCanvas('form_submissions', {});
       showNotification('Submission marked as spam', 'warning');
     } else {
-      alert('Failed to mark as spam');
+      showError('Failed to mark as spam');
     }
   })
   .catch(error => {
     console.error('Error marking as spam:', error);
-    alert('Error marking as spam');
+    showError('Error marking as spam');
   });
 }
 

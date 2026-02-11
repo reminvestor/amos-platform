@@ -489,10 +489,10 @@ async function registerAgent() {
         window.location.reload();
       }, { once: true });
     } else {
-      alert('Registration failed: ' + result.error);
+      showError('Registration failed: ' + result.error);
     }
   } catch (e) {
-    alert('Error: ' + e.message);
+    showError(e.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i data-lucide="bot" style="width: 16px; height: 16px;" class="me-1"></i> Register Agent';
@@ -558,18 +558,18 @@ function renderAgentDetail(data, container) {
   `;
 }
 
-function suspendAgent(agentId) {
-  if (!confirm('Suspend this agent? It will no longer be able to claim or submit work.')) return;
+async function suspendAgent(agentId) {
+  if (!await showConfirm('Suspend this agent? It will no longer be able to claim or submit work.', { title: 'Suspend Agent', dangerous: true })) return;
   agentAction(agentId, 'suspend');
 }
 
-function reactivateAgent(agentId) {
-  if (!confirm('Reactivate this agent?')) return;
+async function reactivateAgent(agentId) {
+  if (!await showConfirm('Reactivate this agent?', { title: 'Reactivate Agent' })) return;
   agentAction(agentId, 'reactivate');
 }
 
-function revokeAgent(agentId, name) {
-  if (!confirm(`Permanently revoke agent "${name}"? This cannot be undone.`)) return;
+async function revokeAgent(agentId, name) {
+  if (!await showConfirm(`Permanently revoke agent "${name}"? This cannot be undone.`, { title: 'Revoke Agent', dangerous: true })) return;
   
   const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
   fetch(`/api/v1/external_agents/${agentId}`, {
@@ -577,7 +577,7 @@ function revokeAgent(agentId, name) {
     headers: { 'X-CSRF-Token': csrfToken }
   }).then(r => r.json()).then(data => {
     if (data.success) window.location.reload();
-    else alert('Failed: ' + data.error);
+    else showError('Failed: ' + data.error);
   });
 }
 
@@ -588,7 +588,7 @@ function agentAction(agentId, action) {
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
   }).then(r => r.json()).then(data => {
     if (data.success) window.location.reload();
-    else alert('Failed: ' + (data.error || 'Unknown error'));
+    else showError('Failed: ' + (data.error || 'Unknown error'));
   });
 }
 
@@ -609,12 +609,12 @@ function saveWebhook() {
   const events = Array.from(document.querySelectorAll('.webhook-event:checked')).map(cb => cb.value);
   
   // For now, show confirmation (in production, this would call the API)
-  alert(`Webhook configured!\nURL: ${url}\nEvents: ${events.length ? events.join(', ') : 'all'}`);
+  showSuccess('Webhook configured!');
   bootstrap.Modal.getInstance(document.getElementById('webhookModal')).hide();
 }
 
-function disableWebhook() {
-  if (!confirm('Disable webhook notifications for this agent?')) return;
+async function disableWebhook() {
+  if (!await showConfirm('Disable webhook notifications for this agent?', { title: 'Disable Webhook', dangerous: true })) return;
   bootstrap.Modal.getInstance(document.getElementById('webhookModal')).hide();
 }
 

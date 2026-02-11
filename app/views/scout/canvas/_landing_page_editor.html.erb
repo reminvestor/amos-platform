@@ -2220,7 +2220,7 @@
           e.preventDefault(); // Prevent losing selection
         });
         
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
           e.preventDefault();
           e.stopPropagation();
           
@@ -2361,9 +2361,9 @@
         btn.title = 'Delete section';
         btn.type = 'button';
         
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
           e.stopPropagation();
-          if (confirm('Delete this section?')) {
+          if (await showConfirm('Delete this section?', { title: 'Delete Section', dangerous: true })) {
             section.remove();
             markChanged();
             window.parent.postMessage({ type: 'save', force: true }, '*');
@@ -2785,7 +2785,7 @@
         activeVideoElement.removeAttribute('data-video-editable');
         markChanged();
       } else {
-        alert('Could not parse video URL. Please use YouTube or Vimeo links.');
+        showError('Could not parse video URL. Please use YouTube or Vimeo links.');
       }
       
       activeVideoElement = null;
@@ -3126,7 +3126,7 @@
         deleteBtn.onclick = function(e) {
           e.preventDefault();
           e.stopPropagation();
-          if (confirm('Delete this element?')) {
+          if (await showConfirm('Delete this element?', { title: 'Delete Element', dangerous: true })) {
             el.remove();
             markChanged();
           }
@@ -3714,7 +3714,7 @@
         e.preventDefault();
         e.stopPropagation();
         console.log('🗑️ DELETE clicked');
-        if (confirm('Remove this element?')) {
+        if (await showConfirm('Remove this element?', { title: 'Remove Element', dangerous: true })) {
           wrapper.remove();
           markChanged();
         }
@@ -3787,7 +3787,7 @@
       modal.querySelector('#generateImageBtn').addEventListener('click', async function() {
         const prompt = modal.querySelector('#aiImagePrompt').value.trim();
         if (!prompt) {
-          alert('Please describe the image you want to generate');
+          showWarning('Please describe the image you want to generate');
           return;
         }
         
@@ -3823,7 +3823,7 @@
           throw new Error('Failed to generate image');
         } catch (err) {
           console.error('Image generation error:', err);
-          alert('Image generation failed. Please try again or use a URL instead.');
+          showError('Image generation failed. Please try again or use a URL instead.');
         } finally {
           btn.innerHTML = originalText;
           btn.disabled = false;
@@ -4222,7 +4222,7 @@
   });
   
   publishBtn?.addEventListener('click', async () => {
-    if (!confirm('Publish this landing page?')) return;
+    if (!await showConfirm('Publish this landing page?', { title: 'Publish', confirmText: 'Publish' })) return;
     
     publishBtn.disabled = true;
     publishBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i><span>Publishing...</span>';

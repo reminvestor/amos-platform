@@ -861,7 +861,7 @@ Provide a concise digest with key highlights and why each item matters." require
   
   // Delete task via API
   window.deleteTask = async function(taskId) {
-    if (!confirm('Are you sure you want to delete this scheduled task? This cannot be undone.')) {
+    if (!await showConfirm('Are you sure you want to delete this scheduled task? This cannot be undone.', { title: 'Delete Task', dangerous: true })) {
       return;
     }
     

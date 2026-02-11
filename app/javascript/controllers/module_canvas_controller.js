@@ -631,7 +631,7 @@ export default class extends Controller {
 
   // Confirm and delete record
   async confirmAndDelete(model, id) {
-    if (!confirm(`Are you sure you want to delete this ${this.humanize(model).toLowerCase()}?`)) {
+    if (!await showConfirm(`Are you sure you want to delete this ${this.humanize(model).toLowerCase()}?`, { title: 'Delete', dangerous: true })) {
       return
     }
 

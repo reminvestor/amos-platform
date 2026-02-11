@@ -351,7 +351,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (data.success) {
         window.location.reload();
       } else {
-        alert('Failed to refresh: ' + (data.error || 'Unknown error'));
+        showError('Failed to refresh: ' + (data.error || 'Unknown error'));
         refreshBtn.disabled = false;
         refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Refresh';
       }

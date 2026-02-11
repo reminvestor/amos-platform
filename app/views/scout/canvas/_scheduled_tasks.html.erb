@@ -827,28 +827,28 @@
 
   // Scheduled task buttons
   document.querySelectorAll('.run-now-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', async function() {
       const taskId = this.dataset.taskId;
       sendToScout(`Run scheduled task #${taskId} now`);
     });
   });
 
   document.querySelectorAll('.pause-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', async function() {
       const taskId = this.dataset.taskId;
       sendToScout(`Pause scheduled task #${taskId}`);
     });
   });
 
   document.querySelectorAll('.resume-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', async function() {
       const taskId = this.dataset.taskId;
       sendToScout(`Resume scheduled task #${taskId}`);
     });
   });
 
   document.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', async function() {
       const taskId = this.dataset.taskId;
       const taskName = this.dataset.taskName;
       console.log('📝 Opening editor for task:', taskId, taskName);
@@ -858,10 +858,10 @@
   });
 
   document.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', async function() {
       const taskName = this.dataset.taskName;
       const taskId = this.dataset.taskId;
-      if (confirm(`Are you sure you want to delete "${taskName}"?`)) {
+      if (await showConfirm(`Are you sure you want to delete "${taskName}"?`, { title: 'Delete Task', dangerous: true })) {
         sendToScout(`Delete scheduled task #${taskId}`);
       }
     });
@@ -869,9 +869,9 @@
 
   // Reset failures button handler
   document.querySelectorAll('.reset-failures-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', async function() {
       const taskId = this.dataset.taskId;
-      if (confirm('Reset the failure counter and re-enable this task?')) {
+      if (await showConfirm('Reset the failure counter and re-enable this task?', { title: 'Reset Failures' })) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
         fetch(`/scheduled_tasks/${taskId}/reset_failures`, {
           method: 'POST',
@@ -889,12 +889,12 @@
               location.reload();
             }
           } else {
-            alert('Failed to reset failures. Please try again.');
+            showError('Failed to reset failures. Please try again.');
           }
         })
         .catch(err => {
           console.error('Reset failures error:', err);
-          alert('Failed to reset failures. Please try again.');
+          showError('Failed to reset failures. Please try again.');
         });
       }
     });
@@ -955,8 +955,8 @@
     // This will be handled by the SSE connection
   };
 
-  window.cancelTask = function(taskId) {
-    if (confirm('Are you sure you want to cancel this task?')) {
+  window.cancelTask = async function(taskId) {
+    if (await showConfirm('Are you sure you want to cancel this task?', { title: 'Cancel Task', dangerous: true })) {
       const cleanId = String(taskId).replace('amos-', '').replace('plugin-', '');
       fetch('/scout/cancel_job', {
         method: 'POST',
@@ -975,8 +975,8 @@
     }
   };
 
-  window.purgeOldTasks = function() {
-    if (confirm('Clear completed and failed tasks?')) {
+  window.purgeOldTasks = async function() {
+    if (await showConfirm('Clear completed and failed tasks?', { title: 'Clear Tasks' })) {
       const container = document.getElementById('parallel-tasks-list');
       container.querySelectorAll('.task-card[data-status="completed"], .task-card[data-status="failed"], .task-card[data-status="canceled"]').forEach(el => el.remove());
       updateActiveCount();

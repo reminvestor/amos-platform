@@ -555,7 +555,7 @@ export default class extends Controller {
         }
       } else {
         // Last resort: show an alert
-        alert("Please ask Amos: 'What's on the page I'm viewing?' in the chat")
+        showInfo("Please ask Amos: 'What's on the page I'm viewing?' in the chat")
       }
     }
   }

@@ -537,7 +537,7 @@ function sequenceView(id) {
 }
 
 async function sequenceActivate(id) {
-  if (!confirm('Activate this sequence? Enrolled contacts will start receiving emails.')) return;
+  if (!await showConfirm('Activate this sequence? Enrolled contacts will start receiving emails.', { title: 'Activate Sequence' })) return;
   
   try {
     const response = await fetch(`/api/v1/email_sequences/${id}/activate`, {

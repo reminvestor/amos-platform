@@ -766,7 +766,7 @@
           const modal = bootstrap.Modal.getInstance(document.getElementById('referralModal'));
           modal.hide();
           
-          alert('Invitations sent! You earned ' + (emails.length * 50000).toLocaleString() + ' tokens!');
+          showSuccess('Invitations sent! You earned ' + (emails.length * 50000).toLocaleString() + ' tokens!');
           
           emailInputs.forEach(input => input.value = '');
           updateTokenCount();
@@ -775,14 +775,14 @@
           console.log('📧 Error response:', text);
           try {
             const data = JSON.parse(text);
-            alert(data.error || 'Failed to send invitations. Please try again.');
+            showError(data.error || 'Failed to send invitations. Please try again.');
           } catch (e) {
-            alert('Server error: ' + response.status + '. Check Rails logs.');
+            showError('Server error: ' + response.status);
           }
         }
       } catch (error) {
         console.error('📧 Fetch error:', error);
-        alert('Network error: ' + error.message);
+        showError('Network error: ' + error.message);
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px;" class="me-1"></i> Send Invitations';

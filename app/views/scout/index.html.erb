@@ -1809,7 +1809,7 @@ document.addEventListener('turbo:load', function() {
   // FRESH START (Clear context, keep memory)
   // ═══════════════════════════════════════════════════════════════
   
-  freshStartBtn.addEventListener('click', function() {
+  freshStartBtn.addEventListener('click', async function() {
     // Check if we're in agent DM mode via hub sidebar
     const hubSidebar = window.hubSidebarController;
     const isAgentDm = hubSidebar?.currentMode === 'agent_dm' && hubSidebar?.currentAgentId;
@@ -1817,7 +1817,7 @@ document.addEventListener('turbo:load', function() {
     if (isAgentDm) {
       // AGENT FRESH START: Clear agent DM thread, not Amos
       const agentName = hubSidebar.currentAgentName || 'this agent';
-      if (!confirm(`Start fresh with ${agentName}? This will clear your current conversation with this agent.`)) {
+      if (!await showConfirm(`Start fresh with ${agentName}? This will clear your current conversation with this agent.`, { title: 'Fresh Start' })) {
         return;
       }
       
@@ -1833,7 +1833,7 @@ document.addEventListener('turbo:load', function() {
     
     // AMOS FRESH START: Original behavior
     // Confirm with user
-    if (!confirm('Start fresh? This will clear the current view but your memory and saved items are preserved.')) {
+    if (!await showConfirm('Start fresh? This will clear the current view but your memory and saved items are preserved.', { title: 'Fresh Start' })) {
       return;
     }
     

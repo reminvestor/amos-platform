@@ -125,7 +125,7 @@
                             title="Duplicate">
                       <i data-lucide="copy"></i>
                     </button>
-                    <button onclick="if(confirm('Are you sure you want to delete this template?')) { window.scoutSendMessage?.('Delete email template <%= template.id %>') }" 
+                    <button onclick="event.preventDefault(); showConfirm('Are you sure you want to delete this template?', { title: 'Delete Template', dangerous: true }).then(ok => { if (ok) window.scoutSendMessage?.('Delete email template <%= template.id %>') }" 
                             aria-label="Delete" 
                             class="canvas-btn icon-only outline-danger" 
                             title="Delete">

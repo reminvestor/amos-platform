@@ -134,9 +134,7 @@ export function showToast(message, options = {}) {
   // Create Bootstrap Toast instance
   const Toast = window.bootstrap?.Toast
   if (!Toast) {
-    console.error('Bootstrap Toast not available')
-    // Fallback to alert
-    alert(message)
+    console.warn('Bootstrap Toast not available — message:', message)
     return null
   }
 
@@ -244,10 +242,9 @@ export function showConfirm(message, options = {}) {
 
     const Modal = window.bootstrap?.Modal
     if (!Modal) {
-      // Fallback to native confirm
-      const result = confirm(message)
+      console.warn('Bootstrap Modal not available — confirm message:', message)
       modalEl.remove()
-      resolve(result)
+      resolve(false)
       return
     }
 

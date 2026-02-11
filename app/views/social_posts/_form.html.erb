@@ -323,7 +323,7 @@
       if (generateBtn) {
         generateBtn.addEventListener('click', function() {
           if (!platformSelect || !platformSelect.value) {
-            alert('Please select a platform first.');
+            showWarning('Please select a platform first.');
             return;
           }
         });

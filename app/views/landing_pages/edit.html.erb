@@ -327,7 +327,7 @@
     const instruction = document.getElementById('ai-instruction').value.trim();
 
     if (!instruction) {
-      alert('Please enter an instruction for the AI.');
+      showWarning('Please enter an instruction for the AI.');
       return;
     }
 
@@ -356,14 +356,14 @@
         if (aiProcessingModal) {
           aiProcessingModal.hide();
         }
-        alert('Error: ' + (data.message || 'Unknown error'));
+        showError(data.message || 'Unknown error');
       }
     })
     .catch(error => {
       if (aiProcessingModal) {
         aiProcessingModal.hide();
       }
-      alert('Error sending request: ' + error.message);
+      showError('Error sending request: ' + error.message);
     });
   }
 
@@ -385,8 +385,8 @@
     }
   }
 
-  function regenerateContent() {
-    if (confirm('This will regenerate the entire HTML content. Are you sure?')) {
+  async function regenerateContent() {
+    if (await showConfirm('This will regenerate the entire HTML content. Are you sure?', { title: 'Regenerate', dangerous: true })) {
       // Redirect to the clarification flow
       window.location.href = '<%= clarify_landing_page_path(@landing_page) %>';
     }
