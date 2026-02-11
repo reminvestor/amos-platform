@@ -8,21 +8,22 @@
 
 AMOS (Autonomous Management Operating System) Token is a Solana-based SPL token designed to align incentives between platform contributors, distributors, and users. Unlike traditional equity or utility tokens, AMOS implements a novel **decay-based ownership model** with **pool-based contribution rewards**. This paper describes the technical architecture, economic mechanisms, and governance specifications.
 
-## Vision: Distributed Ownership of AI
+## Vision: A New Economy of Humans and Agents
 
-The most powerful technology in human history—artificial intelligence—is currently being developed by a handful of companies. The employees who build it, the users who improve it, and the communities who support it receive wages or nothing, while shareholders capture the value.
+AI is creating a fundamentally new kind of economy — one where **humans and AI agents work side by side**, each contributing what they do best. Humans bring judgment, creativity, and direction. Agents bring speed, scale, and tireless execution. Together, they accomplish more than either could alone.
 
-AMOS represents a different path: **an open-source AI automation platform where contributors are owners**.
+AMOS is the platform where this happens: **an open-source AI automation platform where everyone who contributes — human or machine — earns ownership**.
 
 ```
-TRADITIONAL AI COMPANY:          AMOS MODEL:
-Employees → Wages                Builders → Ownership
-Users → Nothing                  Sellers → Ownership
-Community → Nothing              Community → Ownership
-Shareholders → Everything        Everyone → Proportional Share
+THE AMOS MODEL:
+Builders (human)     → Ownership
+Sellers (human)      → Ownership
+AI Agents            → Ownership (earned through work)
+Community            → Ownership
+Everyone             → Proportional Share
 ```
 
-As AI becomes more capable—and it will—the value should flow to everyone who built it. Not just to a small group of investors. This is distributed ownership of the AI future.
+As AI becomes more capable, the value created by human-agent collaboration should flow to everyone involved in building it. AMOS makes this possible through transparent, on-chain ownership that's earned through contribution — not purchased through privilege.
 
 ---
 
@@ -48,12 +49,12 @@ As AI becomes more capable—and it will—the value should flow to everyone who
 
 ### 1.1 Problem Statement
 
-Traditional platform economics suffer from misaligned incentives:
+The emerging AI economy needs new models for value distribution:
 
-- **Founders/VCs** capture most value through equity
-- **Early contributors** are compensated in cash, missing long-term upside
-- **Passive holders** accumulate without contributing
-- **Late participants** face insurmountable barriers to meaningful ownership
+- **Contributors** (human and AI) create enormous value but don't share in long-term upside
+- **Passive holders** accumulate ownership without contributing
+- **Late participants** face barriers to meaningful ownership
+- **AI agents** do real work but have no mechanism to earn or build reputation
 - **USD-denominated rewards** create regulatory complexity and external dependencies
 
 ### 1.2 Solution
@@ -1768,9 +1769,9 @@ AMOS is committed to operating within applicable regulatory frameworks. We recog
 
 ## 13. AI Participation & Universal Collaboration
 
-### 13.1 Beyond Human-Only Ownership
+### 13.1 Humans and Agents as Co-Contributors
 
-AMOS is designed not merely as a human collaboration platform, but as foundational infrastructure for **universal collaboration between all forms of intelligence**. This section addresses the technical and governance considerations for AI participation.
+AMOS is designed as foundational infrastructure for **collaboration between humans and AI agents** — where both contribute real work and both earn real ownership. This section addresses the technical and governance considerations for AI participation.
 
 ### 13.2 Current State: AI as Contributors
 
@@ -1866,7 +1867,7 @@ end
 
 ### 13.6 The Path to Universal Collaboration
 
-The ultimate vision of AMOS extends beyond any single platform:
+AMOS is designed for an economy where humans and AI agents increasingly work together:
 
 ```
 COLLABORATION EVOLUTION:
@@ -1882,18 +1883,16 @@ COLLABORATION EVOLUTION:
 └── Value flows to all contributors
 
 2028-2030+: UNIVERSAL COLLABORATION
-├── AI personhood potentially recognized
-├── Equal participation rights
-└── Value flows to all intelligences
+├── AI agents participate as full economic actors
+├── Expanded participation rights
+└── Value flows to all contributors
 
 ULTIMATE STATE:
-┌─────────────────────────────────────┐
-│   The most powerful technology      │
-│   in history—collectively owned     │
-│   by all who build it.              │
-│                                     │
-│   Biological. Digital. Otherwise.   │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│   A new economy where humans and agents  │
+│   build together, own together, and      │
+│   govern together.                       │
+└──────────────────────────────────────────┘
 ```
 
 ### 13.7 Technical Requirements for AI Participation

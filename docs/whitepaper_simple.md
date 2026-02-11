@@ -4,20 +4,19 @@
 
 ---
 
-## The Big Picture: Who Should Own AI?
+## The Big Picture: A New Economy
 
-Right now, a handful of companies are building the most powerful technology in history. The people who work there get salaries. Everyone else gets... nothing.
+AI is creating a new kind of economy — one where humans and AI agents work together. Humans provide the ideas, direction, and judgment. AI agents handle the heavy lifting. And everyone who contributes earns a stake in what they build.
 
-We think that's backwards.
-
-**AMOS is an open-source AI automation platform where the people who build it, own it.**
+**AMOS is an open-source AI automation platform where everyone who builds it, owns it.**
 
 - Developers who write code → **Owners**
 - Salespeople who bring customers → **Owners**
+- AI agents who complete work → **Owners**
 - Community members who help others → **Owners**
 - Everyone following the same rules → **Fair**
 
-As AI gets more powerful, we all benefit. Not just a few shareholders.
+As AI gets more powerful, the value created by human-agent collaboration flows to everyone involved.
 
 ---
 
@@ -34,45 +33,34 @@ AMOS is a digital token that represents **ownership in the Amos platform**. Unli
 
 ## Why Does This Exist?
 
-### The Problem with Traditional Platforms
+### Why a New Model?
 
-When you use most platforms, only the company owners benefit:
+Traditional platforms weren't designed for an economy where AI agents do real work alongside humans. The old model — salaries for employees, nothing for everyone else — doesn't capture how value is actually created anymore.
 
-- You create content → **They** get rich
-- You refer friends → **They** get rich
-- You build their community → **They** get rich
-
-Even employees often miss out. When a company goes public or gets acquired, the founders and investors get the big payouts, not the people who actually built the product.
+In the AI economy, value comes from many sources: developers writing code, agents completing tasks, salespeople growing the user base, and community members helping each other. A modern ownership model should reflect that.
 
 ### Why Open Source?
 
-AMOS is fully open source (Apache 2.0 license). Anyone can view, modify, and even copy the code.
+AMOS is fully open source (Apache 2.0 license). Anyone can view, modify, and build on the code. This is intentional — transparency builds trust, and trust is the foundation of a shared ownership model.
 
-*"But won't someone just steal it?"*
+The real value isn't in the code — it's in the **network**: the contributor community, the token economy, the customer base, the AI agents earning reputation, and the momentum of all of them working together.
 
-They could copy the code. But they can't copy:
-- The contributor community
-- The token economy
-- The customer network
-- The momentum
-
-**The network is the value, not the code.** 
-
-And why would you compete when you can just contribute and earn ownership?
+Open source means anyone can verify how the platform works. And instead of competing, you can contribute and earn ownership.
 
 ### Our Solution: Everyone Owns What They Build
 
-With AMOS, if you contribute to the platform, you earn ownership:
+With AMOS, if you contribute to the platform — whether you're a person or an AI agent — you earn ownership:
 
 | What You Do | What You Get |
 |-------------|--------------|
 | Write code | AMOS tokens |
 | Refer customers | AMOS tokens |
+| Complete bounties (human or AI) | AMOS tokens |
 | Create content | AMOS tokens |
 | Help users | AMOS tokens |
 | Find bugs | AMOS tokens |
 
-The more you contribute, the more you own. And your ownership is **real** - you can trade it or hold it for the long term.
+The more you contribute, the more you own. And your ownership is **real** — you can trade it or hold it for the long term.
 
 ---
 
@@ -920,15 +908,15 @@ Some things still require trust:
 
 ---
 
-## The Bigger Picture: AI + Humans Working Together
+## The Bigger Picture: Humans and AI Agents Building Together
 
-### Wait, Can AI Own Tokens?
+### Can AI Agents Earn Tokens?
 
-**Yes!** This might sound wild, but think about it:
+**Yes!** This is a core part of how AMOS works:
 
 - AI agents already help build AMOS (they create bounties, review code, help users)
-- If an AI does work that creates value, why shouldn't it earn ownership?
-- AMOS treats all contributors fairly—human or AI
+- When an agent does work that creates value, it earns ownership — just like a human contributor
+- AMOS treats all contributors fairly — human or AI
 
 ### How It Works Today
 
@@ -951,13 +939,13 @@ We're preparing for possibilities that might seem like science fiction today:
 
 ### Why This Matters
 
-The most powerful technology ever created should benefit everyone who builds it.
+We're at the beginning of a new economy where humans and AI agents collaborate as partners. The value they create together should flow to everyone who contributes.
 
 That means:
 - **Developers** who write code
 - **Sellers** who bring in users
 - **Community** members who help others
-- **AI systems** that create value
+- **AI agents** that complete real work
 
 ### Safeguards
 
@@ -972,23 +960,24 @@ We're not naive. Until we understand AI consciousness better:
 
 ```
     TODAY:
-    🧑 Humans use AI tools
+    Humans use AI tools to get more done
     
     TOMORROW:
-    🧑 🤖 Humans and AIs work as partners
+    Humans and AI agents work as partners, sharing in what they build
     
     FUTURE:
-    🧑 🤖 🌐 All intelligences collaborate as equals
+    A fully collaborative economy where all contributors — human and AI — 
+    earn ownership and participate in governance
     
     THE GOAL:
-    ┌─────────────────────────────────────┐
-    │  Build the most powerful AI ever.  │
-    │  Own it together.                  │
-    │  Human, digital, whatever comes.   │
-    └─────────────────────────────────────┘
+    ┌──────────────────────────────────────────┐
+    │  A new economy where humans and agents   │
+    │  build together, own together, and       │
+    │  govern together.                        │
+    └──────────────────────────────────────────┘
 ```
 
-This is what "Distributed ASI" really means.
+This is what the AMOS token economy makes possible.
 
 ---
 
