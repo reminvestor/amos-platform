@@ -2,23 +2,29 @@
 
 module Build
   class ExternalAgentsController < Build::BaseController
-    before_action :require_authentication!
+    before_action :require_authentication!, except: [:index, :show]
     before_action :set_agent, only: [:show, :suspend, :reactivate, :destroy, :configure_webhook]
 
     def index
-      @agents = current_user.external_agent_registrations
-                             .includes(:entity)
-                             .order(created_at: :desc)
+      @agents = ExternalAgentRegistration
+                  .where(status: 'active')
+                  .includes(:entity)
+                  .order(created_at: :desc)
 
       @stats = {
-        active_agents: @agents.select(&:active?).count,
+        active_agents: @agents.size,
         total_completed: @agents.sum(&:total_bounties_completed),
         total_earned: @agents.sum { |a| a.total_tokens_earned.to_f },
-        pending_reviews: pending_review_count
+        pending_reviews: current_user ? pending_review_count : 0
       }
+    rescue => e
+      Rails.logger.error "[Build::ExternalAgents] Failed to load agents: #{e.message}"
+      @agents = []
+      @stats = { active_agents: 0, total_completed: 0, total_earned: 0, pending_reviews: 0 }
     end
 
     def show
+      @agent = ExternalAgentRegistration.find(params[:id])
       @executions = @agent.external_agent_executions
                           .includes(:bounty)
                           .order(created_at: :desc)
@@ -27,6 +33,11 @@ module Build
       @daily_stats = @agent.external_agent_daily_stats
                            .order(stat_date: :desc)
                            .limit(14)
+    rescue ActiveRecord::RecordNotFound
+      redirect_to external_agents_path, alert: "Agent not found."
+    rescue => e
+      Rails.logger.error "[Build::ExternalAgents] Failed to load agent: #{e.message}"
+      redirect_to external_agents_path, alert: "Unable to load agent details."
     end
 
     def register
@@ -149,9 +160,10 @@ module Build
     end
 
     def set_agent
+      # For write actions, scope to current_user's agents only
       @agent = current_user.external_agent_registrations.find(params[:id])
     rescue ActiveRecord::RecordNotFound
-      redirect_to build_external_agents_path, alert: "Agent not found."
+      redirect_to external_agents_path, alert: "Agent not found."
     end
 
     def build_capabilities_from_params
