@@ -11,10 +11,7 @@ class AiSettings::SecurityController < ApplicationController
   end
 
   def update
-    # Update entity-level Q-LLM toggle
-    if params[:quarantine_llm_enabled].present?
-      current_entity.update!(quarantine_llm_enabled: params[:quarantine_llm_enabled] == "1")
-    end
+    # Q-LLM (CAMEL) is always on — not a user-configurable setting.
 
     # Update individual tool policies
     if params[:tool_policies].present?
@@ -37,9 +34,8 @@ class AiSettings::SecurityController < ApplicationController
   def reset_to_defaults
     # Delete all custom tool policies for this entity
     PolicyRule.where(entity: current_entity, resource_type: 'Tool').destroy_all
-    
-    # Reset Q-LLM to default (off)
-    current_entity.update!(quarantine_llm_enabled: false) if current_entity.respond_to?(:quarantine_llm_enabled)
+
+    # Q-LLM (CAMEL) is always on — nothing to reset.
 
     redirect_to chat_mode_path, notice: "Security settings reset to defaults."
   end

@@ -60,10 +60,10 @@ class QuarantinedLlmService
     @bedrock_service = BedrockService.new(entity: entity, user: user)
   end
 
-  # Check if Q-LLM is enabled for this entity
+  # Q-LLM is always enabled — this is a security layer, not a user feature.
   # @return [Boolean]
   def enabled?
-    entity.respond_to?(:quarantine_llm_enabled) && entity.quarantine_llm_enabled
+    true
   end
 
   # Extract structured data from untrusted content
