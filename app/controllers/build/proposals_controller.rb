@@ -15,11 +15,11 @@ module Build
     end
     
     def create
-      redirect_to build_proposals_path, notice: "Proposal submitted!"
+      redirect_to proposals_path, notice: "Proposal submitted!"
     end
     
     def vote
-      redirect_to build_proposal_path(params[:id]), notice: "Vote recorded!"
+      redirect_to proposal_path(params[:id]), notice: "Vote recorded!"
     end
   end
 end

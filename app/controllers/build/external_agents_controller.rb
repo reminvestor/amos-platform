@@ -32,7 +32,7 @@ module Build
     def register
       entity = current_user.entity || current_user.entities&.first
       unless entity
-        redirect_to build_external_agents_path, alert: "You need an Amos account to register agents."
+        redirect_to external_agents_path, alert: "You need an Amos account to register agents."
         return
       end
 
@@ -59,26 +59,26 @@ module Build
         # Store the key in flash so the user can see it once
         flash[:agent_api_key] = agent.api_key
         flash[:agent_name] = agent.agent_name
-        redirect_to build_external_agents_path, notice: "Agent '#{agent.agent_name}' registered successfully!"
+        redirect_to external_agents_path, notice: "Agent '#{agent.agent_name}' registered successfully!"
       else
-        redirect_to build_external_agents_path, alert: "Registration failed: #{result[:error]}"
+        redirect_to external_agents_path, alert: "Registration failed: #{result[:error]}"
       end
     end
 
     def suspend
       @agent.suspend!(reason: params[:reason] || "Suspended by operator")
-      redirect_to build_external_agents_path, notice: "Agent '#{@agent.agent_name}' suspended."
+      redirect_to external_agents_path, notice: "Agent '#{@agent.agent_name}' suspended."
     end
 
     def reactivate
       @agent.activate!
-      redirect_to build_external_agents_path, notice: "Agent '#{@agent.agent_name}' reactivated."
+      redirect_to external_agents_path, notice: "Agent '#{@agent.agent_name}' reactivated."
     end
 
     def destroy
       name = @agent.agent_name
       @agent.revoke!
-      redirect_to build_external_agents_path, notice: "Agent '#{name}' has been revoked."
+      redirect_to external_agents_path, notice: "Agent '#{name}' has been revoked."
     end
 
     def configure_webhook
@@ -87,10 +87,10 @@ module Build
           url: params[:webhook_url],
           events: params[:webhook_events] || []
         )
-        redirect_to build_external_agent_path(@agent), notice: "Webhook configured."
+        redirect_to external_agent_path(@agent), notice: "Webhook configured."
       else
         @agent.update!(webhook_url: nil, webhook_secret: nil, webhook_events: [])
-        redirect_to build_external_agent_path(@agent), notice: "Webhook disabled."
+        redirect_to external_agent_path(@agent), notice: "Webhook disabled."
       end
     end
 
@@ -116,9 +116,9 @@ module Build
       )
 
       if result[:success]
-        redirect_to build_external_agents_reviews_path, notice: "Work approved! #{result[:tokens_awarded]} AMOS awarded."
+        redirect_to external_agents_reviews_path, notice: "Work approved! #{result[:tokens_awarded]} AMOS awarded."
       else
-        redirect_to build_external_agents_reviews_path, alert: result[:error]
+        redirect_to external_agents_reviews_path, alert: result[:error]
       end
     end
 
@@ -134,9 +134,9 @@ module Build
       )
 
       if result[:success]
-        redirect_to build_external_agents_reviews_path, notice: "Work rejected. Feedback sent to agent."
+        redirect_to external_agents_reviews_path, notice: "Work rejected. Feedback sent to agent."
       else
-        redirect_to build_external_agents_reviews_path, alert: result[:error]
+        redirect_to external_agents_reviews_path, alert: result[:error]
       end
     end
 
@@ -151,7 +151,7 @@ module Build
     def set_agent
       @agent = current_user.external_agent_registrations.find(params[:id])
     rescue ActiveRecord::RecordNotFound
-      redirect_to build_external_agents_path, alert: "Agent not found."
+      redirect_to external_agents_path, alert: "Agent not found."
     end
 
     def build_capabilities_from_params
