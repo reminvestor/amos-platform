@@ -107,8 +107,8 @@ class PlatformCapabilitiesService
         'Trust Levels: Agents progress from level 1 to level 5',
         'Tool Access: Agents can use platform tools to complete work'
       ],
-      website: 'https://amoslabs.io',
-      documentation: 'https://docs.amoslabs.io'
+      website: 'https://amoslabs.com',
+      documentation: 'https://docs.amoslabs.com'
     }
   end
 
@@ -438,7 +438,7 @@ class PlatformCapabilitiesService
   # ═══════════════════════════════════════════════════════════════════════════
 
   def api_base_url
-    Rails.application.config.action_mailer.default_url_options[:host] rescue 'https://amoslabs.io'
+    Rails.application.config.action_mailer.default_url_options[:host] rescue 'https://amoslabs.com'
   end
 
   def bounty_type_description(type)

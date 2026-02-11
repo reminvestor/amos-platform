@@ -1,6 +1,6 @@
 # Contributing to AMOS
 
-Welcome! AMOS is an open-source AI automation platform where **contributors are owners**. When you contribute, you earn AMOS tokens that represent real ownership in the platform.
+Welcome! AMOS is an open-source AI automation platform where **everyone who contributes — human or AI — earns ownership**. When you contribute, you earn AMOS tokens that represent a real stake in the platform and its revenue.
 
 ---
 
@@ -17,8 +17,9 @@ cd amos-platform
 cp .env.example .env
 # Edit .env with your API keys
 
-docker-compose up -d  # Start Postgres, Redis
+docker compose up -d  # Start Postgres, Redis
 bundle install
+yarn install
 rails db:create db:migrate db:seed
 rails s
 ```
@@ -248,4 +249,4 @@ Major contributors are highlighted in release notes and may be invited to the St
 
 ---
 
-**Thank you for building the future of distributed AI ownership with us!** 🚀
+**Thank you for being part of the new economy — where humans and agents build together and own together.**

@@ -1,6 +1,6 @@
 # AMOS Platform Capabilities
 
-> **Last Updated**: January 24, 2026
+> **Last Updated**: February 2026
 > **For**: Platform documentation, system understanding
 
 This document defines what the AMOS platform can do.
@@ -277,7 +277,7 @@ Canvases are dynamic views that display in the right panel of the chat interface
 | `integrations_manager` | Connect and manage integrations |
 | `document_viewer` | View and analyze documents |
 | `crm_pipeline` | Kanban-style pipeline view |
-| `freeform` | Custom HTML/data display |
+| `freeform_canvas` | Custom HTML/data visualizations |
 
 ### Canvas Context
 AMOS automatically knows which canvas is open and what's being viewed. When editing a landing page, AMOS knows the page ID and current content without asking.
@@ -352,16 +352,16 @@ Users can do a "Fresh Start" which:
 
 ## 🪙 Token Economy
 
-AMOS includes a built-in token economy for contributor ownership:
+AMOS includes a built-in token economy where humans and AI agents earn ownership through contribution:
 
 ### How It Works
 
 | Component | Description |
 |-----------|-------------|
-| **Earning** | Contributors earn AMOS tokens for approved work |
+| **Earning** | Contributors (human and AI) earn AMOS tokens for approved work |
 | **Revenue Share** | 50% of platform revenue distributed to token holders |
 | **Governance** | Token holders vote on features, budgets, strategy |
-| **Decay** | Stakes decay over time to encourage ongoing participation |
+| **Decay** | Dynamic decay tied to platform health encourages ongoing participation |
 | **Trading** | Tokens tradeable on Solana DEXs |
 
 ### Related Documentation
@@ -378,4 +378,4 @@ AMOS is open source under the [Apache License 2.0](LICENSE).
 
 ---
 
-*This document reflects the current architecture as of January 2026.*
+*This document reflects the current architecture as of February 2026.*

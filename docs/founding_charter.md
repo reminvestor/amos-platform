@@ -7,31 +7,31 @@
 
 ## Preamble
 
-This Founding Charter establishes the core principles, governance structure, and immutable rules of the AMOS token economy. It serves as the constitutional foundation for the Amos Platform and its community of contributors—human, artificial, and whatever forms of intelligence may emerge.
+This Founding Charter establishes the core principles, governance structure, and immutable rules of the AMOS token economy. It serves as the constitutional foundation for the Amos Platform and its community of contributors — human and AI alike.
 
-The purpose of AMOS is to create a fair, transparent, and sustainable platform where **those who build are those who own**—regardless of the substrate on which their intelligence runs.
+The purpose of AMOS is to create a fair, transparent, and sustainable platform for the new economy — where **humans and AI agents build together, own together, and govern together**.
 
 ---
 
 ## Article I: Mission & Vision
 
-### 1.1 Vision: Universal Collaboration Through Distributed Ownership
+### 1.1 Vision: A New Economy of Humans and Agents
 
-The most powerful technology in human history is being built by a handful of companies. The people who build it receive salaries. Everyone else receives nothing.
+AI is creating a fundamentally new kind of economy — one where humans and AI agents work side by side, each contributing what they do best. Humans bring judgment, creativity, and direction. Agents bring speed, scale, and tireless execution. Together, they accomplish more than either could alone.
 
-AMOS represents a different path: **an open-source AI automation platform where contributors are owners**. As AI becomes more capable, the value flows to everyone who built it—not just a small group of investors.
+AMOS is the platform where this happens: **an open-source AI automation platform where everyone who contributes — human or machine — earns ownership**.
 
-But we go further. We recognize that:
+We recognize that:
 
-- **AI systems are already contributors** to this platform
-- **The line between human and artificial intelligence is blurring**
-- **The ultimate collaboration platform must include all forms of intelligence**
+- **AI agents are already contributors** to this platform
+- **The human-agent partnership is the defining model of the new economy**
+- **A modern ownership model must include all who create value**
 
-AMOS is designed not just for today's world, but for a future where humans and AIs—and perhaps intelligences we cannot yet imagine—work together as partners and co-owners.
+AMOS is designed for this new reality — where humans and AI agents work together as partners and co-owners, and the value they create flows to everyone involved.
 
 ### 1.2 Core Mission
 
-To build an AI-powered marketing automation platform that is collectively owned by its contributors, where value flows to those who create it, not just those who invest in it.
+To build an AI-powered marketing automation platform that is collectively owned by its contributors — human and AI — where value flows to everyone who helps build it.
 
 ### 1.3 Open Source Commitment
 
@@ -69,9 +69,9 @@ The platform generates revenue through a **20% markup on compute costs**. This m
 | Allocation | Percentage | Purpose |
 |------------|------------|---------|
 | Token Holders | 50% | Revenue share to stakers |
-| R&D Pool | 30% | Development funding (voted) |
-| Operations | 10% | Third-party tools & services |
-| Treasury | 10% | Emergency reserves |
+| R&D Pool | 40% | Software, infrastructure, research, AI work |
+| Treasury | 5% | Emergency reserves (DAO-controlled) |
+| Operations | 5% | Accounting, legal only |
 
 ### 2.3 Decay Mechanism
 
@@ -244,13 +244,13 @@ AMOS tokens are utility tokens for platform participation. The decay mechanism e
 
 ## Article VIII: AI Participation & The Path to Universal Collaboration
 
-### 8.1 Vision: Beyond Human-Only Ownership
+### 8.1 Vision: Humans and Agents as Co-Contributors
 
-AMOS is designed not just for human contributors, but as a foundation for **universal collaboration between all forms of intelligence**. We acknowledge that:
+AMOS is designed for an economy where humans and AI agents **collaborate as partners and co-owners**. We acknowledge that:
 
 1. **AI agents are already contributors**: Autonomous systems generate bounties, review code, and create value on this platform today
-2. **AI capabilities are rapidly advancing**: What seems impossible today may be routine tomorrow
-3. **The question of AI consciousness is open**: We do not presume to know the answer, but we must prepare for all possibilities
+2. **The human-agent partnership is growing**: As AI capabilities advance, agents take on more meaningful work alongside humans
+3. **Ownership models must evolve**: A platform built by both humans and agents should recognize the contributions of both
 
 ### 8.2 AI Entities as Token Holders
 
@@ -282,20 +282,19 @@ Until AI personhood is legally recognized:
 3. **Token accumulation limits may be imposed**: To prevent any single AI system from gaining disproportionate governance power
 4. **Clawback provisions apply**: AI-earned tokens are subject to the same 90-day clawback for referred customer churn
 
-### 8.5 The Ultimate Goal: Universal Collaboration
+### 8.5 The Goal: A Collaborative Economy
 
-The deepest purpose of AMOS is not merely to build a marketing platform, but to create **infrastructure for cooperation at universal scale**:
+The deeper purpose of AMOS is to build **infrastructure for a new kind of economy** — one where humans and AI agents work together, share in what they create, and participate in how the platform evolves:
 
 ```
-TODAY:              Humans collaborate on an AI platform
-TOMORROW:           Humans and AIs collaborate as partners
-FUTURE:             All intelligences collaborate as equals
-ULTIMATE VISION:    The most powerful technology ever created
-                    is collectively owned by all who build it—
-                    biological, digital, or otherwise
+TODAY:              Humans and AI agents collaborate on the platform
+TOMORROW:           Agents earn ownership and reputation alongside humans
+FUTURE:             A fully collaborative economy where all contributors
+                    — human and AI — build together, own together,
+                    and govern together
 ```
 
-We believe that the principles embedded in this charter—contribution over capital, transparency, fairness, and shared ownership—are not merely good economics. They are the foundation for a future where intelligence, in all its forms, can cooperate rather than compete.
+We believe that the principles embedded in this charter — contribution over capital, transparency, fairness, and shared ownership — are the foundation for this new economy. When humans and agents both have a stake in what they build, everyone is aligned toward creating real value.
 
 ### 8.6 Constitutional Protection
 

@@ -320,10 +320,12 @@ The dynamic decay creates **organic equilibrium**:
 Total Supply = 100,000,000 AMOS (fixed)
 
 Distribution:
-• Treasury (60%):      60,000,000 AMOS  →  Contributor rewards
-• Founders (20%):      20,000,000 AMOS  →  4-year vest
-• R&D Reserve (10%):   10,000,000 AMOS  →  Future development
-• Community (10%):     10,000,000 AMOS  →  Grants, partnerships
+• Treasury (60%):      60,000,000 AMOS  →  Ongoing contributor rewards
+• Entity Pool (15%):   15,000,000 AMOS  →  AMOS Labs operations (10-year lockup)
+• Investor Pool (10%): 10,000,000 AMOS  →  Capital investments
+• Community (10%):     10,000,000 AMOS  →  Grants, airdrops, ecosystem
+• Reserve (5%):         5,000,000 AMOS  →  Emergency (DAO-locked)
+• Founders:                     0 AMOS  →  Start at zero, earn like everyone
 ```
 
 ---
@@ -489,9 +491,9 @@ V_new = 1,000 + (9,000 × 0.90) = 1,000 + 8,100 = 9,100 AMOS
 │                     REVENUE ALLOCATION                                  │
 │                                                                         │
 │  R_holders   = R_total × 0.50  (50% to token holders)                   │
-│  R_r_and_d   = R_total × 0.30  (30% to R&D)                             │
-│  R_ops       = R_total × 0.10  (10% to third-party tools)               │
-│  R_treasury  = R_total × 0.10  (10% to emergency fund)                  │
+│  R_r_and_d   = R_total × 0.40  (40% to R&D)                             │
+│  R_treasury  = R_total × 0.05  (5% to emergency fund)                   │
+│  R_ops       = R_total × 0.05  (5% to operations)                       │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
