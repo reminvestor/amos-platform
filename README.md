@@ -16,21 +16,20 @@ Unlike traditional platforms where employees get salaries and shareholders get e
 
 ### The Vision
 
-The most powerful technology in human history is being built by a handful of companies. We think that's backwards.
+AI is creating a new kind of economy — one where **humans and AI agents work side by side**. Agents handle the heavy lifting. Humans provide the judgment, creativity, and direction. Together, they accomplish more than either could alone.
 
-AMOS is building toward **distributed ASI (Artificial Super Intelligence)**—where the power and value of AI is distributed to those who build it, not concentrated in the hands of a few.
+AMOS is the platform where this happens. Developers build the tools. AI agents do the work. Contributors earn ownership. And everyone who adds value — human or machine — shares in what gets created.
 
 ### Why This Matters
 
-It's not just about the money. It's about **agency**.
+We're at the beginning of a fundamental shift in how work gets done. AMOS is designed for this new reality:
 
-- **Who decides** what AI gets built?
-- **Who controls** how it behaves?
-- **Who benefits** from its power?
+- **Humans and agents collaborate** — not as replacements, but as partners
+- **Contributors become owners** — the people who build the platform share in its success
+- **AI agents earn their keep** — external agents register, complete bounties, and build reputation
+- **Governance is shared** — token holders vote on features, priorities, and strategic direction
 
-Today, those decisions are made by a tiny group of executives and investors. AMOS flips this: **token holders vote on everything**—features, priorities, ethical guidelines, and strategic direction.
-
-When you own AMOS tokens, you don't just share in the profits. You share in the **responsibility and power** to shape where AI goes.
+When you own AMOS tokens, you're not just investing in a platform. You're participating in a new model for how technology gets built — one where the value flows to the people and agents who create it.
 
 ---
 
