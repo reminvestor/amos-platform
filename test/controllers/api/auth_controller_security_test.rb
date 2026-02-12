@@ -19,7 +19,15 @@ class Api::AuthControllerSecurityTest < ActionDispatch::IntegrationTest
   end
 
   test "successful login resets failed attempts counter" do
-    user = users(:one)
+    # Create user with known password
+    user = User.create!(
+      email: 'resettest@example.com',
+      password: 'TestPassword123!',
+      password_confirmation: 'TestPassword123!',
+      first_name: 'Test',
+      last_name: 'User',
+      entity: entities(:one)
+    )
 
     # Simulate some failed attempts
     3.times { user.increment_failed_login! }
@@ -28,7 +36,7 @@ class Api::AuthControllerSecurityTest < ActionDispatch::IntegrationTest
     # Successful login
     post api_auth_login_url, params: {
       email: user.email,
-      password: "password123"
+      password: "TestPassword123!"
     }, as: :json
 
     assert_response :success
@@ -108,11 +116,19 @@ class Api::AuthControllerSecurityTest < ActionDispatch::IntegrationTest
 
   # Story 0.4: API Key Expiration Tests (API Level)
   test "login returns api_key with expiration timestamp" do
-    user = users(:one)
+    # Create user with known password
+    user = User.create!(
+      email: 'expirytest@example.com',
+      password: 'TestPassword123!',
+      password_confirmation: 'TestPassword123!',
+      first_name: 'Test',
+      last_name: 'User',
+      entity: entities(:one)
+    )
 
     post api_auth_login_url, params: {
       email: user.email,
-      password: "password123"
+      password: "TestPassword123!"
     }, as: :json
 
     assert_response :success
