@@ -95,31 +95,31 @@
       
       <div class="chat-messages" id="chat-messages" data-scout-target="chatMessages">
         <!-- Messages will be loaded here from history -->
+
+        <!-- Quick action suggestions — shown only on fresh start / empty welcome -->
+        <div id="quick-actions" class="quick-actions-bar" style="display:none;">
+          <button class="qa-pill" data-prompt="Create a landing page for my business">
+            <i data-lucide="file-text"></i> Landing Page
+          </button>
+          <button class="qa-pill" data-prompt="Create an email drip campaign sequence">
+            <i data-lucide="mail"></i> Email Sequence
+          </button>
+          <button class="qa-pill" data-prompt="I need deep research on a topic">
+            <i data-lucide="search"></i> Deep Research
+          </button>
+          <button class="qa-pill" data-prompt="Help me connect an external app integration">
+            <i data-lucide="plug"></i> Connect an App
+          </button>
+          <button class="qa-pill" data-prompt="Build me a custom app module">
+            <i data-lucide="boxes"></i> Build an App
+          </button>
+          <button class="qa-pill" data-prompt="" data-focus-input="true">
+            <i data-lucide="message-circle"></i> Just Ask
+          </button>
+        </div>
       </div>
       
       <!-- Tool activity panel removed - now part of task progress canvas -->
-      
-      <!-- Quick action suggestions — shown only on fresh start / empty welcome -->
-      <div id="quick-actions" class="quick-actions-bar" style="display:none;">
-        <button class="qa-pill" data-prompt="Create a landing page for my business">
-          <i data-lucide="file-text"></i> Landing Page
-        </button>
-        <button class="qa-pill" data-prompt="Create an email drip campaign sequence">
-          <i data-lucide="mail"></i> Email Sequence
-        </button>
-        <button class="qa-pill" data-prompt="I need deep research on a topic">
-          <i data-lucide="search"></i> Deep Research
-        </button>
-        <button class="qa-pill" data-prompt="Help me connect an external app integration">
-          <i data-lucide="plug"></i> Connect an App
-        </button>
-        <button class="qa-pill" data-prompt="Build me a custom app module">
-          <i data-lucide="boxes"></i> Build an App
-        </button>
-        <button class="qa-pill" data-prompt="" data-focus-input="true">
-          <i data-lucide="message-circle"></i> Just Ask
-        </button>
-      </div>
 
       <div class="chat-input-area" data-controller="voice-assistant">
         <form id="message-form" data-scout-target="chatForm" enctype="multipart/form-data">
@@ -1635,22 +1635,13 @@ document.addEventListener('turbo:load', function() {
   // QUICK ACTIONS — Shown on fresh start and initial welcome only
   // ═══════════════════════════════════════════════════════════════
   
-  const quickActionsBar = document.getElementById('quick-actions');
+  // Keep a reference to the original quick-actions element (may be destroyed by innerHTML='')
+  let quickActionsBar = document.getElementById('quick-actions');
+  // Store the HTML so we can recreate it after chat clears
+  const quickActionsHTML = quickActionsBar ? quickActionsBar.outerHTML : '';
   
-  function showQuickActions() {
-    if (!quickActionsBar) return;
-    quickActionsBar.style.display = '';
-    if (window.lucide) window.lucide.createIcons();
-  }
-  
-  function hideQuickActions() {
-    if (!quickActionsBar) return;
-    quickActionsBar.style.display = 'none';
-  }
-  
-  // Wire up pill click handlers (one-time)
-  if (quickActionsBar) {
-    quickActionsBar.querySelectorAll('.qa-pill').forEach(pill => {
+  function wireQuickActionPills(container) {
+    container.querySelectorAll('.qa-pill').forEach(pill => {
       pill.addEventListener('click', function() {
         const prompt = this.dataset.prompt;
         const focusOnly = this.dataset.focusInput === 'true';
@@ -1667,6 +1658,27 @@ document.addEventListener('turbo:load', function() {
       });
     });
   }
+  
+  function showQuickActions() {
+    // If the element was destroyed (e.g. by innerHTML=''), recreate it
+    quickActionsBar = document.getElementById('quick-actions');
+    if (!quickActionsBar && quickActionsHTML) {
+      chatMessages.insertAdjacentHTML('beforeend', quickActionsHTML);
+      quickActionsBar = document.getElementById('quick-actions');
+      wireQuickActionPills(quickActionsBar);
+    }
+    if (!quickActionsBar) return;
+    quickActionsBar.style.display = '';
+    if (window.lucide) window.lucide.createIcons();
+  }
+  
+  function hideQuickActions() {
+    quickActionsBar = document.getElementById('quick-actions');
+    if (quickActionsBar) quickActionsBar.style.display = 'none';
+  }
+  
+  // Wire up initial pill handlers
+  if (quickActionsBar) wireQuickActionPills(quickActionsBar);
   
   // Dismiss quick actions as soon as the user starts typing
   if (messageInput) {
