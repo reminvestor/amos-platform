@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_11_000002) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_11_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -6368,6 +6368,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_11_000002) do
     t.index ["api_key_expires_at"], name: "index_users_on_api_key_expires_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"
+    t.index ["failed_login_attempts", "last_failed_login_at"], name: "index_users_on_lockout_fields"
     t.index ["failed_login_attempts"], name: "index_users_on_failed_login_attempts"
     t.index ["otp_required_for_login"], name: "index_users_on_otp_required_for_login"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true, where: "(provider IS NOT NULL)"

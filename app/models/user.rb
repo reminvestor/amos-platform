@@ -436,8 +436,8 @@ class User < ApplicationRecord
   def password_not_common
     return if password.blank?
 
-    # Load common passwords list (cached at class level)
-    @common_passwords ||= begin
+    # Load common passwords list (cached at class level - fix from code review)
+    @@common_passwords ||= begin
       file_path = Rails.root.join('lib', 'common_passwords.txt')
       if File.exist?(file_path)
         File.readlines(file_path).map(&:strip).to_set
@@ -446,7 +446,7 @@ class User < ApplicationRecord
       end
     end
 
-    if @common_passwords.include?(password.downcase)
+    if @@common_passwords.include?(password.downcase)
       errors.add(:password, 'is too common. Please choose a more unique password.')
     end
   end

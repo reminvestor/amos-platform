@@ -69,28 +69,27 @@ class AwsSnsSignatureValidator
   end
 
   def self.get_certificate(cert_url)
-    # Cache certificates to avoid repeated downloads
-    @certs ||= {}
+    # Cache certificates in Rails cache (fix from code review - works across processes)
+    cache_key = "sns_cert:#{Digest::SHA256.hexdigest(cert_url)}"
 
-    return @certs[cert_url] if @certs[cert_url]
+    Rails.cache.fetch(cache_key, expires_in: 24.hours) do
+      # Download certificate with timeout
+      response = Faraday.get(cert_url) do |req|
+        req.options.timeout = 5
+        req.options.open_timeout = 2
+      end
 
-    # Download certificate with timeout
-    response = Faraday.get(cert_url) do |req|
-      req.options.timeout = 5
-      req.options.open_timeout = 2
+      raise InvalidCertificateError, 'Failed to download certificate' unless response.success?
+
+      cert = OpenSSL::X509::Certificate.new(response.body)
+
+      # Verify certificate is from AWS
+      unless cert.subject.to_s.include?('Amazon')
+        raise InvalidCertificateError, 'Certificate not from Amazon'
+      end
+
+      cert
     end
-
-    raise InvalidCertificateError, 'Failed to download certificate' unless response.success?
-
-    cert = OpenSSL::X509::Certificate.new(response.body)
-
-    # Verify certificate is from AWS
-    unless cert.subject.to_s.include?('Amazon')
-      raise InvalidCertificateError, 'Certificate not from Amazon'
-    end
-
-    @certs[cert_url] = cert
-    cert
   rescue Faraday::Error => e
     raise InvalidCertificateError, "Certificate download failed: #{e.message}"
   end
