@@ -2,6 +2,11 @@ class User < ApplicationRecord
   # Include MFA support (TOTP + Email OTP)
   include TwoFactorAuthenticatable
 
+  # Encrypt sensitive fields (Story 0.4)
+  # Both must be deterministic so we can query by them (find_by / where)
+  encrypts :api_key, deterministic: true
+  encrypts :refresh_token, deterministic: true
+
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
   devise :database_authenticatable, :registerable,
@@ -15,6 +20,10 @@ class User < ApplicationRecord
   validates :first_name, :last_name, presence: true
   validates :role, presence: true, inclusion: { in: ROLES }
   validates :password, length: { minimum: 10, message: "must be at least 10 characters long" }, if: :password_required?
+
+  # Password complexity validations (Story 0.3)
+  validate :password_complexity, if: :password_required?
+  validate :password_not_common, if: :password_required?
 
   # Set defaults for test environment
   before_validation :set_test_defaults, if: -> { Rails.env.test? }
@@ -358,7 +367,90 @@ class User < ApplicationRecord
   before_create :generate_api_key
   before_create :set_resource_limits
 
+  # Account Lockout Methods (Security Story 0.1)
+  def increment_failed_login!
+    update_columns(
+      failed_login_attempts: (failed_login_attempts || 0) + 1,
+      last_failed_login_at: Time.current
+    )
+  end
+
+  def reset_failed_login!
+    update_columns(failed_login_attempts: 0, last_failed_login_at: nil)
+  end
+
+  def account_locked?
+    return false unless failed_login_attempts && last_failed_login_at
+
+    # Lock for 30 minutes after 5 failed attempts
+    failed_login_attempts >= 5 && last_failed_login_at > 30.minutes.ago
+  end
+
+  def unlock_account!
+    reset_failed_login!
+  end
+
+  # API Key Expiration Methods (Story 0.4)
+  def generate_api_key!
+    self.api_key = SecureRandom.base58(32)
+    self.api_key_expires_at = 90.days.from_now
+    self.api_key_last_used_at = Time.current
+    save!
+  end
+
+  def generate_refresh_token!
+    self.refresh_token = SecureRandom.base58(64)
+    self.refresh_token_expires_at = 180.days.from_now
+    save!
+  end
+
+  def api_key_expired?
+    api_key_expires_at.nil? || api_key_expires_at < Time.current
+  end
+
+  def refresh_token_valid?(token)
+    return false if refresh_token.blank? || refresh_token_expires_at.nil?
+    return false if refresh_token_expires_at < Time.current
+
+    ActiveSupport::SecurityUtils.secure_compare(refresh_token, token)
+  end
+
+  def touch_api_key!
+    update_column(:api_key_last_used_at, Time.current)
+  end
+
   private
+
+  # Password complexity validation (Story 0.3)
+  def password_complexity
+    return if password.blank?
+
+    errors.add(:password, 'must be at least 10 characters long') if password.length < 10
+    errors.add(:password, 'must contain at least one lowercase letter') unless password.match?(/[a-z]/)
+    errors.add(:password, 'must contain at least one uppercase letter') unless password.match?(/[A-Z]/)
+    errors.add(:password, 'must contain at least one digit') unless password.match?(/\d/)
+    errors.add(:password, 'must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)') unless password.match?(/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/)
+    errors.add(:password, 'cannot contain whitespace') if password.match?(/\s/)
+  end
+
+  # Check password against common passwords list (Story 0.3)
+  def password_not_common
+    return if password.blank?
+
+    # Load common passwords list (cached in Rails.cache for thread safety)
+    common_passwords = Rails.cache.fetch('common_passwords_list', expires_in: 1.hour) do
+      file_path = Rails.root.join('lib', 'common_passwords.txt')
+      if File.exist?(file_path)
+        File.readlines(file_path).map(&:strip).to_set
+      else
+        Set.new
+      end
+    end
+
+    if common_passwords.include?(password.downcase)
+      errors.add(:password, 'is too common. Please choose a more unique password.')
+    end
+  end
 
   def set_resource_limits
     self.agents_limit ||= 1000    # Effectively unlimited - users pay per token
@@ -367,7 +459,9 @@ class User < ApplicationRecord
   end
 
   def generate_api_key
-    self.api_key = SecureRandom.hex(32)
+    self.api_key = SecureRandom.base58(32)
+    self.api_key_expires_at = 90.days.from_now
+    self.api_key_last_used_at = Time.current
   end
 
   def set_test_defaults

@@ -16,6 +16,14 @@ class ApplicationController < ActionController::Base
   before_action :check_onboarding_status
   before_action :configure_permitted_parameters, if: :devise_controller?
 
+  # Handle CSRF token failures (Story 0.5)
+  rescue_from ActionController::InvalidAuthenticityToken do |exception|
+    respond_to do |format|
+      format.html { redirect_to root_path, alert: 'Session expired. Please try again.' }
+      format.json { render json: { error: 'Invalid CSRF token' }, status: :forbidden }
+    end
+  end
+
   # Handle Warden authentication failures gracefully
   rescue_from Warden::NotAuthenticated do |exception|
     Rails.logger.info "🚨 Warden authentication failure - Subdomain: #{request.subdomain}, Path: #{request.path}, User-Agent: #{request.user_agent}"
