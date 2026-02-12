@@ -27,12 +27,31 @@ module V3
     # Default model for auto mode - fast and cheap
     DEFAULT_AUTO_MODEL = "qwen3-next-80b"
 
-    # Escalation model — used when the cheap model fails quality checks
+    # Tiered escalation: each model escalates to the next tier
+    # Qwen/cheap → Sonnet 4.5 → Opus 4.6 (terminal)
+    ESCALATION_MAP = {
+      # Default/cheap models escalate to Sonnet 4.5
+      "qwen3-next-80b"    => "claude-sonnet-4-5",
+      "qwen-3-32b"        => "claude-sonnet-4-5",
+      "qwen-coder"        => "claude-sonnet-4-5",
+      "deepseek-v3"       => "claude-sonnet-4-5",
+      "deepseek-r1"       => "claude-sonnet-4-5",
+      "mistral-large-3"   => "claude-sonnet-4-5",
+      # Sonnet 4.5 escalates to Opus 4.6
+      "claude-sonnet-4-5" => "claude-opus-4-6",
+      "claude-haiku-4-5"  => "claude-sonnet-4-5",
+      # Opus models are terminal — no further escalation
+      "claude-opus-4-1"   => nil,
+      "claude-opus-4-5"   => nil,
+      "claude-opus-4-6"   => nil,
+    }.freeze
+
+    # Legacy constant for backward compat
     ESCALATION_MODEL = "claude-sonnet-4-5"
 
-    # Models that are already high-capability — don't escalate FROM these
-    HIGH_CAPABILITY_MODELS = %w[
-      claude-sonnet-4-5 claude-opus-4-1 claude-opus-4-5 claude-opus-4-6
+    # Models that are truly top-tier — no further escalation possible
+    TOP_TIER_MODELS = %w[
+      claude-opus-4-1 claude-opus-4-5 claude-opus-4-6
     ].freeze
 
     def initialize(user:, entity:, session_id:, model: nil, client_ip: nil)
@@ -50,7 +69,7 @@ module V3
       @canvas_data = {}
       @loop_start_time = nil
       @user_message = nil
-      @hallucination_guard_fired = false
+      @hallucination_guard_count = 0  # Number of times hallucination guard has fired (allows up to 2 nudges)
       @escalated = false
       @original_model = @model
 
@@ -211,29 +230,39 @@ module V3
 
         # ── No tool calls = model is done talking ──
         if tool_calls.empty?
-          # ── Hallucination check-in (nudge, not hard-stop) ──
+          # ── Hallucination check-in (escalating nudges) ──
           # If the user asked for an action and the model responded with text that looks
           # like it completed the action without calling any tools, nudge the model.
-          # This is a SOFT check — if we're wrong, the model can just confirm its response.
-          # We do NOT clear the streamed content in case we're wrong.
-          if turn_count == 1 && @tools_called.empty? && !@hallucination_guard_fired &&
+          # Fires up to 2 times with increasing severity, on any turn (not just turn 1).
+          # For build/create requests: uses a stronger, more explicit nudge.
+          if @tools_called.empty? && @hallucination_guard_count < 2 &&
              !conversation_has_tool_results?(conversation_messages) &&
              user_requested_action?(@user_message) && response_claims_completion?(turn_text)
-            @hallucination_guard_fired = true
-            Rails.logger.warn "[V3::AgentLoop] Possible hallucinated action — sending check-in nudge"
+            @hallucination_guard_count += 1
+            is_build_request = @user_message.match?(/\b(build|create|make|generate)\b.*\b(app|module|tracker|planner|tool|system|dashboard)\b/i)
+            Rails.logger.warn "[V3::AgentLoop] Possible hallucinated action (nudge #{@hallucination_guard_count}) — sending check-in"
 
             # Add the model's response to conversation, then inject a system check-in
             conversation_messages << { role: "assistant", content: [{ text: turn_text }] }
-            conversation_messages << {
-              role: "user",
-              content: [{ text: "[SYSTEM] Check-in: The user asked you to perform an action (#{@user_message.truncate(80)}), " \
-                                "and you responded with text but did NOT call any tools. If you have real data from a " \
-                                "previous tool call, that's fine — just confirm. But if you fabricated or guessed at the " \
-                                "data, you MUST call the appropriate tool now (platform_execute, platform_query, platform_create, etc.) " \
-                                "to get real results. Do NOT make up data." }]
-            }
-            # Don't clear content — let the model either call the tool or confirm
-            # The model's next turn will either call a tool (good) or output a brief confirmation (also fine)
+
+            nudge_text = if @hallucination_guard_count == 1 && is_build_request
+              "[SYSTEM] STOP. You claimed to create an app/module but you did NOT call any tool. " \
+              "You MUST call platform_create(type: \"app\", data: { name: \"...\", description: \"...\" }) " \
+              "to actually build the module. Describing what you would create is NOT the same as creating it. " \
+              "Call the tool NOW."
+            elsif @hallucination_guard_count == 1
+              "[SYSTEM] Check-in: The user asked you to perform an action (#{@user_message.truncate(80)}), " \
+              "and you responded with text but did NOT call any tools. If you have real data from a " \
+              "previous tool call, that's fine — just confirm. But if you fabricated or guessed at the " \
+              "data, you MUST call the appropriate tool now (platform_execute, platform_query, platform_create, etc.) " \
+              "to get real results. Do NOT make up data."
+            else
+              "[SYSTEM] FINAL WARNING: You have now responded TWICE without calling a tool. " \
+              "The user asked for a concrete action. You MUST call a tool in your next response. " \
+              "If you cannot perform the action, say so honestly instead of pretending you did it."
+            end
+
+            conversation_messages << { role: "user", content: [{ text: nudge_text }] }
             next
           end
 
@@ -496,6 +525,7 @@ module V3
     end
 
     # Check if the USER's message is asking for a concrete action (create, edit, update, delete, etc.)
+    # Also catches follow-ups where the user says "you didn't do it" or "it's still not there".
     # Pure discussion/question messages should NOT trigger the guard.
     def user_requested_action?(message)
       return false if message.blank?
@@ -504,17 +534,24 @@ module V3
       # Direct action verbs that indicate the user wants something DONE
       action_patterns = /\b(create|make|build|add|edit|update|change|modify|delete|remove|send|publish|fix|set up|generate|pull|import|connect|integrate)\b/i
 
+      # Follow-up complaints that imply the action wasn't actually done
+      # e.g., "you didn't actually create it", "it's still not in my assets", "i don't see it"
+      complaint_patterns = /\b(didn['']t (actually|really)|still not|don['']t see|not (there|showing|in my|visible|working|created)|you didn['']t|not actually|where is it|it['']s not)\b/i
+
       # Exclude purely conversational patterns
       discussion_patterns = /\b(what do you think|analyze|opinion|explain|tell me about|compare|discuss|how does|can you tell|what is|who is|describe)\b/i
 
-      msg.match?(action_patterns) && !msg.match?(discussion_patterns)
+      return false if msg.match?(discussion_patterns)
+      msg.match?(action_patterns) || msg.match?(complaint_patterns)
     end
 
     # Check if the model's response claims it completed an action without actually calling a tool.
-    # Two tiers:
+    # Three tiers:
     #   1. Short responses (<500 chars) with completion language (e.g., "Done! I've updated it")
     #   2. ANY length response that narrates executing a tool action (e.g., "Let me pull... Here are your results:")
     #      This catches models that fabricate detailed fake data instead of calling tools.
+    #   3. ANY length response that claims to have built/created an app/module with details
+    #      (e.g., "Your Weekly Task Tracker module has been created. ✅ 7 columns...")
     def response_claims_completion?(text)
       return false if text.blank?
 
@@ -529,8 +566,20 @@ module V3
       narrates_action = text.match?(/\b(let me (execute|pull|retrieve|fetch|run|call|query)|here['']?s? (the|your)|have been (retrieved|pulled|fetched|created|updated))\b/i)
       claims_results = text.match?(/\b(here are|retrieved|results|summary|customers?|contacts?|records?)\b/i) &&
                        text.match?(/\d+\.\s+\*?\*?[A-Z]/)  # Numbered list with capitalized names = fabricated data
-      
-      narrates_action && claims_results
+      return true if narrates_action && claims_results
+
+      # Tier 3: Claims to have built/created an app or module (at any length)
+      # Catches patterns like: "Your Weekly Task Tracker module has been created"
+      # "I've created the module" / "module is now live" / "is ready to use"
+      claims_creation = text.match?(/\b(has been (created|built|generated|set up)|is now (live|ready|active|available)|module.{0,30}(created|built|ready)|app.{0,30}(created|built|ready)|i['']?m now creating|has now been actually created)\b/i)
+      has_feature_list = text.scan(/✅/).length >= 2 || text.match?(/\n-\s+.+\n-\s+/)  # Checklist or bullet list of "features"
+      return true if claims_creation
+
+      # Tier 4: Response lists "features" of something that was supposedly created
+      # e.g., "✅ Title ✅ Description ✅ Priority" — without any tool call
+      return true if has_feature_list && text.match?(/\b(created|built|ready|live|tracker|module|app)\b/i)
+
+      false
     end
 
     def build_tool_context
@@ -604,34 +653,35 @@ module V3
     #   - Repeated tool failures (same tool failing 3+ times)
     #   - Tool loop detected (same tool called 5+ times in a row)
     #
-    # We clear the bad output, escalate to Sonnet, and re-run the
-    # full loop. The user sees a brief "switching to a smarter model"
-    # message so they know what's happening.
+    # Tiered escalation: Qwen → Sonnet 4.5 → Opus 4.6 (terminal)
+    # We clear the bad output, escalate to the next tier, and re-run.
     #
     # Key constraints:
     #   - Only escalate once per request (no escalation chains)
-    #   - Don't escalate FROM already-capable models (Sonnet/Opus)
-    #   - Don't escalate for user-selected models (respect their choice)
+    #   - Opus models are terminal — no further escalation
+    #   - User-selected models still escalate on hallucination (safety net)
+    #   - Other user-selected model failures are respected (no escalation)
     # ═══════════════════════════════════════════════════════════════
 
     def should_escalate?(result, message)
       # Already escalated this request — no double escalation
       return false if @escalated
 
-      # Model was explicitly chosen by user — respect their choice
-      return false if user_selected_model?
-
-      # Already on a high-capability model — nowhere to escalate to
-      return false if high_capability_model?(@model)
-
-      # Check for failure patterns
+      # Model was explicitly chosen by user — respect their choice (unless hallucinating)
+      # Exception: even user-selected models escalate on hallucination_guard
       reason = detect_escalation_reason(result, message)
-      if reason
-        Rails.logger.info "[V3::AgentLoop] Escalation triggered: #{reason} (model: #{@model})"
-        true
-      else
-        false
+      return false unless reason
+
+      if user_selected_model? && reason != "hallucination_guard"
+        return false
       end
+
+      # Check if there's an escalation target for this model
+      escalation_target = get_escalation_target(@model)
+      return false unless escalation_target
+
+      Rails.logger.info "[V3::AgentLoop] Escalation triggered: #{reason} (#{@model} → #{escalation_target})"
+      true
     end
 
     def detect_escalation_reason(result, message)
@@ -649,7 +699,7 @@ module V3
       end
 
       # Pattern 3: Hallucination guard fired — model claimed action without tools
-      if @hallucination_guard_fired
+      if @hallucination_guard_count > 0
         return "hallucination_guard"
       end
 
@@ -678,7 +728,7 @@ module V3
 
     def escalate_and_retry!(system_prompt, conversation_messages, tools, progress_callback, failed_result)
       @escalated = true
-      escalation_model = ESCALATION_MODEL
+      escalation_model = get_escalation_target(@model) || ESCALATION_MODEL
       failed_response = failed_result.dig(:final_response, :message) || ""
       reason = detect_escalation_reason(failed_result, @user_message)
 
@@ -698,7 +748,7 @@ module V3
       @tools_called = []
       @tool_call_history = []
       @tool_turns = []
-      @hallucination_guard_fired = false
+      @hallucination_guard_count = 0
       @suggested_canvas = nil
       @canvas_data = {}
 
@@ -739,7 +789,34 @@ module V3
     end
 
     def high_capability_model?(model_name)
-      HIGH_CAPABILITY_MODELS.any? { |m| model_name.include?(m) }
+      TOP_TIER_MODELS.any? { |m| model_name.include?(m) }
+    end
+
+    # Get the next escalation target for a given model
+    # Returns nil if no escalation is possible (top-tier model)
+    def get_escalation_target(model_name)
+      # Direct lookup first
+      target = ESCALATION_MAP[model_name]
+      return target if ESCALATION_MAP.key?(model_name)
+
+      # Fuzzy match (handles variants like "claude-sonnet-4.5" vs "claude-sonnet-4-5")
+      normalized = model_name.to_s.gsub('.', '-')
+      target = ESCALATION_MAP[normalized]
+      return target if ESCALATION_MAP.key?(normalized)
+
+      # Check if any key is a substring match
+      ESCALATION_MAP.each do |key, value|
+        return value if model_name.include?(key) || key.include?(model_name)
+      end
+
+      # Unknown model — default escalation to Sonnet 4.5 (unless already Sonnet+)
+      if model_name.include?("sonnet")
+        "claude-opus-4-6"
+      elsif model_name.include?("opus")
+        nil  # Opus is terminal
+      else
+        ESCALATION_MODEL  # Default: escalate to Sonnet 4.5
+      end
     end
 
     def complex_request?(message)

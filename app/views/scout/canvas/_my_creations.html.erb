@@ -1,393 +1,609 @@
-<%# My Creations Canvas - Unified view of all projects and assets %>
-<%# Shows landing pages, websites, apps, workflows with filtering %>
+<%# My Creations Canvas - Unified project & asset manager %>
+<%# Cards for landing pages/websites, project view for app modules, list for automations %>
 
 <% 
   data = canvas_data || {}
-  
-  # Search query (if provided)
   search_query = (data[:search] || data['search'] || '').to_s.strip.downcase
-  max_display = 100 # Show up to 100 items, use search to find more
-  
-  # Get all creations
+  max_display = 100
+
+  # ── Fetch data with eager loading ──
   landing_pages_all = entity.landing_pages.order(updated_at: :desc)
-  app_modules_all = entity.app_modules.order(updated_at: :desc) rescue []
-  workflows_all = entity.automation_codes.order(updated_at: :desc) rescue []
-  design_plans_all = current_user.design_plans.where(entity: entity).order(updated_at: :desc) rescue []
-  draft_plans_all = design_plans_all.respond_to?(:where) ? design_plans_all.where(status: 'draft') : design_plans_all.select { |p| p.status == 'draft' }
-  
-  # Apply search filter if query provided (server-side search for initial load)
+  app_modules_all = entity.app_modules
+    .includes(:module_canvases, :module_codes, :tool_definitions, :agent_plugins, :module_webhooks, :module_actions)
+    .order(updated_at: :desc) rescue []
+  automations_all = entity.automation_codes.order(updated_at: :desc) rescue []
+  websites_all = entity.websites.includes(:website_pages).order(updated_at: :desc) rescue []
+
+  # Apply search filter
   if search_query.present?
     landing_pages_all = landing_pages_all.where("LOWER(title) LIKE ? OR LOWER(description) LIKE ?", "%#{search_query}%", "%#{search_query}%")
     app_modules_all = app_modules_all.respond_to?(:where) ? app_modules_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : app_modules_all.select { |m| m.name.to_s.downcase.include?(search_query) }
-    workflows_all = workflows_all.respond_to?(:where) ? workflows_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : workflows_all.select { |w| w.name.to_s.downcase.include?(search_query) }
-    design_plans_all = design_plans_all.respond_to?(:where) ? design_plans_all.where("LOWER(name) LIKE ? OR plan_data::text ILIKE ?", "%#{search_query}%", "%#{search_query}%") : design_plans_all.select { |p| p.name.to_s.downcase.include?(search_query) }
-    draft_plans_all = draft_plans_all.respond_to?(:where) ? draft_plans_all.where("LOWER(name) LIKE ? OR plan_data::text ILIKE ?", "%#{search_query}%", "%#{search_query}%") : draft_plans_all.select { |p| p.name.to_s.downcase.include?(search_query) }
+    automations_all = automations_all.respond_to?(:where) ? automations_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : automations_all.select { |a| a.name.to_s.downcase.include?(search_query) }
+    websites_all = websites_all.respond_to?(:where) ? websites_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : websites_all
   end
-  
-  # Limit for display
+
   landing_pages = landing_pages_all.limit(max_display)
   app_modules = app_modules_all.respond_to?(:limit) ? app_modules_all.limit(max_display) : app_modules_all.first(max_display)
-  workflows = workflows_all.respond_to?(:limit) ? workflows_all.limit(max_display) : workflows_all.first(max_display)
-  design_plans = design_plans_all.respond_to?(:limit) ? design_plans_all.limit(max_display) : design_plans_all.first(max_display)
-  draft_plans = draft_plans_all.respond_to?(:limit) ? draft_plans_all.limit(max_display) : draft_plans_all.first(max_display)
-  
-  # Total counts for tabs (unfiltered)
+  automations = automations_all.respond_to?(:limit) ? automations_all.limit(max_display) : automations_all.first(max_display)
+  websites = websites_all.respond_to?(:limit) ? websites_all.limit(max_display) : websites_all.first(max_display)
+
+  # ── Stats ──
   total_landing_pages = entity.landing_pages.count rescue 0
+  published_landing_pages = entity.landing_pages.where(status: 'published').count rescue 0
+  draft_landing_pages = total_landing_pages - published_landing_pages
+  total_submissions = (entity.landing_pages.joins("LEFT JOIN landing_page_submissions ON landing_page_submissions.landing_page_id = landing_pages.id").count("landing_page_submissions.id") rescue 0)
+
   total_app_modules = (entity.app_modules.count rescue 0)
-  total_workflows = (entity.automation_codes.count rescue 0)
-  total_draft_plans = (current_user.design_plans.where(entity: entity, status: 'draft').count rescue 0)
-  total_items = total_landing_pages + total_app_modules + total_workflows + total_draft_plans
-  
-  # Displayed counts (after search filter)
-  displayed_landing_pages = landing_pages.respond_to?(:count) ? landing_pages.count : landing_pages.length
-  displayed_app_modules = app_modules.respond_to?(:count) ? app_modules.count : app_modules.length
-  displayed_workflows = workflows.respond_to?(:count) ? workflows.count : workflows.length
-  displayed_draft_plans = draft_plans.respond_to?(:count) ? draft_plans.count : draft_plans.length
-  displayed_items = displayed_landing_pages + displayed_app_modules + displayed_workflows + displayed_draft_plans
-  
-  # Current filter
+  active_app_modules = (entity.app_modules.where(status: 'active').count rescue 0)
+  deployed_app_modules = (entity.app_modules.where.not(deployed_at: nil).count rescue 0)
+
+  total_automations = (entity.automation_codes.count rescue 0)
+  active_automations = (entity.automation_codes.where(status: 'active').count rescue 0)
+  total_executions = (entity.automation_codes.sum(:execution_count) rescue 0)
+  total_successes = (entity.automation_codes.sum(:success_count) rescue 0)
+  avg_success_rate = total_executions > 0 ? ((total_successes.to_f / total_executions) * 100).round(1) : 0
+
+  total_websites = (entity.websites.count rescue 0)
+  published_websites = (entity.websites.where(status: 'published').count rescue 0)
+  total_items = total_landing_pages + total_app_modules + total_automations + total_websites
+
   filter_type = data[:type] || data['type'] || 'all'
   filter_status = data[:status] || data['status'] || 'all'
 %>
 
 <div class="my-creations-canvas" id="my-creations-<%= SecureRandom.hex(4) %>">
   <!-- Header -->
-  <div class="creations-header">
-    <div class="header-left">
-      <i data-lucide="folder-open" class="header-icon"></i>
+  <div class="creations-header d-flex justify-content-between align-items-center p-3 border-bottom">
+    <div class="d-flex align-items-center gap-3">
+      <div class="header-icon-wrap">
+        <i data-lucide="layout-dashboard" style="width: 22px; height: 22px;"></i>
+      </div>
       <div>
-        <h4 class="header-title">Created Assets</h4>
-        <p class="header-subtitle">All your landing pages, websites, apps & workflows</p>
+        <h5 class="mb-0 fw-semibold">My Projects & Assets</h5>
+        <small class="text-muted">Everything you've built in one place</small>
       </div>
     </div>
-    <div class="header-right">
-      <div class="search-box">
-        <i data-lucide="search" class="search-icon"></i>
-        <input type="text" placeholder="Search assets..." id="creations-search" class="search-input">
+    <div class="d-flex align-items-center gap-2">
+      <div class="position-relative">
+        <i data-lucide="search" class="position-absolute" style="width: 16px; height: 16px; left: 10px; top: 50%; transform: translateY(-50%); opacity: 0.4;"></i>
+        <input type="text" placeholder="Search..." id="creations-search" class="form-control form-control-sm" style="padding-left: 32px; width: 180px;" value="<%= search_query %>">
       </div>
-      <button type="button" class="btn btn-primary create-new-btn" id="create-new-btn">
-        <i data-lucide="plus" style="width: 16px; height: 16px;" class="me-1"></i>
-        Create New
+      <button type="button" class="btn btn-sm btn-primary" id="create-new-btn">
+        <i data-lucide="plus" style="width: 16px; height: 16px;" class="me-1"></i>Create
       </button>
     </div>
   </div>
-  
-  <!-- Filter Bar -->
-  <div class="creations-filters">
-    <div class="filter-group">
-      <span class="filter-label">Type:</span>
-      <div class="filter-tabs" id="type-filters">
-        <button type="button" class="filter-tab <%= 'active' if filter_type == 'all' %>" data-filter="all">
-          <i data-lucide="layers" style="width: 14px; height: 14px;"></i>
-          All
+
+  <!-- Tab Navigation -->
+  <div class="creations-tabs px-3 pt-2 border-bottom">
+    <ul class="nav nav-tabs border-0" id="asset-tabs">
+      <li class="nav-item">
+        <button type="button" class="nav-link asset-tab <%= 'active' if filter_type == 'all' %>" data-filter="all">
+          All <span class="badge bg-secondary bg-opacity-25 text-body ms-1"><%= total_items %></span>
         </button>
-        <button type="button" class="filter-tab <%= 'active' if filter_type == 'landing_page' %>" data-filter="landing_page">
-          <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
-          Landing Pages
-          <span class="count"><%= total_landing_pages %></span>
+      </li>
+      <li class="nav-item">
+        <button type="button" class="nav-link asset-tab <%= 'active' if filter_type == 'landing_page' %>" data-filter="landing_page">
+          <i data-lucide="file-text" style="width: 14px; height: 14px;" class="me-1"></i>Pages <span class="badge bg-secondary bg-opacity-25 text-body ms-1"><%= total_landing_pages %></span>
         </button>
-        <button type="button" class="filter-tab <%= 'active' if filter_type == 'website' %>" data-filter="website">
-          <i data-lucide="globe" style="width: 14px; height: 14px;"></i>
-          Websites
-          <span class="count">0</span>
+      </li>
+      <li class="nav-item">
+        <button type="button" class="nav-link asset-tab <%= 'active' if filter_type == 'app_module' %>" data-filter="app_module">
+          <i data-lucide="boxes" style="width: 14px; height: 14px;" class="me-1"></i>Apps <span class="badge bg-secondary bg-opacity-25 text-body ms-1"><%= total_app_modules %></span>
         </button>
-        <button type="button" class="filter-tab <%= 'active' if filter_type == 'app_module' %>" data-filter="app_module">
-          <i data-lucide="boxes" style="width: 14px; height: 14px;"></i>
-          App Modules
-          <span class="count"><%= total_app_modules %></span>
+      </li>
+      <% if total_websites > 0 %>
+        <li class="nav-item">
+          <button type="button" class="nav-link asset-tab <%= 'active' if filter_type == 'website' %>" data-filter="website">
+            <i data-lucide="globe" style="width: 14px; height: 14px;" class="me-1"></i>Sites <span class="badge bg-secondary bg-opacity-25 text-body ms-1"><%= total_websites %></span>
+          </button>
+        </li>
+      <% end %>
+      <li class="nav-item">
+        <button type="button" class="nav-link asset-tab <%= 'active' if filter_type == 'automation' %>" data-filter="automation">
+          <i data-lucide="zap" style="width: 14px; height: 14px;" class="me-1"></i>Automations <span class="badge bg-secondary bg-opacity-25 text-body ms-1"><%= total_automations %></span>
         </button>
-        <button type="button" class="filter-tab <%= 'active' if filter_type == 'workflow' %>" data-filter="workflow">
-          <i data-lucide="git-branch" style="width: 14px; height: 14px;"></i>
-          Workflows
-          <span class="count"><%= total_workflows %></span>
-        </button>
-        <button type="button" class="filter-tab <%= 'active' if filter_type == 'design_plan' %>" data-filter="design_plan">
-          <i data-lucide="pencil-ruler" style="width: 14px; height: 14px;"></i>
-          Design Plans
-          <span class="count"><%= total_draft_plans %></span>
-        </button>
-      </div>
-    </div>
-    
-    <div class="filter-group">
-      <span class="filter-label">Status:</span>
-      <div class="filter-tabs" id="status-filters">
-        <button type="button" class="filter-tab small <%= 'active' if filter_status == 'all' %>" data-status="all">All</button>
-        <button type="button" class="filter-tab small <%= 'active' if filter_status == 'draft' %>" data-status="draft">
-          <span class="status-dot draft"></span> Draft
-        </button>
-        <button type="button" class="filter-tab small <%= 'active' if filter_status == 'published' %>" data-status="published">
-          <span class="status-dot published"></span> Published
-        </button>
-      </div>
-    </div>
+      </li>
+    </ul>
   </div>
-  
-  <!-- Creations Grid -->
-  <div class="creations-grid-container">
-    <% total_count = landing_pages.count + (app_modules.respond_to?(:count) ? app_modules.count : 0) + (workflows.respond_to?(:count) ? workflows.count : 0) + (draft_plans.respond_to?(:count) ? draft_plans.count : 0) %>
-    
-    <% if total_count > 0 %>
-      <div class="creations-grid" id="creations-grid">
-        
-        <%# Landing Pages %>
-        <% landing_pages.each do |lp| %>
-          <div class="creation-card" 
-               data-id="<%= lp.id %>" 
-               data-type="landing_page"
-               data-status="<%= lp.status == 'published' ? 'published' : 'draft' %>"
-               data-title="<%= lp.title.downcase %>">
-            <div class="creation-preview">
-              <% if lp.html_content.present? && lp.html_content.strip.length > 100 %>
-                <div class="preview-iframe-container">
-                  <% 
-                    # Prepare preview HTML with base tag and error hiding
-                    preview_html = lp.html_content.to_s
-                    # More comprehensive error hiding and styling reset
-                    error_hide_css = '<style>html,body{margin:0!important;padding:0!important;overflow:hidden!important;background:#fff!important}*{animation:none!important;transition:none!important}.error,.alert,.alert-danger,.flash,[class*="error"],[class*="Error"],#error-page,.rails-default-error-page{display:none!important}</style>'
-                    
-                    # Ensure we have a complete HTML document
-                    if preview_html.include?('<head>')
-                      preview_html = preview_html.sub(/<head[^>]*>/i, "\\0<base href=\"#{request.base_url}/\">#{error_hide_css}")
-                    elsif preview_html.include?('<head')
-                      preview_html = preview_html.sub(/<head/i, "<head><base href=\"#{request.base_url}/\">#{error_hide_css}</head><head")
-                    elsif preview_html.include?('<html')
-                      preview_html = preview_html.sub(/<html[^>]*>/i, "\\0<head><base href=\"#{request.base_url}/\">#{error_hide_css}</head>")
-                    elsif preview_html.include?('<body')
-                      preview_html = "<!DOCTYPE html><html><head><base href=\"#{request.base_url}/\">#{error_hide_css}</head>" + preview_html + "</html>"
-                    else
-                      preview_html = "<!DOCTYPE html><html><head><base href=\"#{request.base_url}/\">#{error_hide_css}</head><body style=\"background:#fff;\">#{preview_html}</body></html>"
-                    end
-                  %>
-                  <iframe 
-                    srcdoc="<%= raw preview_html.gsub('"', '&quot;').gsub("'", '&#39;') %>"
-                    sandbox="allow-same-origin allow-scripts"
-                    scrolling="no"
-                    class="preview-iframe"
-                    loading="lazy"></iframe>
-                </div>
-              <% else %>
-                <div class="preview-placeholder landing-page">
-                  <i data-lucide="file-text" style="width: 32px; height: 32px;"></i>
-                  <span class="placeholder-text">No content yet</span>
-                </div>
-              <% end %>
-              <div class="creation-type-badge">
-                <i data-lucide="file-text" style="width: 12px; height: 12px;"></i>
-                Landing Page
+
+  <!-- Scrollable Content Area -->
+  <div class="creations-body p-3" style="flex: 1; overflow-y: auto;">
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- Stats Cards - contextual per tab                -->
+    <!-- ════════════════════════════════════════════════ -->
+    <div class="stats-row row g-2 mb-3" data-stats="all">
+      <div class="col-6 col-lg-3">
+        <div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div><p class="text-muted small mb-0">Total Assets</p><h5 class="mb-0 fw-bold"><%= total_items %></h5></div>
+            <div class="stat-icon-sm bg-primary bg-opacity-10 rounded-2 p-1"><i data-lucide="layers" class="text-primary" style="width: 18px; height: 18px;"></i></div>
+          </div>
+        </div></div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div><p class="text-muted small mb-0">Landing Pages</p><h5 class="mb-0 fw-bold"><%= total_landing_pages %></h5></div>
+            <div class="stat-icon-sm bg-info bg-opacity-10 rounded-2 p-1"><i data-lucide="file-text" class="text-info" style="width: 18px; height: 18px;"></i></div>
+          </div>
+        </div></div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div><p class="text-muted small mb-0">Apps</p><h5 class="mb-0 fw-bold"><%= total_app_modules %></h5></div>
+            <div class="stat-icon-sm rounded-2 p-1" style="background: rgba(139,92,246,0.1);"><i data-lucide="boxes" style="width: 18px; height: 18px; color: #8b5cf6;"></i></div>
+          </div>
+        </div></div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div><p class="text-muted small mb-0">Automations</p><h5 class="mb-0 fw-bold"><%= total_automations %></h5></div>
+            <div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="zap" class="text-success" style="width: 18px; height: 18px;"></i></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="stats-row row g-2 mb-3" data-stats="landing_page" style="display: none;">
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Total</p><h5 class="mb-0 fw-bold text-primary"><%= total_landing_pages %></h5></div><div class="stat-icon-sm bg-primary bg-opacity-10 rounded-2 p-1"><i data-lucide="file-text" class="text-primary" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Published</p><h5 class="mb-0 fw-bold text-success"><%= published_landing_pages %></h5></div><div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="check-circle" class="text-success" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Drafts</p><h5 class="mb-0 fw-bold text-warning"><%= draft_landing_pages %></h5></div><div class="stat-icon-sm bg-warning bg-opacity-10 rounded-2 p-1"><i data-lucide="pencil" class="text-warning" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Submissions</p><h5 class="mb-0 fw-bold text-info"><%= total_submissions %></h5></div><div class="stat-icon-sm bg-info bg-opacity-10 rounded-2 p-1"><i data-lucide="inbox" class="text-info" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+    </div>
+
+    <div class="stats-row row g-2 mb-3" data-stats="app_module" style="display: none;">
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Total Apps</p><h5 class="mb-0 fw-bold text-primary"><%= total_app_modules %></h5></div><div class="stat-icon-sm bg-primary bg-opacity-10 rounded-2 p-1"><i data-lucide="boxes" class="text-primary" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Active</p><h5 class="mb-0 fw-bold text-success"><%= active_app_modules %></h5></div><div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="check-circle" class="text-success" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Deployed</p><h5 class="mb-0 fw-bold text-info"><%= deployed_app_modules %></h5></div><div class="stat-icon-sm bg-info bg-opacity-10 rounded-2 p-1"><i data-lucide="rocket" class="text-info" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Draft</p><h5 class="mb-0 fw-bold text-warning"><%= total_app_modules - active_app_modules %></h5></div><div class="stat-icon-sm bg-warning bg-opacity-10 rounded-2 p-1"><i data-lucide="pencil" class="text-warning" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+    </div>
+
+    <div class="stats-row row g-2 mb-3" data-stats="automation" style="display: none;">
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Total</p><h5 class="mb-0 fw-bold text-primary"><%= total_automations %></h5></div><div class="stat-icon-sm bg-primary bg-opacity-10 rounded-2 p-1"><i data-lucide="zap" class="text-primary" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Active</p><h5 class="mb-0 fw-bold text-success"><%= active_automations %> <small class="text-muted fw-normal fs-6">/ <%= total_automations %></small></h5></div><div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="play-circle" class="text-success" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Executions</p><h5 class="mb-0 fw-bold text-info"><%= total_executions %></h5></div><div class="stat-icon-sm bg-info bg-opacity-10 rounded-2 p-1"><i data-lucide="activity" class="text-info" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Success</p><h5 class="mb-0 fw-bold <%= avg_success_rate >= 95 ? 'text-success' : avg_success_rate >= 80 ? 'text-warning' : 'text-danger' %>"><%= avg_success_rate %>%</h5></div><div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="check-circle" class="text-success" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- SECTION: Landing Pages (Card Grid)              -->
+    <!-- ════════════════════════════════════════════════ -->
+    <div class="section-block" data-section="landing_page">
+      <% if filter_type == 'all' && total_landing_pages > 0 %>
+        <div class="section-header d-flex align-items-center justify-content-between mb-2">
+          <h6 class="mb-0 fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+            <i data-lucide="file-text" style="width: 14px; height: 14px;" class="me-1"></i>Landing Pages
+          </h6>
+          <button type="button" class="btn btn-link btn-sm text-muted p-0 view-all-btn" data-filter="landing_page" style="font-size: 0.75rem;">View all (<%= total_landing_pages %>)</button>
+        </div>
+      <% end %>
+
+      <% if landing_pages.any? %>
+        <div class="lp-grid mb-4">
+          <% landing_pages.each do |lp| %>
+            <div class="creation-card card border-0 shadow-sm" 
+                 data-id="<%= lp.id %>" data-type="landing_page"
+                 data-status="<%= lp.status == 'published' ? 'published' : 'draft' %>"
+                 data-title="<%= lp.title.downcase %>">
+              <div class="creation-preview">
+                <% if lp.html_content.present? && lp.html_content.strip.length > 100 %>
+                  <div class="preview-iframe-container">
+                    <% 
+                      preview_html = lp.html_content.to_s
+                      error_hide_css = '<style>html,body{margin:0!important;padding:0!important;overflow:hidden!important;background:#fff!important}*{animation:none!important;transition:none!important}.error,.alert,.alert-danger,.flash,[class*="error"],[class*="Error"],#error-page,.rails-default-error-page{display:none!important}</style>'
+                      if preview_html.include?('<head>')
+                        preview_html = preview_html.sub(/<head[^>]*>/i, "\\0<base href=\"#{request.base_url}/\">#{error_hide_css}")
+                      elsif preview_html.include?('<html')
+                        preview_html = preview_html.sub(/<html[^>]*>/i, "\\0<head><base href=\"#{request.base_url}/\">#{error_hide_css}</head>")
+                      else
+                        preview_html = "<!DOCTYPE html><html><head><base href=\"#{request.base_url}/\">#{error_hide_css}</head><body style=\"background:#fff;\">#{preview_html}</body></html>"
+                      end
+                    %>
+                    <iframe srcdoc="<%= raw preview_html.gsub('"', '&quot;').gsub("'", '&#39;') %>"
+                      sandbox="allow-same-origin allow-scripts" scrolling="no"
+                      class="preview-iframe" loading="lazy"></iframe>
+                  </div>
+                <% else %>
+                  <div class="preview-placeholder landing-page">
+                    <i data-lucide="file-text" style="width: 28px; height: 28px;"></i>
+                  </div>
+                <% end %>
+                <span class="status-badge <%= lp.status == 'published' ? 'published' : 'draft' %>">
+                  <%= lp.status == 'published' ? 'Published' : 'Draft' %>
+                </span>
               </div>
-              <div class="creation-status <%= lp.status == 'published' ? 'published' : 'draft' %>">
-                <%= lp.status == 'published' ? 'Published' : 'Draft' %>
+              <div class="card-body py-2 px-3">
+                <h6 class="mb-1 fw-semibold text-truncate" style="font-size: 0.85rem;"><%= lp.title.truncate(40) %></h6>
+                <div class="d-flex align-items-center gap-2 text-muted" style="font-size: 0.7rem;">
+                  <span><%= lp.updated_at.strftime('%b %d') %></span>
+                  <% subs = (lp.landing_page_submissions.count rescue 0) %>
+                  <% if subs > 0 %><span class="text-info"><i data-lucide="inbox" style="width: 11px; height: 11px;" class="me-1"></i><%= subs %></span><% end %>
+                </div>
+              </div>
+              <div class="card-footer bg-transparent border-top d-flex gap-1 p-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary flex-fill action-btn edit-btn" data-id="<%= lp.id %>" data-type="landing_page">
+                  <i data-lucide="edit-2" style="width: 12px; height: 12px;" class="me-1"></i>Edit
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary flex-fill action-btn preview-btn" data-id="<%= lp.id %>" data-type="landing_page">
+                  <i data-lucide="eye" style="width: 12px; height: 12px;" class="me-1"></i>View
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary action-btn more-btn" data-id="<%= lp.id %>" data-type="landing_page">
+                  <i data-lucide="more-horizontal" style="width: 12px; height: 12px;"></i>
+                </button>
               </div>
             </div>
-            <div class="creation-info">
-              <h6 class="creation-title"><%= lp.title.truncate(30) %></h6>
-              <div class="creation-meta">
-                <span class="meta-item">
-                  <i data-lucide="calendar" style="width: 12px; height: 12px;"></i>
-                  <%= lp.updated_at.strftime('%b %d, %Y') %>
+          <% end %>
+        </div>
+      <% elsif filter_type == 'landing_page' %>
+        <div class="text-center py-4 text-muted"><p>No landing pages yet. Ask Amos to create one!</p></div>
+      <% end %>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- SECTION: Websites (Card Grid - like landing pages) -->
+    <!-- ════════════════════════════════════════════════ -->
+    <div class="section-block" data-section="website">
+      <% if filter_type == 'all' && total_websites > 0 %>
+        <div class="section-header d-flex align-items-center justify-content-between mb-2">
+          <h6 class="mb-0 fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+            <i data-lucide="globe" style="width: 14px; height: 14px;" class="me-1"></i>Websites
+          </h6>
+          <button type="button" class="btn btn-link btn-sm text-muted p-0 view-all-btn" data-filter="website" style="font-size: 0.75rem;">View all (<%= total_websites %>)</button>
+        </div>
+      <% end %>
+
+      <% if websites.respond_to?(:each) && websites.any? %>
+        <div class="lp-grid mb-4">
+          <% websites.each do |site| %>
+            <div class="creation-card card border-0 shadow-sm"
+                 data-id="<%= site.id %>" data-type="website"
+                 data-status="<%= site.status == 'published' ? 'published' : 'draft' %>"
+                 data-title="<%= site.name.downcase rescue '' %>">
+              <div class="creation-preview">
+                <div class="preview-placeholder website">
+                  <i data-lucide="globe" style="width: 28px; height: 28px;"></i>
+                  <span style="font-size: 0.7rem; color: rgba(255,255,255,0.7);"><%= (site.website_pages.count rescue 0) %> pages</span>
+                </div>
+                <span class="status-badge <%= site.status == 'published' ? 'published' : 'draft' %>">
+                  <%= site.status&.titleize || 'Draft' %>
                 </span>
-                <% if lp.respond_to?(:views_count) && lp.views_count.to_i > 0 %>
-                  <span class="meta-item">
-                    <i data-lucide="eye" style="width: 12px; height: 12px;"></i>
-                    <%= lp.views_count %> views
-                  </span>
+              </div>
+              <div class="card-body py-2 px-3">
+                <h6 class="mb-1 fw-semibold text-truncate" style="font-size: 0.85rem;"><%= site.name.truncate(40) rescue 'Untitled' %></h6>
+                <div class="d-flex align-items-center gap-2 text-muted" style="font-size: 0.7rem;">
+                  <span><%= site.updated_at.strftime('%b %d') rescue '' %></span>
+                  <% if site.subdomain.present? %>
+                    <span class="text-info"><i data-lucide="link" style="width: 10px; height: 10px;" class="me-1"></i><%= site.subdomain %></span>
+                  <% end %>
+                </div>
+              </div>
+              <div class="card-footer bg-transparent border-top d-flex gap-1 p-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary flex-fill action-btn website-edit-btn" data-id="<%= site.id %>" data-slug="<%= site.slug %>">
+                  <i data-lucide="edit-2" style="width: 12px; height: 12px;" class="me-1"></i>Edit
+                </button>
+                <% if site.subdomain.present? || site.respond_to?(:custom_domain) && site.custom_domain.present? %>
+                  <a href="<%= site.public_url %>" target="_blank" class="btn btn-sm btn-outline-secondary flex-fill">
+                    <i data-lucide="external-link" style="width: 12px; height: 12px;" class="me-1"></i>Visit
+                  </a>
                 <% end %>
               </div>
             </div>
-            <div class="creation-actions">
-              <button type="button" class="action-btn edit-btn" data-id="<%= lp.id %>" data-type="landing_page" title="Edit">
-                <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
-              </button>
-              <button type="button" class="action-btn preview-btn" data-id="<%= lp.id %>" data-type="landing_page" title="Preview">
-                <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
-              </button>
-              <button type="button" class="action-btn more-btn" data-id="<%= lp.id %>" data-type="landing_page" title="More">
-                <i data-lucide="more-horizontal" style="width: 14px; height: 14px;"></i>
-              </button>
-            </div>
-          </div>
-        <% end %>
-        
-        <%# App Modules %>
-        <% if app_modules.respond_to?(:each) %>
+          <% end %>
+        </div>
+      <% elsif filter_type == 'website' %>
+        <div class="text-center py-4 text-muted"><p>No websites yet. Ask Amos to build one!</p></div>
+      <% end %>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- SECTION: App Modules (Expandable Project View)  -->
+    <!-- ════════════════════════════════════════════════ -->
+    <div class="section-block" data-section="app_module">
+      <% if filter_type == 'all' && total_app_modules > 0 %>
+        <div class="section-header d-flex align-items-center justify-content-between mb-2">
+          <h6 class="mb-0 fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+            <i data-lucide="boxes" style="width: 14px; height: 14px;" class="me-1"></i>App Modules
+          </h6>
+          <button type="button" class="btn btn-link btn-sm text-muted p-0 view-all-btn" data-filter="app_module" style="font-size: 0.75rem;">View all (<%= total_app_modules %>)</button>
+        </div>
+      <% end %>
+
+      <% if app_modules.respond_to?(:each) && app_modules.any? %>
+        <div class="project-list mb-4">
           <% app_modules.each do |mod| %>
-            <div class="creation-card" 
-                 data-id="<%= mod.id %>" 
-                 data-type="app_module"
-                 data-slug="<%= mod.slug %>"
-                 data-status="<%= mod.respond_to?(:published?) && mod.published? ? 'published' : 'draft' %>"
-                 data-title="<%= mod.name.downcase rescue '' %>">
-              <div class="creation-preview">
-                <div class="preview-placeholder app-module">
-                  <i data-lucide="boxes" style="width: 32px; height: 32px;"></i>
-                </div>
-                <div class="creation-type-badge app">
-                  <i data-lucide="boxes" style="width: 12px; height: 12px;"></i>
-                  App Module
-                </div>
-                <div class="creation-status <%= mod.respond_to?(:published?) && mod.published? ? 'published' : 'draft' %>">
-                  <%= mod.respond_to?(:published?) && mod.published? ? 'Published' : 'Draft' %>
-                </div>
-              </div>
-              <div class="creation-info">
-                <h6 class="creation-title"><%= (mod.name rescue 'Untitled').truncate(30) %></h6>
-                <div class="creation-meta">
-                  <span class="meta-item">
-                    <i data-lucide="calendar" style="width: 12px; height: 12px;"></i>
-                    <%= mod.updated_at.strftime('%b %d, %Y') rescue 'N/A' %>
-                  </span>
-                </div>
-              </div>
-              <div class="creation-actions">
-                <button type="button" class="action-btn edit-btn" data-id="<%= mod.id %>" data-type="app_module" data-slug="<%= mod.slug %>" title="Edit">
-                  <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
-                </button>
-                <button type="button" class="action-btn preview-btn" data-id="<%= mod.id %>" data-type="app_module" data-slug="<%= mod.slug %>" title="Preview">
-                  <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
-                </button>
-              </div>
-            </div>
-          <% end %>
-        <% end %>
-        
-        <%# Workflows %>
-        <% if workflows.respond_to?(:each) %>
-          <% workflows.each do |wf| %>
-            <div class="creation-card" 
-                 data-id="<%= wf.id %>" 
-                 data-type="workflow"
-                 data-status="<%= wf.respond_to?(:active?) && wf.active? ? 'published' : 'draft' %>"
-                 data-title="<%= wf.name.downcase rescue '' %>">
-              <div class="creation-preview">
-                <div class="preview-placeholder workflow">
-                  <i data-lucide="git-branch" style="width: 32px; height: 32px;"></i>
-                </div>
-                <div class="creation-type-badge workflow">
-                  <i data-lucide="git-branch" style="width: 12px; height: 12px;"></i>
-                  Workflow
-                </div>
-                <div class="creation-status <%= wf.respond_to?(:active?) && wf.active? ? 'published' : 'draft' %>">
-                  <%= wf.respond_to?(:active?) && wf.active? ? 'Active' : 'Draft' %>
-                </div>
-              </div>
-              <div class="creation-info">
-                <h6 class="creation-title"><%= (wf.name rescue 'Untitled').truncate(30) %></h6>
-                <div class="creation-meta">
-                  <span class="meta-item">
-                    <i data-lucide="calendar" style="width: 12px; height: 12px;"></i>
-                    <%= wf.updated_at.strftime('%b %d, %Y') rescue 'N/A' %>
-                  </span>
-                </div>
-              </div>
-              <div class="creation-actions">
-                <button type="button" class="action-btn edit-btn" data-id="<%= wf.id %>" data-type="workflow" title="Edit">
-                  <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
-                </button>
-              </div>
-            </div>
-          <% end %>
-        <% end %>
-        
-        <%# Design Plans (Drafts) %>
-        <% if draft_plans.respond_to?(:each) %>
-          <% draft_plans.each do |plan| %>
-            <% 
-              plan_data = plan.plan_data || {}
-              plan_title = plan_data['title'] || plan_data.dig('content', 'headline') || "Untitled #{plan.design_type.titleize rescue 'Design'}"
-              sections_count = (plan_data['sections'] || []).length
-              is_built = plan.status == 'built'
+            <%
+              canvases = mod.module_canvases rescue []
+              models = (mod.module_codes.select { |c| c.code_type == 'model' } rescue [])
+              tools = mod.tool_definitions rescue []
+              agents = mod.agent_plugins rescue []
+              webhooks = mod.module_webhooks rescue []
+              actions = mod.module_actions rescue []
+              total_components = canvases.size + models.size + tools.size + agents.size + webhooks.size + actions.size
             %>
-            <div class="creation-card" 
-                 data-id="<%= plan.id %>" 
-                 data-type="design_plan"
-                 data-status="<%= is_built ? 'published' : 'draft' %>"
-                 data-title="<%= plan_title.downcase %>">
-              <div class="creation-preview">
-                <div class="preview-placeholder design-plan">
-                  <i data-lucide="pencil-ruler" style="width: 32px; height: 32px;"></i>
-                  <div class="plan-section-count">
-                    <strong><%= sections_count %></strong> sections
+            <div class="project-card card border-0 shadow-sm mb-2" data-type="app_module" data-id="<%= mod.id %>"
+                 data-status="<%= mod.status == 'active' ? 'published' : 'draft' %>"
+                 data-title="<%= mod.name.downcase rescue '' %>">
+              <!-- Project Header (always visible) -->
+              <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="project-icon rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" 
+                       style="width: 38px; height: 38px; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);">
+                    <% if mod.icon.present? %>
+                      <i data-lucide="<%= mod.icon %>" style="width: 18px; height: 18px; color: white;"></i>
+                    <% else %>
+                      <i data-lucide="boxes" style="width: 18px; height: 18px; color: white;"></i>
+                    <% end %>
+                  </div>
+                  <div class="flex-grow-1 min-width-0">
+                    <div class="d-flex align-items-center gap-2">
+                      <h6 class="mb-0 fw-semibold text-truncate" style="font-size: 0.9rem;"><%= mod.name rescue 'Untitled App' %></h6>
+                      <span class="badge rounded-pill <%= mod.status == 'active' ? 'bg-success' : 'bg-secondary' %>" style="font-size: 0.6rem;"><%= mod.status&.titleize || 'Draft' %></span>
+                      <% if mod.respond_to?(:deployed_at) && mod.deployed_at.present? %>
+                        <span class="badge rounded-pill bg-info" style="font-size: 0.6rem;">Deployed</span>
+                      <% end %>
+                    </div>
+                    <div class="d-flex align-items-center gap-3 text-muted" style="font-size: 0.7rem;">
+                      <span><%= mod.description.truncate(60) rescue '' %></span>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center gap-3 flex-shrink-0">
+                    <!-- Component counts (compact) -->
+                    <div class="d-flex align-items-center gap-2 text-muted" style="font-size: 0.7rem;">
+                      <% if canvases.any? %><span title="Views"><i data-lucide="layout" style="width: 12px; height: 12px;"></i> <%= canvases.size %></span><% end %>
+                      <% if models.any? %><span title="Data Models"><i data-lucide="database" style="width: 12px; height: 12px;"></i> <%= models.size %></span><% end %>
+                      <% if tools.any? %><span title="Tools"><i data-lucide="wrench" style="width: 12px; height: 12px;"></i> <%= tools.size %></span><% end %>
+                      <% if agents.any? %><span title="Agents"><i data-lucide="bot" style="width: 12px; height: 12px;"></i> <%= agents.size %></span><% end %>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary project-expand-btn" data-bs-toggle="collapse" data-bs-target="#project-<%= mod.id %>">
+                      <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+                    </button>
                   </div>
                 </div>
-                <% 
-                  type_icons = { 'website' => 'globe', 'app' => 'layers', 'canvas' => 'frame', 'landing_page' => 'file-text' }
-                  type_labels = { 'website' => 'Website', 'app' => 'App', 'canvas' => 'Canvas', 'landing_page' => 'Landing Page' }
-                  plan_type = plan.design_type.to_s
-                  type_icon = type_icons[plan_type] || 'file-text'
-                  type_label = type_labels[plan_type] || 'Landing Page'
-                %>
-                <div class="creation-type-badge design-plan <%= plan_type %>-plan">
-                  <i data-lucide="<%= type_icon %>" style="width: 12px; height: 12px;"></i>
-                  <%= type_label %> Plan
-                </div>
-                <div class="creation-status <%= is_built ? 'published' : 'draft' %>">
-                  <%= is_built ? 'Built' : 'Draft' %>
-                </div>
               </div>
-              <div class="creation-info">
-                <h6 class="creation-title"><%= plan_title.truncate(30) %></h6>
-                <div class="creation-meta">
-                  <span class="meta-item">
-                    <i data-lucide="calendar" style="width: 12px; height: 12px;"></i>
-                    <%= plan.updated_at.strftime('%b %d, %Y') %>
-                  </span>
-                  <span class="meta-item">
-                    <i data-lucide="layers" style="width: 12px; height: 12px;"></i>
-                    <%= sections_count %> sections
-                  </span>
+
+              <!-- Expandable Component Detail -->
+              <div class="collapse" id="project-<%= mod.id %>">
+                <div class="card-body pt-0 px-3 pb-3">
+                  <div class="component-grid border-top pt-2 mt-1">
+
+                    <% if canvases.any? %>
+                      <div class="component-group mb-2">
+                        <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
+                          <i data-lucide="layout" style="width: 12px; height: 12px;" class="me-1"></i>Views & Canvases
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                          <% canvases.each do |canvas| %>
+                            <button type="button" class="btn btn-sm component-chip canvas-link" 
+                                    data-slug="<%= mod.slug %>" data-canvas-slug="<%= canvas.slug %>"
+                                    data-module-id="<%= mod.id %>" data-canvas-type="<%= canvas.canvas_type %>">
+                              <i data-lucide="<%= canvas.canvas_type == 'dashboard' ? 'bar-chart-3' : canvas.canvas_type == 'form' ? 'clipboard-list' : canvas.canvas_type == 'kanban' ? 'columns' : canvas.canvas_type == 'calendar' ? 'calendar' : canvas.canvas_type == 'detail' ? 'file-search' : 'table' %>" style="width: 12px; height: 12px;" class="me-1"></i>
+                              <%= canvas.name || canvas.slug.titleize %>
+                              <span class="chip-type"><%= canvas.canvas_type %></span>
+                              <% if canvas.is_public %>
+                                <span class="ms-1 text-success" title="Published publicly" style="font-size: 0.6rem;">●</span>
+                              <% end %>
+                            </button>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+
+                    <% if models.any? %>
+                      <div class="component-group mb-2">
+                        <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
+                          <i data-lucide="database" style="width: 12px; height: 12px;" class="me-1"></i>Data Models
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                          <% models.each do |model| %>
+                            <span class="btn btn-sm component-chip component-chip-muted">
+                              <i data-lucide="table-2" style="width: 12px; height: 12px;" class="me-1"></i>
+                              <%= model.name %>
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+
+                    <% if tools.any? %>
+                      <div class="component-group mb-2">
+                        <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
+                          <i data-lucide="wrench" style="width: 12px; height: 12px;" class="me-1"></i>Tools
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                          <% tools.each do |tool| %>
+                            <span class="btn btn-sm component-chip component-chip-muted">
+                              <i data-lucide="terminal" style="width: 12px; height: 12px;" class="me-1"></i>
+                              <%= tool.name %>
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+
+                    <% if agents.any? %>
+                      <div class="component-group mb-2">
+                        <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
+                          <i data-lucide="bot" style="width: 12px; height: 12px;" class="me-1"></i>AI Agents
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                          <% agents.each do |agent| %>
+                            <span class="btn btn-sm component-chip component-chip-muted">
+                              <i data-lucide="brain" style="width: 12px; height: 12px;" class="me-1"></i>
+                              <%= agent.name %>
+                              <% if agent.status == 'active' %><span class="ms-1" style="color: #22c55e;">●</span><% end %>
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+
+                    <% if webhooks.any? %>
+                      <div class="component-group mb-2">
+                        <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
+                          <i data-lucide="webhook" style="width: 12px; height: 12px;" class="me-1"></i>Webhooks
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                          <% webhooks.each do |wh| %>
+                            <span class="btn btn-sm component-chip component-chip-muted">
+                              <i data-lucide="link" style="width: 12px; height: 12px;" class="me-1"></i>
+                              <%= wh.event_name || wh.slug %>
+                              <span class="chip-type"><%= wh.status %></span>
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+
+                    <% if actions.any? %>
+                      <div class="component-group mb-2">
+                        <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
+                          <i data-lucide="mouse-pointer-click" style="width: 12px; height: 12px;" class="me-1"></i>Actions
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                          <% actions.each do |act| %>
+                            <span class="btn btn-sm component-chip component-chip-muted">
+                              <i data-lucide="play" style="width: 12px; height: 12px;" class="me-1"></i>
+                              <%= act.name %>
+                              <span class="chip-type"><%= act.behavior_type %></span>
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+
+                    <% if total_components == 0 %>
+                      <p class="text-muted small mb-0">No components yet. Ask Amos to add features to this app.</p>
+                    <% end %>
+
+                    <div class="d-flex gap-2 mt-2 pt-2 border-top">
+                      <button type="button" class="btn btn-sm btn-outline-primary canvas-link" data-slug="<%= mod.slug %>" data-canvas-slug="<%= mod.slug %>_list" data-module-id="<%= mod.id %>">
+                        <i data-lucide="external-link" style="width: 12px; height: 12px;" class="me-1"></i>Open App
+                      </button>
+                      <span class="text-muted small align-self-center">Updated <%= mod.updated_at.strftime('%b %d, %Y') rescue 'N/A' %></span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="creation-actions">
-                <button type="button" class="action-btn edit-btn" data-id="<%= plan.id %>" data-type="design_plan" title="Open in Design Studio">
-                  <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
-                </button>
-                <% unless is_built %>
-                  <button type="button" class="action-btn build-btn" data-id="<%= plan.id %>" data-type="design_plan" title="Build This Design">
-                    <i data-lucide="hammer" style="width: 14px; height: 14px;"></i>
-                  </button>
-                <% end %>
               </div>
             </div>
           <% end %>
-        <% end %>
-        
-      </div>
-      
-      <!-- Results Summary -->
-      <div class="results-summary" id="results-summary">
-        <% if search_query.present? %>
-          <span class="search-results-text">
-            <i data-lucide="search" style="width: 14px; height: 14px;"></i>
-            Found <%= displayed_items %> results for "<%= search_query %>"
-          </span>
-          <button type="button" class="clear-search-btn" id="clear-search-btn">
-            <i data-lucide="x" style="width: 14px; height: 14px;"></i>
-            Clear Search
-          </button>
-        <% else %>
-          <span class="total-count">
-            Showing <%= [displayed_items, max_display].min %> of <%= total_items %> assets
-            <% if total_items > max_display %>
-              <span class="search-hint">— use search to find more</span>
-            <% end %>
-          </span>
-        <% end %>
-      </div>
-      
-    <% else %>
-      <div class="empty-state">
-        <div class="empty-icon">
-          <i data-lucide="rocket" style="width: 48px; height: 48px;"></i>
         </div>
-        <h5>No creations yet</h5>
-        <p>Start building landing pages, websites, apps, or workflows</p>
+      <% elsif filter_type == 'app_module' %>
+        <div class="text-center py-4 text-muted"><p>No apps yet. Ask Amos to build one!</p></div>
+      <% end %>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- SECTION: Automations (Compact List)             -->
+    <!-- ════════════════════════════════════════════════ -->
+    <div class="section-block" data-section="automation">
+      <% if filter_type == 'all' && total_automations > 0 %>
+        <div class="section-header d-flex align-items-center justify-content-between mb-2">
+          <h6 class="mb-0 fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+            <i data-lucide="zap" style="width: 14px; height: 14px;" class="me-1"></i>Automations
+          </h6>
+          <button type="button" class="btn btn-link btn-sm text-muted p-0 view-all-btn" data-filter="automation" style="font-size: 0.75rem;">View all (<%= total_automations %>)</button>
+        </div>
+      <% end %>
+
+      <% if automations.respond_to?(:each) && automations.any? %>
+        <div class="automation-list mb-4">
+          <div class="card border-0 shadow-sm">
+            <div class="list-group list-group-flush">
+              <% automations.each do |auto| %>
+                <div class="list-group-item list-group-item-action automation-row px-3 py-2 border-0 border-bottom"
+                     data-type="automation" data-id="<%= auto.id %>"
+                     data-status="<%= auto.status == 'active' ? 'published' : 'draft' %>"
+                     data-title="<%= auto.name.downcase rescue '' %>">
+                  <div class="d-flex align-items-center gap-3">
+                    <!-- Status dot -->
+                    <span class="status-dot flex-shrink-0 <%= auto.status == 'active' ? 'active' : 'inactive' %>" title="<%= auto.status&.titleize %>"></span>
+                    
+                    <!-- Name & trigger -->
+                    <div class="flex-grow-1 min-width-0">
+                      <div class="fw-semibold text-truncate" style="font-size: 0.85rem;"><%= auto.name rescue 'Untitled' %></div>
+                      <div class="text-muted" style="font-size: 0.7rem;">
+                        <% if auto.respond_to?(:trigger_type) && auto.trigger_type.present? %>
+                          <i data-lucide="zap" style="width: 10px; height: 10px;" class="me-1"></i><%= auto.trigger_type.titleize %>
+                        <% else %>
+                          <i data-lucide="clock" style="width: 10px; height: 10px;" class="me-1"></i>Manual
+                        <% end %>
+                      </div>
+                    </div>
+
+                    <!-- Execution stats -->
+                    <div class="d-flex align-items-center gap-3 flex-shrink-0 text-end" style="font-size: 0.75rem;">
+                      <% exec_count = auto.respond_to?(:execution_count) ? auto.execution_count.to_i : 0 %>
+                      <% err_count = auto.respond_to?(:error_count) ? auto.error_count.to_i : 0 %>
+                      <% success_count = auto.respond_to?(:success_count) ? auto.success_count.to_i : 0 %>
+                      <div class="text-muted" title="Total runs">
+                        <span class="fw-semibold"><%= exec_count %></span> runs
+                      </div>
+                      <% if exec_count > 0 %>
+                        <div>
+                          <span class="text-success"><%= success_count %></span> / <span class="text-danger"><%= err_count %></span>
+                        </div>
+                      <% end %>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex gap-1 flex-shrink-0">
+                      <button type="button" class="btn btn-sm btn-outline-secondary automation-edit-btn" data-id="<%= auto.id %>" title="Edit">
+                        <i data-lucide="edit-2" style="width: 12px; height: 12px;"></i>
+                      </button>
+                      <% if auto.status == 'active' %>
+                        <button type="button" class="btn btn-sm btn-outline-warning toggle-btn" data-id="<%= auto.id %>" data-action-type="pause" title="Pause">
+                          <i data-lucide="pause" style="width: 12px; height: 12px;"></i>
+                        </button>
+                      <% else %>
+                        <button type="button" class="btn btn-sm btn-outline-success toggle-btn" data-id="<%= auto.id %>" data-action-type="activate" title="Activate">
+                          <i data-lucide="play" style="width: 12px; height: 12px;"></i>
+                        </button>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% elsif filter_type == 'automation' %>
+        <div class="text-center py-4 text-muted"><p>No automations yet. Ask Amos to create one!</p></div>
+      <% end %>
+    </div>
+
+
+    <!-- Empty state (nothing at all) -->
+    <% if total_items == 0 %>
+      <div class="text-center py-5">
+        <div class="mb-3">
+          <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 rounded-4 p-4">
+            <i data-lucide="rocket" style="width: 48px; height: 48px;" class="text-primary"></i>
+          </div>
+        </div>
+        <h5>No projects yet</h5>
+        <p class="text-muted">Ask Amos to build a landing page, app, or automation</p>
         <button type="button" class="btn btn-primary" id="empty-create-btn">
-          <i data-lucide="plus" style="width: 16px; height: 16px;" class="me-1"></i>
-          Create Your First Project
+          <i data-lucide="plus" style="width: 16px; height: 16px;" class="me-1"></i>Create Your First Project
         </button>
       </div>
     <% end %>
+
+    <!-- Results summary -->
+    <% if search_query.present? %>
+      <div class="text-center text-muted small mt-2 pb-2">
+        Found results for "<%= search_query %>"
+        <button type="button" class="btn btn-sm btn-link" id="clear-search-btn">Clear</button>
+      </div>
+    <% end %>
+
   </div>
 </div>
 
@@ -396,1077 +612,421 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: var(--canvas-bg, #1e1e2e);
-    color: var(--canvas-text, #e0e0e0);
+    background: var(--bs-body-bg, #fff);
+    color: var(--bs-body-color, #212529);
   }
-  
-  .creations-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--canvas-border, #3a3a4a);
-    background: var(--canvas-header-bg, #252536);
+  .creations-header { background: var(--bs-body-bg, #fff); }
+  .header-icon-wrap {
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border-radius: 10px; color: #fff;
   }
-  
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+
+  /* Tabs */
+  .creations-tabs { background: var(--bs-body-bg, #fff); }
+  .creations-tabs .nav-tabs { gap: 0; }
+  .creations-tabs .nav-link {
+    border: none; border-bottom: 2px solid transparent;
+    color: var(--bs-secondary-color, #6c757d);
+    font-size: 0.82rem; padding: 0.5rem 0.8rem; border-radius: 0;
+    display: flex; align-items: center; transition: all 0.15s; white-space: nowrap;
   }
-  
-  .header-icon {
-    width: 32px;
-    height: 32px;
-    color: #f59e0b;
-  }
-  
-  .header-title {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-  }
-  
-  .header-subtitle {
-    margin: 0;
-    font-size: 0.875rem;
-    color: var(--canvas-text-muted, #a0a0a0);
-  }
-  
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-  
-  .search-box {
-    position: relative;
-  }
-  
-  .search-box .search-icon {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 16px;
-    height: 16px;
-    color: var(--canvas-text-muted, #a0a0a0);
-  }
-  
-  .search-box .search-input {
-    padding: 8px 12px 8px 36px;
-    border: 1px solid var(--canvas-border, #3a3a4a);
-    border-radius: 8px;
-    background: var(--canvas-input-bg, #2a2a3a);
-    color: var(--canvas-text, #e0e0e0);
-    width: 220px;
-  }
-  
-  .creations-filters {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--canvas-border, #3a3a4a);
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-  
-  .filter-group {
-    display: flex;
-    align-items: center;
+  .creations-tabs .nav-link:hover { color: var(--bs-body-color); border-bottom-color: var(--bs-border-color, #dee2e6); }
+  .creations-tabs .nav-link.active { color: var(--bs-primary, #6366f1); border-bottom-color: var(--bs-primary, #6366f1); font-weight: 600; }
+
+  /* Stat cards (compact) */
+  .stat-card { transition: transform 0.15s; }
+  .stat-card:hover { transform: translateY(-1px); }
+
+  /* Landing page card grid */
+  .lp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 0.75rem;
   }
-  
-  .filter-label {
-    font-size: 0.8rem;
-    color: var(--canvas-text-muted, #a0a0a0);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  
-  .filter-tabs {
-    display: flex;
-    gap: 0.4rem;
-  }
-  
-  .filter-tab {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.75rem;
-    border: 1px solid var(--canvas-border, #3a3a4a);
-    border-radius: 6px;
-    background: transparent;
-    color: var(--canvas-text-muted, #a0a0a0);
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  
-  .filter-tab.small {
-    padding: 0.3rem 0.6rem;
-    font-size: 0.75rem;
-  }
-  
-  .filter-tab:hover {
-    border-color: #f59e0b;
-    color: var(--canvas-text, #e0e0e0);
-  }
-  
-  .filter-tab.active {
-    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-    border-color: transparent;
-    color: #1a1a2e;
-  }
-  
-  .filter-tab .count {
-    font-size: 0.7rem;
-    padding: 1px 5px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.15);
-  }
-  
-  .filter-tab.active .count {
-    background: rgba(0,0,0,0.15);
-  }
-  
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-  }
-  
-  .status-dot.draft {
-    background: #6b7280;
-  }
-  
-  .status-dot.published {
-    background: #22c55e;
-  }
-  
-  .creations-grid-container {
-    flex: 1;
-    padding: 1.5rem;
-    overflow-y: auto;
-  }
-  
-  .creations-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.25rem;
-  }
-  
   .creation-card {
-    background: var(--canvas-card-bg, #252536);
-    border: 1px solid var(--canvas-border, #3a3a4a);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: all 0.2s;
-    cursor: pointer;
+    overflow: hidden; transition: all 0.2s; cursor: pointer; border-radius: 8px !important;
   }
-  
-  .creation-card:hover {
-    border-color: #f59e0b;
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.15);
-  }
-  
-  .creation-preview {
-    position: relative;
-    height: 160px;
-    overflow: hidden;
-    background: #1a1a2e;
-  }
-  
+  .creation-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.1) !important; }
+
+  .creation-preview { position: relative; height: 120px; overflow: hidden; }
   .preview-iframe-container {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    position: relative;
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    width: 100%; height: 100%; overflow: hidden; position: relative;
+    background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
   }
-  
-  /* Gradient mask to hide bottom content and errors */
   .preview-iframe-container::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 40%;
-    background: linear-gradient(to bottom, transparent 0%, rgba(30, 41, 59, 0.9) 100%);
-    pointer-events: none;
-    z-index: 1;
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 40%;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.9));
+    pointer-events: none; z-index: 1;
   }
-  
   .preview-iframe {
-    width: 1200px;
-    height: 800px;
-    border: none;
-    transform: scale(0.25);
-    transform-origin: top left;
-    pointer-events: none;
-    position: absolute;
-    top: 0;
-    left: 50%;
-    margin-left: -150px; /* Center the scaled iframe: (1200 * 0.25) / 2 = 150 */
-    background: white;
+    width: 1200px; height: 800px; border: none;
+    transform: scale(0.2); transform-origin: top left;
+    pointer-events: none; position: absolute; top: 0;
+    left: 50%; margin-left: -120px; background: white;
   }
-  
   .preview-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    color: var(--canvas-text-muted, #6b6b8a);
-  }
-  
-  .placeholder-text {
-    font-size: 0.75rem;
-    opacity: 0.7;
-  }
-  
-  .preview-placeholder.landing-page {
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
     color: rgba(255,255,255,0.5);
   }
-  
-  /* Hover overlay for preview */
-  .creation-preview::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.6) 100%);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    pointer-events: none;
-  }
-  
-  .creation-card:hover .creation-preview::after {
-    opacity: 1;
-  }
-  
-  .preview-placeholder.app-module {
-    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-    color: rgba(255,255,255,0.3);
-  }
-  
-  .preview-placeholder.workflow {
-    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-    color: rgba(255,255,255,0.3);
-  }
-  
-  .preview-placeholder.website {
-    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-    color: rgba(255,255,255,0.3);
-  }
-  
-  .preview-placeholder.design-plan {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: rgba(255,255,255,0.8);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .preview-placeholder.design-plan .plan-section-count {
-    font-size: 0.75rem;
-    color: rgba(255,255,255,0.9);
-  }
-  
-  .creation-type-badge.design-plan {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  }
-  
-  .creation-type-badge {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(4px);
-    border-radius: 6px;
-    font-size: 0.7rem;
-    color: white;
-  }
-  
-  .creation-status {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 0.7rem;
-    font-weight: 500;
-  }
-  
-  .creation-status.draft {
-    background: rgba(107, 114, 128, 0.8);
-    color: white;
-  }
-  
-  .creation-status.published {
-    background: rgba(34, 197, 94, 0.9);
-    color: white;
-  }
-  
-  .creation-info {
-    padding: 1rem;
-  }
-  
-  .creation-title {
-    margin: 0 0 0.5rem;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--canvas-text, #e0e0e0);
-  }
-  
-  .creation-meta {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  
-  .meta-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.75rem;
-    color: var(--canvas-text-muted, #a0a0a0);
-  }
-  
-  .creation-actions {
-    display: flex;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    border-top: 1px solid var(--canvas-border, #3a3a4a);
-    background: rgba(0,0,0,0.1);
-  }
-  
-  .action-btn {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem;
-    border: 1px solid var(--canvas-border, #3a3a4a);
-    border-radius: 6px;
-    background: transparent;
-    color: var(--canvas-text-muted, #a0a0a0);
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  
-  .action-btn:hover {
-    background: var(--canvas-border, #3a3a4a);
-    color: var(--canvas-text, #e0e0e0);
-  }
-  
-  .action-btn.edit-btn:hover {
-    background: #f59e0b;
-    border-color: #f59e0b;
-    color: #1a1a2e;
-  }
-  
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 4rem 2rem;
-    text-align: center;
-  }
-  
-  .empty-icon {
-    width: 80px;
-    height: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-    border-radius: 20px;
-    color: #1a1a2e;
-    margin-bottom: 1.5rem;
-  }
-  
-  .empty-state h5 {
-    margin: 0 0 0.5rem;
-    color: var(--canvas-text, #e0e0e0);
-  }
-  
-  .empty-state p {
-    margin: 0 0 1.5rem;
-    color: var(--canvas-text-muted, #a0a0a0);
-  }
-  
-  /* Dropdown menu */
-  .creation-dropdown {
-    background: var(--canvas-card-bg, #252536);
-    border: 1px solid var(--canvas-border, #3a3a4a);
-    border-radius: 8px;
-    padding: 4px;
-    min-width: 140px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-  }
-  
-  .dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 8px 12px;
-    border: none;
-    background: transparent;
-    color: var(--canvas-text, #e0e0e0);
-    font-size: 0.85rem;
-    cursor: pointer;
-    border-radius: 6px;
-    text-align: left;
-  }
-  
-  .dropdown-item:hover {
-    background: var(--canvas-border, #3a3a4a);
-  }
-  
-  .dropdown-item.text-danger {
-    color: #ef4444;
-  }
-  
-  .dropdown-item.text-danger:hover {
-    background: rgba(239, 68, 68, 0.15);
-  }
-  
-  .dropdown-divider {
-    height: 1px;
-    background: var(--canvas-border, #3a3a4a);
-    margin: 4px 0;
-  }
-  
-  /* Light mode */
-  [data-theme="light"] .my-creations-canvas {
-    --canvas-bg: #f8f9fa;
-    --canvas-text: #1a1a2e;
-    --canvas-text-muted: #6b7280;
-    --canvas-border: #e5e7eb;
-    --canvas-header-bg: #ffffff;
-    --canvas-card-bg: #ffffff;
-    --canvas-input-bg: #f3f4f6;
-  }
-  
-  [data-theme="light"] .creations-header {
-    background: #ffffff;
-    border-color: #e5e7eb;
-  }
-  
-  [data-theme="light"] .header-title,
-  [data-theme="light"] .creation-title {
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .header-subtitle,
-  [data-theme="light"] .meta-item {
-    color: #6b7280;
-  }
-  
-  [data-theme="light"] .search-box .search-input {
-    background: #f3f4f6;
-    border-color: #e5e7eb;
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .creations-filters {
-    border-color: #e5e7eb;
-  }
-  
-  [data-theme="light"] .filter-tab {
-    border-color: #e5e7eb;
-    color: #6b7280;
-  }
-  
-  [data-theme="light"] .filter-tab:hover {
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .filter-tab.active {
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .creation-card {
-    background: #ffffff;
-    border-color: #e5e7eb;
-  }
-  
-  [data-theme="light"] .creation-card:hover {
-    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.1);
-  }
-  
-  [data-theme="light"] .creation-preview {
-    background: #e5e7eb;
-  }
-  
-  [data-theme="light"] .preview-iframe-container {
-    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-  }
-  
-  [data-theme="light"] .preview-iframe-container::after {
-    background: linear-gradient(to bottom, transparent 0%, rgba(255, 255, 255, 0.9) 100%);
-  }
-  
-  [data-theme="light"] .preview-placeholder {
-    color: #6b7280;
-  }
-  
-  [data-theme="light"] .creation-actions {
-    background: #f9fafb;
-    border-color: #e5e7eb;
-  }
-  
-  [data-theme="light"] .action-btn {
-    border-color: #e5e7eb;
-    color: #6b7280;
-  }
-  
-  [data-theme="light"] .action-btn:hover {
-    background: #e5e7eb;
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .empty-state h5 {
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .empty-state p {
-    color: #6b7280;
-  }
-  
-  [data-theme="light"] .creation-dropdown {
-    background: #ffffff;
-    border-color: #e5e7eb;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-  }
-  
-  [data-theme="light"] .dropdown-item {
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .dropdown-item:hover {
-    background: #f3f4f6;
-  }
-  
-  [data-theme="light"] .dropdown-divider {
-    background: #e5e7eb;
-  }
-  
-  /* Results Summary */
-  .results-summary {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem 2rem;
-    border-top: 1px solid var(--canvas-border, #3a3a4a);
-    background: rgba(0,0,0,0.1);
-  }
-  
-  .results-summary .search-results-text,
-  .results-summary .total-count {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    color: var(--canvas-text-muted, #a0a0a0);
-  }
-  
-  .results-summary .search-hint {
-    color: var(--canvas-text-muted, #6b7280);
-    font-style: italic;
-  }
-  
-  .clear-search-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.35rem 0.75rem;
-    background: transparent;
-    border: 1px solid var(--canvas-border, #4a4a5a);
-    border-radius: 6px;
-    color: var(--canvas-text-muted, #a0a0a0);
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  
-  .clear-search-btn:hover {
-    background: rgba(245, 158, 11, 0.1);
-    border-color: #f59e0b;
-    color: #f59e0b;
-  }
-  
-  /* No results state */
-  .no-results {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 4rem 2rem;
-    text-align: center;
-    color: var(--canvas-text-muted, #a0a0a0);
-  }
-  
-  .no-results i {
-    margin-bottom: 1rem;
-    opacity: 0.5;
-  }
-  
-  /* Light mode adjustments */
-  [data-theme="light"] .results-summary {
-    background: rgba(0,0,0,0.03);
-    border-top-color: #e5e7eb;
-  }
-  
-  [data-theme="light"] .clear-search-btn {
-    border-color: #d1d5db;
-    color: #6b7280;
-  }
-  
-  [data-theme="light"] .clear-search-btn:hover {
-    background: rgba(245, 158, 11, 0.1);
-    border-color: #f59e0b;
-    color: #f59e0b;
-  }
+  .preview-placeholder.landing-page { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+  .preview-placeholder.website { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+
+  .status-badge {
+    position: absolute; top: 6px; right: 6px;
+    padding: 2px 6px; border-radius: 4px;
+    font-size: 0.6rem; font-weight: 600;
+  }
+  .status-badge.draft { background: rgba(107,114,128,0.85); color: white; }
+  .status-badge.published { background: rgba(34,197,94,0.9); color: white; }
+
+  .creation-card .card-footer .btn { font-size: 0.7rem; padding: 0.25rem 0.4rem; }
+
+  /* Project cards (app modules) */
+  .project-card { border-radius: 8px !important; transition: all 0.15s; }
+  .project-card:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.08) !important; }
+  .project-expand-btn { padding: 0.2rem 0.4rem; transition: transform 0.2s; }
+  .project-expand-btn[aria-expanded="true"] i { transform: rotate(180deg); }
+
+  .component-chip {
+    font-size: 0.7rem; padding: 0.2rem 0.5rem;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 6px; background: transparent;
+    display: inline-flex; align-items: center; gap: 2px;
+    color: var(--bs-body-color); transition: all 0.15s;
+  }
+  .component-chip:hover { background: var(--bs-primary); color: white; border-color: var(--bs-primary); }
+  .component-chip-muted { cursor: default; }
+  .component-chip-muted:hover { background: transparent; color: var(--bs-body-color); border-color: var(--bs-border-color); }
+  .chip-type {
+    font-size: 0.55rem; opacity: 0.6; margin-left: 2px;
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+
+  /* Automation list */
+  .automation-row { transition: background 0.15s; cursor: pointer; }
+  .automation-row:hover { background: var(--bs-tertiary-bg, #f8f9fa) !important; }
+  .automation-row .btn { padding: 0.2rem 0.35rem; }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .status-dot.active { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.2); }
+  .status-dot.inactive { background: #9ca3af; }
+
+  /* Section visibility */
+  .section-block[data-section] { display: block; }
+
+  /* Dark mode */
+  [data-bs-theme="dark"] .my-creations-canvas,
+  [data-theme="dark"] .my-creations-canvas { background: #1a1a2e; color: #e0e0e0; }
+  [data-bs-theme="dark"] .creations-header,
+  [data-theme="dark"] .creations-header,
+  [data-bs-theme="dark"] .creations-tabs,
+  [data-theme="dark"] .creations-tabs { background: #1e1e32; }
+  [data-bs-theme="dark"] .creation-card,
+  [data-theme="dark"] .creation-card,
+  [data-bs-theme="dark"] .project-card,
+  [data-theme="dark"] .project-card,
+  [data-bs-theme="dark"] .automation-list > .card,
+  [data-theme="dark"] .automation-list > .card { background: #252540 !important; border-color: #3a3a50 !important; }
+  [data-bs-theme="dark"] .stat-card,
+  [data-theme="dark"] .stat-card { background: #252540 !important; border-color: #3a3a50 !important; }
+  [data-bs-theme="dark"] .automation-row:hover,
+  [data-theme="dark"] .automation-row:hover { background: #2e2e4a !important; }
+  [data-bs-theme="dark"] .component-chip,
+  [data-theme="dark"] .component-chip { border-color: #3a3a50; color: #ccc; }
+  [data-bs-theme="dark"] .preview-iframe-container,
+  [data-theme="dark"] .preview-iframe-container { background: linear-gradient(135deg, #1e293b, #334155); }
+  [data-bs-theme="dark"] .preview-iframe-container::after,
+  [data-theme="dark"] .preview-iframe-container::after { background: linear-gradient(to bottom, transparent, rgba(30,30,60,0.9)); }
 </style>
 
 <script>
 (function() {
   try {
-    console.log('🎨 My Creations script starting...');
-    
-    // Find the specific container by unique ID (generated fresh each time)
     const containers = document.querySelectorAll('.my-creations-canvas');
-    console.log('🎨 Found ' + containers.length + ' canvas containers');
-    
-    const container = containers[containers.length - 1]; // Get the most recent one
-    if (!container) {
-      console.error('🎨 No container found!');
-      return;
-    }
-    
-    // Use unique ID to prevent double-init on same instance
+    const container = containers[containers.length - 1];
+    if (!container) return;
+
     const containerId = container.id;
-    if (window._myCreationsInitialized && window._myCreationsInitialized[containerId]) {
-      console.log('🎨 Already initialized:', containerId);
-      return;
-    }
+    if (window._myCreationsInitialized && window._myCreationsInitialized[containerId]) return;
     window._myCreationsInitialized = window._myCreationsInitialized || {};
     window._myCreationsInitialized[containerId] = true;
-    
-    console.log('🎨 Initializing My Creations canvas:', containerId);
-  
-  // Initialize filters from canvas data (allows pre-filtering when opened from workflow/app designer)
-  let currentTypeFilter = '<%= filter_type %>';
-  let currentStatusFilter = '<%= filter_status %>';
-  
-  // Apply initial filter if not 'all' (pre-filter on load)
-  if (currentTypeFilter !== 'all' || currentStatusFilter !== 'all') {
-    console.log('🔍 Pre-filtering to type:', currentTypeFilter, 'status:', currentStatusFilter);
-    // Delay slightly to ensure DOM is ready
-    setTimeout(() => {
-      applyFilters();
-    }, 100);
-  }
-  
-  // Helper to load a canvas via event
-  function loadCanvas(canvasType, canvasData = {}) {
-    console.log('📂 Loading canvas:', canvasType, canvasData);
-    const evt = new CustomEvent('scout:load-canvas', { 
-      detail: { canvas: canvasType, data: canvasData } 
-    });
-    document.dispatchEvent(evt);
-  }
-  
-  // Type filter
-  container.querySelectorAll('#type-filters .filter-tab').forEach(tab => {
-    tab.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      currentTypeFilter = this.dataset.filter;
-      container.querySelectorAll('#type-filters .filter-tab').forEach(t => t.classList.remove('active'));
-      this.classList.add('active');
-      applyFilters();
-    });
-  });
-  
-  // Status filter
-  container.querySelectorAll('#status-filters .filter-tab').forEach(tab => {
-    tab.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      currentStatusFilter = this.dataset.status;
-      container.querySelectorAll('#status-filters .filter-tab').forEach(t => t.classList.remove('active'));
-      this.classList.add('active');
-      applyFilters();
-    });
-  });
-  
-  // Search
-  const searchInput = container.querySelector('#creations-search');
-  if (searchInput) {
-    searchInput.addEventListener('input', applyFilters);
-  }
-  
-  function applyFilters() {
-    const query = searchInput?.value.toLowerCase() || '';
-    
-    container.querySelectorAll('.creation-card').forEach(card => {
-      const type = card.dataset.type;
-      const status = card.dataset.status;
-      const title = card.dataset.title || '';
-      
-      const matchesType = currentTypeFilter === 'all' || type === currentTypeFilter;
-      const matchesStatus = currentStatusFilter === 'all' || status === currentStatusFilter;
-      const matchesSearch = title.includes(query);
-      
-      card.style.display = (matchesType && matchesStatus && matchesSearch) ? '' : 'none';
-    });
-  }
-  
-  // Edit button - use event delegation for dynamic content
-  container.addEventListener('click', function(e) {
-    const editBtn = e.target.closest('.edit-btn');
-    if (!editBtn) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    const id = editBtn.dataset.id;
-    const type = editBtn.dataset.type;
-    const slug = editBtn.dataset.slug;
-    
-    console.log('✏️ Edit clicked:', type, id, slug);
-    
-    let canvasType = 'landing_page_editor';
-    let canvasData = {};
-      
-      switch(type) {
-        case 'landing_page':
-          canvasType = 'landing_page_editor';
-          canvasData = { landing_page_id: id };
-          break;
-        case 'app_module':
-          // Navigate directly to the module's default list canvas
-          // Falls back to module_manager if slug is missing
-          if (slug) {
-            canvasType = 'module_' + slug + '_list';
-            canvasData = { app_module_id: id };
-          } else {
-            canvasType = 'module_manager';
-            canvasData = { module_id: id };
-          }
-          break;
-        case 'workflow':
-          canvasType = 'workflow_designer';
-          canvasData = { workflow_id: id };
-          break;
-        case 'design_plan':
-          canvasType = 'design_studio';
-          canvasData = { plan_id: id };
-          // Load directly - no need to message Amos
-          break;
-      }
-      
-      loadCanvas(canvasType, canvasData);
-  });
-  
-  // Preview button - event delegation
-  container.addEventListener('click', function(e) {
-    const previewBtn = e.target.closest('.preview-btn');
-    if (!previewBtn) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    const id = previewBtn.dataset.id;
-    const type = previewBtn.dataset.type;
-    
-    const previewSlug = previewBtn.dataset.slug;
-    console.log('👁️ Preview clicked:', type, id, previewSlug);
-    
-    if (type === 'landing_page') {
-      loadCanvas('landing_page_viewer', { landing_page_id: id });
-    } else if (type === 'app_module') {
-      // Navigate directly to the module's default list canvas
-      if (previewSlug) {
-        loadCanvas('module_' + previewSlug + '_list', { app_module_id: id });
-      } else {
-        loadCanvas('module_manager', { module_id: id });
-      }
+
+    let currentTypeFilter = '<%= filter_type %>';
+    let currentStatusFilter = 'all';
+
+    function loadCanvas(canvasType, canvasData = {}) {
+      document.dispatchEvent(new CustomEvent('scout:load-canvas', { 
+        detail: { canvas: canvasType, data: canvasData } 
+      }));
     }
-  });
-  
-  // Build button - event delegation
-  container.addEventListener('click', function(e) {
-    const buildBtn = e.target.closest('.build-btn');
-    if (!buildBtn) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    const id = buildBtn.dataset.id;
-    const type = buildBtn.dataset.type;
-    
-    console.log('🔨 Build clicked:', type, id);
-    
-    if (type === 'design_plan') {
-      // Send message to Amos to build the plan
-      const msg = 'Build design plan ' + id;
-      if (window.scoutController && typeof window.scoutController.sendScoutMessage === 'function') {
-        window.scoutController.sendScoutMessage(msg);
-      } else if (typeof window.scoutSendMessage === 'function') {
-        window.scoutSendMessage(msg);
-      }
+
+    // ── Tab Navigation ──
+    container.querySelectorAll('.asset-tab').forEach(tab => {
+      tab.addEventListener('click', function(e) {
+        e.preventDefault();
+        currentTypeFilter = this.dataset.filter;
+        container.querySelectorAll('.asset-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        updateVisibility();
+      });
+    });
+
+    // "View all" links in section headers
+    container.querySelectorAll('.view-all-btn').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const tab = container.querySelector(`.asset-tab[data-filter="${this.dataset.filter}"]`);
+        if (tab) tab.click();
+      });
+    });
+
+    // ── Visibility logic ──
+    function updateVisibility() {
+      // Stats
+      container.querySelectorAll('.stats-row').forEach(row => {
+        row.style.display = row.dataset.stats === currentTypeFilter ? '' : 'none';
+      });
+
+      // Sections
+      container.querySelectorAll('.section-block').forEach(sec => {
+        const sectionType = sec.dataset.section;
+        if (currentTypeFilter === 'all') {
+          sec.style.display = '';
+        } else {
+          sec.style.display = sectionType === currentTypeFilter ? '' : 'none';
+        }
+      });
+
+      // Section headers (hide in dedicated tab view)
+      container.querySelectorAll('.section-header').forEach(hdr => {
+        hdr.style.display = currentTypeFilter === 'all' ? '' : 'none';
+      });
+
+      // Apply search filter
+      applyFilters();
     }
-  });
-  
-  // Card click = edit (on preview area or info, not action buttons) - event delegation
-  container.addEventListener('click', function(e) {
-    // Ignore if clicked on action buttons
-    if (e.target.closest('.creation-actions')) return;
-    
-    const card = e.target.closest('.creation-card');
-    if (!card) return;
-    
-    // Only trigger on preview or info areas
-    if (e.target.closest('.creation-preview') || e.target.closest('.creation-info')) {
-      const editBtn = card.querySelector('.edit-btn');
-      if (editBtn) editBtn.click();
+
+    function applyFilters() {
+      const query = container.querySelector('#creations-search')?.value.toLowerCase() || '';
+
+      // Landing page cards
+      container.querySelectorAll('.creation-card').forEach(card => {
+        const title = card.dataset.title || '';
+        const status = card.dataset.status || '';
+        const matchesSearch = title.includes(query);
+        const matchesStatus = currentStatusFilter === 'all' || status === currentStatusFilter;
+        card.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+      });
+
+      // Project cards (app modules)
+      container.querySelectorAll('.project-card').forEach(card => {
+        const title = card.dataset.title || '';
+        const status = card.dataset.status || '';
+        const matchesSearch = title.includes(query);
+        const matchesStatus = currentStatusFilter === 'all' || status === currentStatusFilter;
+        card.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+      });
+
+      // Automation rows
+      container.querySelectorAll('.automation-row').forEach(row => {
+        const title = row.dataset.title || '';
+        const status = row.dataset.status || '';
+        const matchesSearch = title.includes(query);
+        const matchesStatus = currentStatusFilter === 'all' || status === currentStatusFilter;
+        row.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+      });
     }
-  });
-  
-  // More button - show dropdown menu (event delegation)
-  container.addEventListener('click', function(e) {
-    const moreBtn = e.target.closest('.more-btn');
-    if (!moreBtn) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    const id = moreBtn.dataset.id;
-    const type = moreBtn.dataset.type;
-    
-    console.log('⋯ More clicked:', type, id);
-      
-      // Remove any existing dropdown
+
+    const searchInput = container.querySelector('#creations-search');
+    if (searchInput) searchInput.addEventListener('input', applyFilters);
+
+    // Initial visibility
+    if (currentTypeFilter !== 'all') setTimeout(updateVisibility, 50);
+
+    // ── Landing page actions ──
+    container.addEventListener('click', function(e) {
+      const editBtn = e.target.closest('.edit-btn');
+      if (!editBtn) return;
+      e.preventDefault(); e.stopPropagation();
+      loadCanvas('landing_page_editor', { landing_page_id: editBtn.dataset.id });
+    });
+
+    container.addEventListener('click', function(e) {
+      const previewBtn = e.target.closest('.preview-btn');
+      if (!previewBtn) return;
+      e.preventDefault(); e.stopPropagation();
+      loadCanvas('landing_page_viewer', { landing_page_id: previewBtn.dataset.id });
+    });
+
+    // Landing page card body click = edit
+    container.addEventListener('click', function(e) {
+      if (e.target.closest('.card-footer') || e.target.closest('button')) return;
+      const card = e.target.closest('.creation-card[data-type="landing_page"]');
+      if (!card) return;
+      loadCanvas('landing_page_editor', { landing_page_id: card.dataset.id });
+    });
+
+    // More button dropdown
+    container.addEventListener('click', function(e) {
+      const moreBtn = e.target.closest('.more-btn');
+      if (!moreBtn) return;
+      e.preventDefault(); e.stopPropagation();
+      const id = moreBtn.dataset.id;
+      const type = moreBtn.dataset.type;
+
       document.querySelectorAll('.creation-dropdown').forEach(d => d.remove());
-      
-      // Create dropdown
       const dropdown = document.createElement('div');
-      dropdown.className = 'creation-dropdown';
+      dropdown.className = 'creation-dropdown card shadow border p-1';
+      dropdown.style.cssText = 'position:fixed;z-index:9999;min-width:140px;';
       dropdown.innerHTML = `
-        <button type="button" class="dropdown-item" data-action="duplicate">
-          <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
-          Duplicate
+        <button type="button" class="dropdown-item d-flex align-items-center gap-2 px-3 py-2 border-0 bg-transparent w-100 text-start rounded-1" data-action="duplicate">
+          <i data-lucide="copy" style="width:14px;height:14px;"></i> Duplicate
         </button>
-        ${type === 'landing_page' ? `
-          <button type="button" class="dropdown-item" data-action="publish">
-            <i data-lucide="globe" style="width: 14px; height: 14px;"></i>
-            Publish
-          </button>
-        ` : ''}
-        <div class="dropdown-divider"></div>
-        <button type="button" class="dropdown-item text-danger" data-action="delete">
-          <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
-          Delete
+        <button type="button" class="dropdown-item d-flex align-items-center gap-2 px-3 py-2 border-0 bg-transparent w-100 text-start rounded-1" data-action="publish">
+          <i data-lucide="globe" style="width:14px;height:14px;"></i> Publish
         </button>
-      `;
-      
-      // Position it
-      const btnRect = this.getBoundingClientRect();
-      dropdown.style.position = 'fixed';
-      dropdown.style.top = (btnRect.bottom + 4) + 'px';
-      dropdown.style.left = (btnRect.left - 100) + 'px';
-      dropdown.style.zIndex = '9999';
-      
+        <hr class="my-1">
+        <button type="button" class="dropdown-item d-flex align-items-center gap-2 px-3 py-2 border-0 bg-transparent w-100 text-start text-danger rounded-1" data-action="delete">
+          <i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete
+        </button>`;
+
+      const rect = moreBtn.getBoundingClientRect();
+      dropdown.style.top = (rect.bottom + 4) + 'px';
+      dropdown.style.left = (rect.left - 100) + 'px';
       document.body.appendChild(dropdown);
-      
-      // Init icons in dropdown
       if (typeof lucide !== 'undefined') lucide.createIcons({ node: dropdown });
-      
-      // Handle dropdown actions
+
       dropdown.querySelectorAll('.dropdown-item').forEach(item => {
-        item.addEventListener('click', async function() {
+        item.addEventListener('click', function() {
           const action = this.dataset.action;
-          console.log('📋 Dropdown action:', action, type, id);
-          
-          if (action === 'delete') {
-            if (await showConfirm('Are you sure you want to delete this item?', { title: 'Delete Item', dangerous: true })) {
-              // Send delete request
-              fetch('/landing_pages/' + id, {
-                method: 'DELETE',
-                headers: {
-                  'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content,
-                  'Accept': 'application/json'
-                }
-              }).then(() => {
-                // Reload the canvas
-                loadCanvas('my_creations', {});
-              });
-            }
-          } else if (action === 'publish' && type === 'landing_page') {
+          if (action === 'delete' && confirm('Delete this landing page?')) {
+            fetch('/landing_pages/' + id, {
+              method: 'DELETE',
+              headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content, 'Accept': 'application/json' }
+            }).then(() => loadCanvas('my_creations', {}));
+          } else if (action === 'publish') {
             fetch('/landing_pages/' + id + '/publish', {
               method: 'POST',
-              headers: {
-                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content,
-                'Accept': 'application/json'
-              }
-            }).then(() => {
-              loadCanvas('my_creations', {});
-            });
+              headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content, 'Accept': 'application/json' }
+            }).then(() => loadCanvas('my_creations', {}));
           } else if (action === 'duplicate') {
-            showInfo('Duplicate feature coming soon!');
+            alert('Duplicate feature coming soon!');
           }
-          
           dropdown.remove();
         });
       });
-      
-      // Close on outside click
-    setTimeout(() => {
-      const closeHandler = (e) => {
-        if (!dropdown.contains(e.target)) {
-          dropdown.remove();
-          document.removeEventListener('click', closeHandler);
-        }
-      };
-      document.addEventListener('click', closeHandler);
-    }, 10);
-  });
-  
-  // Create new button
-  const createBtns = container.querySelectorAll('#create-new-btn, #empty-create-btn');
-  createBtns.forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      e.preventDefault();
-      loadCanvas('template_library', {});
+      setTimeout(() => {
+        const close = (ev) => { if (!dropdown.contains(ev.target)) { dropdown.remove(); document.removeEventListener('click', close); } };
+        document.addEventListener('click', close);
+      }, 10);
     });
-  });
-  
-  // ============================================
-  // Live Search with Debouncing
-  // ============================================
-  // searchInput already declared above
-  const clearSearchBtn = container.querySelector('#clear-search-btn');
-  let searchTimeout = null;
-  let currentSearch = '';
-  
-  function performSearch(query) {
-    currentSearch = query;
-    
-    // Show loading state
-    const grid = container.querySelector('#creations-grid');
-    if (grid) {
-      grid.style.opacity = '0.5';
+
+    // ── Website actions ──
+    container.addEventListener('click', function(e) {
+      const editBtn = e.target.closest('.website-edit-btn');
+      if (!editBtn) return;
+      e.preventDefault(); e.stopPropagation();
+      const slug = editBtn.dataset.slug;
+      // No dedicated website editor canvas yet - ask AMOS to help edit
+      if (window.scoutController?.sendScoutMessage) {
+        window.scoutController.sendScoutMessage('Edit my website "' + slug + '"');
+      } else if (window.scoutSendMessage) {
+        window.scoutSendMessage('Edit my website "' + slug + '"');
+      }
+    });
+
+    // Website card body click = edit
+    container.addEventListener('click', function(e) {
+      if (e.target.closest('.card-footer') || e.target.closest('button') || e.target.closest('a')) return;
+      const card = e.target.closest('.creation-card[data-type="website"]');
+      if (!card) return;
+      const editBtn = card.querySelector('.website-edit-btn');
+      if (editBtn) editBtn.click();
+    });
+
+    // ── App module canvas links ──
+    container.addEventListener('click', function(e) {
+      const link = e.target.closest('.canvas-link');
+      if (!link) return;
+      e.preventDefault(); e.stopPropagation();
+      const slug = link.dataset.slug;
+      const canvasSlug = link.dataset.canvasSlug;
+      const moduleId = link.dataset.moduleId;
+      if (canvasSlug) {
+        loadCanvas('module_' + canvasSlug, { app_module_id: moduleId });
+      } else if (slug) {
+        loadCanvas('module_' + slug + '_list', { app_module_id: moduleId });
+      }
+    });
+
+    // Project card header click (not expand btn) -> open app
+    container.addEventListener('click', function(e) {
+      if (e.target.closest('.project-expand-btn') || e.target.closest('.collapse') || e.target.closest('.canvas-link') || e.target.closest('button')) return;
+      const card = e.target.closest('.project-card');
+      if (!card) return;
+      const slug = card.querySelector('.canvas-link')?.dataset.slug;
+      const moduleId = card.dataset.id;
+      if (slug) loadCanvas('module_' + slug + '_list', { app_module_id: moduleId });
+    });
+
+    // ── Automation actions ──
+    container.addEventListener('click', function(e) {
+      const editBtn = e.target.closest('.automation-edit-btn');
+      if (!editBtn) return;
+      e.preventDefault(); e.stopPropagation();
+      // Load the automation code editor canvas
+      loadCanvas('automation_dashboard', { automation_id: editBtn.dataset.id });
+    });
+
+    // Automation row click -> edit
+    container.addEventListener('click', function(e) {
+      if (e.target.closest('button')) return;
+      const row = e.target.closest('.automation-row');
+      if (!row) return;
+      loadCanvas('automation_dashboard', { automation_id: row.dataset.id });
+    });
+
+    // Toggle automation (activate/pause)
+    container.addEventListener('click', function(e) {
+      const toggleBtn = e.target.closest('.toggle-btn');
+      if (!toggleBtn) return;
+      e.preventDefault(); e.stopPropagation();
+      const id = toggleBtn.dataset.id;
+      const action = toggleBtn.dataset.actionType;
+      const msg = action === 'pause' ? 'Pause automation ' + id : 'Activate automation ' + id;
+      if (window.scoutController?.sendScoutMessage) {
+        window.scoutController.sendScoutMessage(msg);
+      } else if (window.scoutSendMessage) {
+        window.scoutSendMessage(msg);
+      }
+    });
+
+    // ── Create new ──
+    container.querySelectorAll('#create-new-btn, #empty-create-btn').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        loadCanvas('template_library', {});
+      });
+    });
+
+    // ── Clear search ──
+    const clearSearchBtn = container.querySelector('#clear-search-btn');
+    if (clearSearchBtn) {
+      clearSearchBtn.addEventListener('click', function() {
+        const input = container.querySelector('#creations-search');
+        if (input) input.value = '';
+        applyFilters();
+      });
     }
-    
-    fetch('/scout/load_canvas', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
-      },
-      body: JSON.stringify({
-        canvas_type: 'my_creations',
-        canvas_data: { 
-          search: query,
-          type: currentTypeFilter,
-          status: currentStatusFilter
-        }
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.html) {
-        // Replace entire canvas content
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = data.html;
-        const newCanvas = tempDiv.querySelector('.my-creations-canvas');
-        if (newCanvas) {
-          // Preserve the search input value
-          container.innerHTML = newCanvas.innerHTML;
-          
-          // Re-set the search value
-          const newSearchInput = container.querySelector('#creations-search');
-          if (newSearchInput) {
-            newSearchInput.value = query;
-            newSearchInput.focus();
-          }
-          
-          // Re-init lucide icons
-          if (typeof lucide !== 'undefined') lucide.createIcons();
-          
-          // Re-attach clear search handler
-          const newClearBtn = container.querySelector('#clear-search-btn');
-          if (newClearBtn) {
-            newClearBtn.addEventListener('click', clearSearch);
-          }
-        }
-      }
-    })
-    .catch(err => {
-      console.error('Search error:', err);
-      if (grid) grid.style.opacity = '1';
-    });
-  }
-  
-  function clearSearch() {
-    currentSearch = '';
-    if (searchInput) {
-      searchInput.value = '';
-    }
-    performSearch('');
-  }
-  
-  if (searchInput) {
-    searchInput.addEventListener('input', function(e) {
-      const query = e.target.value.trim();
-      
-      // Debounce search - wait 300ms after user stops typing
-      if (searchTimeout) {
-        clearTimeout(searchTimeout);
-      }
-      
-      searchTimeout = setTimeout(function() {
-        if (query !== currentSearch) {
-          performSearch(query);
-        }
-      }, 300);
-    });
-    
-    // Handle Enter key for immediate search
-    searchInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        if (searchTimeout) {
-          clearTimeout(searchTimeout);
-        }
-        performSearch(e.target.value.trim());
-      }
-    });
-  }
-  
-  if (clearSearchBtn) {
-    clearSearchBtn.addEventListener('click', clearSearch);
-  }
-  
-  // Init icons
-  if (typeof lucide !== 'undefined') lucide.createIcons();
-  
-  console.log('📂 My Creations canvas initialized successfully');
-  
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
   } catch (err) {
-    console.error('🎨 My Creations canvas initialization error:', err);
+    console.error('My Creations canvas error:', err);
   }
 })();
 </script>
-

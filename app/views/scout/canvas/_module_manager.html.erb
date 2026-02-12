@@ -4,8 +4,8 @@
   <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb">
       <li class="breadcrumb-item">
-        <a href="#" onclick="window.scoutController?.loadScoutCanvas('module_marketplace', {}); return false;">
-          <i data-lucide="grid-2x2" style="width: 14px; height: 14px;"></i> App Store
+        <a href="#" onclick="window.scoutController?.loadScoutCanvas('my_creations', {}); return false;">
+          <i data-lucide="layout-dashboard" style="width: 14px; height: 14px;"></i> My Projects
         </a>
       </li>
       <li class="breadcrumb-item active">Installed Apps</li>
@@ -25,7 +25,7 @@
       <button class="btn btn-outline-secondary" onclick="window.scoutController?.loadScoutCanvas('module_manager', {}, true)">
         <i data-lucide="refresh-cw"></i> Refresh
       </button>
-      <button class="btn btn-primary" onclick="window.scoutController?.loadScoutCanvas('module_marketplace', {})">
+      <button class="btn btn-primary" onclick="window.scoutController?.loadScoutCanvas('my_creations', { type: 'app_module' })">
         <i data-lucide="grid-2x2"></i> Browse Apps
       </button>
     </div>
@@ -98,7 +98,7 @@
                   <p class="mb-2">No apps installed yet</p>
                   <p class="small">Browse the App Store to install apps, or ask Amos to build a custom one!</p>
                   <div class="d-flex gap-2 justify-content-center mt-3">
-                    <button class="btn btn-primary btn-sm" onclick="window.scoutController?.loadScoutCanvas('module_marketplace', {})">
+                    <button class="btn btn-primary btn-sm" onclick="window.scoutController?.loadScoutCanvas('my_creations', { type: 'app_module' })">
                       <i data-lucide="grid-2x2"></i> Browse App Store
                     </button>
                     <button class="btn btn-outline-primary btn-sm" data-action="click->module-manager#requestNewModule">

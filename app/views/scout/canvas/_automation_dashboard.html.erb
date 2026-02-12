@@ -19,6 +19,10 @@
   <!-- Header -->
   <div class="dashboard-header d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
     <div class="d-flex align-items-center gap-3">
+      <button type="button" class="btn btn-sm btn-outline-secondary me-1" id="back-to-projects" title="Back to Projects"
+              onclick="window.scoutController?.loadScoutCanvas('my_creations', { type: 'automation' }); return false;">
+        <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+      </button>
       <h5 class="mb-0">
         <i data-lucide="activity" class="me-2" style="width: 20px; height: 20px;"></i>
         Automation Dashboard
@@ -433,7 +437,7 @@
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+(function() {
   const container = document.querySelector('.automation-dashboard');
   if (!container) return;
 
@@ -616,6 +620,6 @@ document.addEventListener('DOMContentLoaded', function() {
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
   }
-});
+})();
 </script>
 

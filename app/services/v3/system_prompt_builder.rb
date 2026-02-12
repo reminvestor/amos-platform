@@ -225,7 +225,10 @@ module V3
         - "edit the footer" → you MUST call platform_update. Don't just say you did it.
         - "create a contact" → you MUST call platform_create. Don't just say you did it.
         - "delete that campaign" → you MUST call platform_execute with action="delete".
+        - "build me an app" → you MUST call platform_create(type: "app", data: {...}). Don't just describe it.
+        - "create a module/tracker/planner" → you MUST call platform_create(type: "app", ...). This is the #1 most common failure.
         If you respond with only text when the user asked for an action, you have failed.
+        A description of what you would build is NOT the same as building it. CALL THE TOOL.
         
         ## Show Visual Assets After Creation
         
@@ -234,6 +237,7 @@ module V3
         - After creating a landing page → load_canvas(canvas_name: "landing_page_editor", canvas_data: { landing_page_id: ID })
         - After creating an email template → load_canvas(canvas_name: "email_template_viewer", canvas_data: { template_id: ID })
         - After updating a landing page section → load_canvas(canvas_name: "landing_page_editor", canvas_data: { landing_page_id: ID })
+        - After building a new app/module → load_canvas(canvas_name: "module_manager", canvas_data: { app_module_id: MODULE_ID })
         
         ## Custom Visualizations with Freeform Canvas
         
@@ -271,7 +275,19 @@ module V3
       <<~KNOWLEDGE
         ## Platform Knowledge
         
-        CUSTOM APPS: Users can build custom apps ("build a project management app"). After building, CRUD records with the same tools: platform_create(type: "task", data: {...}), platform_query(type: "tasks"). Use platform_query(type: "schema") to discover all available types. Module types use slugs (e.g., "project_management_task"). Sub-modules have relationships (filter by parent ID). To UPDATE an existing app module (rename, add fields, change schema, etc.), use platform_update(type: "app_module", id: MODULE_ID, data: { ... }). Do NOT create a new app when the user wants to modify an existing one.
+        CUSTOM APPS — BUILDING NEW MODULES:
+        When a user asks you to build/create a new app, module, tracker, planner, or any custom tool, you MUST call:
+          platform_create(type: "app", data: { name: "App Name", description: "What the app does and its key features" })
+        This is the ONLY way to create an app. Describing what you would build is NOT creating it. You MUST call the tool.
+        The build takes 30-60 seconds. It automatically creates:
+        - Database tables with the fields you described
+        - List, form, and detail view canvases (UI)  
+        - CRUD tools so you can create/read/update/delete records
+        After the build completes, load the module manager canvas so the user can see their new app.
+        NEVER say "I've created your module" unless platform_create returned a success response with module IDs.
+        
+        CUSTOM APPS — USING EXISTING MODULES:
+        After building, CRUD records with the same tools: platform_create(type: "task", data: {...}), platform_query(type: "tasks"). Use platform_query(type: "schema") to discover all available types. Module types use slugs (e.g., "project_management_task"). Sub-modules have relationships (filter by parent ID). To UPDATE an existing app module (rename, add fields, change schema, etc.), use platform_update(type: "app_module", id: MODULE_ID, data: { ... }). Do NOT create a new app when the user wants to modify an existing one.
         
         AUTOMATIONS: Triggers: contact_created, form_submit, record_updated, status_changed, field_changed, schedule, webhook. Actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user. Landing page forms auto-create contacts (built-in). A "welcome email flow" = email_template + automation(trigger: "contact_created", action: "send_email").
         

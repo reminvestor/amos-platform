@@ -107,10 +107,10 @@ export default class extends Controller {
   }
 
   browseApps() {
-    console.log("📱 Opening apps marketplace...")
-    // Load the apps/marketplace canvas
+    console.log("📱 Opening my projects...")
+    // Load the my projects canvas
     if (window.scoutController) {
-      window.scoutController.loadScoutCanvas("module_marketplace", {})
+      window.scoutController.loadScoutCanvas("my_creations", { type: 'app_module' })
     }
   }
 

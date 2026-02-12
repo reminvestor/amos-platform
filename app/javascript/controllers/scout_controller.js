@@ -2022,8 +2022,8 @@ export default class extends Controller {
 
   loadAppsCanvas(event) {
     this.setActiveNavItem(event)
-    console.log("📱 Loading app store canvas")
-    this.loadScoutCanvas("module_marketplace", {})
+    console.log("📱 Loading my projects canvas")
+    this.loadScoutCanvas("my_creations", {})
   }
 
   loadInstalledAppsCanvas(event) {
@@ -2052,8 +2052,8 @@ export default class extends Controller {
 
   loadModuleMarketplaceCanvas(event) {
     this.setActiveNavItem(event)
-    console.log("🛒 Loading module marketplace canvas")
-    this.loadScoutCanvas("module_marketplace", {})
+    console.log("🛒 Loading my projects canvas")
+    this.loadScoutCanvas("my_creations", {})
   }
 
   loadDocumentViewerCanvas(event) {

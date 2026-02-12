@@ -560,9 +560,13 @@ class ApplicationBuildService
   def finalize_build!
     log_progress("Finalizing build...")
     
-    # Update primary module status
+    # Update primary module status and verify completeness
     results[:modules].each do |mod_info|
       app_module = AppModule.find(mod_info[:id])
+      
+      # Post-build verification: ensure module has all required components
+      verify_module_completeness!(app_module)
+      
       app_module.activate!
       
       # Notify Hub about the new module
@@ -573,6 +577,64 @@ class ApplicationBuildService
     plan.complete!(results)
     
     log_progress("Build complete! Your #{plan.name} is live.")
+  end
+  
+  # Verify that a module has all required components (canvases, models, table)
+  # and attempt to repair any missing pieces
+  def verify_module_completeness!(app_module)
+    issues = []
+    
+    # Check 1: Module must have at least one ModuleCode (model)
+    if app_module.module_codes.empty?
+      issues << "No model/table definition found"
+    end
+    
+    # Check 2: Module must have at least one canvas (list view)
+    if app_module.module_canvases.empty?
+      issues << "No canvases found"
+      # Attempt repair: generate basic canvases
+      begin
+        log_progress("Repairing: generating canvases for #{app_module.name}...")
+        module_spec = plan.modules_spec.find { |m| m['slug'] == app_module.slug || m['name'] == app_module.name }
+        if module_spec
+          create_module_canvases(app_module, module_spec)
+          issues.delete("No canvases found") if app_module.module_canvases.reload.any?
+        end
+      rescue => e
+        Rails.logger.warn "[ApplicationBuildService] Canvas repair failed for #{app_module.name}: #{e.message}"
+      end
+    end
+    
+    # Check 3: Module must have a default (list) canvas
+    if app_module.module_canvases.any? && !app_module.module_canvases.exists?(is_default: true)
+      issues << "No default list canvas"
+      # Attempt repair: mark the first canvas as default
+      app_module.module_canvases.first.update!(is_default: true)
+      issues.delete("No default list canvas")
+    end
+    
+    # Check 4: Database table should exist
+    if app_module.module_codes.where(code_type: 'model').any?
+      table_name = app_module.slug.pluralize
+      unless ActiveRecord::Base.connection.table_exists?(table_name)
+        issues << "Database table '#{table_name}' does not exist"
+        # Attempt repair: load the model again
+        begin
+          log_progress("Repairing: creating database table for #{app_module.name}...")
+          model_code = app_module.module_codes.where(code_type: 'model').first
+          Modules::DynamicModelLoader.instance.load_model(model_code)
+          issues.delete("Database table '#{table_name}' does not exist") if ActiveRecord::Base.connection.table_exists?(table_name)
+        rescue => e
+          Rails.logger.warn "[ApplicationBuildService] Table repair failed for #{app_module.name}: #{e.message}"
+        end
+      end
+    end
+    
+    if issues.any?
+      Rails.logger.warn "[ApplicationBuildService] Module #{app_module.name} (ID: #{app_module.id}) has issues after build: #{issues.join(', ')}"
+    else
+      Rails.logger.info "[ApplicationBuildService] Module #{app_module.name} (ID: #{app_module.id}) verified complete: model ✓, canvases ✓, table ✓"
+    end
   end
   
   def notify_hub_module_created(app_module)

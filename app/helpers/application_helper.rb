@@ -20,7 +20,7 @@ module ApplicationHelper
     'media' => %w[media image_assets],
     'dashboard' => %w[dashboard],
     'platform' => %w[execution_dashboard],
-    'apps' => %w[apps app_store installed_apps module_manager module_marketplace]
+    'apps' => %w[apps my_creations module_manager]
   }.freeze
   
   # Default sections visible in each space (used as fallback if no user config)

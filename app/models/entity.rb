@@ -44,6 +44,7 @@ class Entity < ApplicationRecord
   has_many :document_tags, dependent: :destroy
   has_many :saved_searches, dependent: :destroy
   has_many :landing_pages, dependent: :destroy
+  has_many :websites, dependent: :destroy
   has_many :custom_domains, dependent: :destroy
   has_many :design_plans, dependent: :destroy
   has_many :automation_codes, dependent: :destroy
