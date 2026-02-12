@@ -13,8 +13,8 @@ module Build
 
       @stats = {
         active_agents: @agents.size,
-        total_completed: @agents.sum(&:total_bounties_completed),
-        total_earned: @agents.sum { |a| a.total_tokens_earned.to_f },
+        total_completed: @agents.sum(:total_bounties_completed),
+        total_earned: @agents.sum(:total_tokens_earned),
         pending_reviews: current_user ? pending_review_count : 0
       }
     rescue => e
