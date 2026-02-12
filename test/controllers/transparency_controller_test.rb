@@ -8,6 +8,11 @@ class TransparencyControllerTest < ActionDispatch::IntegrationTest
     # SubdomainConfig.app_subdomains includes "" (empty) in test env,
     # so using a host with no subdomain satisfies the constraint.
     host! "example.com"
+
+    # In CI environments, assets aren't compiled so javascript_include_tag
+    # raises Propshaft::MissingAssetError for application.js.
+    # Stub it since these tests verify controller behavior, not asset pipeline.
+    ActionView::Base.any_instance.stubs(:javascript_include_tag).returns("")
   end
 
   # --- Public access ---

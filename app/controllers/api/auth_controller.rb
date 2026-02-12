@@ -79,13 +79,10 @@ module Api
       else
         # Clean up entity if user creation failed
         entity.destroy
-        # Generic message to prevent enumeration (Story 0.2)
-        # Exception: Show password-specific errors during registration (not an enumeration risk)
-        if user.errors[:password].any?
-          render json: { message: "Password requirements not met", password_errors: user.errors[:password] }, status: :unprocessable_entity
-        else
-          render json: { message: "Unable to create account. Please check your information and try again." }, status: :unprocessable_entity
-        end
+        # Generic message for all registration failures (Story 0.2)
+        # Do NOT reveal specific validation details (e.g. password requirements)
+        # to prevent information leakage
+        render json: { message: "Unable to create account. Please check your information and try again." }, status: :unprocessable_entity
       end
     end
 
