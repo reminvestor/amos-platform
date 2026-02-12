@@ -12,9 +12,7 @@ class Rack::Attack
 
   # Use Redis for Rack::Attack (required for multi-container deployments)
   Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(
-    url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0"),
-    pool_size: 5,
-    pool_timeout: 5
+    url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0")
   )
 
   ### Throttle Requests ###
