@@ -24,8 +24,10 @@ module Build
     end
 
     def fetch_top_stakeholders
-      TokenStake.top_stakeholders(limit: 50).map.with_index(1) do |row, rank|
-        total = TokenStake.total_supply
+      stakeholders = TokenStake.top_stakeholders(limit: 50)
+      total = TokenStake.total_supply  # Calculate once, not in loop
+
+      stakeholders.map.with_index(1) do |row, rank|
         ownership = total.positive? ? (row.total_stake / total * 100).round(4) : 0
 
         {
