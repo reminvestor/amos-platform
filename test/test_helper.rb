@@ -90,8 +90,8 @@ module ActiveSupport
         last_name: "User",
         role: "admin",
         email: "test#{SecureRandom.hex(4)}@example.com",
-        password: "password123",
-        password_confirmation: "password123"
+        password: "Password123!",
+        password_confirmation: "Password123!"
       }
 
       entity = attributes.delete(:entity) || entities(:one)
@@ -104,7 +104,7 @@ module ActiveSupport
         last_name: "User",
         role: :super_admin,
         email: "admin#{SecureRandom.hex(4)}@example.com",
-        password: "password123"
+        password: "Password123!"
       }
 
       AdminUser.create!(defaults.merge(attributes))

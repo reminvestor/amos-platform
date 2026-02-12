@@ -239,7 +239,7 @@ module Api
         other_entity = Entity.create!(name: "Other Entity", subdomain: "other-template-#{SecureRandom.hex(4)}")
         other_user = User.create!(
           email: "other-#{SecureRandom.hex(4)}@example.com",
-          password: "password123",
+          password: "Password123!",
           entity: other_entity
         )
         other_template = EmailTemplate.create!(

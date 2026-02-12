@@ -153,7 +153,7 @@ class CommissionTest < ActiveSupport::TestCase
   test "approve! should update status and set approved_at" do
     commission = commissions(:pending_commission)
     admin_user = AdminUser.find_or_create_by!(email: "admin_#{SecureRandom.hex(4)}@test.com") do |u|
-      u.password = 'password123'
+      u.password = 'Password123!'
     end
 
     assert commission.pending?

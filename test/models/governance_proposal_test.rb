@@ -96,16 +96,18 @@ class GovernanceProposalTest < ActiveSupport::TestCase
   end
 
   test "discussion and voting periods vary by type" do
-    feature = GovernanceProposal.new(proposal_type: 'feature', created_at: Time.current)
-    constitutional = GovernanceProposal.new(proposal_type: 'constitutional', created_at: Time.current)
+    freeze_time do
+      feature = GovernanceProposal.new(proposal_type: 'feature', created_at: Time.current)
+      constitutional = GovernanceProposal.new(proposal_type: 'constitutional', created_at: Time.current)
 
-    # Feature: 5 day discussion, 5 day voting
-    assert_equal 5.days.from_now.to_i, feature.discussion_ends_at.to_i
-    assert_equal 10.days.from_now.to_i, feature.voting_ends_at.to_i
+      # Feature: 5 day discussion, 5 day voting
+      assert_equal 5.days.from_now.to_i, feature.discussion_ends_at.to_i
+      assert_equal 10.days.from_now.to_i, feature.voting_ends_at.to_i
 
-    # Constitutional: 21 day discussion, 21 day voting
-    assert_equal 21.days.from_now.to_i, constitutional.discussion_ends_at.to_i
-    assert_equal 42.days.from_now.to_i, constitutional.voting_ends_at.to_i
+      # Constitutional: 21 day discussion, 21 day voting
+      assert_equal 21.days.from_now.to_i, constitutional.discussion_ends_at.to_i
+      assert_equal 42.days.from_now.to_i, constitutional.voting_ends_at.to_i
+    end
   end
 
   # === VOTING ===

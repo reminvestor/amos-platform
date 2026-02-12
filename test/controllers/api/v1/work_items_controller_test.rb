@@ -186,7 +186,7 @@ module Api
       test "work items list only returns user's own items" do
         other_user = User.create!(
           email: "other_work_#{SecureRandom.hex(4)}@test.com",
-          password: "password123",
+          password: "Password123!",
           entity: @entity,
           api_key: SecureRandom.hex(32)
         )
@@ -235,7 +235,7 @@ module Api
       test "should return 404 for other user's work item" do
         other_user = User.create!(
           email: "other_show_#{SecureRandom.hex(4)}@test.com",
-          password: "password123",
+          password: "Password123!",
           entity: @entity,
           api_key: SecureRandom.hex(32)
         )

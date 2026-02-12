@@ -50,43 +50,43 @@ class ApplicationBuildService
   def self.resume!(plan, progress_callback: nil, cancellation_check: nil)
     new(plan, progress_callback: progress_callback, cancellation_check: cancellation_check).execute!
   end
-
+  
   def execute!
     validate_plan!
-
+    
     plan.start_build! unless plan.status == "building"
     emit_progress("Starting build for #{plan.name}...", percentage: 5, phase: "planning")
-
+    
     begin
       # Phase 1: Create Modules (data layer) — the heaviest phase
       run_phase(:modules) { build_modules! }
-
-      # Phase 2: Create Agent (AI layer)
+        
+        # Phase 2: Create Agent (AI layer)
       run_phase(:agent) { build_agent! }
-
-      # Phase 3: Create/Register Tools
+        
+        # Phase 3: Create/Register Tools
       run_phase(:tools) { build_tools! }
-
-      # Phase 4: Wire up Integrations
+        
+        # Phase 4: Wire up Integrations
       run_phase(:integrations) { wire_integrations! }
-
-      # Phase 5: Create Workflows
+        
+        # Phase 5: Create Workflows
       run_phase(:workflows) { build_workflows! }
-
-      # Phase 6: Create Scheduled Tasks
+        
+        # Phase 6: Create Scheduled Tasks
       run_phase(:scheduled_tasks) { build_scheduled_tasks! }
-
-      # Phase 7: Create Webhooks / Hub Hooks
+        
+        # Phase 7: Create Webhooks / Hub Hooks
       run_phase(:webhooks) { build_webhooks! }
-
-      # Phase 8: Create Website (if specified)
+        
+        # Phase 8: Create Website (if specified)
       run_phase(:website) { build_website! } if plan.has_website?
-
-      # Phase 9: Complete
+        
+        # Phase 9: Complete
       run_phase(:finalize) { finalize_build! }
-
+      
       { success: true, results: results, plan: plan.reload }
-
+      
     rescue BuildCancelled => e
       handle_cancellation(e)
       { success: :partial, results: results, plan: plan.reload, message: e.message }
@@ -108,7 +108,7 @@ class ApplicationBuildService
     unless %w[approved building paused].include?(plan.status)
       raise BuildError, "Plan must be approved/building/paused before building (current status: #{plan.status})"
     end
-
+    
     if plan.modules_spec.empty?
       raise BuildError, "Plan must have at least one module defined"
     end
@@ -153,13 +153,13 @@ class ApplicationBuildService
   end
   
   def build_single_module(module_spec)
-    app_module = create_module(module_spec)
-    create_module_table(app_module, module_spec)
-    create_module_canvases(app_module, module_spec)
-
-    results[:modules] << {
-      id: app_module.id,
-      name: app_module.name,
+      app_module = create_module(module_spec)
+      create_module_table(app_module, module_spec)
+      create_module_canvases(app_module, module_spec)
+      
+      results[:modules] << {
+        id: app_module.id,
+        name: app_module.name,
       slug: app_module.slug,
       is_primary: module_spec['is_primary'] != false,
       relationship: module_spec['relationship']
@@ -298,7 +298,7 @@ class ApplicationBuildService
   
   def build_agent!
     return unless plan.has_agent?
-
+    
     log_progress("Creating AI agent...")
     
     agent_spec = plan.agent_spec
@@ -1391,17 +1391,17 @@ class ApplicationBuildService
     Rails.logger.info "[ApplicationBuildService] Build paused: #{error.message}"
     plan.update!(status: "paused", error_message: error.message)
   end
-
+  
   def handle_failure(error)
     Rails.logger.error "[ApplicationBuildService] Build failed: #{error.message}"
     Rails.logger.error error.backtrace.first(10).join("\n")
-
+    
     plan.fail!(
       error.message,
       { timestamp: Time.current.iso8601, error: error.message, backtrace: error.backtrace.first(5) }
     )
   end
-
+  
   class BuildError < StandardError; end
   class BuildCancelled < StandardError; end
 end

@@ -12,8 +12,8 @@ class AffiliateReferralServiceTest < ActiveSupport::TestCase
     )
     @user = User.create!(
       email: "newuser-#{SecureRandom.hex(4)}@example.com",
-      password: 'password123',
-      password_confirmation: 'password123',
+      password: 'Password123!',
+      password_confirmation: 'Password123!',
       first_name: 'New',
       last_name: 'User',
       entity: @entity  # Associate user with entity

@@ -8,6 +8,9 @@ module Api
       setup do
         @user = users(:one)
         @entity = @user.entity
+        # Always generate a fresh encrypted API key (fixtures store plaintext which
+        # won't match deterministic encryption queries)
+        @user.generate_api_key!
         @api_key = @user.api_key
         
         # Create an external agent for testing

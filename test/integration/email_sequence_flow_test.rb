@@ -6,7 +6,9 @@ class EmailSequenceFlowTest < ActionDispatch::IntegrationTest
   setup do
     @user = users(:one)
     @entity = @user.entity  # Use the user's entity to avoid mismatch
-    @user.update!(api_key: SecureRandom.hex(32)) unless @user.api_key.present?
+    # Always generate a fresh encrypted API key (fixtures store plaintext which
+    # won't match deterministic encryption queries)
+    @user.generate_api_key!
     @contact_group = contact_groups(:default_group)
     
     # Create fresh contacts for this test to avoid enrollment conflicts

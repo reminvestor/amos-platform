@@ -731,7 +731,7 @@ class AgentPlugin < ApplicationRecord
   # Queue the initial training job
   def queue_initial_training
     Rails.logger.info "[AgentPlugin] Queueing initial training for: #{name}"
-    AgentTrainingJob.perform_later(id)
+    RunAgentTrainingJob.perform_later(id)
   rescue => e
     Rails.logger.warn "[AgentPlugin] Could not queue training job: #{e.message}"
   end

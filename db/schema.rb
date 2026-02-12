@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_11_000003) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_12_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2017,6 +2017,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_11_000003) do
     t.integer "improvement_attempts"
     t.index ["entity_id"], name: "index_crawler_jobs_on_entity_id"
     t.index ["user_id"], name: "index_crawler_jobs_on_user_id"
+  end
+
+  create_table "custom_agent_definitions", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "created_by_id", null: false
+    t.string "name", null: false
+    t.string "agent_type", null: false
+    t.jsonb "definition", default: {}, null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_type"], name: "index_custom_agent_definitions_on_agent_type"
+    t.index ["created_by_id"], name: "index_custom_agent_definitions_on_created_by_id"
+    t.index ["entity_id", "name"], name: "index_custom_agent_definitions_on_entity_id_and_name", unique: true
+    t.index ["entity_id"], name: "index_custom_agent_definitions_on_entity_id"
   end
 
   create_table "custom_domains", force: :cascade do |t|
@@ -6362,7 +6377,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_11_000003) do
     t.datetime "locked_until"
     t.datetime "api_key_expires_at"
     t.datetime "api_key_last_used_at"
-    t.text "refresh_token_encrypted"
+    t.text "refresh_token"
     t.datetime "refresh_token_expires_at"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["api_key_expires_at"], name: "index_users_on_api_key_expires_at"
@@ -7002,6 +7017,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_11_000003) do
   add_foreign_key "crawler_job_logs", "crawler_jobs"
   add_foreign_key "crawler_jobs", "entities"
   add_foreign_key "crawler_jobs", "users"
+  add_foreign_key "custom_agent_definitions", "entities"
+  add_foreign_key "custom_agent_definitions", "users", column: "created_by_id"
   add_foreign_key "custom_domains", "connections"
   add_foreign_key "custom_domains", "entities"
   add_foreign_key "custom_domains", "users"

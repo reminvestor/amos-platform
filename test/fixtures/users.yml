@@ -9,6 +9,7 @@ one:
   onboarded: true
   role: "admin"
   api_key: "test_api_key_user_one_abcdef1234567890"
+  api_key_expires_at: <%= 90.days.from_now.iso8601 %>
 
 two:
   entity: one
@@ -19,6 +20,7 @@ two:
   onboarded: true
   role: "marketer"
   api_key: "test_api_key_user_two_abcdef1234567890"
+  api_key_expires_at: <%= 90.days.from_now.iso8601 %>
 
 three:
   entity: one
@@ -29,6 +31,7 @@ three:
   onboarded: true
   role: "marketer"
   api_key: "test_api_key_user_three_abcdef12345678"
+  api_key_expires_at: <%= 90.days.from_now.iso8601 %>
 
 default:
   entity: default
@@ -39,6 +42,7 @@ default:
   onboarded: true
   role: "admin"
   api_key: "test_api_key_default_abcdef1234567890"
+  api_key_expires_at: <%= 90.days.from_now.iso8601 %>
 
 admin_user:
   entity: demo_company
@@ -49,6 +53,7 @@ admin_user:
   onboarded: true
   role: "admin"
   api_key: "test_api_key_admin_abcdef12345678901"
+  api_key_expires_at: <%= 90.days.from_now.iso8601 %>
 
 another_user:
   entity: another_entity

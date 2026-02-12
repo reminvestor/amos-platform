@@ -5,12 +5,13 @@ module Api
     class EmailSequencesControllerTest < ActionDispatch::IntegrationTest
       setup do
         @user = users(:one)
-        # Ensure user has an API key for token auth
-        @user.update!(api_key: SecureRandom.hex(32)) unless @user.api_key.present?
-        
         # Use the user's actual entity (what current_entity returns in API)
         @entity = @user.entity || entities(:default)
         @user.update!(entity: @entity) unless @user.entity
+        
+        # Always generate a fresh encrypted API key (fixtures store plaintext which
+        # won't match deterministic encryption queries)
+        @user.generate_api_key!
         
         # Clear API cache to ensure fresh user lookup
         Rails.cache.clear

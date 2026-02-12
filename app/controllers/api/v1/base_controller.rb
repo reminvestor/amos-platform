@@ -40,6 +40,15 @@ module Api
           render json: { message: "Invalid token" }, status: :unauthorized
           return
         end
+
+        # Check API key expiration (Story 0.4)
+        if @current_user.api_key_expired?
+          render json: {
+            message: "Authentication token has expired. Please refresh your token.",
+            expired: true
+          }, status: :unauthorized
+          return
+        end
       end
 
       def current_user

@@ -320,8 +320,8 @@ class User < ApplicationRecord
       user
     else
       # Create new user with OAuth
-      # Generate a random password since they'll use OAuth
-      password = Devise.friendly_token[0, 20]
+      # Generate a random password that meets complexity requirements since they'll use OAuth
+      password = "#{Devise.friendly_token[0, 16]}A1!x"
       
       # Parse name
       first_name = auth.info.first_name || auth.info.name&.split(' ')&.first || 'User'

@@ -102,7 +102,7 @@ class Entity < ApplicationRecord
   # Extensible Module System
   has_many :apps, dependent: :destroy
   has_many :app_modules, dependent: :destroy
-  has_many :module_canvases, dependent: :destroy
+  has_many :module_canvases, class_name: "ModuleCanvas", dependent: :destroy
   has_many :module_codes, dependent: :destroy
   has_many :module_actions, dependent: :destroy
   has_many :module_webhooks, dependent: :destroy

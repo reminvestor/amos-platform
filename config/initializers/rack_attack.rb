@@ -73,7 +73,15 @@ class Rack::Attack
   # Limit: 5 attempts per 15 minutes per email
   throttle('api/login/email', limit: 5, period: 15.minutes) do |req|
     if req.path == '/api/auth/login' && req.post?
-      req.params['email']&.to_s&.downcase&.strip
+      # Parse JSON body since req.params doesn't handle application/json
+      email = if req.content_type&.include?('application/json') && req.body
+                body = req.body.read
+                req.body.rewind
+                (JSON.parse(body) rescue {})['email']
+              else
+                req.params['email']
+              end
+      email&.to_s&.downcase&.strip.presence
     end
   end
 

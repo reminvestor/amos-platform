@@ -1652,19 +1652,15 @@ export default class extends Controller {
       // Deduplicate and cap at 5
       suggestions = [...new Set(suggestions)].slice(0, 5)
 
-      // Find the last AI message
-      const messages = this.chatMessagesTarget.querySelectorAll('.message')
-      let lastAiMessage = null
-      for (let i = messages.length - 1; i >= 0; i--) {
-        if (messages[i].classList.contains('ai-message')) {
-          lastAiMessage = messages[i]
-          break
-        }
-      }
-      if (!lastAiMessage) return
+      // Find the last AI message's .message-content container
+      const messages = this.chatMessagesTarget.querySelectorAll('.message.ai-message')
+      if (messages.length === 0) return
+      const lastAiMessage = messages[messages.length - 1]
+      const messageContent = lastAiMessage.querySelector('.message-content')
+      if (!messageContent) return
 
       // Don't add duplicates
-      if (lastAiMessage.querySelector('.message-suggestions')) return
+      if (messageContent.querySelector('.quick-replies')) return
 
       // Build the button container
       const container = document.createElement('div')
@@ -1689,13 +1685,8 @@ export default class extends Controller {
         container.appendChild(btn)
       })
 
-      // Append below the message bubble (inside message-content, after the bubble)
-      const bubble = lastAiMessage.querySelector('.message-bubble')
-      if (bubble) {
-        bubble.after(container)
-      } else {
-        lastAiMessage.appendChild(container)
-      }
+      // Append after .message-bubble so buttons sit below the text
+      messageContent.appendChild(container)
       console.log(`✅ Quick reply buttons rendered: ${suggestions.join(', ')}`)
     } catch (error) {
       console.error("❌ Error rendering quick replies:", error)

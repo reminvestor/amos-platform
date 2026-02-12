@@ -5,7 +5,8 @@ module Api
     setup do
       @user = users(:one)
       @entity = entities(:one)
-      @user.update!(entity: @entity, api_key: SecureRandom.hex(32))
+      @user.update!(entity: @entity)
+      @user.generate_api_key!
     end
 
     # ====================================================================
@@ -14,11 +15,11 @@ module Api
 
     test "should login with valid credentials" do
       # Set password explicitly for test (fixture has bcrypt hash)
-      @user.update!(password: "password123")
+      @user.update!(password: "Password123!")
 
       post api_auth_login_path, params: {
         email: @user.email,
-        password: "password123"
+        password: "Password123!"
       }, as: :json
 
       assert_response :success
@@ -30,11 +31,11 @@ module Api
     end
 
     test "login response includes user details" do
-      @user.update!(password: "password123")
+      @user.update!(password: "Password123!")
 
       post api_auth_login_path, params: {
         email: @user.email,
-        password: "password123"
+        password: "Password123!"
       }, as: :json
 
       assert_response :success
@@ -52,11 +53,11 @@ module Api
     end
 
     test "login response includes entity name" do
-      @user.update!(password: "password123")
+      @user.update!(password: "Password123!")
 
       post api_auth_login_path, params: {
         email: @user.email,
-        password: "password123"
+        password: "Password123!"
       }, as: :json
 
       assert_response :success
@@ -80,7 +81,7 @@ module Api
     test "should reject login with non-existent email" do
       post api_auth_login_path, params: {
         email: "nonexistent@test.com",
-        password: "password123"
+        password: "Password123!"
       }, as: :json
 
       assert_response :unauthorized
@@ -89,7 +90,7 @@ module Api
     test "should reject login with blank email" do
       post api_auth_login_path, params: {
         email: "",
-        password: "password123"
+        password: "Password123!"
       }, as: :json
 
       assert_response :unauthorized
@@ -109,25 +110,28 @@ module Api
     # ====================================================================
 
     test "should refresh token for authenticated user" do
+      @user.generate_refresh_token!
+
       post api_auth_refresh_token_path,
-        headers: { "Authorization" => "Bearer #{@user.api_key}" },
+        params: { refresh_token: @user.refresh_token },
         as: :json
 
       assert_response :success
 
       response_body = JSON.parse(response.body)
-      assert response_body.key?("token")
+      assert response_body.key?("api_key")
+      assert response_body.key?("refresh_token")
     end
 
-    test "should reject token refresh without authentication" do
+    test "should reject token refresh without refresh token" do
       post api_auth_refresh_token_path, as: :json
 
-      assert_response :unauthorized
+      assert_response :bad_request
     end
 
     test "should reject token refresh with invalid token" do
       post api_auth_refresh_token_path,
-        headers: { "Authorization" => "Bearer invalid_token" },
+        params: { refresh_token: "invalid_refresh_token" },
         as: :json
 
       assert_response :unauthorized

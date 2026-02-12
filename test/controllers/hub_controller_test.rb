@@ -377,7 +377,7 @@ class HubControllerTest < ActionDispatch::IntegrationTest
 
     third_user = User.create!(
       email: "third-#{SecureRandom.hex(4)}@example.com",
-      password: "password123",
+      password: "Password123!",
       entity: @entity
     )
     EntityUser.find_or_create_by!(entity: @entity, user: third_user) do |eu|
@@ -445,7 +445,7 @@ class HubControllerTest < ActionDispatch::IntegrationTest
 
     third_user = User.create!(
       email: "third-unarchive-#{SecureRandom.hex(4)}@example.com",
-      password: "password123",
+      password: "Password123!",
       entity: @entity
     )
     EntityUser.find_or_create_by!(entity: @entity, user: third_user) do |eu|

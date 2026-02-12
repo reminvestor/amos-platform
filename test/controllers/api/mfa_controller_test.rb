@@ -7,7 +7,8 @@ module Api
     setup do
       @user = users(:one)
       @entity = entities(:one)
-      @user.update!(entity: @entity, api_key: SecureRandom.hex(32), password: "password123")
+      @user.update!(entity: @entity, password: "Password123!")
+      @user.generate_api_key!
     end
 
     # ====================================================================
@@ -163,7 +164,7 @@ module Api
     test "should disable MFA with valid password" do
       @user.update!(otp_required_for_login: true, otp_secret: ROTP::Base32.random)
 
-      delete api_disable_path, params: { password: "password123" }, headers: auth_headers, as: :json
+      delete api_disable_path, params: { password: "Password123!" }, headers: auth_headers, as: :json
 
       assert_response :success
 
@@ -195,7 +196,7 @@ module Api
     end
 
     test "disable requires authentication" do
-      delete api_disable_path, params: { password: "password123" }, as: :json
+      delete api_disable_path, params: { password: "Password123!" }, as: :json
 
       assert_response :unauthorized
     end
@@ -207,7 +208,7 @@ module Api
     test "should regenerate backup codes with valid password" do
       @user.update!(otp_required_for_login: true, otp_secret: ROTP::Base32.random, otp_backup_codes: ["code1", "code2"])
 
-      post api_regenerate_backup_codes_path, params: { password: "password123" }, headers: auth_headers, as: :json
+      post api_regenerate_backup_codes_path, params: { password: "Password123!" }, headers: auth_headers, as: :json
 
       assert_response :success
 
@@ -220,7 +221,7 @@ module Api
     test "regenerate fails if MFA not enabled" do
       @user.update!(otp_required_for_login: false, otp_secret: nil)
 
-      post api_regenerate_backup_codes_path, params: { password: "password123" }, headers: auth_headers, as: :json
+      post api_regenerate_backup_codes_path, params: { password: "Password123!" }, headers: auth_headers, as: :json
 
       assert_response :unprocessable_entity
 
@@ -248,7 +249,7 @@ module Api
     end
 
     test "regenerate requires authentication" do
-      post api_regenerate_backup_codes_path, params: { password: "password123" }, as: :json
+      post api_regenerate_backup_codes_path, params: { password: "Password123!" }, as: :json
 
       assert_response :unauthorized
     end
