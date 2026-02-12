@@ -1630,13 +1630,19 @@ export default class extends Controller {
       }
 
       // Fallback: detect yes/no questions and auto-generate buttons
+      // Only for truly binary questions — skip open-ended ones (what, which, how, etc.)
       if (suggestions.length === 0) {
         const lastQuestion = tail.match(/[^.!?\n]*\?[^.!?\n]*/g)
         if (lastQuestion) {
           const question = lastQuestion[lastQuestion.length - 1].trim().toLowerCase()
-          const yesNoPattern = /\b(would you|do you|shall i|should i|want me to|ready to|like me to|like to|can i|may i|proceed|continue|go ahead|want to)\b/i
-          if (yesNoPattern.test(question)) {
-            suggestions = ['Yes', 'No']
+
+          // Skip open-ended questions — these ask for information, not yes/no
+          const openEndedPattern = /\b(what|which|who|where|when|how|tell me|provide|specify|describe|share|name|list)\b/i
+          if (!openEndedPattern.test(question)) {
+            const yesNoPattern = /\b(would you|do you|shall i|should i|want me to|ready to|like me to|like to|can i|may i|proceed|continue|go ahead|want to)\b/i
+            if (yesNoPattern.test(question)) {
+              suggestions = ['Yes', 'No']
+            }
           }
         }
       }
