@@ -129,7 +129,7 @@ export default class extends Controller {
     } else {
       console.warn("Could not find message-input or message-form element")
       // Fallback: show the message in an alert
-      showInfo("Please type this in the chat: " + message)
+      window.showInfo("Please type this in the chat: " + message)
     }
   }
 

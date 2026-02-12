@@ -2167,7 +2167,7 @@ export default class extends Controller {
     const input = document.querySelector(`input[data-question-id="${questionId}"]`) || 
                   document.querySelector(`textarea[data-question-id="${questionId}"]`)
     if (!input || !input.value.trim()) {
-      showWarning('Please enter an answer')
+      window.showWarning('Please enter an answer')
       return
     }
 
@@ -2244,7 +2244,7 @@ export default class extends Controller {
       
     } catch (error) {
       console.error("🌐 Error submitting answer:", error)
-      showError('Failed to send answer. Please try again.')
+      window.showError('Failed to send answer. Please try again.')
       input.disabled = false
     }
   }
@@ -2253,7 +2253,7 @@ export default class extends Controller {
   async answerQuestionLegacy(questionId) {
     const textarea = document.querySelector(`textarea[data-question-id="${questionId}"]`)
     if (!textarea || !textarea.value.trim()) {
-      showWarning('Please enter an answer')
+      window.showWarning('Please enter an answer')
       return
     }
     
@@ -2320,7 +2320,7 @@ export default class extends Controller {
           btn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px;"></i> Answer'
         }
       }
-      showError('Failed to send answer. Please try again.')
+      window.showError('Failed to send answer. Please try again.')
     }
   }
 
@@ -2385,7 +2385,7 @@ export default class extends Controller {
       
     } catch (error) {
       console.error("🌐 Error skipping question:", error)
-      showError('Failed to skip question. Please try again.')
+      window.showError('Failed to skip question. Please try again.')
     }
   }
 
