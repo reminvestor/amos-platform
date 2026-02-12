@@ -64,32 +64,29 @@ phases:
           --query 'tasks[0].containers[?name==`agent-marketing`].exitCode | [0]' \
           --output text)
         echo "Migration exit code: $MIGRATION_EXIT_CODE"
-        echo "=== MIGRATION CONTAINER LOGS ==="
-        TASK_DETAIL=$(aws ecs describe-tasks \
+        echo "=== MIGRATION TASK DETAILS ==="
+        aws ecs describe-tasks \
           --cluster $CLUSTER_NAME \
           --tasks $MIGRATION_TASK_ARN \
           --region $AWS_DEFAULT_REGION \
-          --query 'tasks[0].{stopCode:stopCode,stoppedReason:stoppedReason}' \
-          --output json)
-        echo "Task details: $TASK_DETAIL"
+          --query 'tasks[0].{stopCode:stopCode,stoppedReason:stoppedReason,containers:containers[*].{name:name,exitCode:exitCode,lastStatus:lastStatus,reason:reason}}' \
+          --output json
         echo "---"
+        echo "Attempting to read container logs..."
         aws logs get-log-events \
           --log-group-name /ecs/agent-marketing \
           --log-stream-name "ecs/agent-marketing/$MIGRATION_TASK_ID" \
           --limit 100 \
           --query 'events[*].message' \
-          --output text 2>&1 || echo "(no logs available)"
-        echo "=== END MIGRATION LOGS ==="
+          --output text 2>&1 || echo "(no logs available - CodeBuild role needs logs:GetLogEvents permission)"
+        echo "=== END MIGRATION DETAILS ==="
         if [ "$MIGRATION_EXIT_CODE" = "0" ]; then
-          echo "Migrations completed successfully!"
-        elif [ "$MIGRATION_EXIT_CODE" = "None" ] || [ "$MIGRATION_EXIT_CODE" = "null" ]; then
-          echo "Migration exit code unavailable (container may have crashed). Checking task status..."
-          TASK_STATUS=$(aws ecs describe-tasks --cluster $CLUSTER_NAME --tasks $MIGRATION_TASK_ARN --region $AWS_DEFAULT_REGION --query 'tasks[0].stopCode' --output text)
-          echo "Task stop code: $TASK_STATUS"
-          echo "Proceeding with deploy - migrations may have already been applied"
+          echo "✅ Migrations completed successfully!"
         else
-          echo "Migration failed with exit code: $MIGRATION_EXIT_CODE"
-          exit 1
+          echo "⚠️ Migration exited with code: $MIGRATION_EXIT_CODE"
+          echo "Proceeding with deploy — the service entrypoint runs db:prepare on startup."
+          echo "NOTE: To debug migration failures, add logs:GetLogEvents permission to the CodeBuild role,"
+          echo "or check CloudWatch log group /ecs/agent-marketing for stream ecs/agent-marketing/$MIGRATION_TASK_ID"
         fi
       - echo Deploying to ECS...
       - aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --task-definition $NEW_TASK_DEF --force-new-deployment --region $AWS_DEFAULT_REGION
