@@ -47,7 +47,8 @@ class TransparencyController < ApplicationController
       generated_at: Time.current
     }
   rescue => e
-    render json: { success: false, error: e.message }, status: 500
+    Rails.logger.error "[Transparency] API error: #{e.message}"
+    render json: { success: false, error: "Unable to load transparency data" }, status: :internal_server_error
   end
 
   private
