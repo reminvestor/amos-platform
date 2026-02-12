@@ -1610,6 +1610,59 @@ document.addEventListener('turbo:load', function() {
   }
   
   // ═══════════════════════════════════════════════════════════════
+  // QUICK ACTIONS — Shown on fresh start and initial welcome
+  // ═══════════════════════════════════════════════════════════════
+  
+  const QUICK_ACTIONS = [
+    { icon: 'file-text',   label: 'Landing Page',     desc: 'Design & publish a page',    prompt: 'Create a landing page for my business' },
+    { icon: 'mail',        label: 'Email Sequence',    desc: 'Build a drip campaign',      prompt: 'Create an email drip campaign sequence' },
+    { icon: 'search',      label: 'Deep Research',     desc: 'In-depth analysis on a topic', prompt: 'I need deep research on a topic' },
+    { icon: 'plug',        label: 'Connect an App',    desc: 'Set up an integration',      prompt: 'Help me connect an external app integration' },
+    { icon: 'boxes',       label: 'Build an App',      desc: 'Create a custom module',     prompt: 'Build me a custom app module' },
+    { icon: 'message-circle', label: 'Ask Anything',   desc: 'Questions, ideas, brainstorm', prompt: '' }
+  ];
+  
+  function buildQuickActionsHTML() {
+    const cards = QUICK_ACTIONS.map(action => {
+      const isAsk = action.prompt === '';
+      return `<button class="quick-action-card" data-prompt="${action.prompt}" ${isAsk ? 'data-focus-input="true"' : ''}>
+        <div class="qa-icon"><i data-lucide="${action.icon}"></i></div>
+        <div>
+          <div class="qa-label">${action.label}</div>
+          <div class="qa-desc">${action.desc}</div>
+        </div>
+      </button>`;
+    }).join('');
+    return `<div class="quick-actions-grid">${cards}</div>`;
+  }
+  
+  function attachQuickActionHandlers(container) {
+    container.querySelectorAll('.quick-action-card').forEach(card => {
+      card.addEventListener('click', function() {
+        const prompt = this.dataset.prompt;
+        const focusOnly = this.dataset.focusInput === 'true';
+        
+        if (focusOnly || !prompt) {
+          // "Ask Anything" — just focus the input
+          messageInput.focus();
+          return;
+        }
+        
+        // Set the prompt and submit
+        messageInput.value = prompt;
+        messageForm.dispatchEvent(new Event('submit'));
+        
+        // Remove quick actions after click so chat feels clean
+        const grid = container.querySelector('.quick-actions-grid');
+        if (grid) grid.remove();
+      });
+    });
+    
+    // Initialize lucide icons inside the new cards
+    if (window.lucide) window.lucide.createIcons();
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
   // BOOKMARKS PANEL
   // ═══════════════════════════════════════════════════════════════
   
@@ -1910,6 +1963,15 @@ document.addEventListener('turbo:load', function() {
         // Add a fresh start message
         addMessage("🔄 **Fresh Start!**\n\nI've cleared our active context. I still remember everything from our past conversations - just ask if you need to recall something!\n\nWhat would you like to work on?", 'assistant');
         
+        // Add quick action cards to the fresh start message
+        setTimeout(() => {
+          const lastMsg = chatMessages.querySelector('.message.ai-message:last-child .message-bubble');
+          if (lastMsg && !lastMsg.querySelector('.quick-actions-grid')) {
+            lastMsg.insertAdjacentHTML('beforeend', buildQuickActionsHTML());
+            attachQuickActionHandlers(lastMsg);
+          }
+        }, 50);
+        
         // Drop the canvas — go to clean conversation mode
         if (window.scoutController) {
           window.scoutController.goToConversation();
@@ -1921,6 +1983,14 @@ document.addEventListener('turbo:load', function() {
         chatMessages.innerHTML = '';
         historyState.freshStartPending = false; // Reset flag on error
         addMessage("🔄 Starting fresh! What would you like to work on?", 'assistant');
+        // Add quick action cards
+        setTimeout(() => {
+          const lastMsg = chatMessages.querySelector('.message.ai-message:last-child .message-bubble');
+          if (lastMsg && !lastMsg.querySelector('.quick-actions-grid')) {
+            lastMsg.insertAdjacentHTML('beforeend', buildQuickActionsHTML());
+            attachQuickActionHandlers(lastMsg);
+          }
+        }, 50);
       });
   });
   
@@ -3639,7 +3709,7 @@ document.addEventListener('turbo:load', function() {
     // and respects conversation mode (no auto-canvas load)
     const canvasRestored = false;
 
-    // Add buttons to the first welcome message
+    // Add quick action cards to the first/welcome message
     if (!canvasRestored) {
       setTimeout(() => {
         const messages = chatMessages.querySelectorAll('.message.ai-message');
@@ -3647,39 +3717,13 @@ document.addEventListener('turbo:load', function() {
           const firstMessage = messages[0];
           const messageContent = firstMessage.querySelector('.message-bubble');
           
-          // Check if this is a welcome message and doesn't already have buttons
-          if (messageContent && messageContent.textContent.includes('Scout') && 
-              messageContent.textContent.includes('marketing assistant') &&
-              !firstMessage.querySelector('.message-suggestions')) {
-            
-            // Add the suggestion buttons
-            const suggestionsDiv = document.createElement('div');
-            suggestionsDiv.className = 'message-suggestions';
-            suggestionsDiv.style.marginTop = '12px';
-            suggestionsDiv.innerHTML = `
-              <button class="suggestion-btn" data-suggestion="Create a landing page for my product">
-                Create a landing page
-              </button>
-              <button class="suggestion-btn" data-suggestion="Show me my email campaigns">
-                View campaigns
-              </button>
-              <button class="suggestion-btn" data-suggestion="Analyze my marketing performance">
-                Analytics dashboard
-              </button>
-            `;
-            messageContent.appendChild(suggestionsDiv);
-            
-            // Add click handlers to suggestion buttons
-            suggestionsDiv.querySelectorAll('.suggestion-btn').forEach(btn => {
-              btn.addEventListener('click', function() {
-                const suggestion = this.dataset.suggestion;
-                messageInput.value = suggestion;
-                messageForm.dispatchEvent(new Event('submit'));
-              });
-            });
+          // Add quick actions to welcome or first message if not already present
+          if (messageContent && !messageContent.querySelector('.quick-actions-grid')) {
+            messageContent.insertAdjacentHTML('beforeend', buildQuickActionsHTML());
+            attachQuickActionHandlers(messageContent);
           }
         }
-      }, 100); // Small delay to ensure DOM is updated
+      }, 150); // Small delay to ensure DOM is updated
     }
   });
 

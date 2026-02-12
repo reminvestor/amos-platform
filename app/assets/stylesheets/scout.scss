@@ -2365,6 +2365,67 @@ html[data-theme="light"] {
   background: var(--scout-primary-hover);
 }
 
+/* Quick Action Cards — shown on fresh start / initial load */
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  max-width: 640px;
+}
+
+.quick-action-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: var(--bg-card, #1a1a2e);
+  border: 1px solid var(--border-primary, rgba(255,255,255,0.08));
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.quick-action-card:hover {
+  border-color: var(--scout-primary, #7c3aed);
+  background: var(--bg-tertiary, rgba(124, 58, 237, 0.06));
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.12);
+}
+
+.quick-action-card .qa-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  flex-shrink: 0;
+  background: var(--bg-tertiary, rgba(124, 58, 237, 0.1));
+}
+
+.quick-action-card .qa-icon svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--scout-primary, #7c3aed);
+}
+
+.quick-action-card .qa-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.quick-action-card .qa-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.125rem;
+}
+
 /* Chat Input */
 .chat-input-area {
   padding: 1rem 1.5rem;
