@@ -2442,7 +2442,7 @@ export default class extends Controller {
           if (!resp.ok || !data.success) {
             const msg = data.error || "Failed to sync login session"
             console.warn("[HybridLogin] Sync proxy session failed:", msg)
-            alert(msg)
+            showError(msg)
             return
           }
           console.log("[HybridLogin] Sync proxy session success")
@@ -2452,7 +2452,7 @@ export default class extends Controller {
         })
         .catch((err) => {
           console.warn("[HybridLogin] Sync proxy session request failed:", err)
-          alert("Failed to sync login session")
+          showError("Failed to sync login session")
         })
     })
 

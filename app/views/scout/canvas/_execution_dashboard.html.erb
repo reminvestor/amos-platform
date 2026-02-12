@@ -297,8 +297,8 @@ function resumePlan(planId) {
   sendPlanAction(planId, 'resume');
 }
 
-function cancelPlan(planId) {
-  if (confirm('Are you sure you want to cancel this plan?')) {
+async function cancelPlan(planId) {
+  if (await showConfirm('Are you sure you want to cancel this plan?', { title: 'Cancel Plan', dangerous: true })) {
     sendPlanAction(planId, 'cancel');
   }
 }

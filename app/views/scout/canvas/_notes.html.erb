@@ -236,7 +236,7 @@
       const content = document.getElementById('quick-note-content').value;
 
       if (!title) {
-        alert('Please enter a title');
+        showWarning('Please enter a title');
         return;
       }
 
@@ -260,7 +260,7 @@
       })
       .catch(err => {
         console.error('Error creating note:', err);
-        alert('Failed to create note');
+        showError('Failed to create note');
       });
     });
   }

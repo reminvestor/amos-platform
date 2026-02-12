@@ -764,7 +764,7 @@
     const response = textarea ? textarea.value.trim() : '';
     
     if (!response) {
-      alert('Please enter a response');
+      showWarning('Please enter a response');
       return;
     }
     
@@ -801,7 +801,7 @@
           }));
         }, 2000);
       } else {
-        alert('Error: ' + (data.error || 'Failed to send response'));
+        showError(data.error || 'Failed to send response');
         if (btn) {
           btn.disabled = false;
           btn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px; margin-right: 4px;"></i> Send Response';
@@ -811,7 +811,7 @@
     })
     .catch(err => {
       console.error('Response error:', err);
-      alert('Error sending response');
+      showError('Error sending response');
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px; margin-right: 4px;"></i> Send Response';

@@ -415,12 +415,12 @@
       : document.getElementById('templateBody').value;
 
     if (!subject.trim()) {
-      alert('Please enter a subject line');
+      showWarning('Please enter a subject line');
       return;
     }
 
     if (!body.trim()) {
-      alert('Please enter email content');
+      showWarning('Please enter email content');
       return;
     }
 
@@ -478,7 +478,7 @@
       }
     })
     .catch(error => {
-      alert('Error saving template: ' + error.message);
+      showError('Error saving template: ' + error.message);
     })
     .finally(() => {
       // Restore button state

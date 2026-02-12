@@ -3,7 +3,7 @@
 <nav aria-label="breadcrumb" class="mb-4">
   <ol class="breadcrumb">
     <li class="breadcrumb-item"><%= link_to "Build", build_root_path %></li>
-    <li class="breadcrumb-item"><%= link_to "Bounties", build_bounties_path %></li>
+    <li class="breadcrumb-item"><%= link_to "Bounties", bounties_path %></li>
     <li class="breadcrumb-item active"><%= truncate(@bounty.title, length: 30) %></li>
   </ol>
 </nav>
@@ -61,7 +61,7 @@
           <h5 class="mb-0"><i class="bi bi-upload me-2"></i>Submit Your Work</h5>
         </div>
         <div class="card-body">
-          <%= form_with url: submit_work_build_bounty_path(@bounty), method: :post, local: true do |f| %>
+          <%= form_with url: submit_work_bounty_path(@bounty), method: :post, local: true do |f| %>
             <div class="mb-3">
               <label class="form-label">Work Evidence</label>
               <textarea name="work_evidence" class="form-control bg-secondary" rows="5" 
@@ -85,7 +85,7 @@
       </div>
       <div class="card-body">
         <% if @bounty.status == 'open' && @can_claim %>
-          <%= link_to claim_build_bounty_path(@bounty), method: :post, class: "btn btn-success btn-lg w-100 mb-3",
+          <%= link_to claim_bounty_path(@bounty), method: :post, class: "btn btn-success btn-lg w-100 mb-3",
               data: { confirm: "Are you sure you want to claim this bounty? You'll have 7 days to complete it." } do %>
             <i class="bi bi-hand-index me-2"></i>Claim Bounty
           <% end %>

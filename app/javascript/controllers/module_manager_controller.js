@@ -129,7 +129,7 @@ export default class extends Controller {
     } else {
       console.warn("Could not find message-input or message-form element")
       // Fallback: show the message in an alert
-      alert("Please type this in the chat: " + message)
+      showInfo("Please type this in the chat: " + message)
     }
   }
 
@@ -292,7 +292,7 @@ export default class extends Controller {
     const slug = event.target.closest('[data-slug]')?.dataset.slug
     if (!slug) return
     
-    if (!confirm('Activate this module?')) return
+    if (!await showConfirm('Activate this module?', { title: 'Activate Module' })) return
     
     try {
       const response = await fetch(`/modules/${slug}/activate`, {
@@ -316,7 +316,7 @@ export default class extends Controller {
     const slug = event.target.closest('[data-slug]')?.dataset.slug
     if (!slug) return
     
-    if (!confirm('Deactivate this module? Users will no longer be able to access it.')) return
+    if (!await showConfirm('Deactivate this module? Users will no longer be able to access it.', { title: 'Deactivate Module', dangerous: true })) return
     
     try {
       const response = await fetch(`/modules/${slug}/deactivate`, {
@@ -340,7 +340,7 @@ export default class extends Controller {
     const slug = event.target.closest('[data-slug]')?.dataset.slug
     if (!slug) return
     
-    if (!confirm('Are you sure you want to delete this module? This action cannot be undone.')) return
+    if (!await showConfirm('Are you sure you want to delete this module? This action cannot be undone.', { title: 'Delete Module', dangerous: true })) return
     
     try {
       const response = await fetch(`/modules/${slug}`, {
@@ -365,7 +365,7 @@ export default class extends Controller {
     const slug = event.target.closest('[data-slug]')?.dataset.slug
     if (!slug) return
     
-    if (!confirm('Share this app with your team? All team members will be able to see and use it.')) return
+    if (!await showConfirm('Share this app with your team? All team members will be able to see and use it.', { title: 'Share App' })) return
     
     try {
       const response = await fetch(`/modules/${slug}/share`, {
@@ -396,7 +396,7 @@ export default class extends Controller {
     const slug = event.target.closest('[data-slug]')?.dataset.slug
     if (!slug) return
     
-    if (!confirm('Make this app private? Only you will be able to see it.')) return
+    if (!await showConfirm('Make this app private? Only you will be able to see it.', { title: 'Make Private' })) return
     
     try {
       const response = await fetch(`/modules/${slug}/unshare`, {

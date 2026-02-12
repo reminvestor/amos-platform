@@ -98,7 +98,7 @@
                     <%= link_to edit_admin_tool_path(tool), class: "admin-btn admin-btn-sm admin-btn-outline", title: "Edit" do %>
                       <i data-lucide="edit" class="admin-icon-sm"></i>
                     <% end %>
-                    <%= button_to admin_tool_path(tool), method: :delete, class: "admin-btn admin-btn-sm admin-btn-danger-outline", form: { class: "admin-inline-block" }, onclick: "return confirm('Are you sure?')" do %>
+                    <%= button_to admin_tool_path(tool), method: :delete, class: "admin-btn admin-btn-sm admin-btn-danger-outline", form: { class: "admin-inline-block" }, onclick: "event.preventDefault(); showConfirm('Are you sure you want to delete this tool?', { title: 'Delete Tool', dangerous: true }).then(ok => { if (ok) this.closest('form').submit(); })" do %>
                       <i data-lucide="trash-2" class="admin-icon-sm"></i>
                     <% end %>
                   </div>

@@ -297,7 +297,7 @@
       messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     } else {
       console.warn('Could not find message-input or message-form');
-      alert('Please type this in the chat: ' + message);
+      showInfo('Please type this in the chat: ' + message);
     }
   }
   

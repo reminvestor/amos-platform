@@ -1007,7 +1007,7 @@
   
   function createStore() {
     const name = document.getElementById('new-store-name').value.trim();
-    if (!name) return alert('Please enter a store name');
+    if (!name) { showWarning('Please enter a store name'); return; }
     
     fetch('/api/rag_stores', {
       method: 'POST',
@@ -1023,10 +1023,10 @@
       if (data.id) {
         refreshDocumentStore();
       } else {
-        alert(data.error || 'Failed to create store');
+        showError(data.error || 'Failed to create store');
       }
     })
-    .catch(e => alert('Error: ' + e.message));
+    .catch(e => showError(e.message));
   }
   
   function renameStore(storeId, currentName) {
@@ -1042,11 +1042,11 @@
       body: JSON.stringify({ name: newName })
     })
     .then(() => refreshDocumentStore())
-    .catch(e => alert('Error: ' + e.message));
+    .catch(e => showError(e.message));
   }
   
-  function deleteStore(storeId, name) {
-    if (!confirm(`Delete store "${name}" and all its documents? This cannot be undone.`)) return;
+  async function deleteStore(storeId, name) {
+    if (!await showConfirm(`Delete store "${name}" and all its documents? This cannot be undone.`, { title: 'Delete Store', dangerous: true })) return;
     
     fetch(`/api/rag_stores/${storeId}`, {
       method: 'DELETE',
@@ -1056,7 +1056,7 @@
       if (currentStoreId === storeId) currentStoreId = null;
       refreshDocumentStore();
     })
-    .catch(e => alert('Error: ' + e.message));
+    .catch(e => showError(e.message));
   }
   
   // Document actions
@@ -1085,15 +1085,15 @@
     window.open(`/api/rag_documents/${docId}/download`, '_blank');
   }
   
-  function deleteDocument(docId, name) {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  async function deleteDocument(docId, name) {
+    if (!await showConfirm(`Delete "${name}"? This cannot be undone.`, { title: 'Delete Document', dangerous: true })) return;
     
     fetch(`/api/rag_documents/${docId}`, {
       method: 'DELETE',
       headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content }
     })
     .then(() => refreshDocumentStore())
-    .catch(e => alert('Error: ' + e.message));
+    .catch(e => showError(e.message));
   }
   
   // Move document
@@ -1120,7 +1120,7 @@
       hideModal('move-doc-modal');
       refreshDocumentStore();
     })
-    .catch(e => alert('Error: ' + e.message));
+    .catch(e => showError(e.message));
   }
   
   // Drag and drop for moving docs between stores
@@ -1182,7 +1182,7 @@
     })
     .catch(e => {
       console.error('Move failed:', e);
-      alert('Failed to move document');
+      showError('Failed to move document');
     });
   }
   

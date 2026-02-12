@@ -1296,12 +1296,12 @@
       
       // Handle dropdown actions
       dropdown.querySelectorAll('.dropdown-item').forEach(item => {
-        item.addEventListener('click', function() {
+        item.addEventListener('click', async function() {
           const action = this.dataset.action;
           console.log('📋 Dropdown action:', action, type, id);
           
           if (action === 'delete') {
-            if (confirm('Are you sure you want to delete this item?')) {
+            if (await showConfirm('Are you sure you want to delete this item?', { title: 'Delete Item', dangerous: true })) {
               // Send delete request
               fetch('/landing_pages/' + id, {
                 method: 'DELETE',
@@ -1325,7 +1325,7 @@
               loadCanvas('my_creations', {});
             });
           } else if (action === 'duplicate') {
-            alert('Duplicate feature coming soon!');
+            showInfo('Duplicate feature coming soon!');
           }
           
           dropdown.remove();

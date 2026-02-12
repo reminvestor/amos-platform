@@ -485,7 +485,7 @@ async function submitImport() {
   const file = fileInput.files[0];
   
   if (!file) {
-    alert('Please select a file first');
+    showWarning('Please select a file first');
     return;
   }
 

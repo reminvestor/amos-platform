@@ -1,0 +1,161 @@
+<% content_for :title, "Leaderboard - Amos Build" %>
+
+<div class="row mb-4">
+  <div class="col">
+    <h1 class="display-5 fw-bold mb-2">
+      <i class="bi bi-trophy me-2 text-warning"></i>Leaderboard
+    </h1>
+    <p class="text-muted lead">
+      Top contributors and stakeholders in the AMOS ecosystem.
+    </p>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-4 mb-5">
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value"><%= number_with_delimiter(@stats[:total_staked].round(0)) %></div>
+      <div class="stat-label">Total AMOS Staked</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value"><%= number_with_delimiter(@stats[:active_stakeholders]) %></div>
+      <div class="stat-label">Stakeholders</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value"><%= number_with_delimiter(@stats[:daily_emission].round(0)) %></div>
+      <div class="stat-label">Daily Emission</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value"><%= @stats[:concentration] %>%</div>
+      <div class="stat-label">Top 10% Ownership</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-pills mb-4" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="stakeholders-tab" data-bs-toggle="pill"
+            data-bs-target="#stakeholders" type="button" role="tab">
+      <i class="bi bi-coin me-1"></i>Top Stakeholders
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="contributors-tab" data-bs-toggle="pill"
+            data-bs-target="#contributors" type="button" role="tab">
+      <i class="bi bi-code-slash me-1"></i>Top Contributors
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+  <!-- Stakeholders Tab -->
+  <div class="tab-pane fade show active" id="stakeholders" role="tabpanel">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>By Token Holdings</h5>
+        <span class="badge bg-primary"><%= @stakeholders.size %> holders</span>
+      </div>
+      <% if @stakeholders.any? %>
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0">
+            <thead>
+              <tr>
+                <th style="width: 60px;">Rank</th>
+                <th>Contributor</th>
+                <th class="text-end">AMOS Staked</th>
+                <th class="text-end" style="width: 120px;">Ownership</th>
+                <th style="width: 200px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% max_stake = @stakeholders.first&.dig(:total_stake) || 1 %>
+              <% @stakeholders.each do |holder| %>
+                <tr>
+                  <td>
+                    <% if holder[:rank] <= 3 %>
+                      <span class="badge bg-<%= holder[:rank] == 1 ? 'warning' : holder[:rank] == 2 ? 'secondary' : 'danger' %> rounded-pill">
+                        <%= holder[:rank] %>
+                      </span>
+                    <% else %>
+                      <span class="text-muted"><%= holder[:rank] %></span>
+                    <% end %>
+                  </td>
+                  <td><%= holder[:display_name] %></td>
+                  <td class="text-end fw-bold"><%= number_with_delimiter(holder[:total_stake]) %></td>
+                  <td class="text-end"><%= holder[:ownership_percentage] %>%</td>
+                  <td>
+                    <div class="progress" style="height: 6px;">
+                      <div class="progress-bar bg-primary" style="width: <%= (holder[:total_stake] / max_stake * 100).round(1) %>%"></div>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="card-body text-center py-5 text-muted">
+          <i class="bi bi-coin display-4 d-block mb-3" style="opacity: 0.3;"></i>
+          <h5>No Stakeholders Yet</h5>
+          <p class="mb-0">Be the first to earn AMOS tokens by contributing to the platform.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Contributors Tab -->
+  <div class="tab-pane fade" id="contributors" role="tabpanel">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-code-slash me-2"></i>By Contributions</h5>
+        <span class="badge bg-primary"><%= @contributors.size %> contributors</span>
+      </div>
+      <% if @contributors.any? %>
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0">
+            <thead>
+              <tr>
+                <th style="width: 60px;">Rank</th>
+                <th>Contributor</th>
+                <th class="text-end">Contributions</th>
+                <th class="text-end">AMOS Earned</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @contributors.each do |contributor| %>
+                <tr>
+                  <td>
+                    <% if contributor[:rank] <= 3 %>
+                      <span class="badge bg-<%= contributor[:rank] == 1 ? 'warning' : contributor[:rank] == 2 ? 'secondary' : 'danger' %> rounded-pill">
+                        <%= contributor[:rank] %>
+                      </span>
+                    <% else %>
+                      <span class="text-muted"><%= contributor[:rank] %></span>
+                    <% end %>
+                  </td>
+                  <td><%= contributor[:display_name] %></td>
+                  <td class="text-end"><%= contributor[:contribution_count] %></td>
+                  <td class="text-end fw-bold"><%= number_with_delimiter(contributor[:total_stake]) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="card-body text-center py-5 text-muted">
+          <i class="bi bi-code-slash display-4 d-block mb-3" style="opacity: 0.3;"></i>
+          <h5>No Contributions Yet</h5>
+          <p class="mb-0">Submit code, documentation, or bug fixes to appear on the leaderboard.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

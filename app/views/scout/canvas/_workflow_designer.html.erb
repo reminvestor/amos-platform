@@ -3354,9 +3354,9 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
     node.addEventListener('mouseleave', () => node.querySelector('.delete-node-btn').style.display = 'none');
     
     // Delete handler
-    node.querySelector('.delete-node-btn').addEventListener('click', function(e) {
+    node.querySelector('.delete-node-btn').addEventListener('click', async function(e) {
       e.stopPropagation();
-      if (confirm('Delete this node?')) {
+      if (await showConfirm('Delete this node?', { title: 'Delete Node', dangerous: true })) {
         // Remove connections
         removeConnectionsForNode(nodeId);
         nodes.delete(nodeId);
@@ -3377,7 +3377,7 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
     // Configure button click - opens properties modal
     const configureBtn = node.querySelector('.configure-node-btn');
     if (configureBtn) {
-      configureBtn.addEventListener('click', function(e) {
+      configureBtn.addEventListener('click', async function(e) {
         e.stopPropagation();
         openPropertiesPanel(nodeId, nodes.get(nodeId)?.data || data);
       });
@@ -3551,9 +3551,9 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
     });
     
     // Click to delete connection
-    line.addEventListener('click', function(e) {
+    line.addEventListener('click', async function(e) {
       e.stopPropagation();
-      if (confirm('Delete this connection?')) {
+      if (await showConfirm('Delete this connection?', { title: 'Delete Connection', dangerous: true })) {
         const idx = connections.findIndex(c => c.line === line);
         if (idx >= 0) {
           connections.splice(idx, 1);
@@ -3728,9 +3728,9 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
   // ========== New Workflow Button ==========
   const newWorkflowBtn = container.querySelector('#new-workflow-btn');
   if (newWorkflowBtn) {
-    newWorkflowBtn.addEventListener('click', function() {
+    newWorkflowBtn.addEventListener('click', async function() {
       if (nodes.size > 0) {
-        if (!confirm('Start a new workflow? Any unsaved changes will be lost.')) {
+        if (!await showConfirm('Start a new workflow? Any unsaved changes will be lost.', { title: 'New Workflow', dangerous: true })) {
           return;
         }
       }
@@ -3887,7 +3887,7 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
   
   async function testWorkflow() {
     if (!currentWorkflowId) {
-      alert('Please save and build the workflow first');
+      showWarning('Please save and build the workflow first');
       return;
     }
     
@@ -3959,7 +3959,7 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
   
   async function activateWorkflow() {
     if (!currentWorkflowId) {
-      alert('Please save and build the workflow first');
+      showWarning('Please save and build the workflow first');
       return;
     }
     

@@ -1,7 +1,7 @@
 <% content_for(:title) { "#{@agent.agent_name} - Amos Build" } %>
 
 <div class="mb-4">
-  <a href="<%= build_external_agents_path %>" class="text-muted text-decoration-none">
+  <a href="<%= external_agents_path %>" class="text-muted text-decoration-none">
     <i class="bi bi-arrow-left me-1"></i>Back to Agents
   </a>
 </div>
@@ -40,21 +40,21 @@
         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
           <% if @agent.active? %>
             <li>
-              <%= link_to build_external_agent_suspend_path(@agent), method: :post, class: 'dropdown-item text-warning',
+              <%= link_to suspend_external_agent_path(@agent), method: :post, class: 'dropdown-item text-warning',
                   data: { confirm: 'Suspend this agent?' } do %>
                 <i class="bi bi-pause-circle me-2"></i>Suspend
               <% end %>
             </li>
           <% elsif @agent.suspended? %>
             <li>
-              <%= link_to build_external_agent_reactivate_path(@agent), method: :post, class: 'dropdown-item text-success' do %>
+              <%= link_to reactivate_external_agent_path(@agent), method: :post, class: 'dropdown-item text-success' do %>
                 <i class="bi bi-play-circle me-2"></i>Reactivate
               <% end %>
             </li>
           <% end %>
           <li><hr class="dropdown-divider"></li>
           <li>
-            <%= link_to build_external_agent_path(@agent), method: :delete, class: 'dropdown-item text-danger',
+            <%= link_to external_agent_path(@agent), method: :delete, class: 'dropdown-item text-danger',
                 data: { confirm: "Permanently revoke this agent?" } do %>
               <i class="bi bi-trash me-2"></i>Revoke Agent
             <% end %>
@@ -168,7 +168,7 @@
           <p class="small text-muted mb-2">Receiving real-time notifications at:</p>
           <code class="small"><%= @agent.webhook_url.truncate(40) %></code>
           <div class="mt-2">
-            <%= form_tag build_external_agent_webhook_path(@agent), method: :post do %>
+            <%= form_tag configure_webhook_external_agent_path(@agent), method: :post do %>
               <button type="submit" class="btn btn-outline-danger btn-sm">
                 <i class="bi bi-x-circle me-1"></i>Disable
               </button>
@@ -176,7 +176,7 @@
           </div>
         <% else %>
           <p class="small text-muted mb-2">No webhook configured. Enable to get real-time bounty notifications.</p>
-          <%= form_tag build_external_agent_webhook_path(@agent), method: :post do %>
+          <%= form_tag configure_webhook_external_agent_path(@agent), method: :post do %>
             <input type="url" class="form-control form-control-sm bg-dark text-light border-secondary mb-2"
                    name="webhook_url" placeholder="https://your-server.com/webhook" required>
             <button type="submit" class="btn btn-primary btn-sm">

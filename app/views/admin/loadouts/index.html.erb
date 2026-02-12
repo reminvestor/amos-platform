@@ -204,19 +204,19 @@
     fetch('<%= health_check_admin_loadouts_path %>', { method: 'POST', headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content }})
       .then(r => r.json())
       .then(data => {
-        alert('Health check complete! Checked ' + data.loadouts_checked + ' loadouts.');
+        showSuccess('Health check complete! Checked ' + data.loadouts_checked + ' loadouts.');
         location.reload();
       });
   }
 
-  function applyFix(slug, fixType) {
-    if (!confirm('Apply ' + fixType + ' fix to ' + slug + '?')) return;
+  async function applyFix(slug, fixType) {
+    if (!await showConfirm('Apply ' + fixType + ' fix to ' + slug + '?', { title: 'Apply Fix' })) return;
     fetch('/admin/loadouts/' + slug + '/apply_fix', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
       body: JSON.stringify({ fix_type: fixType })
     }).then(r => r.json()).then(data => {
-      alert(data.success ? 'Fix applied!' : 'Error: ' + data.error);
+      if (data.success) { showSuccess('Fix applied!'); } else { showError('Error: ' + data.error); }
       location.reload();
     });
   }

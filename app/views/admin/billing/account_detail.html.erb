@@ -133,7 +133,7 @@
                 <div class="mb-2">
                   <%= text_field_tag :reason, nil, class: "form-control", placeholder: "Suspension reason" %>
                 </div>
-                <button type="submit" class="btn btn-danger w-100" onclick="return confirm('Are you sure you want to suspend this account?')">
+                <button type="submit" class="btn btn-danger w-100" onclick="event.preventDefault(); showConfirm('Are you sure you want to suspend this account?', { title: 'Suspend Account', dangerous: true }).then(ok => { if (ok) this.closest('form').submit(); })">
                   <i data-lucide="pause-circle" style="width: 16px; height: 16px;"></i> Suspend Account
                 </button>
               <% end %>

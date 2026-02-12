@@ -1,0 +1,79 @@
+# Pre-commit hooks for AMOS Platform
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # GitLeaks - Secret scanning
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+
+  # Trailing whitespace and file formatting
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.patch$
+      - id: end-of-file-fixer
+        exclude: \.svg$
+      - id: check-yaml
+        exclude: ^(config/locales/.*\.yml)$
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: detect-private-key
+      - id: mixed-line-ending
+
+  # Ruby/Rails specific checks
+  - repo: https://github.com/rubocop/rubocop
+    rev: v1.60.2
+    hooks:
+      - id: rubocop
+        args: ['--auto-correct']
+        files: \.rb$
+        exclude: ^(db/schema\.rb|bin/|vendor/)
+
+  # ERB template linting
+  - repo: https://github.com/Shopify/erb-lint
+    rev: v0.5.0
+    hooks:
+      - id: erblint
+        files: \.html\.erb$
+        args: ['--autocorrect']
+
+  # JavaScript/TypeScript linting
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.56.0
+    hooks:
+      - id: eslint
+        files: \.(js|jsx|ts|tsx)$
+        args: ['--fix']
+        additional_dependencies:
+          - eslint@8.56.0
+          - eslint-config-standard@17.1.0
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.39.0
+    hooks:
+      - id: markdownlint
+        args: ['--fix']
+
+# Global exclusions
+exclude: |
+  (?x)^(
+    node_modules/|
+    vendor/|
+    \.git/|
+    \.bundle/|
+    tmp/|
+    log/|
+    coverage/|
+    public/assets/|
+    public/packs/|
+    \.yarn/|
+    solana/target/|
+    \.min\.(js|css)$
+  )

@@ -398,8 +398,8 @@ function testConnection(connectionId, integrationName) {
     })
 }
 
-function disconnectIntegration(connectionId, integrationName) {
-  if (!confirm(`Disconnect from ${integrationName}? You can reconnect anytime.`)) {
+async function disconnectIntegration(connectionId, integrationName) {
+  if (!await showConfirm(`Disconnect from ${integrationName}? You can reconnect anytime.`, { title: 'Disconnect', dangerous: true })) {
     return;
   }
 

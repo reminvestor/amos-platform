@@ -94,7 +94,7 @@
     const input = document.getElementById('share-url');
     input.select();
     document.execCommand('copy');
-    alert('URL copied to clipboard!');
+    showSuccess('URL copied to clipboard!');
   }
 
   document.addEventListener('DOMContentLoaded', () => {

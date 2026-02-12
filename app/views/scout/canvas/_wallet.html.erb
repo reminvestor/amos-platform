@@ -229,14 +229,14 @@
         onCanvasWalletConnected(window.amosWallet.publicKey);
         loadCanvasBalance();
       } else if (response.error) {
-        alert('Connection failed: ' + response.error);
+        showError('Connection failed: ' + response.error);
       }
     } catch (error) {
       console.error('Wallet connection error:', error);
       if (error.message.includes('No Solana wallet')) {
         window.open('https://phantom.app', '_blank');
       } else {
-        alert('Failed to connect: ' + error.message);
+        showError('Failed to connect: ' + error.message);
       }
     }
   };
@@ -357,7 +357,7 @@
     const amount = parseFloat(document.getElementById('canvas-claim-amount').value);
     
     if (!amount || amount < 100) {
-      alert('Minimum claim is 100 AMOS');
+      showWarning('Minimum claim is 100 AMOS');
       return;
     }
     
@@ -372,11 +372,11 @@
           loadCanvasTransactions();
         }, 2000);
       } else {
-        alert('Claim failed: ' + response.error);
+        showError('Claim failed: ' + response.error);
       }
     } catch (error) {
       console.error('Claim error:', error);
-      alert('Claim failed: ' + error.message);
+      showError('Claim failed: ' + error.message);
     }
   };
 

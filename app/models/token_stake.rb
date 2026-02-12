@@ -452,9 +452,9 @@ class TokenStake < ApplicationRecord
     def top_stakeholders(limit: 20)
       active
         .joins(:user)
-        .select('users.id as user_id, users.email, users.first_name, users.last_name, SUM(token_stakes.current_amount) as total_stake')
-        .group('users.id', 'users.email', 'users.first_name', 'users.last_name')
-        .order('total_stake DESC')
+        .select('users.id as user_id, users.first_name, users.last_name, SUM(token_stakes.current_amount) as total_stake')
+        .group('users.id', 'users.first_name', 'users.last_name')
+        .order('total_stake DESC, users.id ASC')
         .limit(limit)
     end
 

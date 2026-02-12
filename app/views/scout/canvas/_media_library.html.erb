@@ -749,7 +749,7 @@
       const url = this.dataset.url;
       navigator.clipboard.writeText(url).then(() => {
         // Show toast
-        alert('URL copied to clipboard!');
+        showSuccess('URL copied to clipboard!');
       });
     });
   });
@@ -780,7 +780,7 @@
   container.querySelectorAll('.delete-btn').forEach(btn => {
     btn.addEventListener('click', async function(e) {
       e.stopPropagation();
-      if (!confirm('Delete this image?')) return;
+      if (!await showConfirm('Delete this image?', { title: 'Delete Image', dangerous: true })) return;
       
       const id = this.dataset.id;
       const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';

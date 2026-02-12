@@ -4494,7 +4494,7 @@ function removeSection(sectionIdx) {
   if (!card) return;
   
   var sectionName = card.dataset.sectionName || 'this section';
-  if (confirm('Remove ' + sectionName + '?')) {
+  if (await showConfirm('Remove ' + sectionName + '?', { title: 'Remove Section', dangerous: true })) {
     // Animate out
     card.style.opacity = '0';
     card.style.transform = 'translateX(-20px)';
@@ -5093,7 +5093,7 @@ function handleReferenceUpload(input) {
   
   var file = input.files[0];
   if (file.size > 5 * 1024 * 1024) {
-    alert('File too large. Maximum 5MB allowed.');
+    showWarning('File too large. Maximum 5MB allowed.');
     return;
   }
   
@@ -5202,7 +5202,7 @@ function resetReferenceUploadZone(errorMsg) {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
   if (errorMsg) {
-    alert(errorMsg);
+    showError(errorMsg);
   }
 }
 

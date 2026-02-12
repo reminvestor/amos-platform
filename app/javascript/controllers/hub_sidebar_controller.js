@@ -2167,10 +2167,10 @@ export default class extends Controller {
     const input = document.querySelector(`input[data-question-id="${questionId}"]`) || 
                   document.querySelector(`textarea[data-question-id="${questionId}"]`)
     if (!input || !input.value.trim()) {
-      alert('Please enter an answer')
+      showWarning('Please enter an answer')
       return
     }
-    
+
     const answer = input.value.trim()
     // Support both card format and message format
     const messageEl = document.querySelector(`.message[data-question-id="${questionId}"]`) ||
@@ -2244,16 +2244,16 @@ export default class extends Controller {
       
     } catch (error) {
       console.error("🌐 Error submitting answer:", error)
-      alert('Failed to send answer. Please try again.')
+      showError('Failed to send answer. Please try again.')
       input.disabled = false
     }
   }
-  
+
   // Legacy answer handler for card format (backwards compatibility)
   async answerQuestionLegacy(questionId) {
     const textarea = document.querySelector(`textarea[data-question-id="${questionId}"]`)
     if (!textarea || !textarea.value.trim()) {
-      alert('Please enter an answer')
+      showWarning('Please enter an answer')
       return
     }
     
@@ -2320,13 +2320,13 @@ export default class extends Controller {
           btn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px;"></i> Answer'
         }
       }
-      alert('Failed to send answer. Please try again.')
+      showError('Failed to send answer. Please try again.')
     }
   }
-  
+
   // Skip a question
   async skipQuestion(questionId) {
-    if (!confirm('Are you sure you want to skip this question? The agent may not be able to continue.')) {
+    if (!await showConfirm('Are you sure you want to skip this question? The agent may not be able to continue.', { title: 'Skip Question', dangerous: true })) {
       return
     }
     
@@ -2385,7 +2385,7 @@ export default class extends Controller {
       
     } catch (error) {
       console.error("🌐 Error skipping question:", error)
-      alert('Failed to skip question. Please try again.')
+      showError('Failed to skip question. Please try again.')
     }
   }
 

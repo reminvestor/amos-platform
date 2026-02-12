@@ -7,8 +7,11 @@
 Rails.application.config.after_initialize do
   next unless defined?(OauthConfiguration) && defined?(Integration)
 
-  # Only run in web server context, not during asset compilation
+  # Only run in web server context, not during asset compilation or DB setup
   next if defined?(Rails::Console) || File.basename($PROGRAM_NAME) == "rake"
+
+  # Skip if tables don't exist yet (fresh DB, running migrations)
+  next unless ActiveRecord::Base.connection.table_exists?(:integrations)
 
   Rails.logger.info "[OAuth] Checking auto-configuration..."
 
