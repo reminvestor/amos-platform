@@ -21,11 +21,13 @@ Rails.application.routes.draw do
   get "crawler_jobs/new"
   get "crawler_jobs/create"
 
-  # Diagnostic route for SSL/headers issues
-  get "debug_headers" => proc { |env|
-    headers = env.select { |k, v| k.start_with?("HTTP_") || [ "HTTPS", "REQUEST_METHOD", "REQUEST_URI", "rack.url_scheme" ].include?(k) }
-    [ 200, { "Content-Type" => "application/json" }, [ headers.to_json ] ]
-  }
+  # Diagnostic route for SSL/headers issues (development only)
+  if Rails.env.development?
+    get "debug_headers" => proc { |env|
+      headers = env.select { |k, v| k.start_with?("HTTP_") || [ "HTTPS", "REQUEST_METHOD", "REQUEST_URI", "rack.url_scheme" ].include?(k) }
+      [ 200, { "Content-Type" => "application/json" }, [ headers.to_json ] ]
+    }
+  end
 
   # ActionCable for real-time features
   mount ActionCable.server => "/cable"
