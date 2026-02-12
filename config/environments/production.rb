@@ -58,8 +58,11 @@ Rails.application.configure do
   # Add Heroku's proxy IPs as trusted
   config.action_dispatch.ip_spoofing_check = false
 
-  # Disable forgery protection for API routes
-  config.action_controller.allow_forgery_protection = false
+  # Enable CSRF protection (Story 0.5 - Security Fix)
+  config.action_controller.allow_forgery_protection = true
+  config.action_controller.default_protect_from_forgery = true
+  config.action_controller.per_form_csrf_tokens = true
+  config.action_controller.request_forgery_protection_token = :authenticity_token
 
   # Log to STDOUT with the current request id as a default log tag.
   config.log_tags = [ :request_id ]

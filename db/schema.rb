@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_09_064247) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_11_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -6357,11 +6357,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_09_064247) do
     t.string "wallet_verification_signature"
     t.string "preferred_disbursement_currency", default: "amos"
     t.boolean "auto_convert_to_stable", default: false
+    t.integer "failed_login_attempts", default: 0, null: false
+    t.datetime "last_failed_login_at"
+    t.datetime "locked_until"
+    t.datetime "api_key_expires_at"
+    t.datetime "api_key_last_used_at"
+    t.text "refresh_token_encrypted"
+    t.datetime "refresh_token_expires_at"
     t.index ["api_key"], name: "index_users_on_api_key"
+    t.index ["api_key_expires_at"], name: "index_users_on_api_key_expires_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"
+    t.index ["failed_login_attempts"], name: "index_users_on_failed_login_attempts"
     t.index ["otp_required_for_login"], name: "index_users_on_otp_required_for_login"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true, where: "(provider IS NOT NULL)"
+    t.index ["refresh_token_expires_at"], name: "index_users_on_refresh_token_expires_at"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["solana_wallet_address"], name: "index_users_on_solana_wallet_address", unique: true
     t.index ["stripe_customer_id"], name: "index_users_on_stripe_customer_id", unique: true

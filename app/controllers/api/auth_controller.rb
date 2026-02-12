@@ -14,9 +14,9 @@ module Api
         return
       end
 
-      # Check if email already exists
+      # Check if email already exists (Story 0.2 - generic message to prevent enumeration)
       if User.exists?(email: params[:email]&.downcase)
-        render json: { message: "Email already registered" }, status: :unprocessable_entity
+        render json: { message: "Unable to create account. Please check your information and try again." }, status: :unprocessable_entity
         return
       end
 
@@ -74,7 +74,13 @@ module Api
       else
         # Clean up entity if user creation failed
         entity.destroy
-        render json: { message: user.errors.full_messages.join(", ") }, status: :unprocessable_entity
+        # Generic message to prevent enumeration (Story 0.2)
+        # Exception: Show password-specific errors during registration (not an enumeration risk)
+        if user.errors[:password].any?
+          render json: { message: "Password requirements not met", password_errors: user.errors[:password] }, status: :unprocessable_entity
+        else
+          render json: { message: "Unable to create account. Please check your information and try again." }, status: :unprocessable_entity
+        end
       end
     end
 
@@ -91,7 +97,18 @@ module Api
     def login
       user = User.find_by(email: params[:email]&.downcase)
 
+      # Check account lockout BEFORE password verification (Story 0.1)
+      if user&.account_locked?
+        return render json: {
+          message: 'Account temporarily locked due to multiple failed login attempts. Please try again in 30 minutes.'
+        }, status: :locked
+      end
+
+      # Verify password
       if user&.valid_password?(params[:password])
+        # Reset failed login attempts on successful login (Story 0.1)
+        user.reset_failed_login!
+
         # Check if MFA is required (skip in development for easier testing)
         if user.mfa_enabled? && !Rails.env.development?
           # Check for trusted device token (Face ID/biometric bypass)
@@ -120,6 +137,10 @@ module Api
 
         render_login_success(user)
       else
+        # Increment failed attempts (Story 0.1)
+        user&.increment_failed_login!
+
+        # Generic error message (Story 0.2 - prevents user enumeration)
         render json: { message: "Invalid email or password" }, status: :unauthorized
       end
     end
@@ -258,8 +279,32 @@ module Api
       }, status: :ok
     end
 
+    # POST /api/auth/refresh
+    # Use refresh token to get a new API key (Story 0.4)
     def refresh_token
-      render json: { token: @current_user.api_key }, status: :ok
+      refresh_token_param = params[:refresh_token]
+
+      unless refresh_token_param.present?
+        return render json: { message: 'Refresh token required' }, status: :bad_request
+      end
+
+      # Find user with this refresh token
+      user = User.find_by(refresh_token: refresh_token_param)
+
+      unless user&.refresh_token_valid?(refresh_token_param)
+        return render json: { message: 'Invalid or expired refresh token' }, status: :unauthorized
+      end
+
+      # Generate new API key and refresh token
+      user.generate_api_key!
+      user.generate_refresh_token!
+
+      render json: {
+        api_key: user.api_key,
+        api_key_expires_at: user.api_key_expires_at,
+        refresh_token: user.refresh_token,
+        refresh_token_expires_at: user.refresh_token_expires_at
+      }, status: :ok
     end
 
     def regenerate_api_key
@@ -300,13 +345,32 @@ module Api
         render json: { message: "Invalid token" }, status: :unauthorized
         return
       end
+
+      # Check API key expiration (Story 0.4)
+      if @current_user.api_key_expired?
+        render json: {
+          message: "Authentication token has expired. Please refresh your token.",
+          expired: true
+        }, status: :unauthorized
+        return
+      end
+
+      # Update last used timestamp (throttled to reduce DB writes - Story 0.4)
+      if should_touch_api_key?
+        TouchApiKeyJob.perform_later(@current_user.id) rescue @current_user.touch_api_key!
+      end
+    end
+
+    def should_touch_api_key?
+      # Only update every 5 minutes to reduce DB writes
+      @current_user.api_key_last_used_at.nil? ||
+        @current_user.api_key_last_used_at < 5.minutes.ago
     end
 
     def render_login_success(user, trusted_device: false)
-      # Generate API key if not present
-      if user.api_key.blank?
-        user.update(api_key: SecureRandom.hex(32))
-      end
+      # Generate API key and refresh token (Story 0.4)
+      user.generate_api_key!
+      user.generate_refresh_token!
 
       render json: {
         user: {
@@ -321,7 +385,10 @@ module Api
           mfa_enabled: user.otp_required_for_login
         },
         api_key: user.api_key,
-        token: user.api_key,
+        api_key_expires_at: user.api_key_expires_at,
+        token: user.api_key,  # Backward compatibility
+        refresh_token: user.refresh_token,
+        refresh_token_expires_at: user.refresh_token_expires_at,
         trusted_device_used: trusted_device
       }, status: :ok
     end

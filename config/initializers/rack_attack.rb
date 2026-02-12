@@ -10,8 +10,12 @@ return if Rails.env.test?
 class Rack::Attack
   ### Configure Cache ###
 
-  # Use Rails cache for Rack::Attack (backed by Solid Cache)
-  Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+  # Use Redis for Rack::Attack (required for multi-container deployments)
+  Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(
+    url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0"),
+    pool_size: 5,
+    pool_timeout: 5
+  )
 
   ### Throttle Requests ###
 
@@ -67,6 +71,39 @@ class Rack::Attack
     end
   end
 
+  # API Login Rate Limiting (aggressive - prevent brute force on API)
+  # Limit: 5 attempts per 15 minutes per email
+  throttle('api/login/email', limit: 5, period: 15.minutes) do |req|
+    if req.path == '/api/auth/login' && req.post?
+      req.params['email']&.to_s&.downcase&.strip
+    end
+  end
+
+  # API Login Rate Limiting by IP
+  # Limit: 10 attempts per 15 minutes per IP
+  throttle('api/login/ip', limit: 10, period: 15.minutes) do |req|
+    if req.path == '/api/auth/login' && req.post?
+      req.ip
+    end
+  end
+
+  # API Registration Rate Limiting
+  # Limit: 3 registrations per hour per IP
+  throttle('api/register/ip', limit: 3, period: 1.hour) do |req|
+    if req.path == '/api/auth/register' && req.post?
+      req.ip
+    end
+  end
+
+  # API Key Usage Rate Limiting
+  # Limit: 300 requests per 5 minutes per API key
+  throttle('api/authenticated/token', limit: 300, period: 5.minutes) do |req|
+    if req.env['HTTP_AUTHORIZATION'].present?
+      token = req.env['HTTP_AUTHORIZATION'].gsub(/^Bearer /, '')
+      "api_key:#{Digest::SHA256.hexdigest(token)}" if token.present?
+    end
+  end
+
   ### Block Requests ###
 
   # Block suspicious requests from known bad actors
@@ -90,20 +127,15 @@ class Rack::Attack
   ### Custom Responses ###
 
   # Customize response for throttled requests
-  self.throttled_responder = lambda do |request|
-    match_data = request.env['rack.attack.match_data']
-    retry_after = match_data ? match_data[:period] : 60
+  self.throttled_responder = lambda do |env|
+    retry_after = env['rack.attack.match_data'][:period]
     [
-      429, # Too Many Requests
+      429,
       {
-        "Content-Type" => "application/json",
-        "Retry-After" => retry_after.to_s
+        'Content-Type' => 'application/json',
+        'Retry-After' => retry_after.to_s
       },
-      [ {
-        error: "Rate limit exceeded",
-        message: "Too many requests. Please try again later.",
-        retry_after: retry_after
-      }.to_json ]
+      [{ error: 'Rate limit exceeded. Please try again later.' }.to_json]
     ]
   end
 
