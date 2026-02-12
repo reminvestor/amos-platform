@@ -1689,7 +1689,13 @@ export default class extends Controller {
         container.appendChild(btn)
       })
 
-      lastAiMessage.appendChild(container)
+      // Append below the message bubble (inside message-content, after the bubble)
+      const bubble = lastAiMessage.querySelector('.message-bubble')
+      if (bubble) {
+        bubble.after(container)
+      } else {
+        lastAiMessage.appendChild(container)
+      }
       console.log(`✅ Quick reply buttons rendered: ${suggestions.join(', ')}`)
     } catch (error) {
       console.error("❌ Error rendering quick replies:", error)

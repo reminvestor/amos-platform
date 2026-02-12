@@ -2347,7 +2347,8 @@ html[data-theme="light"] {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
+  padding-left: 0; /* sits right below the bubble text */
 }
 
 .suggestion-btn {
