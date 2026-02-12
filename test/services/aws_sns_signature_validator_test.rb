@@ -162,12 +162,12 @@ class AwsSnsSignatureValidatorTest < ActiveSupport::TestCase
     mock_cert = OpenSSL::X509::Certificate.new
     mock_cert.subject = OpenSSL::X509::Name.new([["CN", "Amazon SNS"]])
 
+    # Create mock response struct
+    MockResponse = Struct.new(:success?, :body)
+
     # Stub Faraday to return mock cert data
     Faraday.stub(:get, ->(url) {
-      response = Struct.new(:success?, :body).new
-      response.success? = true
-      response.body = mock_cert.to_pem
-      response
+      MockResponse.new(true, mock_cert.to_pem)
     }) do
       # First call - should fetch from network
       AwsSnsSignatureValidator.send(:get_certificate, cert_url)
@@ -186,12 +186,12 @@ class AwsSnsSignatureValidatorTest < ActiveSupport::TestCase
     fake_cert = OpenSSL::X509::Certificate.new
     fake_cert.subject = OpenSSL::X509::Name.new([["CN", "Evil Corp"]])
 
+    # Create mock response struct
+    MockResponse = Struct.new(:success?, :body)
+
     # Stub Faraday to return fake cert
     Faraday.stub(:get, ->(url) {
-      response = Struct.new(:success?, :body).new
-      response.success? = true
-      response.body = fake_cert.to_pem
-      response
+      MockResponse.new(true, fake_cert.to_pem)
     }) do
       error = assert_raises(AwsSnsSignatureValidator::InvalidCertificateError) do
         AwsSnsSignatureValidator.send(:get_certificate, cert_url)
