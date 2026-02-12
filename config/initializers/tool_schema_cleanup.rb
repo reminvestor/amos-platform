@@ -4,7 +4,12 @@
 # This fixes the recurring JSON Schema 2020-12 validation errors from Bedrock
 
 Rails.application.config.after_initialize do
-  next unless defined?(ToolDefinition) && ActiveRecord::Base.connection.table_exists?('tool_definitions')
+  next if ENV["SECRET_KEY_BASE_DUMMY"].present? # Docker build asset precompilation
+  begin
+    next unless defined?(ToolDefinition) && ActiveRecord::Base.connection.table_exists?('tool_definitions')
+  rescue ActiveRecord::ConnectionNotEstablished, PG::ConnectionBad
+    next
+  end
   
   # Run synchronously to ensure cleanup happens before any requests
   Rails.logger.info "[ToolSchemaCleanup] Starting automatic tool schema cleanup..."

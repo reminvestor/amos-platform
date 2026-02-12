@@ -9,9 +9,14 @@ Rails.application.config.after_initialize do
 
   # Only run in web server context, not during asset compilation or DB setup
   next if defined?(Rails::Console) || File.basename($PROGRAM_NAME) == "rake"
+  next if ENV["SECRET_KEY_BASE_DUMMY"].present? # Docker build asset precompilation
 
   # Skip if tables don't exist yet (fresh DB, running migrations)
-  next unless ActiveRecord::Base.connection.table_exists?(:integrations)
+  begin
+    next unless ActiveRecord::Base.connection.table_exists?(:integrations)
+  rescue ActiveRecord::ConnectionNotEstablished, PG::ConnectionBad
+    next
+  end
 
   Rails.logger.info "[OAuth] Checking auto-configuration..."
 
