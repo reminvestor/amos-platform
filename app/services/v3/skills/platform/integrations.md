@@ -39,6 +39,7 @@ BAD: "Can you provide your API key?"
 ### Step 3: Build the integration shell
 Use platform_create to create the integration with all the researched info:
 
+**API Key example:**
 ```
 platform_create(type: "integration", data: {
   name: "Neon CRM",
@@ -56,6 +57,27 @@ platform_create(type: "integration", data: {
   ]
 })
 ```
+
+**Basic Auth example** (uses HTTP Basic — two fields shown in UI):
+By default basic_auth creates "Username" and "Password" fields. For custom labels/placeholders, pass explicit auth_configs:
+```
+platform_create(type: "integration", data: {
+  name: "Neon CRM v2",
+  base_url: "https://api.neoncrm.com/v2",
+  auth_type: "basic_auth",
+  category: "crm",
+  description: "Nonprofit CRM — uses HTTP Basic Auth with Org ID as username, API Key as password",
+  test_endpoint: "/accounts",
+  auth_configs: [
+    { key: "organization_id", value: "{organization_id}", placement: "header" },
+    { key: "api_key", value: "{api_key}", placement: "header" }
+  ],
+  operations: [
+    { name: "list_accounts", method: "GET", path: "/accounts", description: "List all accounts" }
+  ]
+})
+```
+The UI will show "Organization Id" and "Api Key" input fields. Credentials are Base64-encoded into the Authorization header automatically.
 
 ### Step 4: Direct user to the canvas for credentials
 After the integration is created, the Integrations canvas opens automatically.

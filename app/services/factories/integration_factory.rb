@@ -890,8 +890,12 @@ module Factories
       when 'bearer_token'
         [{ key: 'Authorization', value: 'Bearer {token}', placement: 'header' }]
       when 'basic_auth'
-        # Basic auth is handled by IntegrationCredential#build_auth_header
-        []
+        # Two fields: username + password — the credential model handles Base64 encoding
+        username_lbl = params[:username_label] || 'username'
+        [
+          { key: username_lbl, value: "{username}", placement: 'header' },
+          { key: 'password', value: '{password}', placement: 'header' }
+        ]
       when 'oauth2'
         [{ key: 'Authorization', value: 'Bearer {access_token}', placement: 'header' }]
       when 'no_auth'
@@ -1047,9 +1051,9 @@ module Factories
       when 'bearer_token'
         configs << { key: 'Authorization', value: 'Bearer {token}', placement: 'header' }
       when 'basic_auth'
-        # Basic auth uses API key as username (like Stripe)
-        # We still need an AuthConfig so the UI knows to show an input field
-        configs << { key: 'api_key', value: '{api_key}', placement: 'header' }
+        # Two fields: username + password — the credential model handles Base64 encoding
+        configs << { key: 'username', value: '{username}', placement: 'header' }
+        configs << { key: 'password', value: '{password}', placement: 'header' }
       when 'oauth2'
         configs << { key: 'Authorization', value: 'Bearer {access_token}', placement: 'header' }
       when 'no_auth'

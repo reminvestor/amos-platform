@@ -82,7 +82,20 @@ class IntegrationCredential < ApplicationRecord
     oauth_config = connection.integration.oauth_configurations.first
     
     if oauth_config && oauth_config.auth_configs.any?
-      # Use database-driven auth_configs
+      # Basic auth needs special handling — Base64 encode username:password
+      if connection.integration.auth_type == 'basic_auth'
+        # Read placeholder names from the auth_configs (e.g. {organization_id}, {api_key})
+        header_configs = oauth_config.auth_configs.where(auth_placement: 'header').order(:position).to_a
+        user_key = header_configs.first&.auth_value&.scan(/\{(\w+)\}/)&.flatten&.first || 'username'
+        pass_key = header_configs.second&.auth_value&.scan(/\{(\w+)\}/)&.flatten&.first || 'password'
+
+        username = credentials[user_key] || credentials['username'] || credentials['api_key'] || ''
+        password = credentials[pass_key] || credentials['password'] || ''
+        encoded = Base64.strict_encode64("#{username}:#{password}")
+        return { 'Authorization' => "Basic #{encoded}" }
+      end
+
+      # Use database-driven auth_configs for all other auth types
       oauth_config.auth_configs.where(auth_placement: 'header').each do |auth_config|
         # Replace placeholders in auth_value with actual credential values
         value = auth_config.auth_value
