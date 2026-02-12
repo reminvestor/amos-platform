@@ -4,7 +4,8 @@ class User < ApplicationRecord
 
   # Encrypt sensitive fields (Story 0.4)
   encrypts :api_key
-  encrypts :refresh_token, deterministic: false
+  # Use deterministic encryption for refresh_token so we can query it
+  encrypts :refresh_token, deterministic: true
 
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
