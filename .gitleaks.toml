@@ -1,0 +1,107 @@
+# GitLeaks Configuration for AMOS Platform
+# Detects secrets and sensitive information in the codebase
+# Docs: https://github.com/gitleaks/gitleaks
+
+title = "GitLeaks Configuration for AMOS Platform"
+
+# Extend the default GitLeaks rules
+[extend]
+useDefault = true
+
+# Custom rules specific to AMOS Platform
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key ID"
+regex = '''(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}'''
+tags = ["aws", "credentials"]
+
+[[rules]]
+id = "aws-secret-key"
+description = "AWS Secret Access Key"
+regex = '''(?i)aws(.{0,20})?(?-i)['\"][0-9a-zA-Z\/+]{40}['\"]'''
+tags = ["aws", "credentials"]
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API Key"
+regex = '''sk-ant-api03-[a-zA-Z0-9\-_]{95}'''
+tags = ["anthropic", "api-key"]
+
+[[rules]]
+id = "stripe-api-key"
+description = "Stripe API Key"
+regex = '''(sk|pk)_(test|live)_[0-9a-zA-Z]{24,99}'''
+tags = ["stripe", "api-key"]
+
+[[rules]]
+id = "openai-api-key"
+description = "OpenAI API Key"
+regex = '''sk-[a-zA-Z0-9]{48}'''
+tags = ["openai", "api-key"]
+
+[[rules]]
+id = "github-token"
+description = "GitHub Personal Access Token"
+regex = '''ghp_[0-9a-zA-Z]{36}'''
+tags = ["github", "token"]
+
+[[rules]]
+id = "jwt-token"
+description = "JWT Token"
+regex = '''eyJ[A-Za-z0-9-_=]+\.eyJ[A-Za-z0-9-_=]+\.[A-Za-z0-9-_.+/=]*'''
+tags = ["jwt", "token"]
+[rules.allowlist]
+paths = [
+  '''test/fixtures/.*''',
+  '''spec/fixtures/.*''',
+  '''docs/examples/.*'''
+]
+
+# Allowlist patterns - legitimate uses that should not trigger alerts
+[allowlist]
+description = "Allowlist for false positives"
+
+# Test files and fixtures
+paths = [
+  '''\.env\.example$''',
+  '''\.env\.sample$''',
+  '''db/seeds/.*\.rb$''',
+  '''test/.*''',
+  '''spec/.*''',
+  '''\.github/workflows/.*\.yml$''',
+  '''config/credentials\.yml\.enc$''',
+  '''CLAUDE\.md$''',
+  '''README\.md$''',
+  '''docs/.*'''
+]
+
+# Common false positives
+regexes = [
+  '''test-secret-key-base-for-ci''',
+  '''your-api-key-here''',
+  '''example\.com''',
+  '''localhost''',
+  '''127\.0\.0\.1''',
+  '''SECRET_KEY_BASE''',
+  '''ANTHROPIC_API_KEY''',
+  '''AWS_ACCESS_KEY_ID''',
+  '''password123''',
+  '''admin@demo\.com''',
+  '''test@example\.com'''
+]
+
+# Commit allowlist (for historical commits that contained secrets that have been rotated)
+commits = [
+  # Add commit SHAs here if needed for historical exceptions
+]
+
+# Stop words that indicate a non-secret context
+stopwords = [
+  '''example''',
+  '''sample''',
+  '''test''',
+  '''demo''',
+  '''placeholder''',
+  '''dummy''',
+  '''fake'''
+]

@@ -382,6 +382,34 @@ These are the **only official** AMOS smart contracts. Verify before interacting:
 
 ---
 
+## 🔒 Security
+
+AMOS takes security seriously. We use automated secret scanning to protect the codebase and community.
+
+### Secret Scanning with GitLeaks
+
+- **GitHub Actions**: Automated scanning on every PR and push
+- **Pre-commit Hooks**: Local scanning before commits
+- **Custom Rules**: Detection of AWS keys, API keys, tokens, and credentials
+
+**Setup pre-commit hooks:**
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+**Learn more**: See [SECRET_SCANNING.md](docs/SECRET_SCANNING.md)
+
+### Reporting Security Issues
+
+Found a vulnerability? Please **do not** open a public issue.
+
+Email: security@amoslabs.com
+
+We'll respond within 48 hours and work with you on disclosure.
+
+---
+
 ## 📜 License
 
 AMOS is released under the [Apache License 2.0](LICENSE).

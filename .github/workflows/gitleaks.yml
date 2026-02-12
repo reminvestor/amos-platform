@@ -1,0 +1,48 @@
+name: Secret Scanning (GitLeaks)
+
+# Run on all pull requests and pushes to main branches
+on:
+  pull_request:
+    branches: [main, prod, dev]
+  push:
+    branches: [main, prod, dev]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  gitleaks:
+    name: GitLeaks Secret Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for comprehensive scanning
+
+      - name: Run GitLeaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # Optional: for GitLeaks Pro features
+
+      - name: Upload SARIF report
+        if: failure()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+          category: gitleaks
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ -f results.sarif ]; then
+            echo "### 🔒 GitLeaks Secret Scan Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Potential secrets detected!** Review the findings above." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Common false positives can be added to \`.gitleaks.toml\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ✅ GitLeaks Secret Scan Passed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No secrets detected in the codebase." >> $GITHUB_STEP_SUMMARY
+          fi
