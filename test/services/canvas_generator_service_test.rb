@@ -653,6 +653,518 @@ class CanvasGeneratorServiceTest < ActiveSupport::TestCase
     assert_includes result[:html], 'data-status="doing"'
   end
 
+  # ══════════════════════════════════════════════════════════════
+  # CANVAS QUALITY VALIDATION — analyze_canvas_quality
+  # ══════════════════════════════════════════════════════════════
+
+  test 'quality check passes for well-wired canvas' do
+    html = <<~HTML
+      <div>
+        <button data-action="click->module-canvas#performAction" data-action-name="add">Add</button>
+        <button type="submit">Save</button>
+        <button data-bs-toggle="modal" data-bs-target="#editModal">Edit</button>
+        <button data-bs-dismiss="modal">Close</button>
+        <button onclick="doStuff()">Do</button>
+        <button id="refresh-btn">Refresh</button>
+        <a href="/somewhere">Link</a>
+        <form id="my-form"><input type="text"></form>
+        <div id="editModal" class="modal"></div>
+      </div>
+    HTML
+    js = <<~JS
+      function doStuff() { console.log('hi'); }
+      document.getElementById('refresh-btn').addEventListener('click', () => {});
+      document.getElementById('my-form').addEventListener('submit', (e) => {});
+    JS
+
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    assert_empty issues, "Expected 0 issues but found: #{issues.inspect}"
+  end
+
+  test 'quality check detects unwired buttons' do
+    html = '<div><button class="btn btn-primary">Click Me</button></div>'
+    js = 'console.log("no handlers");'
+
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    assert issues.any? { |i| i[:type] == :unwired_button }, "Should detect unwired button"
+  end
+
+  test 'quality check allows buttons with data-action' do
+    html = '<button data-action="click->module-canvas#performAction">OK</button>'
+    issues = @service.send(:analyze_canvas_quality, html, '')
+    refute issues.any? { |i| i[:type] == :unwired_button }
+  end
+
+  test 'quality check allows buttons with onclick' do
+    html = '<button onclick="handleClick()">OK</button>'
+    js = 'function handleClick() {}'
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    refute issues.any? { |i| i[:type] == :unwired_button }
+  end
+
+  test 'quality check allows submit buttons' do
+    html = '<button type="submit">Save</button>'
+    issues = @service.send(:analyze_canvas_quality, html, '')
+    refute issues.any? { |i| i[:type] == :unwired_button }
+  end
+
+  test 'quality check allows buttons with data-bs-toggle' do
+    html = '<button data-bs-toggle="modal" data-bs-target="#myModal">Open</button><div id="myModal"></div>'
+    issues = @service.send(:analyze_canvas_quality, html, '')
+    refute issues.any? { |i| i[:type] == :unwired_button }
+  end
+
+  test 'quality check allows buttons with data-bs-dismiss' do
+    html = '<button data-bs-dismiss="modal">Close</button>'
+    issues = @service.send(:analyze_canvas_quality, html, '')
+    refute issues.any? { |i| i[:type] == :unwired_button }
+  end
+
+  test 'quality check allows buttons with ID referenced in JS' do
+    html = '<button id="export-btn">Export</button>'
+    js = "document.getElementById('export-btn').addEventListener('click', () => {});"
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    refute issues.any? { |i| i[:type] == :unwired_button }
+  end
+
+  test 'quality check detects dead links with href hash' do
+    html = '<a href="#">Go Nowhere</a>'
+    js = ''
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    assert issues.any? { |i| i[:type] == :dead_link }, "Should detect dead link"
+  end
+
+  test 'quality check ignores normal links' do
+    html = '<a href="/dashboard">Dashboard</a>'
+    issues = @service.send(:analyze_canvas_quality, html, '')
+    refute issues.any? { |i| i[:type] == :dead_link }
+  end
+
+  test 'quality check allows hash links with data-bs-toggle' do
+    html = '<a href="#" data-bs-toggle="dropdown">Menu</a>'
+    issues = @service.send(:analyze_canvas_quality, html, '')
+    refute issues.any? { |i| i[:type] == :dead_link }
+  end
+
+  test 'quality check allows hash links with onclick' do
+    html = '<a href="#" onclick="navigate()">Go</a>'
+    js = 'function navigate() {}'
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    refute issues.any? { |i| i[:type] == :dead_link }
+  end
+
+  test 'quality check detects unwired forms' do
+    html = '<form class="needs-validation"><input type="text" name="title"></form>'
+    js = 'console.log("loaded");'
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    assert issues.any? { |i| i[:type] == :unwired_form }, "Should detect unwired form"
+  end
+
+  test 'quality check allows forms with data-action submit' do
+    html = '<form data-action="submit->module-canvas#saveRecord"><input></form>'
+    issues = @service.send(:analyze_canvas_quality, html, '')
+    refute issues.any? { |i| i[:type] == :unwired_form }
+  end
+
+  test 'quality check allows forms with onsubmit' do
+    html = '<form onsubmit="return handleSubmit()"><input></form>'
+    issues = @service.send(:analyze_canvas_quality, html, '')
+    refute issues.any? { |i| i[:type] == :unwired_form }
+  end
+
+  test 'quality check allows forms with ID referenced in JS' do
+    html = '<form id="canvas-form"><input></form>'
+    js = "document.getElementById('canvas-form').addEventListener('submit', (e) => {});"
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    refute issues.any? { |i| i[:type] == :unwired_form }
+  end
+
+  test 'quality check allows forms with real action URL' do
+    html = '<form action="/api/submit"><input></form>'
+    issues = @service.send(:analyze_canvas_quality, html, '')
+    refute issues.any? { |i| i[:type] == :unwired_form }
+  end
+
+  test 'quality check detects missing modal targets' do
+    html = '<button data-bs-toggle="modal" data-bs-target="#editModal">Edit</button>'
+    issues = @service.send(:analyze_canvas_quality, html, '')
+    assert issues.any? { |i| i[:type] == :missing_modal && i[:modal_id] == 'editModal' },
+           "Should detect missing modal #editModal"
+  end
+
+  test 'quality check passes when modal target exists' do
+    html = <<~HTML
+      <button data-bs-toggle="modal" data-bs-target="#editModal">Edit</button>
+      <div id="editModal" class="modal fade"><div class="modal-dialog"></div></div>
+    HTML
+    issues = @service.send(:analyze_canvas_quality, html, '')
+    refute issues.any? { |i| i[:type] == :missing_modal }
+  end
+
+  test 'quality check detects undefined onclick functions' do
+    html = '<button onclick="deleteRecord(5)">Delete</button>'
+    js = 'function loadData() { fetch("/api/data"); }'
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    assert issues.any? { |i| i[:type] == :undefined_function && i[:function] == 'deleteRecord' },
+           "Should detect undefined function deleteRecord"
+  end
+
+  test 'quality check passes when onclick function is defined' do
+    html = '<button onclick="deleteRecord(5)">Delete</button>'
+    js = 'function deleteRecord(id) { fetch("/api/" + id, { method: "DELETE" }); }'
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    refute issues.any? { |i| i[:type] == :undefined_function }
+  end
+
+  test 'quality check handles arrow function definitions for onclick' do
+    html = '<button onclick="doExport()">Export</button>'
+    js = 'const doExport = () => { window.open("/export"); };'
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    refute issues.any? { |i| i[:type] == :undefined_function }
+  end
+
+  test 'quality check handles async function definitions for onclick' do
+    html = '<button onclick="fetchData()">Load</button>'
+    js = 'async function fetchData() { await fetch("/api"); }'
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    refute issues.any? { |i| i[:type] == :undefined_function }
+  end
+
+  test 'quality check detects missing HTML elements referenced in JS' do
+    html = '<div id="content">Hello</div>'
+    js = <<~JS
+      document.getElementById('content').innerHTML = 'Updated';
+      document.getElementById('missing-element').textContent = 'Oops';
+    JS
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    assert issues.any? { |i| i[:type] == :missing_element && i[:element_id] == 'missing-element' },
+           "Should detect missing element 'missing-element'"
+  end
+
+  test 'quality check passes when all JS-referenced IDs exist in HTML' do
+    html = '<div id="data-tbody"></div><span id="record-count"></span>'
+    js = <<~JS
+      document.getElementById('data-tbody').innerHTML = '';
+      document.getElementById('record-count').textContent = '5';
+    JS
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    refute issues.any? { |i| i[:type] == :missing_element }
+  end
+
+  test 'quality check skips dynamically created IDs in JS' do
+    html = '<div id="container"></div>'
+    # ID "dynamic-item" appears twice: once in innerHTML creation and once in getElementById
+    js = <<~JS
+      document.getElementById('container').innerHTML = '<div id="dynamic-item">test</div>';
+      document.getElementById('dynamic-item').click();
+    JS
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    refute issues.any? { |i| i[:type] == :missing_element && i[:element_id] == 'dynamic-item' },
+           "Should skip dynamically created elements"
+  end
+
+  test 'quality check handles querySelector with hash selector' do
+    html = '<div id="app">App</div>'
+    js = "document.querySelector('#missing-div').style.display = 'none';"
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    assert issues.any? { |i| i[:type] == :missing_element && i[:element_id] == 'missing-div' }
+  end
+
+  test 'quality check returns empty array for blank html' do
+    issues = @service.send(:analyze_canvas_quality, '', 'console.log("test");')
+    assert_empty issues
+  end
+
+  test 'quality check returns empty array for nil html' do
+    issues = @service.send(:analyze_canvas_quality, nil, nil)
+    assert_empty issues
+  end
+
+  test 'quality check handles nil js gracefully' do
+    html = '<button class="btn">Click</button>'
+    issues = @service.send(:analyze_canvas_quality, html, nil)
+    assert issues.any? { |i| i[:type] == :unwired_button }
+  end
+
+  test 'quality check detects multiple issues at once' do
+    html = <<~HTML
+      <button class="btn">Unwired 1</button>
+      <button class="btn btn-danger">Unwired 2</button>
+      <a href="#">Dead Link</a>
+      <form><input type="text"></form>
+      <button data-bs-toggle="modal" data-bs-target="#ghostModal">Open</button>
+    HTML
+    js = "document.getElementById('nonexistent').click();"
+
+    issues = @service.send(:analyze_canvas_quality, html, js)
+    types = issues.map { |i| i[:type] }
+
+    assert_includes types, :unwired_button
+    assert_includes types, :dead_link
+    assert_includes types, :unwired_form
+    assert_includes types, :missing_modal
+    assert_includes types, :missing_element
+    assert issues.length >= 5, "Should find at least 5 issues, found #{issues.length}"
+  end
+
+  # ══════════════════════════════════════════════════════════════
+  # CANVAS QUALITY VALIDATION — validate_and_fix_canvas
+  # ══════════════════════════════════════════════════════════════
+
+  test 'validate_and_fix returns result unchanged when no issues' do
+    result = {
+      html: '<button data-action="click->module-canvas#performAction">Add</button>',
+      js: 'console.log("loaded");',
+      css: '.test { color: red; }'
+    }
+    validated = @service.send(:validate_and_fix_canvas, result)
+    assert_equal result, validated
+  end
+
+  test 'validate_and_fix returns result for blank html' do
+    result = { html: '', js: '', css: '' }
+    validated = @service.send(:validate_and_fix_canvas, result)
+    assert_equal result, validated
+  end
+
+  test 'validate_and_fix returns result for nil html' do
+    result = { html: nil, js: nil, css: nil }
+    validated = @service.send(:validate_and_fix_canvas, result)
+    assert_equal result, validated
+  end
+
+  test 'validate_and_fix skips AI fix when too many issues' do
+    # Generate HTML with many unwired buttons (exceeds MAX_QUALITY_ISSUES_FOR_FIX)
+    buttons = 15.times.map { |i| "<button class='btn'>Button #{i}</button>" }.join("\n")
+    result = { html: "<div>#{buttons}</div>", js: '', css: '' }
+
+    # Should NOT call bedrock (no stub needed — it would error if called)
+    validated = @service.send(:validate_and_fix_canvas, result)
+    # Returns original since too many issues
+    assert_equal result[:html], validated[:html]
+  end
+
+  test 'validate_and_fix attempts AI fix and returns improved result' do
+    original = {
+      html: '<button class="btn">Unwired</button>',
+      js: 'console.log("no handlers");',
+      css: '.btn { color: blue; }'
+    }
+
+    fixed_html = '<button id="action-btn" class="btn">Unwired</button>'
+    fixed_js = "document.getElementById('action-btn').addEventListener('click', () => { alert('clicked'); });"
+
+    # Stub the bedrock client to return a "fixed" canvas
+    mock_response = mock_bedrock_response(<<~TEXT)
+      ```html
+      #{fixed_html}
+      ```
+      ```javascript
+      #{fixed_js}
+      ```
+      ```css
+      .btn { color: blue; }
+      ```
+    TEXT
+
+    mock_client = mock('bedrock_client')
+    mock_client.stubs(:converse).returns(mock_response)
+    @service.stubs(:bedrock_client).returns(mock_client)
+
+    validated = @service.send(:validate_and_fix_canvas, original)
+
+    # Should return the fixed version since it resolved the unwired button
+    assert_includes validated[:js], 'addEventListener'
+    assert_includes validated[:html], 'action-btn'
+  end
+
+  test 'validate_and_fix returns original when AI fix does not improve' do
+    original = {
+      html: '<button class="btn">Unwired</button>',
+      js: '',
+      css: ''
+    }
+
+    # Stub bedrock to return equally bad code (still unwired)
+    mock_response = mock_bedrock_response(<<~TEXT)
+      ```html
+      <button class="btn">Still Unwired</button>
+      ```
+      ```javascript
+      console.log("still no handler");
+      ```
+      ```css
+      .btn {}
+      ```
+    TEXT
+
+    mock_client = mock('bedrock_client')
+    mock_client.stubs(:converse).returns(mock_response)
+    @service.stubs(:bedrock_client).returns(mock_client)
+
+    validated = @service.send(:validate_and_fix_canvas, original)
+
+    # Should return original since fix didn't help
+    assert_equal original[:html], validated[:html]
+  end
+
+  test 'validate_and_fix returns original when AI fix raises error' do
+    original = {
+      html: '<button class="btn">Unwired</button>',
+      js: '',
+      css: ''
+    }
+
+    mock_client = mock('bedrock_client')
+    mock_client.stubs(:converse).raises(StandardError.new("Bedrock timeout"))
+    @service.stubs(:bedrock_client).returns(mock_client)
+
+    validated = @service.send(:validate_and_fix_canvas, original)
+
+    # Should return original gracefully
+    assert_equal original[:html], validated[:html]
+  end
+
+  # ══════════════════════════════════════════════════════════════
+  # CANVAS QUALITY VALIDATION — ai_fix_canvas_issues
+  # ══════════════════════════════════════════════════════════════
+
+  test 'ai_fix builds prompt with all issue types' do
+    issues = [
+      { type: :unwired_button, detail: 'class="btn"' },
+      { type: :dead_link, detail: 'href="#"' },
+      { type: :unwired_form, detail: 'class="form"' },
+      { type: :missing_modal, modal_id: 'editModal' },
+      { type: :undefined_function, function: 'doStuff' },
+      { type: :missing_element, element_id: 'data-table' }
+    ]
+
+    result = { html: '<div>test</div>', js: 'var x = 1;', css: '.x {}' }
+
+    captured_messages = nil
+    mock_response = mock_bedrock_response("```html\n<div>fixed</div>\n```\n```javascript\nvar x = 2;\n```\n```css\n.x {}\n```")
+
+    mock_client = mock('bedrock_client')
+    mock_client.expects(:converse).with do |params|
+      captured_messages = params[:messages]
+      true
+    end.returns(mock_response)
+    @service.stubs(:bedrock_client).returns(mock_client)
+
+    @service.send(:ai_fix_canvas_issues, result, issues)
+
+    # Verify the prompt contains issue descriptions
+    prompt_text = captured_messages.first[:content].first[:text]
+    assert_includes prompt_text, 'UNWIRED BUTTON'
+    assert_includes prompt_text, 'DEAD LINK'
+    assert_includes prompt_text, 'UNWIRED FORM'
+    assert_includes prompt_text, 'MISSING MODAL'
+    assert_includes prompt_text, 'UNDEFINED FUNCTION'
+    assert_includes prompt_text, 'MISSING ELEMENT'
+    assert_includes prompt_text, 'doStuff'
+    assert_includes prompt_text, 'editModal'
+    assert_includes prompt_text, 'data-table'
+  end
+
+  test 'ai_fix returns parsed canvas response' do
+    issues = [{ type: :unwired_button, detail: 'class="btn"' }]
+    result = { html: '<button class="btn">X</button>', js: '', css: '' }
+
+    mock_response = mock_bedrock_response(<<~TEXT)
+      ```html
+      <button id="x-btn" class="btn">X</button>
+      ```
+      ```javascript
+      document.getElementById('x-btn').addEventListener('click', () => {});
+      ```
+      ```css
+      .btn { cursor: pointer; }
+      ```
+    TEXT
+
+    mock_client = mock('bedrock_client')
+    mock_client.stubs(:converse).returns(mock_response)
+    @service.stubs(:bedrock_client).returns(mock_client)
+
+    fixed = @service.send(:ai_fix_canvas_issues, result, issues)
+    assert_includes fixed[:html], 'x-btn'
+    assert_includes fixed[:js], 'addEventListener'
+    assert_includes fixed[:css], 'cursor'
+  end
+
+  test 'ai_fix uses low temperature for precise corrections' do
+    issues = [{ type: :unwired_button, detail: 'class="btn"' }]
+    result = { html: '<button class="btn">X</button>', js: '', css: '' }
+
+    mock_response = mock_bedrock_response("```html\n<div></div>\n```\n```javascript\n\n```\n```css\n\n```")
+
+    mock_client = mock('bedrock_client')
+    mock_client.expects(:converse).with do |params|
+      params[:inference_config][:temperature] == 0.2
+    end.returns(mock_response)
+    @service.stubs(:bedrock_client).returns(mock_client)
+
+    @service.send(:ai_fix_canvas_issues, result, issues)
+  end
+
+  test 'canvas_fix_system_prompt includes technical context' do
+    prompt = @service.send(:canvas_fix_system_prompt)
+    assert_includes prompt, 'Bootstrap 5'
+    assert_includes prompt, 'module-canvas'
+    assert_includes prompt, 'CSRF'
+    assert_includes prompt, 'html'
+    assert_includes prompt, 'javascript'
+    assert_includes prompt, 'css'
+  end
+
+  # ══════════════════════════════════════════════════════════════
+  # CANVAS QUALITY VALIDATION — static templates pass validation
+  # ══════════════════════════════════════════════════════════════
+
+  test 'static list template passes quality validation' do
+    result = @service.send(:generate_static, @app_module, 'list', @fields, [])
+    issues = @service.send(:analyze_canvas_quality, result[:html], result[:js])
+    assert_empty issues, "Static list template should have 0 quality issues but found: #{issues.inspect}"
+  end
+
+  test 'static kanban template passes quality validation' do
+    result = @service.send(:generate_static, @app_module, 'kanban', @fields, [])
+    issues = @service.send(:analyze_canvas_quality, result[:html], result[:js])
+    assert_empty issues, "Static kanban template should have 0 quality issues but found: #{issues.inspect}"
+  end
+
+  test 'static form template passes quality validation' do
+    result = @service.send(:generate_static, @app_module, 'form', @fields, [])
+    issues = @service.send(:analyze_canvas_quality, result[:html], result[:js])
+    assert_empty issues, "Static form template should have 0 quality issues but found: #{issues.inspect}"
+  end
+
+  test 'static detail template passes quality validation' do
+    result = @service.send(:generate_static, @app_module, 'detail', @fields, [])
+    issues = @service.send(:analyze_canvas_quality, result[:html], result[:js])
+    assert_empty issues, "Static detail template should have 0 quality issues but found: #{issues.inspect}"
+  end
+
+  test 'static dashboard template passes quality validation' do
+    result = @service.send(:generate_static, @app_module, 'dashboard', @fields, [])
+    issues = @service.send(:analyze_canvas_quality, result[:html], result[:js])
+    assert_empty issues, "Static dashboard template should have 0 quality issues but found: #{issues.inspect}"
+  end
+
+  test 'static calendar template passes quality validation' do
+    result = @service.send(:generate_static, @app_module, 'calendar', @fields, [])
+    issues = @service.send(:analyze_canvas_quality, result[:html], result[:js])
+    assert_empty issues, "Static calendar template should have 0 quality issues but found: #{issues.inspect}"
+  end
+
+  # ══════════════════════════════════════════════════════════════
+  # CONSTANTS
+  # ══════════════════════════════════════════════════════════════
+
+  test 'MAX_QUALITY_ISSUES_FOR_FIX is defined' do
+    assert_equal 10, CanvasGeneratorService::MAX_QUALITY_ISSUES_FOR_FIX
+  end
+
   private
 
   def create_test_module(slug, status: 'active')
@@ -678,5 +1190,15 @@ class CanvasGeneratorServiceTest < ActiveSupport::TestCase
       plan_spec: plan_spec,
       status: 'approved'
     )
+  end
+
+  # Helper to build a mock Bedrock response structure
+  def mock_bedrock_response(text_content)
+    content_block = stub(text: text_content)
+    content_block.stubs(:respond_to?).with(:text).returns(true)
+
+    message = stub(content: [content_block])
+    output = stub(message: message)
+    stub(output: output)
   end
 end

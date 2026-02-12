@@ -28,6 +28,10 @@ class CanvasGeneratorService
   # Fallback: use static templates when AI generation fails or is unavailable
   STATIC_FALLBACK = true
 
+  # Canvas quality validation: max issues before skipping AI fix pass
+  # If more than this many issues found, the canvas is too broken for targeted fixes
+  MAX_QUALITY_ISSUES_FOR_FIX = 10
+
   def initialize(entity:, user:)
     @entity = entity
     @user = user
@@ -85,7 +89,11 @@ class CanvasGeneratorService
                        .map(&:text)
                        .join("\n")
 
-    parse_canvas_response(raw_text)
+    result = parse_canvas_response(raw_text)
+
+    # Quality validation: check for unwired buttons, dead links, etc.
+    # If issues found, attempt an AI fix pass before returning
+    validate_and_fix_canvas(result)
   end
 
   def canvas_system_prompt
@@ -279,6 +287,232 @@ class CanvasGeneratorService
     # Match ```language\n...\n```
     match = text.match(/```#{language}\s*\n(.*?)```/m)
     match&.captures&.first
+  end
+
+  # ============================================
+  # CANVAS QUALITY VALIDATION
+  # ============================================
+
+  # Orchestrator: validate generated canvas and attempt AI fix if issues found
+  def validate_and_fix_canvas(result)
+    return result if result[:html].blank?
+
+    issues = analyze_canvas_quality(result[:html], result[:js])
+
+    if issues.empty?
+      Rails.logger.info "[CanvasGenerator] Quality check passed (0 issues)"
+      return result
+    end
+
+    issue_summary = issues.group_by { |i| i[:type] }.transform_values(&:count)
+    Rails.logger.warn "[CanvasGenerator] Quality check found #{issues.length} issue(s): #{issue_summary}"
+
+    # Too many issues means the canvas is fundamentally broken — not worth patching
+    if issues.length > MAX_QUALITY_ISSUES_FOR_FIX
+      Rails.logger.warn "[CanvasGenerator] Too many issues (#{issues.length} > #{MAX_QUALITY_ISSUES_FOR_FIX}), skipping AI fix"
+      return result
+    end
+
+    # Attempt targeted AI fix pass
+    begin
+      fixed = ai_fix_canvas_issues(result, issues)
+      if fixed && fixed[:html].present?
+        remaining = analyze_canvas_quality(fixed[:html], fixed[:js])
+        resolved = issues.length - remaining.length
+
+        if resolved > 0
+          Rails.logger.info "[CanvasGenerator] AI fix resolved #{resolved}/#{issues.length} issues (#{remaining.length} remaining)"
+          return fixed
+        else
+          Rails.logger.warn "[CanvasGenerator] AI fix did not improve quality, using original"
+        end
+      end
+    rescue => e
+      Rails.logger.warn "[CanvasGenerator] AI fix pass failed: #{e.message}, using original"
+    end
+
+    result
+  end
+
+  # Static analysis of canvas HTML + JS for common quality issues.
+  # Returns an array of issue hashes, empty if no problems found.
+  #
+  # Checks:
+  #   1. Buttons without any event handling (no onclick, data-action, submit type, or JS listener)
+  #   2. Links with href="#" and no handler (dead links)
+  #   3. Forms without submit handling
+  #   4. Modal triggers (data-bs-target) pointing to non-existent modals
+  #   5. onclick calls to functions not defined in the JavaScript
+  #   6. JavaScript getElementById/querySelector references to IDs not in the HTML
+  #
+  def analyze_canvas_quality(html, js)
+    issues = []
+    return issues if html.blank?
+    js = js.to_s
+
+    # Collect all element IDs from the HTML for cross-referencing
+    html_ids = Set.new(html.scan(/\bid\s*=\s*["']([^"']+)["']/i).flatten)
+
+    # ── Check 1: Buttons without any event handling ──
+    html.scan(/<button\b([^>]*)>/i).each do |(attrs)|
+      next if attrs.match?(/data-action\s*=/i)           # Stimulus handler
+      next if attrs.match?(/onclick\s*=/i)                # Inline handler
+      next if attrs.match?(/type\s*=\s*["']submit["']/i)  # Form submit button
+      next if attrs.match?(/data-bs-toggle\s*=/i)         # Bootstrap component (dropdown, modal, etc.)
+      next if attrs.match?(/data-bs-dismiss\s*=/i)        # Bootstrap dismiss button
+
+      # Check if button has an ID that's referenced in the JS (addEventListener pattern)
+      id_match = attrs.match(/\bid\s*=\s*["']([^"']+)["']/i)
+      next if id_match && js.include?(id_match[1])
+
+      issues << { type: :unwired_button, detail: attrs.strip[0..100] }
+    end
+
+    # ── Check 2: Dead links (href="#" with no handler) ──
+    html.scan(/<a\b([^>]*)>/i).each do |(attrs)|
+      next unless attrs.match?(/href\s*=\s*["']#["']/i)  # Only flag href="#" links
+      next if attrs.match?(/data-action\s*=/i)
+      next if attrs.match?(/onclick\s*=/i)
+      next if attrs.match?(/data-bs-toggle\s*=/i)         # Bootstrap component trigger
+
+      id_match = attrs.match(/\bid\s*=\s*["']([^"']+)["']/i)
+      next if id_match && js.include?(id_match[1])
+
+      issues << { type: :dead_link, detail: attrs.strip[0..100] }
+    end
+
+    # ── Check 3: Forms without submit handling ──
+    html.scan(/<form\b([^>]*)>/i).each do |(attrs)|
+      next if attrs.match?(/data-action\s*=.*submit/i)    # Stimulus submit action
+      next if attrs.match?(/onsubmit\s*=/i)               # Inline handler
+      next if attrs.match?(/action\s*=\s*["'](?!#)[^"']/i) # Has a real action URL (not "#")
+
+      id_match = attrs.match(/\bid\s*=\s*["']([^"']+)["']/i)
+      next if id_match && js.include?(id_match[1])
+
+      issues << { type: :unwired_form, detail: attrs.strip[0..100] }
+    end
+
+    # ── Check 4: Modal triggers without matching modal elements ──
+    html.scan(/data-bs-target\s*=\s*["']#([^"']+)["']/i).each do |(modal_id)|
+      next if html_ids.include?(modal_id)
+      issues << { type: :missing_modal, modal_id: modal_id }
+    end
+
+    # ── Check 5: onclick functions not defined in the JavaScript ──
+    html.scan(/onclick\s*=\s*["']([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/i).each do |(func_name)|
+      next if func_name == 'return'
+      next if func_name.start_with?('window') # window.xxx() may be defined elsewhere
+
+      func_pattern = /(?:function\s+#{Regexp.escape(func_name)}\b|#{Regexp.escape(func_name)}\s*[:=]\s*(?:function|async\s|\())/
+      next if js.match?(func_pattern)
+
+      issues << { type: :undefined_function, function: func_name }
+    end
+
+    # ── Check 6: JS references element IDs not present in HTML ──
+    js_id_refs = Set.new(
+      js.scan(/getElementById\s*\(\s*["']([^"']+)["']\s*\)/).flatten +
+      js.scan(/querySelector\s*\(\s*["']#([^"']+)["']\s*\)/).flatten
+    )
+
+    js_id_refs.each do |ref_id|
+      next if html_ids.include?(ref_id)
+      # Skip IDs that appear multiple times in JS — likely created dynamically via innerHTML
+      next if js.scan(/#{Regexp.escape(ref_id)}/).length > 1
+
+      issues << { type: :missing_element, element_id: ref_id }
+    end
+
+    issues
+  end
+
+  # Make a focused AI call to fix the specific issues found by static analysis.
+  # This is much cheaper and more reliable than regenerating from scratch because
+  # the AI only needs to add/fix the missing pieces, not reinvent the whole canvas.
+  def ai_fix_canvas_issues(result, issues)
+    issue_list = issues.map.with_index do |issue, i|
+      case issue[:type]
+      when :unwired_button
+        "#{i + 1}. UNWIRED BUTTON: <button #{issue[:detail]}> has no click handler — add an event listener or data-action"
+      when :dead_link
+        "#{i + 1}. DEAD LINK: <a #{issue[:detail]}> has href='#' with no handler — add a click handler or real navigation"
+      when :unwired_form
+        "#{i + 1}. UNWIRED FORM: <form #{issue[:detail]}> has no submit handler — add a submit event listener"
+      when :missing_modal
+        "#{i + 1}. MISSING MODAL: data-bs-target='##{issue[:modal_id]}' references a modal that doesn't exist — add the modal HTML"
+      when :undefined_function
+        "#{i + 1}. UNDEFINED FUNCTION: onclick calls '#{issue[:function]}()' but it's not defined — implement the function"
+      when :missing_element
+        "#{i + 1}. MISSING ELEMENT: JS references id='#{issue[:element_id]}' but no such element exists — add the element or fix the reference"
+      end
+    end.compact
+
+    fix_prompt = <<~PROMPT
+      Fix the following #{issues.length} issue(s) in this canvas code. Each issue is an interactive element that is not properly wired up.
+
+      ISSUES TO FIX:
+      #{issue_list.join("\n")}
+
+      CURRENT HTML:
+      ```html
+      #{result[:html]}
+      ```
+
+      CURRENT JAVASCRIPT:
+      ```javascript
+      #{result[:js]}
+      ```
+
+      #{result[:css].present? ? "CURRENT CSS:\n```css\n#{result[:css]}\n```" : ""}
+
+      RULES:
+      - Fix EVERY issue listed above — do not skip any
+      - For unwired buttons: add JavaScript event listeners that perform a meaningful action
+      - For dead links: add click handlers or proper navigation
+      - For unwired forms: add submit event listeners with fetch API calls
+      - For missing modals: add complete Bootstrap 5 modal HTML with form content
+      - For undefined functions: implement the function with real functionality
+      - For missing elements: add the element to HTML or fix the JS reference
+      - Keep ALL existing functionality intact — do not remove or break anything
+      - Return the COMPLETE fixed code (all three blocks, not just the changes)
+    PROMPT
+
+    response = bedrock_client.converse(
+      model_id: CANVAS_MODEL_ID,
+      messages: [{ role: "user", content: [{ text: fix_prompt }] }],
+      inference_config: { max_tokens: MAX_TOKENS, temperature: 0.2 },
+      system: [{ text: canvas_fix_system_prompt }]
+    )
+
+    raw_text = response.output.message.content
+                       .select { |b| b.respond_to?(:text) && b.text }
+                       .map(&:text)
+                       .join("\n")
+
+    parse_canvas_response(raw_text)
+  end
+
+  def canvas_fix_system_prompt
+    <<~PROMPT
+      You are a code quality fixer for business application canvases.
+      You receive canvas code (HTML/JS/CSS) with specific identified issues and must fix ALL of them.
+
+      OUTPUT FORMAT: Return ONLY three fenced code blocks in this exact order:
+      1. ```html ... ``` — The complete fixed HTML
+      2. ```javascript ... ``` — The complete fixed JavaScript
+      3. ```css ... ``` — The complete fixed CSS
+
+      Do NOT include any explanation text, just the three code blocks.
+
+      TECHNICAL CONTEXT:
+      - Bootstrap 5 is available (classes, modals, components)
+      - Lucide icons via <i data-lucide="icon-name"></i>
+      - Stimulus controller "module-canvas" handles data-action="click->module-canvas#performAction"
+      - API base path: /api/modules/MODULE_SLUG/models/MODEL_NAME
+      - CSRF token: document.querySelector('meta[name="csrf-token"]')?.content
+      - Keep all existing working functionality intact
+    PROMPT
   end
 
   # ============================================
@@ -663,12 +897,14 @@ class CanvasGeneratorService
           const apiBase = `/api/modules/${moduleSlug}/models/${modelName}`;
           const detailContent = document.getElementById('detail-content');
           const fields = #{fields.map { |f| f['name'] || f[:name] }.to_json};
+          let currentRecordId = null;
 
           function getHeaders() {
             return { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content };
           }
 
           window.loadRecordDetail = async function(id) {
+            currentRecordId = id;
             try {
               const resp = await fetch(apiBase + '/' + id, { headers: getHeaders() });
               const record = await resp.json();
@@ -679,6 +915,22 @@ class CanvasGeneratorService
               }).join('') + '<div class="row mb-2"><div class="col-sm-3 text-muted fw-semibold">Created</div><div class="col-sm-9">' + (data.created_at ? new Date(data.created_at).toLocaleString() : '-') + '</div></div>';
             } catch(e) { detailContent.innerHTML = '<p class="text-danger">Failed to load record</p>'; }
           };
+
+          document.getElementById('edit-btn')?.addEventListener('click', () => {
+            if (!currentRecordId) { alert('No record selected'); return; }
+            const controller = document.querySelector('[data-controller="module-canvas"]')?.__stimulusController;
+            if (controller) { controller.loadAndEditRecord(currentRecordId); }
+          });
+
+          document.getElementById('delete-btn')?.addEventListener('click', async () => {
+            if (!currentRecordId) { alert('No record selected'); return; }
+            if (!confirm('Are you sure you want to delete this record?')) return;
+            try {
+              await fetch(apiBase + '/' + currentRecordId, { method: 'DELETE', headers: getHeaders() });
+              detailContent.innerHTML = '<p class="text-success text-center py-4">Record deleted</p>';
+              currentRecordId = null;
+            } catch(e) { alert('Delete failed: ' + e.message); }
+          });
         })();
       JS
       css: <<~CSS
