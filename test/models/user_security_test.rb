@@ -60,7 +60,7 @@ class UserSecurityTest < ActiveSupport::TestCase
   test "password must contain special character" do
     user = User.new(email: 'test@example.com', password: 'Password123', entity: entities(:one))
     assert_not user.valid?
-    assert_includes user.errors[:password], 'must contain at least one special character'
+    assert_includes user.errors[:password], 'must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)'
   end
 
   test "password cannot contain whitespace" do
@@ -72,7 +72,7 @@ class UserSecurityTest < ActiveSupport::TestCase
   test "password cannot be too common" do
     user = User.new(email: 'test@example.com', password: 'password', entity: entities(:one))
     assert_not user.valid?
-    assert_includes user.errors[:password], 'is too common'
+    assert_includes user.errors[:password], 'is too common. Please choose a more unique password.'
   end
 
   test "valid complex password is accepted" do

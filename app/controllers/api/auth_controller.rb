@@ -2,10 +2,10 @@
 
 module Api
   class AuthController < ApplicationController
-    skip_before_action :authenticate_user!, only: [:login, :register, :verify_mfa, :login_with_device_token]
+    skip_before_action :authenticate_user!, only: [:login, :register, :verify_mfa, :login_with_device_token, :refresh_token]
     skip_before_action :verify_authenticity_token
 
-    before_action :authenticate_api_user!, only: [:me, :refresh_token, :logout, :regenerate_api_key]
+    before_action :authenticate_api_user!, only: [:me, :logout, :regenerate_api_key]
 
     def register
       # Validate required fields
