@@ -36,13 +36,13 @@ tags = ["stripe", "api-key"]
 [[rules]]
 id = "openai-api-key"
 description = "OpenAI API Key"
-regex = '''sk-[a-zA-Z0-9]{48}'''
+regex = '''sk-(proj-)?[a-zA-Z0-9\-_]{20,}'''
 tags = ["openai", "api-key"]
 
 [[rules]]
 id = "github-token"
 description = "GitHub Personal Access Token"
-regex = '''ghp_[0-9a-zA-Z]{36}'''
+regex = '''(ghp_|github_pat_)[0-9a-zA-Z_]{36,}'''
 tags = ["github", "token"]
 
 [[rules]]
@@ -55,6 +55,50 @@ paths = [
   '''test/fixtures/.*''',
   '''spec/fixtures/.*''',
   '''docs/examples/.*'''
+]
+
+[[rules]]
+id = "pinecone-api-key"
+description = "Pinecone API Key"
+regex = '''pcsk_[a-zA-Z0-9_]{40,}'''
+tags = ["pinecone", "api-key"]
+
+[[rules]]
+id = "elevenlabs-api-key"
+description = "Eleven Labs API Key"
+regex = '''sk_[a-f0-9]{40,}'''
+tags = ["elevenlabs", "api-key"]
+
+[[rules]]
+id = "deepgram-api-key"
+description = "Deepgram API Key"
+regex = '''[a-f0-9]{40}'''
+entropy = 3.5
+tags = ["deepgram", "api-key"]
+[rules.allowlist]
+regexes = [
+  '''test''',
+  '''demo''',
+  '''example'''
+]
+
+[[rules]]
+id = "openrouter-api-key"
+description = "Open Router API Key"
+regex = '''sk-or-v1-[a-zA-Z0-9_\-]{40,}'''
+tags = ["openrouter", "api-key"]
+
+[[rules]]
+id = "serper-api-key"
+description = "Serper API Key"
+regex = '''[a-f0-9]{40}'''
+entropy = 3.5
+tags = ["serper", "api-key"]
+[rules.allowlist]
+regexes = [
+  '''test''',
+  '''demo''',
+  '''example'''
 ]
 
 # Allowlist patterns - legitimate uses that should not trigger alerts
