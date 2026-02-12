@@ -81,5 +81,10 @@ module AmosLabs
     # Routes *.lp.{domain} requests to the LpController
     require_relative '../lib/middleware/subdomain_router'
     config.middleware.insert_after Middleware::CorsMiddleware, Middleware::SubdomainRouter
+
+    # Row-Level Security middleware (Story 0.7)
+    # Sets PostgreSQL session variable for entity isolation
+    require_relative '../app/middleware/row_level_security_middleware'
+    config.middleware.insert_after Middleware::SubdomainRouter, RowLevelSecurityMiddleware
   end
 end

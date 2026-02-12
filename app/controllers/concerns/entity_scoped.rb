@@ -3,6 +3,7 @@ module EntityScoped
 
   included do
     before_action :set_current_entity
+    before_action :set_rls_context
     helper_method :current_entity if respond_to?(:helper_method)
     helper_method :current_entity_user if respond_to?(:helper_method)
   end
@@ -68,5 +69,21 @@ module EntityScoped
     unless current_user.entity_admin?
       redirect_to root_path, alert: "You don't have permission to manage this entity."
     end
+  end
+
+  # Set RLS context for PostgreSQL Row-Level Security (Story 0.7)
+  def set_rls_context
+    # Store entity ID in thread-local variable for middleware to read
+    Thread.current[:current_entity_id] = current_entity&.id
+
+    # Also set PostgreSQL session variable directly for immediate effect
+    if current_entity
+      ActiveRecord::Base.connection.execute(
+        "SET LOCAL app.current_entity_id = #{current_entity.id.to_i}"
+      )
+    end
+  rescue => e
+    # Log but don't fail if RLS context setting fails
+    Rails.logger.warn "Failed to set RLS context: #{e.message}"
   end
 end

@@ -53,6 +53,9 @@ require "rails/test_help"
 require "mocha/minitest"
 require "minitest/mock"
 
+# Load test support files
+Dir[Rails.root.join('test', 'support', '**', '*.rb')].each { |f| require f }
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Stub AWS credentials in test environment to avoid IMDS calls
 # This prevents the "Error retrieving instance profile credentials" warnings
@@ -79,6 +82,12 @@ module ActiveSupport
     # Run tests in parallel with processes
     # Use limited workers to avoid database ownership issues in Docker
     parallelize(workers: ENV.fetch('PARALLEL_WORKERS', 4).to_i, with: :processes, threshold: 50)
+
+    # Setup RLS after parallel workers are forked
+    parallelize_setup do |worker|
+      # Enable RLS for each test worker's database
+      EnableRowLevelSecurity.new.migrate(:up) rescue nil
+    end
 
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
     fixtures :all
