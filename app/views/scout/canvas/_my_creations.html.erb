@@ -215,6 +215,7 @@
             <div class="creation-card" 
                  data-id="<%= mod.id %>" 
                  data-type="app_module"
+                 data-slug="<%= mod.slug %>"
                  data-status="<%= mod.respond_to?(:published?) && mod.published? ? 'published' : 'draft' %>"
                  data-title="<%= mod.name.downcase rescue '' %>">
               <div class="creation-preview">
@@ -239,10 +240,10 @@
                 </div>
               </div>
               <div class="creation-actions">
-                <button type="button" class="action-btn edit-btn" data-id="<%= mod.id %>" data-type="app_module" title="Edit">
+                <button type="button" class="action-btn edit-btn" data-id="<%= mod.id %>" data-type="app_module" data-slug="<%= mod.slug %>" title="Edit">
                   <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
                 </button>
-                <button type="button" class="action-btn preview-btn" data-id="<%= mod.id %>" data-type="app_module" title="Preview">
+                <button type="button" class="action-btn preview-btn" data-id="<%= mod.id %>" data-type="app_module" data-slug="<%= mod.slug %>" title="Preview">
                   <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
                 </button>
               </div>
@@ -1145,8 +1146,9 @@
     e.stopPropagation();
     const id = editBtn.dataset.id;
     const type = editBtn.dataset.type;
+    const slug = editBtn.dataset.slug;
     
-    console.log('✏️ Edit clicked:', type, id);
+    console.log('✏️ Edit clicked:', type, id, slug);
     
     let canvasType = 'landing_page_editor';
     let canvasData = {};
@@ -1157,8 +1159,15 @@
           canvasData = { landing_page_id: id };
           break;
         case 'app_module':
-          canvasType = 'module_manager';
-          canvasData = { module_id: id };
+          // Navigate directly to the module's default list canvas
+          // Falls back to module_manager if slug is missing
+          if (slug) {
+            canvasType = 'module_' + slug + '_list';
+            canvasData = { app_module_id: id };
+          } else {
+            canvasType = 'module_manager';
+            canvasData = { module_id: id };
+          }
           break;
         case 'workflow':
           canvasType = 'workflow_designer';
@@ -1184,12 +1193,18 @@
     const id = previewBtn.dataset.id;
     const type = previewBtn.dataset.type;
     
-    console.log('👁️ Preview clicked:', type, id);
+    const previewSlug = previewBtn.dataset.slug;
+    console.log('👁️ Preview clicked:', type, id, previewSlug);
     
     if (type === 'landing_page') {
       loadCanvas('landing_page_viewer', { landing_page_id: id });
     } else if (type === 'app_module') {
-      loadCanvas('module_preview', { module_id: id });
+      // Navigate directly to the module's default list canvas
+      if (previewSlug) {
+        loadCanvas('module_' + previewSlug + '_list', { app_module_id: id });
+      } else {
+        loadCanvas('module_manager', { module_id: id });
+      }
     }
   });
   

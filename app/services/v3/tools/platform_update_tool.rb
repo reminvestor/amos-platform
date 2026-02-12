@@ -17,8 +17,12 @@ module V3
             - Add custom field: type="schema", id="contact", data={ add_field: { name: "industry", field_type: "string" } }
             - Remove custom field: type="schema", id="contact", data={ remove_field: "industry" }
             
+            For app modules, use type="app_module" to update the module itself (name, description, schema fields, icon, etc.).
+            To update records WITHIN a module, use the module's slug as the type (e.g., type="project_tracker", id=5, data={...}).
+            
             Examples:
             - type: "contact", id: 42, data: { lifecycle_stage: "customer" }
+            - type: "app_module", id: 7, data: { name: "New Name", schema: { fields: [{ name: "priority", type: "select", options: ["low", "medium", "high"] }] } }
             - type: "landing_page", id: 189, data: { section: "hero", instruction: "Center the text" }
             - type: "landing_page", id: 189, data: { instruction: "Redesign with a dark theme and bold typography" }
           DESC
@@ -28,7 +32,7 @@ module V3
             properties: {
               type: {
                 type: "string",
-                description: "Object type to update (contact, campaign, landing_page, email_template, etc.)"
+                description: "Object type to update (contact, campaign, landing_page, email_template, app_module, etc.)"
               },
               id: {
                 type: ["string", "integer"],
@@ -76,6 +80,11 @@ module V3
           return regenerate_landing_page(id, data)
         end
 
+        # App module / module update — update the AppModule record itself
+        if %w[app_module app module].include?(type)
+          return update_app_module(id, data)
+        end
+
         # Check if type matches a dynamic module model
         module_result = find_and_update_module_record(type, id, data)
         return module_result if module_result
@@ -94,6 +103,101 @@ module V3
       end
 
       private
+
+      # ═══════════════════════════════════════════════════════════════
+      # APP MODULE UPDATES — update the AppModule record itself
+      # ═══════════════════════════════════════════════════════════════
+
+      def update_app_module(id, data)
+        # Find by ID or slug
+        app_module = entity.app_modules.find_by(id: id) ||
+                     entity.app_modules.find_by(slug: id.to_s)
+
+        return error_response("App module ##{id} not found") unless app_module
+
+        Rails.logger.info "[V3::PlatformUpdate] Updating app module: #{app_module.name} (##{app_module.id})"
+
+        updated_fields = []
+
+        # Direct attribute updates
+        direct_attrs = %w[name description icon status version show_in_menu menu_order menu_parent]
+        direct_updates = data.select { |k, _| direct_attrs.include?(k.to_s) }
+        if direct_updates.any?
+          app_module.assign_attributes(direct_updates)
+          updated_fields.concat(direct_updates.keys.map(&:to_s))
+        end
+
+        # Schema updates — merge new/changed fields into the existing schema
+        new_schema = data["schema"] || data[:schema]
+        if new_schema.is_a?(Hash)
+          existing_schema = app_module.metadata&.dig("schema") || {}
+          new_fields = new_schema["fields"] || new_schema[:fields]
+
+          if new_fields.is_a?(Array)
+            existing_fields = existing_schema["fields"] || []
+
+            new_fields.each do |new_field|
+              field_name = new_field["name"] || new_field[:name]
+              existing_idx = existing_fields.index { |f| (f["name"] || f[:name]) == field_name }
+              if existing_idx
+                # Merge into existing field definition
+                existing_fields[existing_idx] = existing_fields[existing_idx].merge(new_field.stringify_keys)
+              else
+                # Add new field
+                existing_fields << new_field.stringify_keys
+              end
+            end
+
+            existing_schema["fields"] = existing_fields
+          end
+
+          # Merge any other schema-level keys (e.g., module name, description)
+          merged_schema = existing_schema.merge(new_schema.stringify_keys.except("fields"))
+          merged_schema["fields"] = existing_schema["fields"] if existing_schema["fields"]
+
+          app_module.metadata = (app_module.metadata || {}).merge("schema" => merged_schema)
+          updated_fields << "schema"
+        end
+
+        # Metadata updates (non-schema)
+        new_metadata = data["metadata"] || data[:metadata]
+        if new_metadata.is_a?(Hash)
+          app_module.metadata = (app_module.metadata || {}).merge(new_metadata.stringify_keys)
+          updated_fields << "metadata"
+        end
+
+        # Components updates
+        new_components = data["components"] || data[:components]
+        if new_components.is_a?(Hash)
+          app_module.components = (app_module.components || {}).merge(new_components.stringify_keys)
+          updated_fields << "components"
+        end
+
+        return error_response("No valid fields to update for app module") if updated_fields.empty?
+
+        app_module.save!
+
+        # Return module info with canvas suggestion so the user sees their module
+        default_canvas = app_module.module_canvases.find_by(is_default: true)
+        canvas_slug = default_canvas ? "module_#{default_canvas.slug}" : nil
+
+        success_response(
+          id: app_module.id,
+          type: "app_module",
+          name: app_module.name,
+          slug: app_module.slug,
+          status: app_module.status,
+          updated_fields: updated_fields,
+          message: "Updated app '#{app_module.name}' (#{updated_fields.join(', ')})",
+          canvas_type: canvas_slug,
+          canvas_data: { app_module_id: app_module.id }
+        )
+      rescue ActiveRecord::RecordInvalid => e
+        error_response("Validation failed: #{e.message}")
+      rescue => e
+        Rails.logger.error "[V3::PlatformUpdate] App module update failed: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+        error_response("Failed to update app module: #{e.message}")
+      end
 
       def edit_landing_page_section(landing_page_id, data)
         section = data["section"] || data[:section]

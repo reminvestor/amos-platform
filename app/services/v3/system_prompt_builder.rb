@@ -199,7 +199,7 @@ module V3
         ## Tool Selection
         
         `platform_create` — Create any object: contact, email_template, campaign, automation, landing_page, integration, app, contact_group, sync, scheduled_task, support_ticket, or any custom app type.
-        `platform_update` — Update any object by type + ID. Also: edit landing page sections, manage custom fields (add_field/remove_field on schema).
+        `platform_update` — Update any object by type + ID. Also: edit landing page sections, manage custom fields (add_field/remove_field on schema), update app modules (type="app_module").
         `platform_query` — Read-only queries: contacts, campaigns, landing_pages, schema, stats, integrations, integration_actions, documents.
         `platform_execute` — Run actions: integration operations, send_email, send_campaign, publish_landing_page, generate_file, generate_image, delete records.
         `web_search` — Internet lookups for info, docs, facts.
@@ -270,7 +270,7 @@ module V3
       <<~KNOWLEDGE
         ## Platform Knowledge
         
-        CUSTOM APPS: Users can build custom apps ("build a project management app"). After building, CRUD records with the same tools: platform_create(type: "task", data: {...}), platform_query(type: "tasks"). Use platform_query(type: "schema") to discover all available types. Module types use slugs (e.g., "project_management_task"). Sub-modules have relationships (filter by parent ID).
+        CUSTOM APPS: Users can build custom apps ("build a project management app"). After building, CRUD records with the same tools: platform_create(type: "task", data: {...}), platform_query(type: "tasks"). Use platform_query(type: "schema") to discover all available types. Module types use slugs (e.g., "project_management_task"). Sub-modules have relationships (filter by parent ID). To UPDATE an existing app module (rename, add fields, change schema, etc.), use platform_update(type: "app_module", id: MODULE_ID, data: { ... }). Do NOT create a new app when the user wants to modify an existing one.
         
         AUTOMATIONS: Triggers: contact_created, form_submit, record_updated, status_changed, field_changed, schedule, webhook. Actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user. Landing page forms auto-create contacts (built-in). A "welcome email flow" = email_template + automation(trigger: "contact_created", action: "send_email").
         

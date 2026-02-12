@@ -49,6 +49,14 @@ Use the platform_create tool with type: "app_module" and data containing:
 - slug: "project-tracker"
 - schema: { fields: [{ name: "project_name", type: "text", required: true }, { name: "status", type: "select", options: ["planning", "active", "complete"] }, { name: "due_date", type: "date" }, { name: "owner", type: "reference", reference_type: "contact" }, { name: "budget", type: "currency" }] }
 
+### Update an existing application
+Use the platform_update tool with type: "app_module", id: 42, and data containing the fields to change:
+- Rename: data: { name: "New Name" }
+- Add fields to schema: data: { schema: { fields: [{ name: "priority", type: "select", options: ["low", "medium", "high"] }] } }
+- Change description: data: { description: "Updated description" }
+- Change icon: data: { icon: "clipboard" }
+IMPORTANT: When the user wants to modify an existing app, always use platform_update — never create a new one.
+
 ### Open app designer
 Use the load_canvas tool with canvas_name: "app_designer"
 Or with canvas_name: "app_designer", canvas_data: { app_module_id: 42 }

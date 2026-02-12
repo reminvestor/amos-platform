@@ -1598,9 +1598,16 @@ class ScoutController < ApplicationController
             canvas_title = module_canvas[:title]
             Rails.logger.info "[ModuleCanvas] ✅ Loaded canvas '#{canvas_title}', content length: #{canvas_content&.length || 0}"
           else
-            canvas_content = render_default_canvas
-            canvas_title = "Module Not Found"
-            Rails.logger.warn "[ModuleCanvas] ❌ Canvas not found: #{full_canvas_slug}"
+            # Fallback: if module canvas not found, show the module_manager instead of
+            # the default dashboard so the user stays in the apps context
+            Rails.logger.warn "[ModuleCanvas] ❌ Canvas not found: #{full_canvas_slug}, falling back to module_manager"
+            @modules = current_entity.app_modules.visible_to(current_user).order(updated_at: :desc)
+            canvas_content = render_to_string(
+              partial: "scout/canvas/module_manager",
+              locals: { canvas_data: canvas_data },
+              formats: [:html]
+            )
+            canvas_title = "Your Apps"
           end
         # Dynamic fallback: Check if a partial exists for this canvas type
         # This allows adding new agent views without modifying the controller
