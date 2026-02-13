@@ -1898,11 +1898,11 @@ export default class extends Controller {
     this.updateCanvasToggleButtons()
   }
 
-  // Load dashboard canvas (default home view)
+  // Load dashboard canvas (routes to Command Center)
   loadDashboardCanvas(event) {
     if (event) this.setActiveNavItem(event)
-    console.log("🏠 Loading dashboard canvas")
-    this.loadScoutCanvas("default", {})
+    console.log("🏠 Loading Command Center (default home)")
+    this.loadScoutCanvas("operations_dashboard", {})
   }
 
   // Restore the last canvas that was closed

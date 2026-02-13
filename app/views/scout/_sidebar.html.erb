@@ -10,14 +10,14 @@
   </div>
 
   <div class="nav-items">
-    <div class="nav-item" data-action="click->scout#loadDashboardCanvas">
-      <i data-lucide="home"></i>
-      <span class="nav-text">Home</span>
-    </div>
-    <div class="nav-item" data-action="click->scout#loadOperationsDashboardCanvas" title="Command center — system health, notifications, and monitoring">
+    <div class="nav-item" data-action="click->scout#loadOperationsDashboardCanvas" title="Command Center — system health, notifications, and monitoring">
       <i data-lucide="radar"></i>
       <span class="nav-text">Command Center</span>
       <span id="system-notifications-badge" class="nav-badge notification-badge" style="display: none;">0</span>
+    </div>
+    <div class="nav-item" data-action="click->scout#loadMyCreationsCanvas" title="Your apps, pages, and automations">
+      <i data-lucide="sparkles"></i>
+      <span class="nav-text">Apps & Automations</span>
     </div>
     <div class="nav-item" data-action="click->scout#loadWorkInboxCanvas" title="Agent work inbox and file downloads">
       <i data-lucide="inbox"></i>
@@ -44,10 +44,6 @@
     <div class="nav-item" data-action="click->scout#loadIntegrationsCanvas" title="Connected services">
       <i data-lucide="plug"></i>
       <span class="nav-text">Integrations</span>
-    </div>
-    <div class="nav-item" data-action="click->scout#loadMyCreationsCanvas" title="Your apps, pages, and automations">
-      <i data-lucide="sparkles"></i>
-      <span class="nav-text">Apps & Automations</span>
     </div>
 
     <%# Custom module canvases %>

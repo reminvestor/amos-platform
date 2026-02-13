@@ -1196,7 +1196,7 @@ class ScoutController < ApplicationController
       when "task_progress"
         canvas_content = render_task_progress(canvas_data)
         canvas_title = "Task Progress"
-      when "operations_command_center", "operations_dashboard"
+      when "operations_command_center", "operations_dashboard", "default", "dashboard"
         canvas_content = render_to_string(
           partial: "scout/canvas/operations_dashboard",
           locals: { canvas_data: canvas_data },

@@ -160,7 +160,7 @@
       <div class="health-panel">
         <h5 class="mb-3"><i data-lucide="plug" class="me-2" style="width: 18px; height: 18px;"></i> Integrations & Domains</h5>
         <div class="health-items">
-          <div class="health-item clickable" onclick="document.dispatchEvent(new CustomEvent('scout:load-canvas', { detail: { canvas: 'integrations', data: {} } }))">
+          <div class="health-item clickable" onclick="document.dispatchEvent(new CustomEvent('scout:load-canvas', { detail: { canvas: 'integrations_manager', data: {} } }))">
             <span class="health-label">Connected Integrations</span>
             <span class="health-value text-success"><%= connections_active %><small class="text-muted fw-normal"> / <%= connections_total %></small></span>
           </div>

@@ -504,13 +504,22 @@
   // Track currently expanded item
   let currentlyExpandedItem = null;
   
-  // Click on item to view details
+  // Click on item to view details (toggle: click again to collapse)
   document.querySelectorAll('.inbox-item').forEach(item => {
     item.addEventListener('click', function(e) {
       if (e.target.closest('.inbox-item-actions')) return;
       if (e.target.closest('.close-detail-btn')) return;
+      if (e.target.closest('.work-item-detail-panel')) return;
       
       const itemId = this.dataset.itemId;
+      
+      // If this item is already expanded, collapse it
+      if (this.classList.contains('expanded')) {
+        console.log('👁️ Collapsing item:', itemId);
+        collapseWorkItemDetail();
+        return;
+      }
+      
       console.log('👁️ Viewing item:', itemId);
       
       // Mark as read visually
@@ -626,7 +635,7 @@
     panel.className = 'work-item-detail-panel';
     panel.innerHTML = `
       <div class="detail-panel-content">
-        <div class="detail-panel-header-inline" style="display: flex; align-items: flex-start; justify-content: space-between;">
+        <div class="detail-panel-header-inline" style="display: flex; align-items: flex-start; justify-content: space-between; cursor: pointer;" onclick="collapseWorkItemDetail()">
           <div>
             <h5 class="mb-1">${data.title || 'Work Item'}</h5>
             <small class="text-muted">${data.subtitle || ''}</small>
