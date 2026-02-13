@@ -14,6 +14,11 @@
       <i data-lucide="home"></i>
       <span class="nav-text">Home</span>
     </div>
+    <div class="nav-item" data-action="click->scout#loadOperationsDashboardCanvas" title="Command center — system health, notifications, and monitoring">
+      <i data-lucide="radar"></i>
+      <span class="nav-text">Command Center</span>
+      <span id="system-notifications-badge" class="nav-badge notification-badge" style="display: none;">0</span>
+    </div>
     <div class="nav-item" data-action="click->scout#loadWorkInboxCanvas" title="Agent work inbox and file downloads">
       <i data-lucide="inbox"></i>
       <span class="nav-text">Work Inbox</span>
@@ -43,11 +48,6 @@
     <div class="nav-item" data-action="click->scout#loadMyCreationsCanvas" title="Your apps, pages, and automations">
       <i data-lucide="sparkles"></i>
       <span class="nav-text">Apps & Automations</span>
-    </div>
-    <div class="nav-item" data-action="click->scout#loadOperationsDashboardCanvas" title="System notifications">
-      <i data-lucide="bell"></i>
-      <span class="nav-text">Notifications</span>
-      <span id="system-notifications-badge" class="nav-badge notification-badge" style="display: none;">0</span>
     </div>
 
     <%# Custom module canvases %>

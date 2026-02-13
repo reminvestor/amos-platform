@@ -47,15 +47,24 @@ class AgentPluginsController < ApplicationController
 
   def update
     if @agent.update(agent_params)
-      redirect_to agent_plugin_path(@agent), notice: 'Agent updated successfully.'
+      respond_to do |format|
+        format.html { redirect_to agent_plugin_path(@agent), notice: 'Agent updated successfully.' }
+        format.json { render json: { success: true, status: @agent.status } }
+      end
     else
-      render :edit, status: :unprocessable_entity
+      respond_to do |format|
+        format.html { render :edit, status: :unprocessable_entity }
+        format.json { render json: { success: false, errors: @agent.errors.full_messages }, status: :unprocessable_entity }
+      end
     end
   end
 
   def destroy
     @agent.destroy
-    redirect_to agent_plugins_path, notice: 'Agent deleted successfully.'
+    respond_to do |format|
+      format.html { redirect_to agent_plugins_path, notice: 'Agent deleted successfully.' }
+      format.json { render json: { success: true } }
+    end
   end
 
   # Import a Claude SKILL.md file

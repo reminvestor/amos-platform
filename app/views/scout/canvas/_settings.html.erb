@@ -30,6 +30,13 @@
       </button>
     </li>
     <li class="nav-item" role="presentation">
+      <button class="nav-link <%= 'active' if active_tab == 'skills' %>" id="settings-skills-tab"
+              data-bs-toggle="tab" data-bs-target="#settings-tab-skills"
+              type="button" role="tab" aria-selected="<%= active_tab == 'skills' %>">
+        <i data-lucide="puzzle" aria-hidden="true"></i> Skills & Plugins
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
       <button class="nav-link <%= 'active' if active_tab == 'menu' %>" id="settings-menu-tab"
               data-bs-toggle="tab" data-bs-target="#settings-tab-menu"
               type="button" role="tab" aria-selected="<%= active_tab == 'menu' %>">
@@ -353,6 +360,177 @@
     </div>
 
     <!-- ============================== -->
+    <!-- SKILLS & PLUGINS TAB            -->
+    <!-- ============================== -->
+    <div class="tab-pane fade <%= 'show active' if active_tab == 'skills' %>" id="settings-tab-skills" role="tabpanel">
+      <div class="settings-section-content">
+        <%
+          entity_skills = AgentPlugin.where(entity: current_entity).order(created_at: :desc) rescue []
+          imported_skills = entity_skills.select { |a| a.configuration&.dig('skill_format') == 'claude_skill_md' }
+          custom_loadouts = entity_skills.reject { |a| a.configuration&.dig('skill_format') == 'claude_skill_md' }
+          builtin_skills = begin
+            SkillLibraryService::INTEGRATION_SKILLS.to_a rescue []
+          rescue NameError
+            []
+          end
+        %>
+
+        <p class="text-muted small mb-3">
+          Skills extend your AI agent's abilities. Import SKILL.md files or manage custom agent loadouts.
+        </p>
+
+        <!-- Import Skill Section -->
+        <div class="settings-card mb-4">
+          <h6 class="settings-card-title">
+            <i data-lucide="upload" aria-hidden="true"></i> Import a Skill
+          </h6>
+          <form id="settings-skill-import-form" enctype="multipart/form-data">
+            <!-- Import sub-tabs -->
+            <ul class="nav nav-pills nav-fill mb-3" role="tablist" style="gap: 0.25rem;">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active py-1 px-2" style="font-size: 0.75rem;" id="skill-paste-tab"
+                        data-bs-toggle="pill" data-bs-target="#skill-paste-panel" type="button" role="tab">
+                  <i data-lucide="clipboard-paste" aria-hidden="true" style="width: 12px; height: 12px;" class="me-1"></i> Paste
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link py-1 px-2" style="font-size: 0.75rem;" id="skill-url-tab"
+                        data-bs-toggle="pill" data-bs-target="#skill-url-panel" type="button" role="tab">
+                  <i data-lucide="link" aria-hidden="true" style="width: 12px; height: 12px;" class="me-1"></i> URL
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link py-1 px-2" style="font-size: 0.75rem;" id="skill-file-tab"
+                        data-bs-toggle="pill" data-bs-target="#skill-file-panel" type="button" role="tab">
+                  <i data-lucide="file-up" aria-hidden="true" style="width: 12px; height: 12px;" class="me-1"></i> Upload File
+                </button>
+              </li>
+            </ul>
+
+            <div class="tab-content">
+              <!-- Paste -->
+              <div class="tab-pane fade show active" id="skill-paste-panel" role="tabpanel">
+                <textarea id="skill-paste-content" class="form-control form-control-sm font-monospace" rows="6"
+                          placeholder="# Skill Name&#10;&#10;Brief description...&#10;&#10;## Instructions&#10;&#10;Step-by-step..." style="font-size: 0.75rem;"></textarea>
+              </div>
+              <!-- URL -->
+              <div class="tab-pane fade" id="skill-url-panel" role="tabpanel">
+                <input type="text" id="skill-url-input" class="form-control form-control-sm"
+                       placeholder="https://github.com/user/repo/blob/main/.claude/skills/my-skill/SKILL.md">
+                <div class="form-text" style="font-size: 0.7rem;">GitHub blob URLs are auto-converted to raw format.</div>
+              </div>
+              <!-- File Upload -->
+              <div class="tab-pane fade" id="skill-file-panel" role="tabpanel">
+                <input type="file" id="skill-file-input" class="form-control form-control-sm" accept=".md,.markdown,text/markdown">
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end mt-2">
+              <button type="button" class="btn btn-sm btn-primary" onclick="window.settingsImportSkill()">
+                <i data-lucide="download" aria-hidden="true" style="width: 14px; height: 14px;" class="me-1"></i>
+                Import Skill
+              </button>
+            </div>
+            <div id="skill-import-status" class="small mt-2" style="display: none;"></div>
+          </form>
+        </div>
+
+        <!-- Imported Skills -->
+        <div class="settings-card mb-4">
+          <h6 class="settings-card-title">
+            <i data-lucide="puzzle" aria-hidden="true"></i> Imported Skills
+            <span class="badge bg-primary bg-opacity-25 text-primary ms-2" style="font-size: 0.7rem;"><%= imported_skills.size %></span>
+          </h6>
+          <% if imported_skills.any? %>
+            <div class="d-flex flex-column gap-2">
+              <% imported_skills.each do |skill| %>
+                <div class="d-flex align-items-center justify-content-between py-2 px-2 rounded" style="background: var(--scout-secondary, var(--bs-tertiary-bg));">
+                  <div class="d-flex align-items-center gap-2">
+                    <i data-lucide="file-code" aria-hidden="true" style="width: 16px; height: 16px; color: var(--scout-primary, #7C3AED);"></i>
+                    <div>
+                      <div class="fw-semibold" style="font-size: 0.8125rem;"><%= skill.name %></div>
+                      <div class="text-muted" style="font-size: 0.7rem;">
+                        <%= skill.description&.truncate(80) || 'No description' %>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="badge <%= skill.status == 'active' ? 'bg-success' : 'bg-secondary' %> bg-opacity-25 <%= skill.status == 'active' ? 'text-success' : 'text-secondary' %>"
+                          style="font-size: 0.65rem;">
+                      <%= skill.status.capitalize %>
+                    </span>
+                    <button class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.7rem;"
+                            onclick="window.settingsToggleSkillStatus(<%= skill.id %>, '<%= skill.status == 'active' ? 'draft' : 'active' %>')"
+                            title="<%= skill.status == 'active' ? 'Deactivate' : 'Activate' %>">
+                      <i data-lucide="<%= skill.status == 'active' ? 'pause' : 'play' %>" aria-hidden="true" style="width: 12px; height: 12px;"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size: 0.7rem;"
+                            onclick="window.settingsDeleteSkill(<%= skill.id %>, '<%= j(skill.name) %>')" title="Delete">
+                      <i data-lucide="trash-2" aria-hidden="true" style="width: 12px; height: 12px;"></i>
+                    </button>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-muted small mb-0">No imported skills yet. Use the import form above to add SKILL.md files.</p>
+          <% end %>
+        </div>
+
+        <!-- Custom Agent Loadouts -->
+        <div class="settings-card mb-4">
+          <h6 class="settings-card-title">
+            <i data-lucide="bot" aria-hidden="true"></i> Agent Loadouts
+            <span class="badge bg-primary bg-opacity-25 text-primary ms-2" style="font-size: 0.7rem;"><%= custom_loadouts.size %></span>
+          </h6>
+          <% if custom_loadouts.any? %>
+            <div class="d-flex flex-column gap-2">
+              <% custom_loadouts.each do |loadout| %>
+                <div class="d-flex align-items-center justify-content-between py-2 px-2 rounded" style="background: var(--scout-secondary, var(--bs-tertiary-bg));">
+                  <div class="d-flex align-items-center gap-2">
+                    <i data-lucide="bot" aria-hidden="true" style="width: 16px; height: 16px; color: var(--scout-primary, #7C3AED);"></i>
+                    <div>
+                      <div class="fw-semibold" style="font-size: 0.8125rem;"><%= loadout.name %></div>
+                      <div class="text-muted" style="font-size: 0.7rem;">
+                        <%= loadout.role&.titleize %> &middot; <%= loadout.description&.truncate(60) || 'No description' %>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center gap-1">
+                    <span class="badge <%= loadout.status == 'active' ? 'bg-success' : 'bg-secondary' %> bg-opacity-25 <%= loadout.status == 'active' ? 'text-success' : 'text-secondary' %>"
+                          style="font-size: 0.65rem;">
+                      <%= loadout.status.capitalize %>
+                    </span>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-muted small mb-0">No custom loadouts configured. Loadouts define agent personas with custom tool permissions and budgets.</p>
+          <% end %>
+        </div>
+
+        <!-- Built-in Skills -->
+        <% if builtin_skills.any? %>
+          <div class="settings-card">
+            <h6 class="settings-card-title">
+              <i data-lucide="library" aria-hidden="true"></i> Built-in Integration Skills
+              <span class="badge bg-info bg-opacity-25 text-info ms-2" style="font-size: 0.7rem;"><%= builtin_skills.size %></span>
+            </h6>
+            <div class="d-flex flex-wrap gap-2">
+              <% builtin_skills.each do |skill_key, skill_info| %>
+                <div class="d-flex align-items-center gap-1 px-2 py-1 rounded" style="background: var(--scout-secondary, var(--bs-tertiary-bg)); font-size: 0.75rem;">
+                  <i data-lucide="zap" aria-hidden="true" style="width: 12px; height: 12px; color: #EAB308;"></i>
+                  <span><%= skill_info[:name] rescue skill_key.to_s.titleize %></span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- ============================== -->
     <!-- MENU CONFIG TAB                 -->
     <!-- ============================== -->
     <div class="tab-pane fade <%= 'show active' if active_tab == 'menu' %>" id="settings-tab-menu" role="tabpanel">
@@ -398,24 +576,34 @@
           <h6 class="settings-card-title">
             <i data-lucide="bell" aria-hidden="true"></i> Communications
           </h6>
-          <div class="d-flex flex-column gap-2">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="slack-notif-toggle"
-                     <%= 'checked' if slack_enabled %>
-                     onchange="window.settingsTogglePlatformSetting('slack_notifications_enabled', this.checked)">
-              <label class="form-check-label" for="slack-notif-toggle">
-                <i data-lucide="hash" aria-hidden="true" style="width: 14px; height: 14px;" class="me-1"></i>
-                Slack Notifications
-              </label>
+          <div class="d-flex flex-column gap-3">
+            <div>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="slack-notif-toggle"
+                       <%= 'checked' if slack_enabled %>
+                       onchange="window.settingsTogglePlatformSetting('slack_notifications_enabled', this.checked)">
+                <label class="form-check-label" for="slack-notif-toggle">
+                  <i data-lucide="messages-square" aria-hidden="true" style="width: 14px; height: 14px;" class="me-1"></i>
+                  Member Collaboration
+                </label>
+              </div>
+              <div class="form-text ms-4 ps-2" style="font-size: 0.75rem;">
+                Enable in-app messaging so team members can communicate and collaborate without leaving the platform.
+              </div>
             </div>
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="email-notif-toggle"
-                     <%= 'checked' if email_enabled %>
-                     onchange="window.settingsTogglePlatformSetting('email_notifications_enabled', this.checked)">
-              <label class="form-check-label" for="email-notif-toggle">
-                <i data-lucide="mail" aria-hidden="true" style="width: 14px; height: 14px;" class="me-1"></i>
-                Email Notifications
-              </label>
+            <div>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="email-notif-toggle"
+                       <%= 'checked' if email_enabled %>
+                       onchange="window.settingsTogglePlatformSetting('email_notifications_enabled', this.checked)">
+                <label class="form-check-label" for="email-notif-toggle">
+                  <i data-lucide="mail" aria-hidden="true" style="width: 14px; height: 14px;" class="me-1"></i>
+                  Email Notifications
+                </label>
+              </div>
+              <div class="form-text ms-4 ps-2" style="font-size: 0.75rem;">
+                Send email alerts for important updates and task completions.
+              </div>
             </div>
           </div>
         </div>
@@ -776,6 +964,118 @@
       setTimeout(() => { el.style.display = 'none'; }, 2000);
     }
   }
+
+  // ── Skill import/management ──
+  window.settingsImportSkill = function() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    const statusEl = document.getElementById('skill-import-status');
+    const formData = new FormData();
+
+    // Determine which import method is active
+    const pasteContent = document.getElementById('skill-paste-content')?.value?.trim();
+    const urlInput = document.getElementById('skill-url-input')?.value?.trim();
+    const fileInput = document.getElementById('skill-file-input');
+
+    if (pasteContent) {
+      formData.append('skill_content', pasteContent);
+    } else if (urlInput) {
+      formData.append('skill_url', urlInput);
+    } else if (fileInput?.files?.length) {
+      formData.append('skill_file', fileInput.files[0]);
+    } else {
+      if (statusEl) {
+        statusEl.style.display = 'block';
+        statusEl.className = 'small mt-2 text-danger';
+        statusEl.innerHTML = '<i data-lucide="alert-circle" style="width:12px;height:12px;" class="me-1"></i> Please paste content, enter a URL, or upload a file.';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.className = 'small mt-2 text-muted';
+      statusEl.textContent = 'Importing...';
+    }
+
+    fetch('<%= import_skill_agent_plugins_path %>', {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
+      body: formData
+    }).then(r => {
+      if (r.redirected) {
+        // Success - reload the settings canvas to show the new skill
+        if (statusEl) {
+          statusEl.className = 'small mt-2 text-success';
+          statusEl.innerHTML = '<i data-lucide="check" style="width:12px;height:12px;" class="me-1"></i> Skill imported! Refreshing...';
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        setTimeout(() => {
+          const scoutEl = document.querySelector('[data-controller="scout"]');
+          if (scoutEl && scoutEl.__stimulusController) {
+            scoutEl.__stimulusController.loadScoutCanvas('settings', { tab: 'skills' });
+          }
+        }, 500);
+        return null;
+      }
+      return r.text();
+    }).then(html => {
+      if (html && statusEl) {
+        statusEl.className = 'small mt-2 text-success';
+        statusEl.innerHTML = '<i data-lucide="check" style="width:12px;height:12px;" class="me-1"></i> Skill imported! Refreshing...';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        setTimeout(() => {
+          const scoutEl = document.querySelector('[data-controller="scout"]');
+          if (scoutEl && scoutEl.__stimulusController) {
+            scoutEl.__stimulusController.loadScoutCanvas('settings', { tab: 'skills' });
+          }
+        }, 500);
+      }
+    }).catch(err => {
+      console.error('Skill import failed:', err);
+      if (statusEl) {
+        statusEl.className = 'small mt-2 text-danger';
+        statusEl.innerHTML = '<i data-lucide="alert-circle" style="width:12px;height:12px;" class="me-1"></i> Import failed. Check content and try again.';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+    });
+  };
+
+  window.settingsToggleSkillStatus = function(skillId, newStatus) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    fetch('/agent_plugins/' + skillId, {
+      method: 'PATCH',
+      headers: {
+        'X-CSRF-Token': csrfToken,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ agent_plugin: { status: newStatus } })
+    }).then(r => {
+      // Refresh the skills tab
+      const scoutEl = document.querySelector('[data-controller="scout"]');
+      if (scoutEl && scoutEl.__stimulusController) {
+        scoutEl.__stimulusController.loadScoutCanvas('settings', { tab: 'skills' });
+      }
+    }).catch(err => console.error('Toggle skill failed:', err));
+  };
+
+  window.settingsDeleteSkill = function(skillId, skillName) {
+    if (!confirm('Delete skill "' + skillName + '"? This cannot be undone.')) return;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    fetch('/agent_plugins/' + skillId, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRF-Token': csrfToken,
+        'Accept': 'application/json'
+      }
+    }).then(r => {
+      const scoutEl = document.querySelector('[data-controller="scout"]');
+      if (scoutEl && scoutEl.__stimulusController) {
+        scoutEl.__stimulusController.loadScoutCanvas('settings', { tab: 'skills' });
+      }
+    }).catch(err => console.error('Delete skill failed:', err));
+  };
 
   // Initialize Lucide icons after render
   setTimeout(function() {
