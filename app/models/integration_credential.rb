@@ -127,7 +127,21 @@ class IntegrationCredential < ApplicationRecord
 
       { "Authorization" => "Basic #{encoded}" }
     when "header"
-      { auth_field_name => credentials["api_key"] || credentials["token"] }
+      # Check if integration has sso-key auth_config (GoDaddy pattern)
+      auth_config = connection.integration.auth_config
+      if auth_config.is_a?(Hash) && auth_config['header_template'].present?
+        template = auth_config['header_template']
+        header_name = auth_config['header_name'] || 'Authorization'
+        # Replace placeholders like {api_key}, {api_secret}
+        value = template.dup
+        value.scan(/\{(\w+)\}/).flatten.each do |placeholder|
+          credential_value = credentials[placeholder] || credentials[placeholder.to_sym] || ''
+          value = value.gsub("{#{placeholder}}", credential_value.to_s)
+        end
+        { header_name => value }
+      else
+        { auth_field_name => credentials["api_key"] || credentials["token"] }
+      end
     else
       {}
     end

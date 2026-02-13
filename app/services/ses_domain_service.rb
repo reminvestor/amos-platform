@@ -265,50 +265,82 @@ class SesDomainService
     return unless custom_domain.can_auto_configure?
     
     connection = custom_domain.connection
-    executor = IntegrationExecutorService.new(connection: connection)
     
-    # Collect all records to add
-    records_to_add = []
-    
-    # DKIM records
-    dns_records[:dkim]&.each do |dkim|
-      records_to_add << {
-        type: 'CNAME',
-        name: dkim[:name].gsub(".#{custom_domain.domain_name}", ''),
-        data: dkim[:value],
-        ttl: 3600
-      }
+    begin
+      api_service = IntegrationApiService.new(connection)
+      operation = connection.integration.integration_operations.find_by(operation_id: 'godaddy.add_dns_record')
+      
+      unless operation
+        Rails.logger.warn "GoDaddy add_dns_record operation not found - skipping auto email DNS"
+        return
+      end
+      
+      # Collect all records to add
+      records_to_add = []
+      
+      # DKIM records
+      dns_records[:dkim]&.each do |dkim|
+        records_to_add << {
+          type: 'CNAME',
+          name: dkim[:name].gsub(".#{custom_domain.domain_name}", ''),
+          data: dkim[:value],
+          ttl: 3600
+        }
+      end
+      
+      # SPF record (TXT)
+      if dns_records[:spf]
+        records_to_add << {
+          type: 'TXT',
+          name: '@',
+          data: dns_records[:spf][:value],
+          ttl: 3600
+        }
+      end
+      
+      # DMARC record (TXT)
+      if dns_records[:dmarc]
+        records_to_add << {
+          type: 'TXT',
+          name: '_dmarc',
+          data: dns_records[:dmarc][:value],
+          ttl: 3600
+        }
+      end
+      
+      # MX record for MAIL FROM domain
+      if dns_records[:mail_from]
+        records_to_add << {
+          type: 'MX',
+          name: "mail",
+          data: dns_records[:mail_from][:value]&.gsub(/^\d+\s+/, ''),
+          priority: 10,
+          ttl: 3600
+        }
+      end
+      
+      # MAIL FROM SPF record
+      if dns_records[:mail_from_spf]
+        records_to_add << {
+          type: 'TXT',
+          name: 'mail',
+          data: dns_records[:mail_from_spf][:value],
+          ttl: 3600
+        }
+      end
+      
+      # Execute via IntegrationApiService (PATCH /v1/domains/{domain}/records)
+      api_service.execute_operation(
+        operation,
+        params: { domain: custom_domain.domain_name },
+        body: records_to_add
+      )
+      
+      # Schedule verification check
+      CustomDomainVerificationJob.set(wait: 5.minutes).perform_later(custom_domain.id, 'email')
+    rescue => e
+      Rails.logger.error "Auto email DNS configuration failed: #{e.message}"
     end
-    
-    # SPF record (TXT)
-    if dns_records[:spf]
-      records_to_add << {
-        type: 'TXT',
-        name: '@',
-        data: dns_records[:spf][:value],
-        ttl: 3600
-      }
-    end
-    
-    # DMARC record (TXT)
-    if dns_records[:dmarc]
-      records_to_add << {
-        type: 'TXT',
-        name: '_dmarc',
-        data: dns_records[:dmarc][:value],
-        ttl: 3600
-      }
-    end
-    
-    # Add records via GoDaddy
-    executor.execute(
-      'godaddy.add_dns_record',
-      domain: custom_domain.domain_name,
-      records: records_to_add
-    )
-    
-    # Schedule verification check
-    CustomDomainVerificationJob.set(wait: 5.minutes).perform_later(custom_domain.id, 'email')
   end
   
   # =========================================

@@ -434,24 +434,30 @@ class GuidanceLibrary
     custom_domain_management: {
       title: "Custom Domain Management",
       expertise: <<~GUIDANCE.strip,
-        ## Full Domain Setup Flow
-        1. **Register**: platform_create(type: "custom_domain", data: { domain_name: "example.com" })
-           - Creates a CNAME target (e.g., example-com.custom.amoslabs.co)
-           - Tell the user to add a CNAME record pointing their domain to that target
-        2. **Verify Web DNS**: platform_execute(action: "verify_domain", domain_id: ID)
-           - Checks if CNAME is configured; SSL auto-provisioned on success
-        3. **Verify Email (optional)**: platform_execute(action: "verify_email_domain", domain_id: ID)
-           - Returns DKIM (3 CNAME records), SPF (TXT), DMARC (TXT) records
-        4. **Assign to assets**: platform_execute(action: "assign_domain", domain_id: ID, type: "landing_page", id: LP_ID)
-        5. **Query domains**: platform_query(type: "custom_domains")
-        
-        ## DNS Guidance
-        - Landing pages/websites: CNAME record pointing to our target
-        - Email sending: DKIM + SPF + DMARC records
-        - GoDaddy with connected integration can auto-configure DNS
-        - Always show current domain status before creating new ones
-        - DNS changes can take up to 48 hours to propagate
-        
+        ## Domain Setup Tool (platform handles all DNS automatically)
+        Use `manage_custom_domain` for DNS setup flows. The platform orchestrates everything.
+
+        1. **Web Publishing**: `manage_custom_domain(action: "setup_web", domain_name: "example.com")`
+           - Creates domain, generates CNAME target
+           - If GoDaddy is connected: auto-pushes CNAME record + schedules verification
+           - If no GoDaddy: returns manual DNS instructions for the user
+        2. **Email Sending**: `manage_custom_domain(action: "setup_email", domain_id: ID)`
+           - Creates SES identity, generates DKIM/SPF/DMARC/MX records
+           - If GoDaddy connected: auto-pushes all email DNS records
+        3. **Check Status**: `manage_custom_domain(action: "check_status", domain_id: ID)`
+        4. **List Domains**: `manage_custom_domain(action: "list")`
+
+        ## GoDaddy as Regular Integration
+        GoDaddy is a standard integration. For general operations (list domains, check DNS records,
+        manage records directly), use `execute_integration_action(integration: "godaddy", ...)`.
+        The `manage_custom_domain` tool is only for the automated setup flows.
+
+        ## Key Points
+        - DNS setup is fully automated when GoDaddy is connected -- users don't need to understand records
+        - DNS changes can take up to 48 hours to propagate (usually 15 min)
+        - Always check status with `manage_custom_domain(action: "check_status")` before assuming ready
+        - SSL is auto-provisioned after web DNS verification succeeds
+
         ## Visual Manager
         `load_canvas(canvas_name: "custom_domains")`
       GUIDANCE
@@ -544,8 +550,7 @@ class GuidanceLibrary
 
     custom_domain_management: %w[
       manage_custom_domain
-      list_available_integrations
-      get_integration_status
+      execute_integration_action
     ],
 
     general: []  # No specific tools - use standard set

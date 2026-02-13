@@ -345,4 +345,24 @@ godaddy.integration_operations.find_or_create_by!(
   op.documentation = 'Verify that you have control over a domain before setting up custom domain features.'
 end
 
-puts "  ✅ GoDaddy integration seeded with #{godaddy.integration_operations.count} operations"
+# =========================================
+# GoDaddy OAuth Configuration + Auth Config
+# (Required for IntegrationCredential#build_auth_header to work)
+# =========================================
+
+godaddy_oauth = OauthConfiguration.find_or_create_by!(integration: godaddy) do |config|
+  config.status = :active
+  config.test_endpoint = '/v1/domains'
+end
+
+# Ensure test_endpoint is set even if record already existed
+godaddy_oauth.update!(test_endpoint: '/v1/domains') if godaddy_oauth.test_endpoint.blank?
+
+# Auth header: Authorization: sso-key {api_key}:{api_secret}
+godaddy_oauth.auth_configs.find_or_create_by!(auth_key: 'Authorization') do |ac|
+  ac.auth_value = 'sso-key {api_key}:{api_secret}'
+  ac.auth_placement = 'header'
+  ac.position = 1
+end
+
+puts "  ✅ GoDaddy integration seeded with #{godaddy.integration_operations.count} operations and auth config"

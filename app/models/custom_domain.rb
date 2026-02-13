@@ -200,7 +200,7 @@ class CustomDomain < ApplicationRecord
   # =========================================
   
   def can_auto_configure?
-    connection.present? && connection.active?
+    connection.present? && connection.connected?
   end
   
   def auto_configure_dns!

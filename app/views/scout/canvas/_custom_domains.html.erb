@@ -4,7 +4,7 @@
   canvas_data = canvas_data.with_indifferent_access if canvas_data.is_a?(Hash)
   
   custom_domains = current_entity.custom_domains.order(created_at: :desc) rescue []
-  godaddy_connections = current_entity.connections.joins(:integration).where(integrations: { slug: 'godaddy' }, status: 'active') rescue []
+  godaddy_connections = current_entity.connections.active.joins(:integration).where(integrations: { slug: 'godaddy' }) rescue []
 %>
 
 <style>
@@ -473,7 +473,10 @@
   }
   
   function connectGoDaddy() {
-    sendToAmos('Connect my GoDaddy account for DNS management');
+    // Load the existing integration connection canvas for GoDaddy
+    document.dispatchEvent(new CustomEvent('scout:load-canvas', { 
+      detail: { canvas: 'integration_connect', data: { slug: 'godaddy' } } 
+    }));
   }
   
   function copyToClipboard(text) {

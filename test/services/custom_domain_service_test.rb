@@ -72,4 +72,98 @@ class CustomDomainServiceTest < ActiveSupport::TestCase
     assert instructions.present?
     assert instructions.include?('CNAME') || instructions.include?(custom_domain.cname_target)
   end
+
+  # ============================================
+  # AUTO DNS CONFIGURATION (Fixed service ref)
+  # ============================================
+
+  test "auto_configure_dns returns error without GoDaddy connection" do
+    custom_domain = CustomDomain.create!(entity: @entity, user: @user, domain_name: 'nogateway.com')
+    service = CustomDomainService.new(custom_domain: custom_domain)
+
+    result = service.auto_configure_dns
+
+    assert_not result[:success]
+    assert_includes result[:error], 'No GoDaddy connection'
+  end
+
+  test "auto_configure_dns uses IntegrationApiService when connection exists" do
+    # Set up GoDaddy integration + connection + credential
+    godaddy = Integration.create!(
+      name: 'GoDaddy', slug: 'godaddy_dns_test', category: 'custom',
+      auth_type: 'api_key', api_base_url: 'https://api.godaddy.com',
+      is_active: true, is_verified: true
+    )
+    godaddy.integration_operations.create!(
+      operation_id: 'godaddy.add_dns_record',
+      name: 'Add DNS Record',
+      http_method: 'PATCH',
+      path_template: '/v1/domains/{domain}/records',
+      is_idempotent: false
+    )
+    connection = Connection.create!(
+      entity: @entity, integration: godaddy, user: @user,
+      name: 'GoDaddy', status: :connected
+    )
+    IntegrationCredential.create!(
+      connection: connection, name: 'GoDaddy Key',
+      auth_method: 'header', status: :active,
+      credentials: { 'api_key' => 'testkey', 'api_secret' => 'testsecret' }
+    )
+    custom_domain = CustomDomain.create!(
+      entity: @entity, user: @user, domain_name: 'autodns-test.com',
+      connection: connection
+    )
+
+    service = CustomDomainService.new(custom_domain: custom_domain)
+
+    # Stub IntegrationApiService to avoid real HTTP call
+    mock_response = stub(success?: true, code: 200, body: '{}')
+    IntegrationApiService.any_instance.stubs(:execute_operation).returns(mock_response)
+
+    result = service.auto_configure_dns
+
+    assert result[:success]
+    assert_includes result[:message], 'configured automatically'
+    assert custom_domain.reload.auto_dns_configured?
+  end
+
+  test "auto_configure_dns handles API errors gracefully" do
+    godaddy = Integration.create!(
+      name: 'GoDaddy', slug: 'godaddy_err_test', category: 'custom',
+      auth_type: 'api_key', api_base_url: 'https://api.godaddy.com',
+      is_active: true, is_verified: true
+    )
+    godaddy.integration_operations.create!(
+      operation_id: 'godaddy.add_dns_record',
+      name: 'Add DNS Record',
+      http_method: 'PATCH',
+      path_template: '/v1/domains/{domain}/records',
+      is_idempotent: false
+    )
+    connection = Connection.create!(
+      entity: @entity, integration: godaddy, user: @user,
+      name: 'GoDaddy', status: :connected
+    )
+    IntegrationCredential.create!(
+      connection: connection, name: 'GoDaddy Key',
+      auth_method: 'header', status: :active,
+      credentials: { 'api_key' => 'testkey', 'api_secret' => 'testsecret' }
+    )
+    custom_domain = CustomDomain.create!(
+      entity: @entity, user: @user, domain_name: 'apierr.com',
+      connection: connection
+    )
+
+    service = CustomDomainService.new(custom_domain: custom_domain)
+
+    # Stub a failed response
+    mock_response = stub(success?: false, code: 422, body: 'Invalid records')
+    IntegrationApiService.any_instance.stubs(:execute_operation).returns(mock_response)
+
+    result = service.auto_configure_dns
+
+    assert_not result[:success]
+    assert_includes result[:error], 'GoDaddy API error'
+  end
 end

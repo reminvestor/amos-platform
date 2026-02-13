@@ -184,14 +184,14 @@ class CustomDomainService
     
     connection = custom_domain.connection
     
-    # Get the integration executor service
-    executor = IntegrationExecutorService.new(connection: connection)
-    
-    # Add CNAME record for web publishing
-    result = executor.execute(
-      'godaddy.add_dns_record',
-      domain: custom_domain.domain_name,
-      records: [
+    begin
+      api_service = IntegrationApiService.new(connection)
+      operation = connection.integration.integration_operations.find_by(operation_id: 'godaddy.add_dns_record')
+      
+      return { success: false, error: 'GoDaddy add_dns_record operation not found' } unless operation
+      
+      # Build the CNAME record payload
+      records_payload = [
         {
           type: 'CNAME',
           name: custom_domain.subdomain.presence || '@',
@@ -199,20 +199,30 @@ class CustomDomainService
           ttl: 3600
         }
       ]
-    )
-    
-    if result[:success]
-      custom_domain.update!(auto_dns_configured: true)
       
-      # Start verification (DNS propagation may take time)
-      CustomDomainVerificationJob.set(wait: 2.minutes).perform_later(custom_domain.id, 'web')
+      # Execute via IntegrationApiService (PATCH /v1/domains/{domain}/records)
+      response = api_service.execute_operation(
+        operation,
+        params: { domain: custom_domain.domain_name },
+        body: records_payload
+      )
       
-      { 
-        success: true, 
-        message: 'DNS records configured automatically. Verification will begin shortly.'
-      }
-    else
-      { success: false, error: result[:error] }
+      if response.success?
+        custom_domain.update!(auto_dns_configured: true)
+        
+        # Start verification (DNS propagation may take time)
+        CustomDomainVerificationJob.set(wait: 2.minutes).perform_later(custom_domain.id, 'web')
+        
+        { 
+          success: true, 
+          message: 'DNS records configured automatically. Verification will begin shortly.'
+        }
+      else
+        { success: false, error: "GoDaddy API error: #{response.code} - #{response.body}" }
+      end
+    rescue => e
+      Rails.logger.error "Auto DNS configuration failed: #{e.message}"
+      { success: false, error: e.message }
     end
   end
   
