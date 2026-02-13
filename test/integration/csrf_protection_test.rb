@@ -15,8 +15,9 @@ class CsrfProtectionTest < ActionDispatch::IntegrationTest
 
     assert_match(/allow_forgery_protection\s*=\s*true/, prod_file,
                  "Production should have CSRF protection enabled")
-    assert_match(/per_form_csrf_tokens\s*=\s*true/, prod_file,
-                 "Production should have per-form CSRF tokens enabled")
+    # per_form_csrf_tokens is intentionally false — incompatible with Turbo/Devise session resets
+    assert_match(/per_form_csrf_tokens\s*=\s*false/, prod_file,
+                 "Production should have per-form CSRF tokens disabled (Turbo/Devise compatibility)")
   end
 
   test "API endpoints skip CSRF verification" do
