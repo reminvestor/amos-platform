@@ -192,7 +192,7 @@ module V3
       end
 
       # ═══════════════════════════════════════════════════════════════
-      # WEBSITE — Multiple linked landing pages
+      # WEBSITE — Multiple pages with proper functional/marketing distinction
       # ═══════════════════════════════════════════════════════════════
 
       def build_website(data)
@@ -200,10 +200,11 @@ module V3
         pages_data = data["pages"] || data[:pages] || []
         description = data["description"] || data[:description] || ""
         theme = data["theme"] || data[:theme] || "modern"
+        page_purpose = data["page_purpose"] || data[:page_purpose] # "functional" or "marketing" — auto-detected if nil
 
         return error_response("A website needs at least one page. Provide pages: [{ title: '...', description: '...' }]") if pages_data.empty?
 
-        Rails.logger.info "[V3::PlatformCreate] Building website '#{name}' with #{pages_data.length} pages"
+        Rails.logger.info "[V3::PlatformCreate] Building website '#{name}' with #{pages_data.length} pages (purpose: #{page_purpose || 'auto-detect'})"
 
         # Stream progress
         stream_progress("Building website '#{name}'...", percentage: 0)
@@ -220,44 +221,55 @@ module V3
           metadata: { generated_by: "platform_create", page_count: pages_data.length }
         )
 
-        # Build each page as a landing page
+        # Use WebsitePageGeneratorService for proper page generation
+        generator = WebsitePageGeneratorService.new(user: user, entity: entity, website: website)
         created_pages = []
-        generator = ::Tools::GenerateLandingPageTool.new(user: user, entity: entity, context: context)
 
         pages_data.each_with_index do |page_data, index|
           page_data = page_data.with_indifferent_access if page_data.is_a?(Hash)
           pct = ((index + 1).to_f / pages_data.length * 80 + 10).round
           stream_progress("Building page #{index + 1}/#{pages_data.length}: #{page_data[:title]}...", percentage: pct)
 
-          result = generator.execute(page_data.merge(business_name: name))
+          # Pass the website-level page_purpose as default, but let individual pages override
+          gen_data = page_data.merge(
+            business_name: name,
+            page_purpose: page_data[:page_purpose] || page_purpose
+          )
 
-          if result.is_a?(Hash) && result[:success] != false
-            page_id = result[:landing_page_id] || result[:id]
-            created_pages << { title: page_data[:title], landing_page_id: page_id }
+          result = generator.generate(gen_data)
 
-            # Link to website via WebsitePage if possible
-            if page_id && defined?(WebsitePage)
-              WebsitePage.create!(
-                website: website,
-                entity: entity,
-                name: page_data[:title] || "Page #{index + 1}",
-                slug: (page_data[:title] || "page-#{index + 1}").parameterize,
-                template: index == 0 ? "homepage" : "content",
-                status: "draft",
-                page_order: index,
-                content: { landing_page_id: page_id }
-              )
-            end
+          if result[:success]
+            # Create WebsitePage directly with generated HTML content
+            template = result[:template] || (index == 0 ? "homepage" : "content")
+            website_page = WebsitePage.create!(
+              website: website,
+              entity: entity,
+              name: page_data[:title] || "Page #{index + 1}",
+              slug: (page_data[:title] || "page-#{index + 1}").parameterize,
+              template: template,
+              html_content: result[:html_content],
+              status: "draft",
+              page_order: index,
+              is_homepage: index == 0,
+              show_in_nav: true,
+              app_module_id: page_data[:app_module_id],
+              is_dynamic: page_data[:is_dynamic] || false
+            )
+
+            created_pages << {
+              title: page_data[:title],
+              website_page_id: website_page.id,
+              page_type: result[:page_type],
+              template: template
+            }
           else
-            Rails.logger.warn "[V3::PlatformCreate] Failed to build page: #{page_data[:title]}"
+            Rails.logger.warn "[V3::PlatformCreate] Failed to build page: #{page_data[:title]} — #{result[:error]}"
           end
         end
 
         stream_progress("Website '#{name}' complete!", percentage: 100)
 
-        # Open the first page in the editor
-        first_page_id = created_pages.first&.dig(:landing_page_id)
-        @context[:canvas_suggestion] = "landing_page_editor" if first_page_id
+        @context[:canvas_suggestion] = "my_creations"
 
         success_response(
           website_id: website.id,
@@ -265,8 +277,8 @@ module V3
           page_count: created_pages.length,
           pages: created_pages,
           message: "Website '#{name}' created with #{created_pages.length} pages!",
-          canvas_type: first_page_id ? "landing_page_editor" : nil,
-          canvas_data: first_page_id ? { landing_page_id: first_page_id } : nil
+          canvas_type: "my_creations",
+          canvas_data: { type: "website" }
         )
       rescue => e
         Rails.logger.error "[V3::PlatformCreate] Website build failed: #{e.message}"
@@ -274,28 +286,104 @@ module V3
       end
 
       # ═══════════════════════════════════════════════════════════════
-      # WEB APP — Website + workflows for form handling
+      # WEB APP — Full external application: Website + Modules + Auth
       # ═══════════════════════════════════════════════════════════════
 
       def build_web_app(data)
-        # A web app is just a website + workflows. Build the website first.
-        website_result = build_website(data)
-        return website_result unless website_result.is_a?(Hash) && website_result[:success] != false
+        name = data["name"] || data[:name] || "Web App"
+        description = data["description"] || data[:description] || ""
+        auth_data = data["auth"] || data[:auth] || {}
+        modules_data = data["modules"] || data[:modules] || []
+        pages_data = data["pages"] || data[:pages] || []
+        subdomain = data["subdomain"] || data[:subdomain] || name.parameterize
 
-        # Then create any workflows described in the data
+        Rails.logger.info "[V3::PlatformCreate] Building web app '#{name}' with #{pages_data.length} pages and #{modules_data.length} modules"
+
+        stream_progress("Building web app '#{name}'...", percentage: 0)
+
+        # Step 1: Build the website (pages)
+        website = nil
+        if pages_data.any?
+          website_result = build_website(data)
+          if website_result.is_a?(Hash) && website_result[:success] != false
+            website = Website.find_by(id: website_result[:website_id])
+          end
+        end
+
+        # Step 2: Create the WebApp record
+        web_app = WebApp.create!(
+          entity: entity,
+          created_by: user,
+          name: name,
+          slug: name.parameterize,
+          description: description,
+          subdomain: subdomain,
+          status: "draft",
+          website: website,
+          auth_methods: auth_data["methods"] || auth_data[:methods] || ["email"],
+          auth_config: auth_data.except("methods", :methods).presence || {},
+          features: data["features"] || data[:features] || {}
+        )
+
+        stream_progress("Linking modules...", percentage: 60)
+
+        # Step 3: Link app modules
+        linked_modules = []
+        modules_data.each do |mod_ref|
+          mod_ref = mod_ref.with_indifferent_access if mod_ref.is_a?(Hash)
+          # Find module by slug, name, or ID
+          mod = if mod_ref.is_a?(Hash)
+            entity.app_modules.find_by(slug: mod_ref[:slug]) ||
+            entity.app_modules.find_by(name: mod_ref[:name]) ||
+            entity.app_modules.find_by(id: mod_ref[:id])
+          else
+            entity.app_modules.find_by(slug: mod_ref.to_s) ||
+            entity.app_modules.find_by(name: mod_ref.to_s)
+          end
+
+          if mod
+            wam = web_app.add_module!(mod, {
+              is_public: mod_ref.is_a?(Hash) ? (mod_ref[:is_public] || false) : false,
+              allow_create: mod_ref.is_a?(Hash) ? (mod_ref[:allow_create] || true) : true,
+              allow_edit: mod_ref.is_a?(Hash) ? (mod_ref[:allow_edit] || true) : true,
+              allow_delete: mod_ref.is_a?(Hash) ? (mod_ref[:allow_delete] || false) : false
+            })
+            linked_modules << mod.name if wam
+          end
+        end
+
+        # Step 4: Create automations/workflows
         workflows_data = data["workflows"] || data[:workflows] || []
         created_workflows = []
-
         workflows_data.each do |wf_data|
-          wf_result = build_workflow(wf_data.is_a?(Hash) ? wf_data : { name: wf_data.to_s })
+          wf_data = wf_data.is_a?(Hash) ? wf_data : { name: wf_data.to_s }
+          wf_result = build_automation(wf_data.merge("web_app_id" => web_app.id))
           created_workflows << wf_result if wf_result.is_a?(Hash) && wf_result[:success] != false
         end
 
-        website_result.merge(
-          type: "web_app",
+        stream_progress("Web app '#{name}' complete!", percentage: 100)
+
+        # Suggest loading the design preview
+        @context[:canvas_suggestion] = "design_preview"
+
+        success_response(
+          web_app_id: web_app.id,
+          website_id: website&.id,
+          name: web_app.name,
+          slug: web_app.slug,
+          subdomain: web_app.subdomain,
+          public_url: web_app.public_url,
+          page_count: pages_data.length,
+          module_count: linked_modules.length,
+          linked_modules: linked_modules,
           workflows_created: created_workflows.length,
-          message: "#{website_result[:message]} Plus #{created_workflows.length} workflow(s) for automation."
+          message: "Web app '#{name}' created! #{linked_modules.any? ? "Linked modules: #{linked_modules.join(', ')}." : ''} #{pages_data.any? ? "#{pages_data.length} page(s) built." : ''} #{created_workflows.any? ? "#{created_workflows.length} workflow(s) added." : ''}".strip,
+          canvas_type: "design_preview",
+          canvas_data: { web_app_id: web_app.id, preview_type: "web_app" }
         )
+      rescue => e
+        Rails.logger.error "[V3::PlatformCreate] Web app build failed: #{e.message}"
+        error_response("Web app creation failed: #{e.message}")
       end
 
       # ═══════════════════════════════════════════════════════════════

@@ -59,7 +59,8 @@ class GuidanceLibrary
       msg_lower = message.downcase
       
       # Distinguish between CREATE (new) and EDIT (existing) for landing pages
-      if msg_lower.match?(/landing\s*page/)
+      # Only match explicit "landing page" requests — NOT general "page" which could be a website page
+      if msg_lower.match?(/landing\s*page|marketing\s*page|promo\s*page|signup\s*page/)
         if msg_lower.match?(/create|make|build|generate|new/)
           return :landing_page_create
         else
@@ -67,8 +68,16 @@ class GuidanceLibrary
         end
       end
       
-      # Website creation (always uses Plan → Build)
-      return :website_create if msg_lower.match?(/website|multi.?page|site/)
+      # Web App creation — external-facing functional apps (must check BEFORE website and app)
+      # Matches: "build me an app that customers can use", "task tracker app", "customer portal"
+      if msg_lower.match?(/portal|external\s*app|public\s*app|customer.*(app|tool|dashboard)|(app|tool).*(customer|user|public|external)/) ||
+         (msg_lower.match?(/tracker|planner|board|manager/) && msg_lower.match?(/app|build|create|make/)) ||
+         msg_lower.match?(/web\s*app/)
+        return :web_app_create
+      end
+      
+      # Website creation (multi-page sites)
+      return :website_create if msg_lower.match?(/website|multi.?page|company\s*site|portfolio\s*site/)
       
       # Edit existing sections - BUT only if not on design_studio
       # (canvas check above already returned if on design_studio)
@@ -177,15 +186,41 @@ class GuidanceLibrary
     website_create: {
       title: "Website Creation",
       expertise: <<~GUIDANCE.strip,
-        ## Available Approaches
+        ## Creating a Website
         
-        **Visual Builder:**
-        `load_canvas(canvas_name: "design_studio")` — Multi-page website builder
+        Use `platform_create(type: "website", data: { name: "...", pages: [{title: "...", description: "..."}] })`.
+        Each page is generated independently. Pages can be marketing (hero/CTA) or functional (dashboard/form/list).
+        The system auto-detects page purpose from the description, or you can set page_purpose: "functional" or "marketing".
         
         ## Context
         - Websites have multiple pages with shared navigation
         - Common pages: Home, About, Services, Contact
-        - Each page can have independent sections
+        - Functional pages get app-like UI (tables, forms, dashboards)
+        - Marketing pages get conversion-focused layouts (hero, testimonials, CTAs)
+        - After creation → load_canvas(canvas_name: "my_creations", canvas_data: { type: "website" })
+      GUIDANCE
+      anti_hallucination: nil
+    },
+
+    web_app_create: {
+      title: "Web App Creation",
+      expertise: <<~GUIDANCE.strip,
+        ## Creating a Web App (External-Facing Application)
+        
+        Use `platform_create(type: "web_app", data: { name: "...", pages: [...], modules: ["module_slug"], auth: {methods: ["email"]} })`.
+        This creates a full external application: Website + App Modules + User Auth.
+        
+        ## Flow
+        1. First build the internal module if needed: platform_create(type: "app", data: {...})
+        2. Then create the web app: platform_create(type: "web_app", data: { name: "...", pages: [...], modules: ["module_slug"] })
+        3. The web app gets a subdomain (e.g., name.app.amoslabs.com)
+        4. After creation → load_canvas(canvas_name: "my_creations", canvas_data: { type: "web_app" })
+        
+        ## Key Differences from Other Types
+        - **Landing Page**: Single marketing page with CTA — NOT for apps
+        - **Website**: Multi-page content site — for informational sites, not functional tools
+        - **Web App**: External app with modules, auth, functional pages — for trackers, portals, dashboards
+        - **App/Module**: Internal AMOS module with data + canvases — not public-facing
       GUIDANCE
       anti_hallucination: nil
     },
@@ -385,6 +420,12 @@ class GuidanceLibrary
 
     website_create: %w[
       platform_create
+      load_canvas
+    ],
+
+    web_app_create: %w[
+      platform_create
+      platform_query
       load_canvas
     ],
 

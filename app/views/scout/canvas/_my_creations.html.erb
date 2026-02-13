@@ -13,6 +13,7 @@
     .order(updated_at: :desc) rescue []
   automations_all = entity.automation_codes.order(updated_at: :desc) rescue []
   websites_all = entity.websites.includes(:website_pages).order(updated_at: :desc) rescue []
+  web_apps_all = entity.web_apps.includes(:website, :web_app_modules, :app_modules).order(updated_at: :desc) rescue []
 
   # Apply search filter
   if search_query.present?
@@ -20,12 +21,14 @@
     app_modules_all = app_modules_all.respond_to?(:where) ? app_modules_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : app_modules_all.select { |m| m.name.to_s.downcase.include?(search_query) }
     automations_all = automations_all.respond_to?(:where) ? automations_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : automations_all.select { |a| a.name.to_s.downcase.include?(search_query) }
     websites_all = websites_all.respond_to?(:where) ? websites_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : websites_all
+    web_apps_all = web_apps_all.respond_to?(:where) ? web_apps_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : web_apps_all
   end
 
   landing_pages = landing_pages_all.limit(max_display)
   app_modules = app_modules_all.respond_to?(:limit) ? app_modules_all.limit(max_display) : app_modules_all.first(max_display)
   automations = automations_all.respond_to?(:limit) ? automations_all.limit(max_display) : automations_all.first(max_display)
   websites = websites_all.respond_to?(:limit) ? websites_all.limit(max_display) : websites_all.first(max_display)
+  web_apps = web_apps_all.respond_to?(:limit) ? web_apps_all.limit(max_display) : web_apps_all.first(max_display)
 
   # ── Stats ──
   total_landing_pages = entity.landing_pages.count rescue 0
@@ -45,7 +48,12 @@
 
   total_websites = (entity.websites.count rescue 0)
   published_websites = (entity.websites.where(status: 'published').count rescue 0)
-  total_items = total_landing_pages + total_app_modules + total_automations + total_websites
+
+  total_web_apps = (entity.web_apps.count rescue 0)
+  active_web_apps = (entity.web_apps.where(status: 'active').count rescue 0)
+  total_web_app_modules = (entity.web_apps.joins(:web_app_modules).count rescue 0)
+
+  total_items = total_landing_pages + total_app_modules + total_automations + total_websites + total_web_apps
 
   filter_type = data[:type] || data['type'] || 'all'
   filter_status = data[:status] || data['status'] || 'all'
@@ -88,8 +96,13 @@
         </button>
       </li>
       <li class="nav-item">
+        <button type="button" class="nav-link asset-tab <%= 'active' if filter_type == 'web_app' %>" data-filter="web_app">
+          <i data-lucide="app-window" style="width: 14px; height: 14px;" class="me-1"></i>Web Apps <span class="badge bg-secondary bg-opacity-25 text-body ms-1"><%= total_web_apps %></span>
+        </button>
+      </li>
+      <li class="nav-item">
         <button type="button" class="nav-link asset-tab <%= 'active' if filter_type == 'app_module' %>" data-filter="app_module">
-          <i data-lucide="boxes" style="width: 14px; height: 14px;" class="me-1"></i>Apps <span class="badge bg-secondary bg-opacity-25 text-body ms-1"><%= total_app_modules %></span>
+          <i data-lucide="boxes" style="width: 14px; height: 14px;" class="me-1"></i>Modules <span class="badge bg-secondary bg-opacity-25 text-body ms-1"><%= total_app_modules %></span>
         </button>
       </li>
       <% if total_websites > 0 %>
@@ -167,6 +180,14 @@
       <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Active</p><h5 class="mb-0 fw-bold text-success"><%= active_automations %> <small class="text-muted fw-normal fs-6">/ <%= total_automations %></small></h5></div><div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="play-circle" class="text-success" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
       <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Executions</p><h5 class="mb-0 fw-bold text-info"><%= total_executions %></h5></div><div class="stat-icon-sm bg-info bg-opacity-10 rounded-2 p-1"><i data-lucide="activity" class="text-info" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
       <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Success</p><h5 class="mb-0 fw-bold <%= avg_success_rate >= 95 ? 'text-success' : avg_success_rate >= 80 ? 'text-warning' : 'text-danger' %>"><%= avg_success_rate %>%</h5></div><div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="check-circle" class="text-success" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+    </div>
+
+
+    <div class="stats-row row g-2 mb-3" data-stats="web_app" style="display: none;">
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Total Web Apps</p><h5 class="mb-0 fw-bold text-primary"><%= total_web_apps %></h5></div><div class="stat-icon-sm rounded-2 p-1" style="background: rgba(14,165,233,0.1);"><i data-lucide="app-window" style="width: 18px; height: 18px; color: #0ea5e9;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Active</p><h5 class="mb-0 fw-bold text-success"><%= active_web_apps %></h5></div><div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="check-circle" class="text-success" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Connected Modules</p><h5 class="mb-0 fw-bold text-info"><%= total_web_app_modules %></h5></div><div class="stat-icon-sm bg-info bg-opacity-10 rounded-2 p-1"><i data-lucide="boxes" class="text-info" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Draft</p><h5 class="mb-0 fw-bold text-warning"><%= total_web_apps - active_web_apps %></h5></div><div class="stat-icon-sm bg-warning bg-opacity-10 rounded-2 p-1"><i data-lucide="pencil" class="text-warning" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
     </div>
 
 
@@ -298,6 +319,156 @@
         </div>
       <% elsif filter_type == 'website' %>
         <div class="text-center py-4 text-muted"><p>No websites yet. Ask Amos to build one!</p></div>
+      <% end %>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- SECTION: Web Apps (Expandable Project View)     -->
+    <!-- ════════════════════════════════════════════════ -->
+    <div class="section-block" data-section="web_app">
+      <% if filter_type == 'all' && total_web_apps > 0 %>
+        <div class="section-header d-flex align-items-center justify-content-between mb-2">
+          <h6 class="mb-0 fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+            <i data-lucide="app-window" style="width: 14px; height: 14px;" class="me-1"></i>Web Apps
+          </h6>
+          <button type="button" class="btn btn-link btn-sm text-muted p-0 view-all-btn" data-filter="web_app" style="font-size: 0.75rem;">View all (<%= total_web_apps %>)</button>
+        </div>
+      <% end %>
+
+      <% if web_apps.respond_to?(:each) && web_apps.any? %>
+        <div class="project-list mb-4">
+          <% web_apps.each do |wa| %>
+            <%
+              wa_website = wa.website rescue nil
+              wa_pages = wa_website&.website_pages || []
+              wa_modules = wa.app_modules rescue []
+              wa_auth_methods = (wa.auth_methods rescue []) || []
+              wa_module_count = wa_modules.size
+              wa_page_count = wa_pages.size
+              wa_url = wa.public_url rescue nil
+            %>
+            <div class="project-card card border-0 shadow-sm mb-2" data-type="web_app" data-id="<%= wa.id %>"
+                 data-status="<%= wa.status == 'active' ? 'published' : 'draft' %>"
+                 data-title="<%= wa.name.downcase rescue '' %>">
+              <!-- Web App Header (always visible) -->
+              <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="project-icon rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" 
+                       style="width: 38px; height: 38px; background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);">
+                    <i data-lucide="app-window" style="width: 18px; height: 18px; color: white;"></i>
+                  </div>
+                  <div class="flex-grow-1 min-width-0">
+                    <div class="d-flex align-items-center gap-2">
+                      <h6 class="mb-0 fw-semibold text-truncate" style="font-size: 0.9rem;"><%= wa.name rescue 'Untitled App' %></h6>
+                      <span class="badge rounded-pill <%= wa.status == 'active' ? 'bg-success' : 'bg-secondary' %>" style="font-size: 0.6rem;"><%= wa.status&.titleize || 'Draft' %></span>
+                      <% if wa_url.present? && wa.status == 'active' %>
+                        <a href="<%= wa_url %>" target="_blank" class="badge rounded-pill bg-info text-decoration-none" style="font-size: 0.6rem;">
+                          <i data-lucide="external-link" style="width: 9px; height: 9px;" class="me-1"></i>Live
+                        </a>
+                      <% end %>
+                    </div>
+                    <div class="d-flex align-items-center gap-3 text-muted" style="font-size: 0.7rem;">
+                      <% if wa.subdomain.present? %>
+                        <span><i data-lucide="link" style="width: 10px; height: 10px;" class="me-1"></i><%= wa.subdomain %>.app.amoslabs.com</span>
+                      <% end %>
+                      <% if wa.respond_to?(:description) && wa.description.present? %>
+                        <span><%= wa.description.to_s.truncate(50) %></span>
+                      <% end %>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center gap-3 flex-shrink-0">
+                    <div class="d-flex align-items-center gap-2 text-muted" style="font-size: 0.7rem;">
+                      <% if wa_page_count > 0 %><span title="Pages"><i data-lucide="file-text" style="width: 12px; height: 12px;"></i> <%= wa_page_count %></span><% end %>
+                      <% if wa_module_count > 0 %><span title="Modules"><i data-lucide="boxes" style="width: 12px; height: 12px;"></i> <%= wa_module_count %></span><% end %>
+                      <% if wa_auth_methods.any? %><span title="Auth enabled"><i data-lucide="shield" style="width: 12px; height: 12px;"></i></span><% end %>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary project-expand-btn" data-bs-toggle="collapse" data-bs-target="#webapp-<%= wa.id %>">
+                      <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Expandable Detail -->
+              <div class="collapse" id="webapp-<%= wa.id %>">
+                <div class="card-body pt-0 px-3 pb-3">
+                  <div class="component-grid border-top pt-2 mt-1">
+
+                    <% if wa_website.present? %>
+                      <div class="component-group mb-2">
+                        <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
+                          <i data-lucide="globe" style="width: 12px; height: 12px;" class="me-1"></i>Website (<%= wa_page_count %> pages)
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                          <% wa_pages.each do |page| %>
+                            <span class="btn btn-sm component-chip component-chip-muted">
+                              <i data-lucide="<%= page.is_homepage ? 'home' : page.template == 'form' ? 'clipboard-list' : page.template == 'list' ? 'list' : 'file-text' %>" style="width: 12px; height: 12px;" class="me-1"></i>
+                              <%= page.name || page.slug&.titleize || 'Page' %>
+                              <span class="chip-type"><%= page.template %></span>
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+
+                    <% if wa_modules.any? %>
+                      <div class="component-group mb-2">
+                        <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
+                          <i data-lucide="boxes" style="width: 12px; height: 12px;" class="me-1"></i>Connected Modules
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                          <% wa_modules.each do |mod| %>
+                            <button type="button" class="btn btn-sm component-chip canvas-link"
+                                    data-slug="<%= mod.slug %>" data-canvas-slug="<%= mod.slug %>_list" data-module-id="<%= mod.id %>">
+                              <i data-lucide="<%= mod.icon.present? ? mod.icon : 'box' %>" style="width: 12px; height: 12px;" class="me-1"></i>
+                              <%= mod.name %>
+                              <span class="badge rounded-pill <%= mod.status == 'active' ? 'bg-success' : 'bg-secondary' %>" style="font-size: 0.5rem; padding: 1px 4px;"><%= mod.status&.titleize %></span>
+                            </button>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+
+                    <% if wa_auth_methods.any? %>
+                      <div class="component-group mb-2">
+                        <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
+                          <i data-lucide="shield" style="width: 12px; height: 12px;" class="me-1"></i>Authentication
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                          <% wa_auth_methods.each do |method| %>
+                            <span class="btn btn-sm component-chip component-chip-muted">
+                              <i data-lucide="<%= method == 'google' ? 'chrome' : method == 'github' ? 'github' : method == 'magic_link' ? 'wand-2' : 'key' %>" style="width: 12px; height: 12px;" class="me-1"></i>
+                              <%= method.titleize %>
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+
+                    <% if wa_module_count == 0 && wa_page_count == 0 %>
+                      <p class="text-muted small mb-0">No components yet. Ask Amos to add modules and pages to this app.</p>
+                    <% end %>
+
+                    <div class="d-flex gap-2 mt-2 pt-2 border-top">
+                      <% if wa_url.present? %>
+                        <a href="<%= wa_url %>" target="_blank" class="btn btn-sm btn-outline-primary">
+                          <i data-lucide="external-link" style="width: 12px; height: 12px;" class="me-1"></i>Open App
+                        </a>
+                      <% end %>
+                      <button type="button" class="btn btn-sm btn-outline-secondary web-app-edit-btn" data-id="<%= wa.id %>" data-slug="<%= wa.slug %>">
+                        <i data-lucide="settings" style="width: 12px; height: 12px;" class="me-1"></i>Manage
+                      </button>
+                      <span class="text-muted small align-self-center">Updated <%= wa.updated_at.strftime('%b %d, %Y') rescue 'N/A' %></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% elsif filter_type == 'web_app' %>
+        <div class="text-center py-4 text-muted"><p>No web apps yet. Ask Amos to build one!</p></div>
       <% end %>
     </div>
 
@@ -946,6 +1117,26 @@
       if (!card) return;
       const editBtn = card.querySelector('.website-edit-btn');
       if (editBtn) editBtn.click();
+    });
+
+    // ── Web App actions ──
+    container.addEventListener('click', function(e) {
+      const editBtn = e.target.closest('.web-app-edit-btn');
+      if (!editBtn) return;
+      e.preventDefault(); e.stopPropagation();
+      const slug = editBtn.dataset.slug;
+      const id = editBtn.dataset.id;
+      // Load the design preview for this web app
+      loadCanvas('design_preview', { web_app_id: id, preview_type: 'web_app' });
+    });
+
+    // Web App project card header click -> expand
+    container.addEventListener('click', function(e) {
+      if (e.target.closest('.project-expand-btn') || e.target.closest('.collapse') || e.target.closest('.canvas-link') || e.target.closest('button') || e.target.closest('a')) return;
+      const card = e.target.closest('.project-card[data-type="web_app"]');
+      if (!card) return;
+      const expandBtn = card.querySelector('.project-expand-btn');
+      if (expandBtn) expandBtn.click();
     });
 
     // ── App module canvas links ──

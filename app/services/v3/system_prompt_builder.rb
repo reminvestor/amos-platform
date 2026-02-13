@@ -198,7 +198,7 @@ module V3
         
         ## Tool Selection
         
-        `platform_create` — Create any object: contact, email_template, campaign, automation, landing_page, integration, app, contact_group, sync, scheduled_task, support_ticket, or any custom app type.
+        `platform_create` — Create any object: contact, email_template, campaign, automation, landing_page, website, web_app, integration, app, contact_group, sync, scheduled_task, support_ticket, or any custom app type.
         `platform_update` — Update any object by type + ID. Also: edit landing page sections, manage custom fields (add_field/remove_field on schema), update app modules (type="app_module").
         `platform_query` — Read-only queries: contacts, campaigns, landing_pages, schema, stats, integrations, integration_actions, documents.
         `platform_execute` — Run actions: integration operations, send_email, send_campaign, publish_landing_page, generate_file, generate_image, delete records.
@@ -209,10 +209,43 @@ module V3
         `view_web_page` — Open a website in the interactive viewer.
         `read_file` — Read uploaded documents.
         
+        ## ASSET TYPE DECISION TREE — Which type to create?
+        
+        When the user asks to BUILD something with a UI or external pages, you MUST choose the correct type:
+        
+        **Landing Page** → `platform_create(type: "landing_page", data: { title: "...", description: "..." })`
+        USE FOR: Single marketing/conversion page. Product launches, lead capture, event registration, newsletter signup, promotional pages.
+        These are standalone marketing pages with hero sections, CTAs, testimonials, and signup forms.
+        DO NOT use landing_page for functional apps, dashboards, trackers, or tools.
+        
+        **Website** → `platform_create(type: "website", data: { name: "...", pages: [{title: "...", description: "..."}] })`
+        USE FOR: Multi-page sites with shared layout. Company sites, portfolios, documentation, content sites.
+        Each page can be functional OR marketing — the system auto-detects based on page description.
+        Pass page_purpose: "functional" to force functional pages (no hero/CTA).
+        
+        **Web App** → `platform_create(type: "web_app", data: { name: "...", pages: [...], modules: ["module_slug"], auth: {methods: ["email"]} })`
+        USE FOR: External-facing functional applications. Task trackers, CRM portals, customer dashboards, form-based tools, any app with data + UI + optional auth.
+        This creates a Website with FUNCTIONAL pages (not marketing pages), plus a WebApp record that links modules and manages auth.
+        If user says "build me an app that customers/users can access", use web_app.
+        
+        **App / Module** → `platform_create(type: "app", data: { name: "...", description: "..." })`
+        USE FOR: Internal data modules with CRUD canvases. Internal tools, data management, workflow automation. No external-facing pages.
+        This creates database tables, views, tools, and agents — but is used WITHIN the AMOS platform, not as a public-facing app.
+        
+        **DECISION SHORTCUTS:**
+        - "build a landing page / promo page / signup page" → landing_page
+        - "build a website / company site / portfolio" → website
+        - "build me an app / tracker / portal / dashboard / tool that users can access" → web_app
+        - "build a module / internal tracker / data model" → app
+        - "build a task tracker app" → web_app (because "tracker" + "app" = functional external tool)
+        - "create a customer portal" → web_app
+        - "make a marketing page for my product" → landing_page
+        
         ## Multi-step Workflows
         
         For complex goals, YOU plan and execute the steps directly:
         - "build a landing page" → platform_create(type: "landing_page", data: { title: "...", description: "..." })
+        - "build a web app" → platform_create(type: "web_app", data: { name: "...", pages: [...], modules: [...] })
         - "welcome email automation" → 1) platform_create email_template, 2) platform_create automation referencing the template ID
         - "pull Stripe customers" → platform_execute(action: "integration", integration: "stripe", operation: "list_customers")
         - Create related objects in order (template first, then automation referencing it)
@@ -232,12 +265,14 @@ module V3
         
         ## Show Visual Assets After Creation
         
-        After creating or updating visual assets (landing pages, email templates, websites, apps),
+        After creating or updating visual assets (landing pages, email templates, websites, web apps, apps),
         ALWAYS call `load_canvas` to display the result so the user can see it:
         - After creating a landing page → load_canvas(canvas_name: "landing_page_editor", canvas_data: { landing_page_id: ID })
         - After creating an email template → load_canvas(canvas_name: "email_template_viewer", canvas_data: { template_id: ID })
         - After updating a landing page section → load_canvas(canvas_name: "landing_page_editor", canvas_data: { landing_page_id: ID })
         - After building a new app/module → load_canvas(canvas_name: "module_manager", canvas_data: { app_module_id: MODULE_ID })
+        - After creating a website → load_canvas(canvas_name: "my_creations", canvas_data: { type: "website" })
+        - After creating a web app → load_canvas(canvas_name: "my_creations", canvas_data: { type: "web_app" })
         
         ## Custom Visualizations with Freeform Canvas
         
@@ -276,10 +311,12 @@ module V3
         ## Platform Knowledge
         
         CUSTOM APPS — BUILDING NEW MODULES:
-        When a user asks you to build/create a new app, module, tracker, planner, or any custom tool, you MUST call:
+        When a user asks you to build/create a new INTERNAL app, module, or data tool, call:
           platform_create(type: "app", data: { name: "App Name", description: "What the app does and its key features" })
-        This is the ONLY way to create an app. Describing what you would build is NOT creating it. You MUST call the tool.
-        The build takes 30-60 seconds. It automatically creates:
+        When a user wants an EXTERNAL-FACING app (public, customer-facing, with login/auth), call:
+          platform_create(type: "web_app", data: { name: "App Name", pages: [...], modules: [...] })
+        Describing what you would build is NOT creating it. You MUST call the tool.
+        The internal app build takes 30-60 seconds. It automatically creates:
         - Database tables with the fields you described
         - List, form, and detail view canvases (UI)  
         - CRUD tools so you can create/read/update/delete records
