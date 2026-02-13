@@ -15,7 +15,8 @@
 %>
 <% data = canvas_data || {} %>
 
-<div class="automation-dashboard" id="automation-dashboard-<%= SecureRandom.hex(4) %>">
+<div class="automation-dashboard" id="automation-dashboard-<%= SecureRandom.hex(4) %>"
+     data-focus-automation-id="<%= data[:focus_automation_id] %>">
   <!-- Header -->
   <div class="dashboard-header d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
     <div class="d-flex align-items-center gap-3">
@@ -616,6 +617,14 @@
     }));
   });
   
+  // Auto-open a specific automation if navigated from My Projects & Assets
+  const focusId = container.dataset.focusAutomationId;
+  if (focusId && focusId !== '' && focusId !== 'undefined' && focusId !== 'null') {
+    setTimeout(function() {
+      showAutomationDetail(focusId);
+    }, 100);
+  }
+
   // Initialize Lucide icons
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();

@@ -1574,7 +1574,9 @@ class ScoutController < ApplicationController
             total_executions_24h: automations.sum(:execution_count),
             success_rate: automations.sum(:execution_count) > 0 ? (automations.sum(:success_count).to_f / automations.sum(:execution_count) * 100).round(1) : 0,
             avg_execution_time_ms: automations.where.not(avg_execution_time_ms: nil).average(:avg_execution_time_ms)&.round || 0
-          }
+          },
+          # Pass through automation_id so the dashboard auto-opens the detail panel
+          focus_automation_id: canvas_data[:automation_id] || canvas_data["automation_id"]
         }
         canvas_content = render_to_string(
           partial: "scout/canvas/automation_dashboard",
