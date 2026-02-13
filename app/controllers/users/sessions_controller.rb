@@ -3,10 +3,11 @@
 class Users::SessionsController < Devise::SessionsController
   layout "devise"
 
-  # Devise session authentication resets the session (security measure),
-  # which invalidates the CSRF token. Use :null_session for sign-in/sign-up
-  # actions since Devise already manages session security itself.
-  protect_from_forgery with: :null_session, only: [:create]
+  # Skip CSRF verification for login. Devise's password verification IS the
+  # security for this endpoint. We can't use :null_session because it silently
+  # discards session writes — meaning Devise authenticates successfully but the
+  # session cookie never gets set, leaving the user logged out on redirect.
+  skip_forgery_protection only: [:create]
 
   # Handle subdomain redirects for already-signed-in users
   before_action :redirect_if_signed_in, only: [:new]
