@@ -19,7 +19,8 @@ class ApplicationController < ActionController::Base
   # Handle CSRF token failures (Story 0.5)
   rescue_from ActionController::InvalidAuthenticityToken do |exception|
     respond_to do |format|
-      format.html { redirect_to root_path, alert: 'Session expired. Please try again.' }
+      format.html { redirect_to new_user_session_path, alert: 'Session expired. Please try again.' }
+      format.turbo_stream { redirect_to new_user_session_path, alert: 'Session expired. Please try again.' }
       format.json { render json: { error: 'Invalid CSRF token' }, status: :forbidden }
     end
   end
