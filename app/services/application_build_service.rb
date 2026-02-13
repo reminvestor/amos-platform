@@ -12,7 +12,7 @@
 #   # Returns { success: true, results: { ... } } or { success: false, error: "..." }
 #
 class ApplicationBuildService
-  attr_reader :plan, :results, :progress_callback, :cancellation_check
+  attr_reader :plan, :results, :progress_callback, :cancellation_check, :app
 
   # Phase percentage ranges for progress tracking
   # Each phase gets a slice of 0-100%
@@ -31,6 +31,7 @@ class ApplicationBuildService
   def initialize(plan, progress_callback: nil, cancellation_check: nil)
     @plan = plan
     @results = {
+      app: nil,
       modules: [],
       agent: nil,
       tools: [],
@@ -41,6 +42,7 @@ class ApplicationBuildService
       website: nil,
       web_app: nil
     }
+    @app = nil
     @progress_callback = progress_callback
     @cancellation_check = cancellation_check
     @current_phase = nil
@@ -58,6 +60,9 @@ class ApplicationBuildService
     emit_progress("Starting build for #{plan.name}...", percentage: 5, phase: "planning")
     
     begin
+      # Phase 0: Create parent App record to group all modules
+      create_parent_app!
+      
       # Phase 1: Create Modules (data layer) — the heaviest phase
       run_phase(:modules) { build_modules! }
         
@@ -122,6 +127,33 @@ class ApplicationBuildService
   # ============================================
   # BUILD PHASES
   # ============================================
+  
+  def create_parent_app!
+    # Create a top-level App record to group all modules built from this plan
+    @app = App.create!(
+      entity_id: plan.entity_id,
+      created_by: plan.created_by,
+      name: plan.name,
+      slug: plan.name.parameterize.underscore,
+      description: plan.plan_spec['description'] || "App built from plan: #{plan.name}",
+      status: 'building',
+      blueprint: plan.plan_spec,
+      build_started_at: Time.current,
+      metadata: { application_plan_id: plan.id }
+    )
+    
+    results[:app] = {
+      id: @app.id,
+      name: @app.name,
+      slug: @app.slug,
+      status: @app.status
+    }
+    
+    emit_progress("Created app '#{@app.name}' (ID: #{@app.id})", percentage: 8, phase: "app_creation")
+  rescue => e
+    Rails.logger.warn "[ApplicationBuildService] App record creation failed: #{e.message} — continuing without parent app"
+    @app = nil
+  end
   
   def build_modules!
     log_progress("Creating modules...")
@@ -573,6 +605,16 @@ class ApplicationBuildService
       notify_hub_module_created(app_module)
     end
     
+    # Update parent App status to active
+    if @app
+      @app.update!(
+        status: 'active',
+        build_completed_at: Time.current,
+        published_at: Time.current
+      )
+      results[:app][:status] = 'active'
+    end
+    
     # Complete the plan
     plan.complete!(results)
     
@@ -701,9 +743,11 @@ class ApplicationBuildService
     AppModule.create!(
       entity_id: plan.entity_id,
       created_by: plan.created_by,
+      app_id: @app&.id,
       name: module_spec['name'],
       slug: module_spec['slug'] || module_spec['name'].parameterize.underscore,
       description: module_spec['description'],
+      is_primary: module_spec['is_primary'] != false,
       status: 'generating',
       version: '1.0.0',
       author_type: 'amos',

@@ -83,6 +83,11 @@ class GuidanceLibrary
       # (canvas check above already returned if on design_studio)
       return :landing_page_edit if msg_lower.match?(/hero|cta|section|change the|update the|edit the/)
       
+      # Email sequence detection - must check BEFORE workflow/automation
+      if msg_lower.match?(/email\s*(sequence|series|drip|nurture|onboarding\s*flow)|welcome\s*(sequence|series)|follow.?up\s*series|day\s*\d+.*day\s*\d+|(drip|nurture)\s*(campaign|flow|sequence)|emails?\s*over\s*time/)
+        return :email_sequence_create
+      end
+      
       return :workflow_design if msg_lower.match?(/workflow|automation|trigger|when.*then/)
       
       # Integration detection - prioritize if integration keywords present with data keywords
@@ -300,6 +305,36 @@ class GuidanceLibrary
       anti_hallucination: nil
     },
 
+    email_sequence_create: {
+      title: "Email Sequence / Drip Campaign Creation",
+      expertise: <<~GUIDANCE.strip,
+        ## Email Sequence vs Automation vs Campaign
+        - **Email Sequence**: Multi-step drip flow with delays (welcome series, nurture, onboarding). Use `platform_create(type: "email_sequence")`.
+        - **Automation**: Single triggered email (e.g., "send welcome email on signup"). Use `platform_create(type: "automation")`.
+        - **Campaign**: One-time blast to a list. Use `platform_create(type: "campaign")`.
+        
+        ## Creating an Email Sequence (Multi-Step Flow)
+        1. Create email templates for each step: `platform_create(type: "email_template", data: { name: "Welcome Day 1", subject: "...", body: "..." })`
+        2. Create the sequence with steps and delays:
+           ```
+           platform_create(type: "email_sequence", data: {
+             name: "Welcome Series",
+             steps: [
+               { delay_days: 0, email_template_id: TEMPLATE_1_ID, subject: "Welcome!" },
+               { delay_days: 3, email_template_id: TEMPLATE_2_ID, subject: "Getting Started" },
+               { delay_days: 7, email_template_id: TEMPLATE_3_ID, subject: "Pro Tips" }
+             ]
+           })
+           ```
+        3. Show results: `load_canvas(canvas_name: "my_creations", data: { type: "automation" })`
+        
+        ## CRITICAL
+        - If user mentions "Day 1, Day 3, Day 7" or similar multi-step timing → ALWAYS use email_sequence, NOT standalone automations.
+        - Create templates FIRST, then reference their IDs in sequence steps.
+      GUIDANCE
+      anti_hallucination: nil
+    },
+
     integration_setup: {
       title: "Integration Setup & Data",
       expertise: <<~GUIDANCE.strip,
@@ -451,6 +486,12 @@ class GuidanceLibrary
       platform_create
       platform_query
       platform_execute
+    ],
+
+    email_sequence_create: %w[
+      platform_create
+      platform_query
+      load_canvas
     ],
 
     integration_setup: %w[

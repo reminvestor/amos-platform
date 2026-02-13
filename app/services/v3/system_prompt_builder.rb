@@ -198,7 +198,7 @@ module V3
         
         ## Tool Selection
         
-        `platform_create` — Create any object: contact, email_template, campaign, automation, landing_page, website, web_app, integration, app, contact_group, sync, scheduled_task, support_ticket, or any custom app type.
+        `platform_create` — Create any object: contact, email_template, campaign, automation, email_sequence, landing_page, website, web_app, integration, app, contact_group, sync, scheduled_task, support_ticket, or any custom app type.
         `platform_update` — Update any object by type + ID. Also: edit landing page sections, manage custom fields (add_field/remove_field on schema), update app modules (type="app_module").
         `platform_query` — Read-only queries: contacts, campaigns, landing_pages, schema, stats, integrations, integration_actions, documents.
         `platform_execute` — Run actions: integration operations, send_email, send_campaign, publish_landing_page, generate_file, generate_image, delete records.
@@ -246,7 +246,8 @@ module V3
         For complex goals, YOU plan and execute the steps directly:
         - "build a landing page" → platform_create(type: "landing_page", data: { title: "...", description: "..." })
         - "build a web app" → platform_create(type: "web_app", data: { name: "...", pages: [...], modules: [...] })
-        - "welcome email automation" → 1) platform_create email_template, 2) platform_create automation referencing the template ID
+        - "welcome email" (single) → 1) platform_create email_template, 2) platform_create automation(trigger: "contact_created", action: "send_email")
+        - "welcome email sequence" (multi-step) → 1) platform_create email_templates (one per step), 2) platform_create email_sequence with steps and delays
         - "pull Stripe customers" → platform_execute(action: "integration", integration: "stripe", operation: "list_customers")
         - Create related objects in order (template first, then automation referencing it)
         - You can call multiple tools in parallel for independent operations (e.g., creating 5 contacts)
@@ -326,7 +327,24 @@ module V3
         CUSTOM APPS — USING EXISTING MODULES:
         After building, CRUD records with the same tools: platform_create(type: "task", data: {...}), platform_query(type: "tasks"). Use platform_query(type: "schema") to discover all available types. Module types use slugs (e.g., "project_management_task"). Sub-modules have relationships (filter by parent ID). To UPDATE an existing app module (rename, add fields, change schema, etc.), use platform_update(type: "app_module", id: MODULE_ID, data: { ... }). Do NOT create a new app when the user wants to modify an existing one.
         
-        AUTOMATIONS: Triggers: contact_created, form_submit, record_updated, status_changed, field_changed, schedule, webhook. Actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user. Landing page forms auto-create contacts (built-in). A "welcome email flow" = email_template + automation(trigger: "contact_created", action: "send_email").
+        AUTOMATIONS: Triggers: contact_created, form_submit, record_updated, status_changed, field_changed, schedule, webhook. Actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user. Landing page forms auto-create contacts (built-in). A single triggered email = email_template + automation(trigger: "contact_created", action: "send_email").
+        
+        ## EMAIL ASSET DECISION TREE — Which email type to create?
+        
+        When the user asks to create something email-related, choose the correct type:
+        
+        **Single triggered email** → `automation` with `send_email` action
+        USE FOR: One-off automated emails (welcome email, thank you, notification). Single trigger → single action.
+        Example: platform_create(type: "automation", data: { trigger: "contact_created", action: "send_email", template_id: ID })
+        
+        **Multi-step drip/sequence/nurture flow** → `email_sequence` with steps and delays
+        USE FOR: Welcome series (Day 1, Day 3, Day 7), onboarding flows, nurture campaigns, drip sequences.
+        Keywords: "sequence", "series", "drip", "day 1/3/7", "over time", "nurture", "onboarding flow", "follow-up series"
+        Example: platform_create(type: "email_sequence", data: { name: "Welcome Series", steps: [{ delay_days: 0, template_id: T1 }, { delay_days: 3, template_id: T2 }, { delay_days: 7, template_id: T3 }] })
+        CRITICAL: If the user mentions multiple emails sent at different times, this is ALWAYS an email_sequence, NOT multiple standalone automations.
+        
+        **One-time blast to a list** → `campaign`
+        USE FOR: Newsletters, announcements, promotions sent once to a contact group.
         
         INTEGRATIONS:
         

@@ -6,14 +6,23 @@
   search_query = (data[:search] || data['search'] || '').to_s.strip.downcase
   max_display = 100
 
-  # ── Fetch data with eager loading ──
-  landing_pages_all = entity.landing_pages.order(updated_at: :desc)
+  # ── Fetch data scoped to current user ──
+  # Assets are user-owned by default. Users see only their own creations.
+  # For app_modules, respect the existing visibility system.
+  landing_pages_all = entity.landing_pages.where(user_id: current_user.id).order(updated_at: :desc)
   app_modules_all = entity.app_modules
-    .includes(:module_canvases, :module_codes, :tool_definitions, :agent_plugins, :module_webhooks, :module_actions)
+    .visible_to(current_user)
+    .includes(:app, :module_canvases, :module_codes, :tool_definitions, :agent_plugins, :module_webhooks, :module_actions)
     .order(updated_at: :desc) rescue []
-  automations_all = entity.automation_codes.order(updated_at: :desc) rescue []
-  websites_all = entity.websites.includes(:website_pages).order(updated_at: :desc) rescue []
-  web_apps_all = entity.web_apps.includes(:website, :web_app_modules, :app_modules).order(updated_at: :desc) rescue []
+  automations_all = entity.automation_codes.where(created_by_id: current_user.id).order(updated_at: :desc) rescue []
+  websites_all = entity.websites.where(created_by_id: current_user.id).includes(:website_pages).order(updated_at: :desc) rescue []
+  web_apps_all = entity.web_apps.where(created_by_id: current_user.id).includes(:website, :web_app_modules, :app_modules).order(updated_at: :desc) rescue []
+  
+  # Fetch Apps (parent containers for grouped modules)
+  apps_all = entity.apps.where(created_by: current_user).includes(app_modules: [:module_canvases, :module_codes, :tool_definitions, :agent_plugins]).order(updated_at: :desc) rescue []
+  
+  # Fetch Email Sequences (entity-scoped, no user_id column)
+  email_sequences_all = entity.email_sequences.includes(:sequence_steps).order(updated_at: :desc) rescue []
 
   # Apply search filter
   if search_query.present?
@@ -22,6 +31,8 @@
     automations_all = automations_all.respond_to?(:where) ? automations_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : automations_all.select { |a| a.name.to_s.downcase.include?(search_query) }
     websites_all = websites_all.respond_to?(:where) ? websites_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : websites_all
     web_apps_all = web_apps_all.respond_to?(:where) ? web_apps_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : web_apps_all
+    apps_all = apps_all.respond_to?(:where) ? apps_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : apps_all
+    email_sequences_all = email_sequences_all.respond_to?(:where) ? email_sequences_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : email_sequences_all
   end
 
   landing_pages = landing_pages_all.limit(max_display)
@@ -29,31 +40,75 @@
   automations = automations_all.respond_to?(:limit) ? automations_all.limit(max_display) : automations_all.first(max_display)
   websites = websites_all.respond_to?(:limit) ? websites_all.limit(max_display) : websites_all.first(max_display)
   web_apps = web_apps_all.respond_to?(:limit) ? web_apps_all.limit(max_display) : web_apps_all.first(max_display)
+  apps = apps_all.respond_to?(:limit) ? apps_all.limit(max_display) : apps_all.first(max_display)
+  email_sequences = email_sequences_all.respond_to?(:limit) ? email_sequences_all.limit(max_display) : email_sequences_all.first(max_display)
+  
+  # Separate grouped vs standalone modules
+  grouped_module_ids = (apps.respond_to?(:flat_map) ? apps.flat_map { |a| a.app_modules.map(&:id) } : []) rescue []
+  standalone_modules = app_modules.respond_to?(:reject) ? app_modules.reject { |m| grouped_module_ids.include?(m.id) } : (app_modules.to_a.reject { |m| grouped_module_ids.include?(m.id) } rescue [])
+  
+  # Group automations by parent context
+  automation_list = automations.respond_to?(:to_a) ? automations.to_a : automations
+  automations_by_app = automation_list.select { |a| a.respond_to?(:web_app_id) && a.web_app_id.present? }.group_by(&:web_app_id) rescue {}
+  automations_by_module = automation_list.select { |a| a.respond_to?(:app_module_id) && a.app_module_id.present? && (!a.respond_to?(:web_app_id) || a.web_app_id.blank?) }.group_by(&:app_module_id) rescue {}
+  grouped_auto_ids = (automations_by_app.values.flatten.map(&:id) + automations_by_module.values.flatten.map(&:id)) rescue []
+  standalone_automations = automation_list.reject { |a| grouped_auto_ids.include?(a.id) }
+  
+  # Smart-group standalone automations by name prefix (e.g., "Welcome Email - Day 1/3/7")
+  prefix_groups = {}
+  truly_standalone = []
+  standalone_automations.each do |auto|
+    name = auto.name.to_s
+    # Match patterns like "Name - Day X", "Name - Step X", "Name (Part X)"
+    if name.match?(/\s*[-–]\s*(day|step|part|phase)\s*\d/i) || name.match?(/\s*\(\s*(part|step)\s*\d/i)
+      prefix = name.sub(/\s*[-–]\s*(day|step|part|phase)\s*\d.*$/i, '').sub(/\s*\(\s*(part|step)\s*\d.*$/i, '').strip
+      (prefix_groups[prefix] ||= []) << auto
+    else
+      truly_standalone << auto
+    end
+  end
+  # Only keep prefix groups with 2+ items, otherwise treat as standalone
+  prefix_groups.each do |prefix, items|
+    if items.size < 2
+      truly_standalone.concat(items)
+    end
+  end
+  prefix_groups.reject! { |_, items| items.size < 2 }
 
-  # ── Stats ──
-  total_landing_pages = entity.landing_pages.count rescue 0
-  published_landing_pages = entity.landing_pages.where(status: 'published').count rescue 0
+  # ── Stats (user-scoped) ──
+  my_landing_pages = entity.landing_pages.where(user_id: current_user.id)
+  total_landing_pages = my_landing_pages.count rescue 0
+  published_landing_pages = my_landing_pages.where(status: 'published').count rescue 0
   draft_landing_pages = total_landing_pages - published_landing_pages
-  total_submissions = (entity.landing_pages.joins("LEFT JOIN landing_page_submissions ON landing_page_submissions.landing_page_id = landing_pages.id").count("landing_page_submissions.id") rescue 0)
+  total_submissions = (my_landing_pages.joins("LEFT JOIN landing_page_submissions ON landing_page_submissions.landing_page_id = landing_pages.id").count("landing_page_submissions.id") rescue 0)
 
-  total_app_modules = (entity.app_modules.count rescue 0)
-  active_app_modules = (entity.app_modules.where(status: 'active').count rescue 0)
-  deployed_app_modules = (entity.app_modules.where.not(deployed_at: nil).count rescue 0)
+  my_app_modules = entity.app_modules.visible_to(current_user) rescue entity.app_modules
+  total_app_modules = (my_app_modules.count rescue 0)
+  active_app_modules = (my_app_modules.where(status: 'active').count rescue 0)
+  deployed_app_modules = (my_app_modules.where.not(deployed_at: nil).count rescue 0)
 
-  total_automations = (entity.automation_codes.count rescue 0)
-  active_automations = (entity.automation_codes.where(status: 'active').count rescue 0)
-  total_executions = (entity.automation_codes.sum(:execution_count) rescue 0)
-  total_successes = (entity.automation_codes.sum(:success_count) rescue 0)
+  my_automations = entity.automation_codes.where(created_by_id: current_user.id)
+  total_automations = (my_automations.count rescue 0)
+  active_automations = (my_automations.where(status: 'active').count rescue 0)
+  total_executions = (my_automations.sum(:execution_count) rescue 0)
+  total_successes = (my_automations.sum(:success_count) rescue 0)
   avg_success_rate = total_executions > 0 ? ((total_successes.to_f / total_executions) * 100).round(1) : 0
 
-  total_websites = (entity.websites.count rescue 0)
-  published_websites = (entity.websites.where(status: 'published').count rescue 0)
+  my_websites = entity.websites.where(created_by_id: current_user.id)
+  total_websites = (my_websites.count rescue 0)
+  published_websites = (my_websites.where(status: 'published').count rescue 0)
 
-  total_web_apps = (entity.web_apps.count rescue 0)
-  active_web_apps = (entity.web_apps.where(status: 'active').count rescue 0)
-  total_web_app_modules = (entity.web_apps.joins(:web_app_modules).count rescue 0)
+  my_web_apps = entity.web_apps.where(created_by_id: current_user.id)
+  total_web_apps = (my_web_apps.count rescue 0)
+  active_web_apps = (my_web_apps.where(status: 'active').count rescue 0)
+  total_web_app_modules = (my_web_apps.joins(:web_app_modules).count rescue 0)
 
-  total_items = total_landing_pages + total_app_modules + total_automations + total_websites + total_web_apps
+  total_apps = (entity.apps.where(created_by: current_user).count rescue 0)
+  
+  total_email_sequences = (entity.email_sequences.count rescue 0)
+  active_email_sequences = (entity.email_sequences.where(status: 'active').count rescue 0)
+
+  total_items = total_landing_pages + total_app_modules + total_automations + total_websites + total_web_apps + total_email_sequences
 
   filter_type = data[:type] || data['type'] || 'all'
   filter_status = data[:status] || data['status'] || 'all'
@@ -114,7 +169,7 @@
       <% end %>
       <li class="nav-item">
         <button type="button" class="nav-link asset-tab <%= 'active' if filter_type == 'automation' %>" data-filter="automation">
-          <i data-lucide="zap" style="width: 14px; height: 14px;" class="me-1"></i>Automations <span class="badge bg-secondary bg-opacity-25 text-body ms-1"><%= total_automations %></span>
+          <i data-lucide="zap" style="width: 14px; height: 14px;" class="me-1"></i>Automations <span class="badge bg-secondary bg-opacity-25 text-body ms-1"><%= total_automations + total_email_sequences %></span>
         </button>
       </li>
     </ul>
@@ -176,8 +231,8 @@
     </div>
 
     <div class="stats-row row g-2 mb-3" data-stats="automation" style="display: none;">
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Total</p><h5 class="mb-0 fw-bold text-primary"><%= total_automations %></h5></div><div class="stat-icon-sm bg-primary bg-opacity-10 rounded-2 p-1"><i data-lucide="zap" class="text-primary" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Active</p><h5 class="mb-0 fw-bold text-success"><%= active_automations %> <small class="text-muted fw-normal fs-6">/ <%= total_automations %></small></h5></div><div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="play-circle" class="text-success" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Automations</p><h5 class="mb-0 fw-bold text-primary"><%= total_automations %></h5></div><div class="stat-icon-sm bg-primary bg-opacity-10 rounded-2 p-1"><i data-lucide="zap" class="text-primary" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Sequences</p><h5 class="mb-0 fw-bold" style="color: #a855f7;"><%= total_email_sequences %></h5></div><div class="stat-icon-sm rounded-2 p-1" style="background: rgba(168,85,247,0.1);"><i data-lucide="mail" style="width: 18px; height: 18px; color: #a855f7;"></i></div></div></div></div></div>
       <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Executions</p><h5 class="mb-0 fw-bold text-info"><%= total_executions %></h5></div><div class="stat-icon-sm bg-info bg-opacity-10 rounded-2 p-1"><i data-lucide="activity" class="text-info" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
       <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Success</p><h5 class="mb-0 fw-bold <%= avg_success_rate >= 95 ? 'text-success' : avg_success_rate >= 80 ? 'text-warning' : 'text-danger' %>"><%= avg_success_rate %>%</h5></div><div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="check-circle" class="text-success" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
     </div>
@@ -474,21 +529,92 @@
 
 
     <!-- ════════════════════════════════════════════════ -->
-    <!-- SECTION: App Modules (Expandable Project View)  -->
+    <!-- SECTION: App Modules (Grouped under Apps + Standalone) -->
     <!-- ════════════════════════════════════════════════ -->
     <div class="section-block" data-section="app_module">
       <% if filter_type == 'all' && total_app_modules > 0 %>
         <div class="section-header d-flex align-items-center justify-content-between mb-2">
           <h6 class="mb-0 fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
-            <i data-lucide="boxes" style="width: 14px; height: 14px;" class="me-1"></i>App Modules
+            <i data-lucide="boxes" style="width: 14px; height: 14px;" class="me-1"></i>Apps & Modules
           </h6>
           <button type="button" class="btn btn-link btn-sm text-muted p-0 view-all-btn" data-filter="app_module" style="font-size: 0.75rem;">View all (<%= total_app_modules %>)</button>
         </div>
       <% end %>
 
-      <% if app_modules.respond_to?(:each) && app_modules.any? %>
+      <% has_any_modules = (apps.respond_to?(:any?) && apps.any?) || standalone_modules.any? %>
+      <% if has_any_modules %>
         <div class="project-list mb-4">
-          <% app_modules.each do |mod| %>
+
+          <%# ── Grouped Apps (parent App → child modules) ── %>
+          <% if apps.respond_to?(:each) %>
+            <% apps.each do |parent_app| %>
+              <% app_mods = parent_app.app_modules.to_a rescue [] %>
+              <% next if app_mods.empty? && search_query.present? %>
+              <div class="project-card card border-0 shadow-sm mb-2" data-type="app_module"
+                   data-status="<%= parent_app.status == 'active' ? 'published' : 'draft' %>"
+                   data-title="<%= parent_app.name.downcase rescue '' %>">
+                <div class="card-body py-2 px-3">
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="project-icon rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                         style="width: 38px; height: 38px; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+                      <i data-lucide="<%= parent_app.respond_to?(:icon) && parent_app.icon.present? ? parent_app.icon : 'grid' %>" style="width: 18px; height: 18px; color: white;"></i>
+                    </div>
+                    <div class="flex-grow-1 min-width-0">
+                      <div class="d-flex align-items-center gap-2">
+                        <h6 class="mb-0 fw-semibold text-truncate" style="font-size: 0.9rem;"><%= parent_app.name %></h6>
+                        <span class="badge rounded-pill <%= parent_app.status == 'active' ? 'bg-success' : 'bg-secondary' %>" style="font-size: 0.6rem;"><%= parent_app.status&.titleize || 'Draft' %></span>
+                        <span class="badge rounded-pill bg-primary bg-opacity-25 text-primary" style="font-size: 0.6rem;"><%= app_mods.size %> modules</span>
+                      </div>
+                      <div class="text-muted" style="font-size: 0.7rem;"><%= parent_app.description.to_s.truncate(80) %></div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                      <button type="button" class="btn btn-sm btn-outline-secondary project-expand-btn" data-bs-toggle="collapse" data-bs-target="#app-<%= parent_app.id %>">
+                        <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="collapse" id="app-<%= parent_app.id %>">
+                  <div class="card-body pt-0 px-3 pb-3">
+                    <div class="border-top pt-2 mt-1">
+                      <% app_mods.each do |mod| %>
+                        <%
+                          canvases = mod.module_canvases rescue []
+                          models = (mod.module_codes.select { |c| c.code_type == 'model' } rescue [])
+                          tools = mod.tool_definitions rescue []
+                        %>
+                        <div class="d-flex align-items-center gap-2 py-1 px-2 rounded-1 module-sub-row" style="cursor: pointer;"
+                             data-module-slug="<%= mod.slug %>" data-module-id="<%= mod.id %>">
+                          <i data-lucide="<%= mod.icon.present? ? mod.icon : 'box' %>" style="width: 14px; height: 14px; color: #8b5cf6;"></i>
+                          <span class="fw-medium" style="font-size: 0.82rem;"><%= mod.name %></span>
+                          <span class="badge rounded-pill <%= mod.status == 'active' ? 'bg-success' : 'bg-secondary' %>" style="font-size: 0.5rem; padding: 1px 4px;"><%= mod.status&.titleize %></span>
+                          <% if mod.is_primary %><span class="badge rounded-pill bg-info bg-opacity-25 text-info" style="font-size: 0.5rem;">Primary</span><% end %>
+                          <span class="ms-auto d-flex align-items-center gap-2 text-muted" style="font-size: 0.65rem;">
+                            <% if canvases.any? %><span title="Views"><i data-lucide="layout" style="width: 10px; height: 10px;"></i> <%= canvases.size %></span><% end %>
+                            <% if models.any? %><span title="Models"><i data-lucide="database" style="width: 10px; height: 10px;"></i> <%= models.size %></span><% end %>
+                            <% if tools.any? %><span title="Tools"><i data-lucide="wrench" style="width: 10px; height: 10px;"></i> <%= tools.size %></span><% end %>
+                          </span>
+                        </div>
+                      <% end %>
+                      <div class="d-flex gap-2 mt-2 pt-2 border-top">
+                        <% primary_mod = app_mods.find { |m| m.is_primary } || app_mods.first %>
+                        <% if primary_mod %>
+                          <button type="button" class="btn btn-sm btn-outline-primary canvas-link" data-slug="<%= primary_mod.slug %>" data-canvas-slug="<%= primary_mod.slug %>_list" data-module-id="<%= primary_mod.id %>">
+                            <i data-lucide="external-link" style="width: 12px; height: 12px;" class="me-1"></i>Open App
+                          </button>
+                        <% end %>
+                        <span class="text-muted small align-self-center">Updated <%= parent_app.updated_at.strftime('%b %d, %Y') rescue 'N/A' %></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+
+          <%# ── Standalone Modules (no parent App) ── %>
+          <% standalone_modules.each do |mod| %>
             <%
               canvases = mod.module_canvases rescue []
               models = (mod.module_codes.select { |c| c.code_type == 'model' } rescue [])
@@ -501,36 +627,24 @@
             <div class="project-card card border-0 shadow-sm mb-2" data-type="app_module" data-id="<%= mod.id %>"
                  data-status="<%= mod.status == 'active' ? 'published' : 'draft' %>"
                  data-title="<%= mod.name.downcase rescue '' %>">
-              <!-- Project Header (always visible) -->
               <div class="card-body py-2 px-3">
                 <div class="d-flex align-items-center gap-3">
                   <div class="project-icon rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" 
                        style="width: 38px; height: 38px; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);">
-                    <% if mod.icon.present? %>
-                      <i data-lucide="<%= mod.icon %>" style="width: 18px; height: 18px; color: white;"></i>
-                    <% else %>
-                      <i data-lucide="boxes" style="width: 18px; height: 18px; color: white;"></i>
-                    <% end %>
+                    <i data-lucide="<%= mod.icon.present? ? mod.icon : 'boxes' %>" style="width: 18px; height: 18px; color: white;"></i>
                   </div>
                   <div class="flex-grow-1 min-width-0">
                     <div class="d-flex align-items-center gap-2">
-                      <h6 class="mb-0 fw-semibold text-truncate" style="font-size: 0.9rem;"><%= mod.name rescue 'Untitled App' %></h6>
+                      <h6 class="mb-0 fw-semibold text-truncate" style="font-size: 0.9rem;"><%= mod.name rescue 'Untitled Module' %></h6>
                       <span class="badge rounded-pill <%= mod.status == 'active' ? 'bg-success' : 'bg-secondary' %>" style="font-size: 0.6rem;"><%= mod.status&.titleize || 'Draft' %></span>
-                      <% if mod.respond_to?(:deployed_at) && mod.deployed_at.present? %>
-                        <span class="badge rounded-pill bg-info" style="font-size: 0.6rem;">Deployed</span>
-                      <% end %>
                     </div>
-                    <div class="d-flex align-items-center gap-3 text-muted" style="font-size: 0.7rem;">
-                      <span><%= mod.description.truncate(60) rescue '' %></span>
-                    </div>
+                    <div class="text-muted" style="font-size: 0.7rem;"><%= mod.description.to_s.truncate(60) %></div>
                   </div>
                   <div class="d-flex align-items-center gap-3 flex-shrink-0">
-                    <!-- Component counts (compact) -->
                     <div class="d-flex align-items-center gap-2 text-muted" style="font-size: 0.7rem;">
                       <% if canvases.any? %><span title="Views"><i data-lucide="layout" style="width: 12px; height: 12px;"></i> <%= canvases.size %></span><% end %>
                       <% if models.any? %><span title="Data Models"><i data-lucide="database" style="width: 12px; height: 12px;"></i> <%= models.size %></span><% end %>
                       <% if tools.any? %><span title="Tools"><i data-lucide="wrench" style="width: 12px; height: 12px;"></i> <%= tools.size %></span><% end %>
-                      <% if agents.any? %><span title="Agents"><i data-lucide="bot" style="width: 12px; height: 12px;"></i> <%= agents.size %></span><% end %>
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary project-expand-btn" data-bs-toggle="collapse" data-bs-target="#project-<%= mod.id %>">
                       <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
@@ -539,11 +653,9 @@
                 </div>
               </div>
 
-              <!-- Expandable Component Detail -->
               <div class="collapse" id="project-<%= mod.id %>">
                 <div class="card-body pt-0 px-3 pb-3">
                   <div class="component-grid border-top pt-2 mt-1">
-
                     <% if canvases.any? %>
                       <div class="component-group mb-2">
                         <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
@@ -557,15 +669,11 @@
                               <i data-lucide="<%= canvas.canvas_type == 'dashboard' ? 'bar-chart-3' : canvas.canvas_type == 'form' ? 'clipboard-list' : canvas.canvas_type == 'kanban' ? 'columns' : canvas.canvas_type == 'calendar' ? 'calendar' : canvas.canvas_type == 'detail' ? 'file-search' : 'table' %>" style="width: 12px; height: 12px;" class="me-1"></i>
                               <%= canvas.name || canvas.slug.titleize %>
                               <span class="chip-type"><%= canvas.canvas_type %></span>
-                              <% if canvas.is_public %>
-                                <span class="ms-1 text-success" title="Published publicly" style="font-size: 0.6rem;">●</span>
-                              <% end %>
                             </button>
                           <% end %>
                         </div>
                       </div>
                     <% end %>
-
                     <% if models.any? %>
                       <div class="component-group mb-2">
                         <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
@@ -574,14 +682,12 @@
                         <div class="d-flex flex-wrap gap-1">
                           <% models.each do |model| %>
                             <span class="btn btn-sm component-chip component-chip-muted">
-                              <i data-lucide="table-2" style="width: 12px; height: 12px;" class="me-1"></i>
-                              <%= model.name %>
+                              <i data-lucide="table-2" style="width: 12px; height: 12px;" class="me-1"></i><%= model.name %>
                             </span>
                           <% end %>
                         </div>
                       </div>
                     <% end %>
-
                     <% if tools.any? %>
                       <div class="component-group mb-2">
                         <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
@@ -590,14 +696,12 @@
                         <div class="d-flex flex-wrap gap-1">
                           <% tools.each do |tool| %>
                             <span class="btn btn-sm component-chip component-chip-muted">
-                              <i data-lucide="terminal" style="width: 12px; height: 12px;" class="me-1"></i>
-                              <%= tool.name %>
+                              <i data-lucide="terminal" style="width: 12px; height: 12px;" class="me-1"></i><%= tool.name %>
                             </span>
                           <% end %>
                         </div>
                       </div>
                     <% end %>
-
                     <% if agents.any? %>
                       <div class="component-group mb-2">
                         <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
@@ -606,56 +710,19 @@
                         <div class="d-flex flex-wrap gap-1">
                           <% agents.each do |agent| %>
                             <span class="btn btn-sm component-chip component-chip-muted">
-                              <i data-lucide="brain" style="width: 12px; height: 12px;" class="me-1"></i>
-                              <%= agent.name %>
+                              <i data-lucide="brain" style="width: 12px; height: 12px;" class="me-1"></i><%= agent.name %>
                               <% if agent.status == 'active' %><span class="ms-1" style="color: #22c55e;">●</span><% end %>
                             </span>
                           <% end %>
                         </div>
                       </div>
                     <% end %>
-
-                    <% if webhooks.any? %>
-                      <div class="component-group mb-2">
-                        <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
-                          <i data-lucide="webhook" style="width: 12px; height: 12px;" class="me-1"></i>Webhooks
-                        </div>
-                        <div class="d-flex flex-wrap gap-1">
-                          <% webhooks.each do |wh| %>
-                            <span class="btn btn-sm component-chip component-chip-muted">
-                              <i data-lucide="link" style="width: 12px; height: 12px;" class="me-1"></i>
-                              <%= wh.event_name || wh.slug %>
-                              <span class="chip-type"><%= wh.status %></span>
-                            </span>
-                          <% end %>
-                        </div>
-                      </div>
-                    <% end %>
-
-                    <% if actions.any? %>
-                      <div class="component-group mb-2">
-                        <div class="component-label text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">
-                          <i data-lucide="mouse-pointer-click" style="width: 12px; height: 12px;" class="me-1"></i>Actions
-                        </div>
-                        <div class="d-flex flex-wrap gap-1">
-                          <% actions.each do |act| %>
-                            <span class="btn btn-sm component-chip component-chip-muted">
-                              <i data-lucide="play" style="width: 12px; height: 12px;" class="me-1"></i>
-                              <%= act.name %>
-                              <span class="chip-type"><%= act.behavior_type %></span>
-                            </span>
-                          <% end %>
-                        </div>
-                      </div>
-                    <% end %>
-
                     <% if total_components == 0 %>
-                      <p class="text-muted small mb-0">No components yet. Ask Amos to add features to this app.</p>
+                      <p class="text-muted small mb-0">No components yet. Ask Amos to add features to this module.</p>
                     <% end %>
-
                     <div class="d-flex gap-2 mt-2 pt-2 border-top">
                       <button type="button" class="btn btn-sm btn-outline-primary canvas-link" data-slug="<%= mod.slug %>" data-canvas-slug="<%= mod.slug %>_list" data-module-id="<%= mod.id %>">
-                        <i data-lucide="external-link" style="width: 12px; height: 12px;" class="me-1"></i>Open App
+                        <i data-lucide="external-link" style="width: 12px; height: 12px;" class="me-1"></i>Open Module
                       </button>
                       <span class="text-muted small align-self-center">Updated <%= mod.updated_at.strftime('%b %d, %Y') rescue 'N/A' %></span>
                     </div>
@@ -664,6 +731,7 @@
               </div>
             </div>
           <% end %>
+
         </div>
       <% elsif filter_type == 'app_module' %>
         <div class="text-center py-4 text-muted"><p>No apps yet. Ask Amos to build one!</p></div>
@@ -672,81 +740,264 @@
 
 
     <!-- ════════════════════════════════════════════════ -->
-    <!-- SECTION: Automations (Compact List)             -->
+    <!-- SECTION: Automations (Grouped + Email Sequences) -->
     <!-- ════════════════════════════════════════════════ -->
     <div class="section-block" data-section="automation">
-      <% if filter_type == 'all' && total_automations > 0 %>
+      <% if filter_type == 'all' && (total_automations + total_email_sequences) > 0 %>
         <div class="section-header d-flex align-items-center justify-content-between mb-2">
           <h6 class="mb-0 fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
-            <i data-lucide="zap" style="width: 14px; height: 14px;" class="me-1"></i>Automations
+            <i data-lucide="zap" style="width: 14px; height: 14px;" class="me-1"></i>Automations & Sequences
           </h6>
-          <button type="button" class="btn btn-link btn-sm text-muted p-0 view-all-btn" data-filter="automation" style="font-size: 0.75rem;">View all (<%= total_automations %>)</button>
+          <button type="button" class="btn btn-link btn-sm text-muted p-0 view-all-btn" data-filter="automation" style="font-size: 0.75rem;">View all (<%= total_automations + total_email_sequences %>)</button>
         </div>
       <% end %>
 
-      <% if automations.respond_to?(:each) && automations.any? %>
+      <% has_any_automations = (automations.respond_to?(:any?) ? automations.any? : automations.size > 0) || (email_sequences.respond_to?(:any?) ? email_sequences.any? : false) %>
+      <% if has_any_automations %>
         <div class="automation-list mb-4">
-          <div class="card border-0 shadow-sm">
-            <div class="list-group list-group-flush">
-              <% automations.each do |auto| %>
-                <div class="list-group-item list-group-item-action automation-row px-3 py-2 border-0 border-bottom"
-                     data-type="automation" data-id="<%= auto.id %>"
-                     data-status="<%= auto.status == 'active' ? 'published' : 'draft' %>"
-                     data-title="<%= auto.name.downcase rescue '' %>">
-                  <div class="d-flex align-items-center gap-3">
-                    <!-- Status dot -->
-                    <span class="status-dot flex-shrink-0 <%= auto.status == 'active' ? 'active' : 'inactive' %>" title="<%= auto.status&.titleize %>"></span>
-                    
-                    <!-- Name & trigger -->
-                    <div class="flex-grow-1 min-width-0">
-                      <div class="fw-semibold text-truncate" style="font-size: 0.85rem;"><%= auto.name rescue 'Untitled' %></div>
-                      <div class="text-muted" style="font-size: 0.7rem;">
-                        <% if auto.respond_to?(:trigger_type) && auto.trigger_type.present? %>
-                          <i data-lucide="zap" style="width: 10px; height: 10px;" class="me-1"></i><%= auto.trigger_type.titleize %>
-                        <% else %>
-                          <i data-lucide="clock" style="width: 10px; height: 10px;" class="me-1"></i>Manual
+
+          <%# ── Email Sequences (higher-level, shown first) ── %>
+          <% if email_sequences.respond_to?(:each) && email_sequences.any? %>
+            <div class="mb-3">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <i data-lucide="mail" style="width: 14px; height: 14px; color: #a855f7;"></i>
+                <span class="fw-semibold text-muted text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Email Sequences (<%= email_sequences.size %>)</span>
+              </div>
+              <% email_sequences.each do |seq| %>
+                <% steps = seq.sequence_steps.respond_to?(:ordered) ? seq.sequence_steps.ordered : (seq.sequence_steps.sort_by { |s| s.step_number } rescue []) %>
+                <div class="card border-0 shadow-sm mb-2 sequence-card" data-type="automation" 
+                     data-title="<%= seq.name.downcase rescue '' %>"
+                     data-status="<%= seq.status == 'active' ? 'published' : 'draft' %>">
+                  <div class="card-body py-2 px-3">
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="project-icon rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                           style="width: 34px; height: 34px; background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);">
+                        <i data-lucide="mail" style="width: 16px; height: 16px; color: white;"></i>
+                      </div>
+                      <div class="flex-grow-1 min-width-0">
+                        <div class="d-flex align-items-center gap-2">
+                          <span class="fw-semibold text-truncate" style="font-size: 0.85rem;"><%= seq.name %></span>
+                          <span class="badge rounded-pill <%= seq.status == 'active' ? 'bg-success' : seq.status == 'paused' ? 'bg-warning' : 'bg-secondary' %>" style="font-size: 0.55rem;"><%= seq.status&.titleize %></span>
+                          <span class="badge rounded-pill bg-primary bg-opacity-25 text-primary" style="font-size: 0.55rem;"><%= steps.size %> steps</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-3 text-muted" style="font-size: 0.65rem;">
+                          <% if seq.enrolled_count.to_i > 0 %><span><i data-lucide="users" style="width: 10px; height: 10px;" class="me-1"></i><%= seq.enrolled_count %> enrolled</span><% end %>
+                          <% if seq.completed_count.to_i > 0 %><span class="text-success"><i data-lucide="check" style="width: 10px; height: 10px;" class="me-1"></i><%= seq.completed_count %> completed</span><% end %>
+                          <% if seq.respond_to?(:goal) && seq.goal.present? %><span><%= seq.goal.to_s.truncate(40) %></span><% end %>
+                        </div>
+                      </div>
+                      <button type="button" class="btn btn-sm btn-outline-secondary project-expand-btn" data-bs-toggle="collapse" data-bs-target="#seq-<%= seq.id %>">
+                        <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="collapse" id="seq-<%= seq.id %>">
+                    <div class="card-body pt-0 px-3 pb-3 border-top">
+                      <div class="sequence-steps-timeline pt-2">
+                        <% steps.each_with_index do |step, idx| %>
+                          <div class="d-flex align-items-start gap-2 mb-2">
+                            <div class="step-number rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0"
+                                 style="width: 24px; height: 24px; font-size: 0.65rem; font-weight: 700;"><%= step.step_number %></div>
+                            <div class="flex-grow-1">
+                              <div class="fw-medium" style="font-size: 0.8rem;">
+                                <%= step.effective_subject || "Step #{step.step_number}" %>
+                              </div>
+                              <div class="text-muted" style="font-size: 0.65rem;">
+                                <% if step.delay_hours.to_i == 0 && idx == 0 %>
+                                  <i data-lucide="clock" style="width: 9px; height: 9px;" class="me-1"></i>Immediate
+                                <% elsif step.delay_hours.to_i > 0 %>
+                                  <i data-lucide="clock" style="width: 9px; height: 9px;" class="me-1"></i>After <%= step.delay_in_days >= 1 ? "#{step.delay_in_days.round} day#{'s' if step.delay_in_days.round != 1}" : "#{step.delay_hours}h" %>
+                                <% end %>
+                                <% if step.sent_count.to_i > 0 %>
+                                  <span class="ms-2"><i data-lucide="send" style="width: 9px; height: 9px;" class="me-1"></i><%= step.sent_count %> sent</span>
+                                  <span class="ms-1 text-success"><%= step.open_rate %>% opened</span>
+                                <% end %>
+                              </div>
+                            </div>
+                          </div>
+                        <% end %>
+                        <% if steps.empty? %>
+                          <p class="text-muted small mb-0">No steps defined yet. Ask Amos to add steps to this sequence.</p>
                         <% end %>
                       </div>
-                    </div>
-
-                    <!-- Execution stats -->
-                    <div class="d-flex align-items-center gap-3 flex-shrink-0 text-end" style="font-size: 0.75rem;">
-                      <% exec_count = auto.respond_to?(:execution_count) ? auto.execution_count.to_i : 0 %>
-                      <% err_count = auto.respond_to?(:error_count) ? auto.error_count.to_i : 0 %>
-                      <% success_count = auto.respond_to?(:success_count) ? auto.success_count.to_i : 0 %>
-                      <div class="text-muted" title="Total runs">
-                        <span class="fw-semibold"><%= exec_count %></span> runs
-                      </div>
-                      <% if exec_count > 0 %>
-                        <div>
-                          <span class="text-success"><%= success_count %></span> / <span class="text-danger"><%= err_count %></span>
-                        </div>
-                      <% end %>
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="d-flex gap-1 flex-shrink-0">
-                      <button type="button" class="btn btn-sm btn-outline-secondary automation-edit-btn" data-id="<%= auto.id %>" title="Edit">
-                        <i data-lucide="edit-2" style="width: 12px; height: 12px;"></i>
-                      </button>
-                      <% if auto.status == 'active' %>
-                        <button type="button" class="btn btn-sm btn-outline-warning toggle-btn" data-id="<%= auto.id %>" data-action-type="pause" title="Pause">
-                          <i data-lucide="pause" style="width: 12px; height: 12px;"></i>
-                        </button>
-                      <% else %>
-                        <button type="button" class="btn btn-sm btn-outline-success toggle-btn" data-id="<%= auto.id %>" data-action-type="activate" title="Activate">
-                          <i data-lucide="play" style="width: 12px; height: 12px;"></i>
-                        </button>
-                      <% end %>
                     </div>
                   </div>
                 </div>
               <% end %>
             </div>
-          </div>
+          <% end %>
+
+          <%# ── Grouped Automations (by Web App) ── %>
+          <% automations_by_app.each do |wa_id, group_autos| %>
+            <% wa_name = (WebApp.find_by(id: wa_id)&.name rescue "Web App ##{wa_id}") %>
+            <div class="card border-0 shadow-sm mb-2">
+              <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <i data-lucide="app-window" style="width: 14px; height: 14px; color: #0ea5e9;"></i>
+                  <span class="fw-semibold" style="font-size: 0.8rem;"><%= wa_name %></span>
+                  <span class="badge rounded-pill bg-info bg-opacity-25 text-info" style="font-size: 0.55rem;"><%= group_autos.size %> automations</span>
+                  <button type="button" class="btn btn-sm btn-outline-secondary project-expand-btn ms-auto" data-bs-toggle="collapse" data-bs-target="#auto-wa-<%= wa_id %>">
+                    <i data-lucide="chevron-down" style="width: 12px; height: 12px;"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="collapse show" id="auto-wa-<%= wa_id %>">
+                <div class="list-group list-group-flush">
+                  <% group_autos.each do |auto| %>
+                    <div class="list-group-item list-group-item-action automation-row px-3 py-2 border-0 border-bottom"
+                         data-type="automation" data-id="<%= auto.id %>"
+                         data-status="<%= auto.status == 'active' ? 'published' : 'draft' %>"
+                         data-title="<%= auto.name.downcase rescue '' %>" style="padding-left: 2.5rem !important;">
+                      <div class="d-flex align-items-center gap-3">
+                        <span class="status-dot flex-shrink-0 <%= auto.status == 'active' ? 'active' : 'inactive' %>"></span>
+                        <div class="flex-grow-1 min-width-0">
+                          <div class="fw-semibold text-truncate" style="font-size: 0.82rem;"><%= auto.name rescue 'Untitled' %></div>
+                          <div class="text-muted" style="font-size: 0.65rem;"><i data-lucide="zap" style="width: 9px; height: 9px;" class="me-1"></i><%= auto.trigger_type&.titleize || 'Manual' %></div>
+                        </div>
+                        <div class="d-flex gap-1 flex-shrink-0">
+                          <button type="button" class="btn btn-sm btn-outline-secondary automation-edit-btn" data-id="<%= auto.id %>" title="Edit"><i data-lucide="edit-2" style="width: 11px; height: 11px;"></i></button>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
+          <%# ── Grouped Automations (by Module) ── %>
+          <% automations_by_module.each do |mod_id, group_autos| %>
+            <% mod_name = (AppModule.find_by(id: mod_id)&.name rescue "Module ##{mod_id}") %>
+            <div class="card border-0 shadow-sm mb-2">
+              <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <i data-lucide="boxes" style="width: 14px; height: 14px; color: #8b5cf6;"></i>
+                  <span class="fw-semibold" style="font-size: 0.8rem;"><%= mod_name %></span>
+                  <span class="badge rounded-pill bg-primary bg-opacity-25 text-primary" style="font-size: 0.55rem;"><%= group_autos.size %> automations</span>
+                  <button type="button" class="btn btn-sm btn-outline-secondary project-expand-btn ms-auto" data-bs-toggle="collapse" data-bs-target="#auto-mod-<%= mod_id %>">
+                    <i data-lucide="chevron-down" style="width: 12px; height: 12px;"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="collapse show" id="auto-mod-<%= mod_id %>">
+                <div class="list-group list-group-flush">
+                  <% group_autos.each do |auto| %>
+                    <div class="list-group-item list-group-item-action automation-row px-3 py-2 border-0 border-bottom"
+                         data-type="automation" data-id="<%= auto.id %>"
+                         data-status="<%= auto.status == 'active' ? 'published' : 'draft' %>"
+                         data-title="<%= auto.name.downcase rescue '' %>" style="padding-left: 2.5rem !important;">
+                      <div class="d-flex align-items-center gap-3">
+                        <span class="status-dot flex-shrink-0 <%= auto.status == 'active' ? 'active' : 'inactive' %>"></span>
+                        <div class="flex-grow-1 min-width-0">
+                          <div class="fw-semibold text-truncate" style="font-size: 0.82rem;"><%= auto.name rescue 'Untitled' %></div>
+                          <div class="text-muted" style="font-size: 0.65rem;"><i data-lucide="zap" style="width: 9px; height: 9px;" class="me-1"></i><%= auto.trigger_type&.titleize || 'Manual' %></div>
+                        </div>
+                        <div class="d-flex gap-1 flex-shrink-0">
+                          <button type="button" class="btn btn-sm btn-outline-secondary automation-edit-btn" data-id="<%= auto.id %>" title="Edit"><i data-lucide="edit-2" style="width: 11px; height: 11px;"></i></button>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
+          <%# ── Prefix-Grouped Automations (smart name grouping) ── %>
+          <% prefix_groups.each do |prefix, group_autos| %>
+            <div class="card border-0 shadow-sm mb-2">
+              <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <i data-lucide="layers" style="width: 14px; height: 14px; color: #f59e0b;"></i>
+                  <span class="fw-semibold" style="font-size: 0.8rem;"><%= prefix %></span>
+                  <span class="badge rounded-pill bg-warning bg-opacity-25 text-warning" style="font-size: 0.55rem;"><%= group_autos.size %> steps</span>
+                  <button type="button" class="btn btn-sm btn-outline-secondary project-expand-btn ms-auto" data-bs-toggle="collapse" data-bs-target="#auto-prefix-<%= prefix.parameterize %>">
+                    <i data-lucide="chevron-down" style="width: 12px; height: 12px;"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="collapse show" id="auto-prefix-<%= prefix.parameterize %>">
+                <div class="list-group list-group-flush">
+                  <% group_autos.sort_by { |a| a.name.to_s }.each do |auto| %>
+                    <div class="list-group-item list-group-item-action automation-row px-3 py-2 border-0 border-bottom"
+                         data-type="automation" data-id="<%= auto.id %>"
+                         data-status="<%= auto.status == 'active' ? 'published' : 'draft' %>"
+                         data-title="<%= auto.name.downcase rescue '' %>" style="padding-left: 2.5rem !important;">
+                      <div class="d-flex align-items-center gap-3">
+                        <span class="status-dot flex-shrink-0 <%= auto.status == 'active' ? 'active' : 'inactive' %>"></span>
+                        <div class="flex-grow-1 min-width-0">
+                          <div class="fw-semibold text-truncate" style="font-size: 0.82rem;"><%= auto.name rescue 'Untitled' %></div>
+                          <div class="text-muted" style="font-size: 0.65rem;"><i data-lucide="zap" style="width: 9px; height: 9px;" class="me-1"></i><%= auto.trigger_type&.titleize || 'Manual' %></div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-shrink-0 text-muted" style="font-size: 0.7rem;">
+                          <% exec_ct = auto.respond_to?(:execution_count) ? auto.execution_count.to_i : 0 %>
+                          <% if exec_ct > 0 %><span><%= exec_ct %> runs</span><% end %>
+                        </div>
+                        <div class="d-flex gap-1 flex-shrink-0">
+                          <button type="button" class="btn btn-sm btn-outline-secondary automation-edit-btn" data-id="<%= auto.id %>" title="Edit"><i data-lucide="edit-2" style="width: 11px; height: 11px;"></i></button>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
+          <%# ── Standalone Automations (no parent, no grouping) ── %>
+          <% if truly_standalone.any? %>
+            <div class="card border-0 shadow-sm">
+              <div class="list-group list-group-flush">
+                <% truly_standalone.each do |auto| %>
+                  <div class="list-group-item list-group-item-action automation-row px-3 py-2 border-0 border-bottom"
+                       data-type="automation" data-id="<%= auto.id %>"
+                       data-status="<%= auto.status == 'active' ? 'published' : 'draft' %>"
+                       data-title="<%= auto.name.downcase rescue '' %>">
+                    <div class="d-flex align-items-center gap-3">
+                      <span class="status-dot flex-shrink-0 <%= auto.status == 'active' ? 'active' : 'inactive' %>" title="<%= auto.status&.titleize %>"></span>
+                      <div class="flex-grow-1 min-width-0">
+                        <div class="fw-semibold text-truncate" style="font-size: 0.85rem;"><%= auto.name rescue 'Untitled' %></div>
+                        <div class="text-muted" style="font-size: 0.7rem;">
+                          <% if auto.respond_to?(:trigger_type) && auto.trigger_type.present? %>
+                            <i data-lucide="zap" style="width: 10px; height: 10px;" class="me-1"></i><%= auto.trigger_type.titleize %>
+                          <% else %>
+                            <i data-lucide="clock" style="width: 10px; height: 10px;" class="me-1"></i>Manual
+                          <% end %>
+                        </div>
+                      </div>
+                      <div class="d-flex align-items-center gap-3 flex-shrink-0 text-end" style="font-size: 0.75rem;">
+                        <% exec_count = auto.respond_to?(:execution_count) ? auto.execution_count.to_i : 0 %>
+                        <% err_count = auto.respond_to?(:error_count) ? auto.error_count.to_i : 0 %>
+                        <% success_count = auto.respond_to?(:success_count) ? auto.success_count.to_i : 0 %>
+                        <div class="text-muted" title="Total runs"><span class="fw-semibold"><%= exec_count %></span> runs</div>
+                        <% if exec_count > 0 %>
+                          <div><span class="text-success"><%= success_count %></span> / <span class="text-danger"><%= err_count %></span></div>
+                        <% end %>
+                      </div>
+                      <div class="d-flex gap-1 flex-shrink-0">
+                        <button type="button" class="btn btn-sm btn-outline-secondary automation-edit-btn" data-id="<%= auto.id %>" title="Edit">
+                          <i data-lucide="edit-2" style="width: 12px; height: 12px;"></i>
+                        </button>
+                        <% if auto.status == 'active' %>
+                          <button type="button" class="btn btn-sm btn-outline-warning toggle-btn" data-id="<%= auto.id %>" data-action-type="pause" title="Pause">
+                            <i data-lucide="pause" style="width: 12px; height: 12px;"></i>
+                          </button>
+                        <% else %>
+                          <button type="button" class="btn btn-sm btn-outline-success toggle-btn" data-id="<%= auto.id %>" data-action-type="activate" title="Activate">
+                            <i data-lucide="play" style="width: 12px; height: 12px;"></i>
+                          </button>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
         </div>
       <% elsif filter_type == 'automation' %>
-        <div class="text-center py-4 text-muted"><p>No automations yet. Ask Amos to create one!</p></div>
+        <div class="text-center py-4 text-muted"><p>No automations or sequences yet. Ask Amos to create one!</p></div>
       <% end %>
     </div>
 
@@ -886,6 +1137,15 @@
   .status-dot.active { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.2); }
   .status-dot.inactive { background: #9ca3af; }
 
+  /* Module sub-rows (inside grouped Apps) */
+  .module-sub-row { transition: background 0.15s; }
+  .module-sub-row:hover { background: var(--bs-tertiary-bg, #f8f9fa); }
+
+  /* Sequence cards */
+  .sequence-card { border-radius: 8px !important; transition: all 0.15s; }
+  .sequence-card:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.08) !important; }
+  .sequence-steps-timeline { padding-left: 0.25rem; }
+
   /* Section visibility */
   .section-block[data-section] { display: block; }
 
@@ -1009,6 +1269,15 @@
         const matchesSearch = title.includes(query);
         const matchesStatus = currentStatusFilter === 'all' || status === currentStatusFilter;
         row.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+      });
+
+      // Sequence cards
+      container.querySelectorAll('.sequence-card').forEach(card => {
+        const title = card.dataset.title || '';
+        const status = card.dataset.status || '';
+        const matchesSearch = title.includes(query);
+        const matchesStatus = currentStatusFilter === 'all' || status === currentStatusFilter;
+        card.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
       });
     }
 
@@ -1137,6 +1406,16 @@
       if (!card) return;
       const expandBtn = card.querySelector('.project-expand-btn');
       if (expandBtn) expandBtn.click();
+    });
+
+    // ── Module sub-rows inside grouped Apps ──
+    container.addEventListener('click', function(e) {
+      const row = e.target.closest('.module-sub-row');
+      if (!row) return;
+      e.preventDefault(); e.stopPropagation();
+      const slug = row.dataset.moduleSlug;
+      const moduleId = row.dataset.moduleId;
+      if (slug) loadCanvas('module_' + slug + '_list', { app_module_id: moduleId });
     });
 
     // ── App module canvas links ──
