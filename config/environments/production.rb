@@ -61,8 +61,8 @@ Rails.application.configure do
   # Enable CSRF protection (Story 0.5 - Security Fix)
   config.action_controller.allow_forgery_protection = true
   config.action_controller.default_protect_from_forgery = true
-  config.action_controller.per_form_csrf_tokens = true
-  config.action_controller.request_forgery_protection_token = :authenticity_token
+  # Note: per_form_csrf_tokens disabled -- incompatible with Turbo/Devise session resets
+  config.action_controller.per_form_csrf_tokens = false
 
   # Log to STDOUT with the current request id as a default log tag.
   config.log_tags = [ :request_id ]

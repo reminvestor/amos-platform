@@ -6,6 +6,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
   layout "application", only: [ :edit, :update ]
   layout "devise", only: [ :new, :create ]
 
+  # Devise session management resets sessions on sign-up, which invalidates CSRF tokens.
+  protect_from_forgery with: :null_session, only: [:create]
+
   before_action :configure_sign_up_params, only: [ :create ]
   before_action :configure_account_update_params, only: [ :update ]
   before_action :redirect_to_profile, only: [ :edit ]
