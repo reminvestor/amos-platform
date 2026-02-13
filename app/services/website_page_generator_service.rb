@@ -13,7 +13,7 @@
 #
 class WebsitePageGeneratorService
   FUNCTIONAL_TEMPLATES = %w[dashboard form list detail settings calendar kanban].freeze
-  MARKETING_TEMPLATES = %w[homepage landing content].freeze
+  MARKETING_TEMPLATES = %w[homepage landing].freeze
 
   def initialize(user:, entity:, website: nil)
     @user = user
@@ -71,8 +71,9 @@ class WebsitePageGeneratorService
     data_fields = page_data[:data_fields] || page_data[:fields] || []
 
     # Build the business context
-    business_name = @entity.business_profile&.dig("company_name") || @entity.name || "App"
-    brand_colors = @entity.business_profile&.dig("brand_colors") || []
+    profile = @entity.respond_to?(:business_profile) ? (@entity.business_profile rescue nil) : nil
+    business_name = profile&.dig("company_name") || @entity.name || "App"
+    brand_colors = profile&.dig("brand_colors") || []
     primary_color = brand_colors.first || "#6366f1"
 
     prompt = <<~PROMPT
@@ -147,8 +148,9 @@ class WebsitePageGeneratorService
   # ═══════════════════════════════════════════════════════════════
 
   def generate_marketing_page(title:, description:, template:, page_data:)
-    business_name = page_data[:business_name] || @entity.business_profile&.dig("company_name") || @entity.name || "Business"
-    brand_colors = @entity.business_profile&.dig("brand_colors") || []
+    profile = @entity.respond_to?(:business_profile) ? (@entity.business_profile rescue nil) : nil
+    business_name = page_data[:business_name] || profile&.dig("company_name") || @entity.name || "Business"
+    brand_colors = profile&.dig("brand_colors") || []
     cta_text = page_data[:cta_text] || "Get Started"
     value_prop = page_data[:value_proposition] || description
 
@@ -258,20 +260,20 @@ class WebsitePageGeneratorService
       return "marketing"
     end
 
-    # Default: homepage is marketing, everything else context-dependent
-    template == "homepage" ? "marketing" : "functional"
+    # Default: marketing templates are marketing, everything else context-dependent
+    MARKETING_TEMPLATES.include?(template) ? "marketing" : "functional"
   end
 
   def infer_template(title, description)
     combined = "#{title} #{description}".downcase
 
     return "dashboard" if combined.match?(/dashboard|overview|summary|analytics/)
-    return "form" if combined.match?(/form|create|add|new|submit|register/)
-    return "list" if combined.match?(/list|table|browse|search|directory/)
-    return "detail" if combined.match?(/detail|view|profile|single/)
-    return "settings" if combined.match?(/settings|config|preferences|account/)
+    return "form" if combined.match?(/\bform\b|create\s|add\s|new\s|submit|register/)
+    return "list" if combined.match?(/\blist\b|table|browse|search|directory/)
     return "calendar" if combined.match?(/calendar|schedule|planner/)
     return "kanban" if combined.match?(/kanban|board|tracker|task/)
+    return "settings" if combined.match?(/settings|config|preferences|account/)
+    return "detail" if combined.match?(/detail|view\b|profile|single/)
     return "homepage" if combined.match?(/home|main|index|welcome/)
     return "landing" if combined.match?(/landing|promo|marketing/)
 

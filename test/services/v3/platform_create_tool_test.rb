@@ -154,6 +154,210 @@ class V3::Tools::PlatformCreateToolTest < ActiveSupport::TestCase
     assert V3::Tools::PlatformCreateTool::BUILDER_TYPES.include?("scheduled_task")
   end
 
+  test "routes website to builder" do
+    assert V3::Tools::PlatformCreateTool::BUILDER_TYPES.include?("website")
+  end
+
+  test "routes web_app to builder" do
+    assert V3::Tools::PlatformCreateTool::BUILDER_TYPES.include?("web_app")
+  end
+
+  # ══════════════════════════════════════════════════════════════
+  # WEBSITE CREATION
+  # ══════════════════════════════════════════════════════════════
+
+  test "website creation requires pages" do
+    result = @tool.execute({
+      "type" => "website",
+      "data" => { "name" => "My Site" }
+    })
+
+    assert_equal false, result[:success]
+    assert_match /page/i, result[:error]
+  end
+
+  test "website creation creates Website record" do
+    # Stub the AI generation
+    WebsitePageGeneratorService.any_instance.stubs(:call_ai).returns(
+      "<!DOCTYPE html><html><head><title>Home</title></head><body><h1>Home</h1></body></html>"
+    )
+
+    result = @tool.execute({
+      "type" => "website",
+      "data" => {
+        "name" => "Test Website",
+        "pages" => [{ "title" => "Home", "description" => "Homepage" }]
+      }
+    })
+
+    assert result[:success] != false, "Should succeed: #{result[:error]}"
+    assert result[:website_id].present?
+
+    website = Website.find_by(id: result[:website_id])
+    assert website, "Website should exist"
+    assert_equal "Test Website", website.name
+    assert_equal "draft", website.status
+  ensure
+    Website.where(entity: @entity, name: "Test Website").destroy_all
+  end
+
+  test "website creation creates WebsitePage records" do
+    WebsitePageGeneratorService.any_instance.stubs(:call_ai).returns(
+      "<!DOCTYPE html><html><head><title>Page</title></head><body><h1>Page</h1></body></html>"
+    )
+
+    result = @tool.execute({
+      "type" => "website",
+      "data" => {
+        "name" => "Multi Page Site",
+        "pages" => [
+          { "title" => "Home", "description" => "Homepage" },
+          { "title" => "About", "description" => "About page" }
+        ]
+      }
+    })
+
+    assert result[:success] != false, "Should succeed: #{result[:error]}"
+    assert_equal 2, result[:page_count]
+
+    website = Website.find_by(id: result[:website_id])
+    assert_equal 2, website.website_pages.count
+    assert website.website_pages.find_by(name: "Home").is_homepage
+  ensure
+    Website.where(entity: @entity, name: "Multi Page Site").destroy_all
+  end
+
+  test "website uses WebsitePageGeneratorService not LandingPage" do
+    WebsitePageGeneratorService.any_instance.stubs(:call_ai).returns(
+      "<!DOCTYPE html><html><body>Functional page</body></html>"
+    )
+
+    initial_lp_count = LandingPage.where(entity: @entity).count
+
+    result = @tool.execute({
+      "type" => "website",
+      "data" => {
+        "name" => "Func Site",
+        "pages" => [{ "title" => "Dashboard", "description" => "App dashboard" }]
+      }
+    })
+
+    assert result[:success] != false, "Should succeed: #{result[:error]}"
+    # Should NOT create LandingPage records (old behavior)
+    assert_equal initial_lp_count, LandingPage.where(entity: @entity).count
+  ensure
+    Website.where(entity: @entity, name: "Func Site").destroy_all
+  end
+
+  # ══════════════════════════════════════════════════════════════
+  # WEB APP CREATION
+  # ══════════════════════════════════════════════════════════════
+
+  test "web app creation creates WebApp record" do
+    WebsitePageGeneratorService.any_instance.stubs(:call_ai).returns(
+      "<!DOCTYPE html><html><body>App page</body></html>"
+    )
+
+    result = @tool.execute({
+      "type" => "web_app",
+      "data" => {
+        "name" => "Task Tracker",
+        "pages" => [{ "title" => "Dashboard", "description" => "Task dashboard" }]
+      }
+    })
+
+    assert result[:success] != false, "Should succeed: #{result[:error]}"
+    assert result[:web_app_id].present?, "Should return web_app_id"
+
+    web_app = WebApp.find_by(id: result[:web_app_id])
+    assert web_app, "WebApp should exist"
+    assert_equal "Task Tracker", web_app.name
+    assert_equal "draft", web_app.status
+    assert web_app.subdomain.present?, "Should have a subdomain"
+  ensure
+    WebApp.where(entity: @entity, name: "Task Tracker").delete_all
+    Website.where(entity: @entity, name: "Task Tracker").destroy_all
+  end
+
+  test "web app creation links to website" do
+    WebsitePageGeneratorService.any_instance.stubs(:call_ai).returns(
+      "<!DOCTYPE html><html><body>Page</body></html>"
+    )
+
+    result = @tool.execute({
+      "type" => "web_app",
+      "data" => {
+        "name" => "My Portal",
+        "pages" => [{ "title" => "Home", "description" => "Portal home" }]
+      }
+    })
+
+    assert result[:success] != false
+    web_app = WebApp.find_by(id: result[:web_app_id])
+    assert web_app.website_id.present?, "WebApp should be linked to a Website"
+    assert_equal result[:website_id], web_app.website_id
+  ensure
+    WebApp.where(entity: @entity, name: "My Portal").delete_all
+    Website.where(entity: @entity, name: "My Portal").destroy_all
+  end
+
+  test "web app creation without pages still creates WebApp" do
+    result = @tool.execute({
+      "type" => "web_app",
+      "data" => {
+        "name" => "API Only App",
+        "description" => "Backend-only web app"
+      }
+    })
+
+    assert result[:success] != false, "Should succeed: #{result[:error]}"
+    assert result[:web_app_id].present?
+
+    web_app = WebApp.find_by(id: result[:web_app_id])
+    assert web_app, "WebApp should exist even without pages"
+    assert_nil web_app.website_id, "Should have no website when no pages provided"
+  ensure
+    WebApp.where(entity: @entity, name: "API Only App").delete_all
+  end
+
+  test "web app creation links modules" do
+    WebsitePageGeneratorService.any_instance.stubs(:call_ai).returns(
+      "<!DOCTYPE html><html><body>Page</body></html>"
+    )
+
+    # Create an app module to link
+    app_mod = AppModule.create!(
+      entity: @entity,
+      name: "Tasks Module",
+      slug: "tasks_module_test",
+      status: "active"
+    )
+
+    result = @tool.execute({
+      "type" => "web_app",
+      "data" => {
+        "name" => "Linked App",
+        "pages" => [{ "title" => "Home", "description" => "Home" }],
+        "modules" => ["tasks_module_test"]
+      }
+    })
+
+    assert result[:success] != false, "Should succeed: #{result[:error]}"
+    assert_equal 1, result[:module_count]
+    assert_includes result[:linked_modules], "Tasks Module"
+
+    web_app = WebApp.find_by(id: result[:web_app_id])
+    assert_equal 1, web_app.web_app_modules.count
+    assert_equal app_mod.id, web_app.web_app_modules.first.app_module_id
+  ensure
+    if (wa = WebApp.find_by(entity: @entity, name: "Linked App"))
+      WebAppModule.where(web_app_id: wa.id).delete_all
+      wa.delete
+    end
+    Website.where(entity: @entity, name: "Linked App").destroy_all
+    app_mod&.destroy
+  end
+
   # ══════════════════════════════════════════════════════════════
   # SCHEDULED TASK CREATION
   # ══════════════════════════════════════════════════════════════

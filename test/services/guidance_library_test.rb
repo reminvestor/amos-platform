@@ -44,6 +44,101 @@ class GuidanceLibraryTest < ActiveSupport::TestCase
   end
 
   # ═══════════════════════════════════════════════════════════════════════════
+  # WEB APP DETECTION
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  test "detects web_app_create for customer portal" do
+    task_type = GuidanceLibrary.detect_task_type(
+      message: "Build me a customer portal"
+    )
+    assert_equal :web_app_create, task_type
+  end
+
+  test "detects web_app_create for external app" do
+    task_type = GuidanceLibrary.detect_task_type(
+      message: "Create an external app for tracking orders"
+    )
+    assert_equal :web_app_create, task_type
+  end
+
+  test "detects web_app_create for web app" do
+    task_type = GuidanceLibrary.detect_task_type(
+      message: "Build a web app for task management"
+    )
+    assert_equal :web_app_create, task_type
+  end
+
+  test "detects web_app_create for tracker app" do
+    task_type = GuidanceLibrary.detect_task_type(
+      message: "Build me a task tracker app"
+    )
+    assert_equal :web_app_create, task_type
+  end
+
+  test "detects web_app_create for public dashboard" do
+    task_type = GuidanceLibrary.detect_task_type(
+      message: "Create a customer dashboard app"
+    )
+    assert_equal :web_app_create, task_type
+  end
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # LANDING PAGE vs WEBSITE DISTINCTION
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  test "detects landing_page_create for explicit landing page" do
+    task_type = GuidanceLibrary.detect_task_type(
+      message: "Create a landing page for my product"
+    )
+    assert_equal :landing_page_create, task_type
+  end
+
+  test "detects landing_page_create for marketing page" do
+    task_type = GuidanceLibrary.detect_task_type(
+      message: "Build a marketing page for our summer sale"
+    )
+    assert_equal :landing_page_create, task_type
+  end
+
+  test "detects landing_page_create for promo page" do
+    task_type = GuidanceLibrary.detect_task_type(
+      message: "Create a promo page for the event"
+    )
+    assert_equal :landing_page_create, task_type
+  end
+
+  test "detects website_create for company website" do
+    task_type = GuidanceLibrary.detect_task_type(
+      message: "Build a website for my business"
+    )
+    assert_equal :website_create, task_type
+  end
+
+  test "detects website_create for portfolio site" do
+    task_type = GuidanceLibrary.detect_task_type(
+      message: "Create a portfolio site for my work"
+    )
+    assert_equal :website_create, task_type
+  end
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # WEB APP GUIDANCE
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  test "web_app_create guidance exists" do
+    guidance = GuidanceLibrary.for_task(:web_app_create)
+    assert guidance.is_a?(String)
+    assert_match /web_app/i, guidance
+    assert_match /platform_create/i, guidance
+  end
+
+  test "web_app_create tools include platform_create" do
+    tools = GuidanceLibrary.tools_for_task(:web_app_create)
+    assert_includes tools, "platform_create"
+    assert_includes tools, "load_canvas"
+  end
+
+  # ═══════════════════════════════════════════════════════════════════════════
   # GUIDANCE RETRIEVAL (WITHOUT ENTITY)
   # ═══════════════════════════════════════════════════════════════════════════
 

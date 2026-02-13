@@ -217,8 +217,7 @@ module V3
           slug: name.parameterize,
           description: description,
           theme: theme,
-          status: "draft",
-          metadata: { generated_by: "platform_create", page_count: pages_data.length }
+          status: "draft"
         )
 
         # Use WebsitePageGeneratorService for proper page generation
@@ -239,8 +238,10 @@ module V3
           result = generator.generate(gen_data)
 
           if result[:success]
-            # Create WebsitePage directly with generated HTML content
-            template = result[:template] || (index == 0 ? "homepage" : "content")
+            # Map generator templates to valid WebsitePage templates
+            gen_template = result[:template] || (index == 0 ? "homepage" : "content")
+            template_map = { "dashboard" => "custom", "kanban" => "custom", "calendar" => "custom", "settings" => "custom" }
+            template = template_map[gen_template] || (WebsitePage::TEMPLATES.include?(gen_template) ? gen_template : "custom")
             website_page = WebsitePage.create!(
               website: website,
               entity: entity,
@@ -249,7 +250,6 @@ module V3
               template: template,
               html_content: result[:html_content],
               status: "draft",
-              page_order: index,
               is_homepage: index == 0,
               show_in_nav: true,
               app_module_id: page_data[:app_module_id],
@@ -311,6 +311,13 @@ module V3
         end
 
         # Step 2: Create the WebApp record
+        auth_config = {
+          "methods" => auth_data["methods"] || auth_data[:methods] || ["email"],
+          "allow_registration" => auth_data["allow_registration"] || auth_data[:allow_registration] || true,
+          "require_email_verification" => auth_data["require_email_verification"] || auth_data[:require_email_verification] || false,
+          "session_timeout" => auth_data["session_timeout"] || auth_data[:session_timeout] || 3600
+        }
+
         web_app = WebApp.create!(
           entity: entity,
           created_by: user,
@@ -320,8 +327,7 @@ module V3
           subdomain: subdomain,
           status: "draft",
           website: website,
-          auth_methods: auth_data["methods"] || auth_data[:methods] || ["email"],
-          auth_config: auth_data.except("methods", :methods).presence || {},
+          auth_config: auth_config,
           features: data["features"] || data[:features] || {}
         )
 

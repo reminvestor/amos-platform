@@ -88,6 +88,58 @@ class V3::SystemPromptBuilderTest < ActiveSupport::TestCase
     assert_match /browser_use/, prompt
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # ASSET TYPE DECISION TREE
+  # ═══════════════════════════════════════════════════════════════
+
+  test "includes asset type decision tree" do
+    prompt = @builder.build
+    assert_match /ASSET TYPE DECISION TREE/i, prompt
+  end
+
+  test "decision tree mentions landing_page type" do
+    prompt = @builder.build
+    assert_match /Landing Page.*platform_create.*landing_page/m, prompt
+  end
+
+  test "decision tree mentions website type" do
+    prompt = @builder.build
+    assert_match /Website.*platform_create.*website/m, prompt
+  end
+
+  test "decision tree mentions web_app type" do
+    prompt = @builder.build
+    assert_match /Web App.*platform_create.*web_app/m, prompt
+  end
+
+  test "decision tree mentions app type for internal modules" do
+    prompt = @builder.build
+    assert_match /App.*Module.*platform_create.*app/m, prompt
+  end
+
+  test "decision tree includes decision shortcuts" do
+    prompt = @builder.build
+    assert_match /DECISION SHORTCUTS/i, prompt
+    assert_match /tracker.*web_app/i, prompt
+  end
+
+  test "prompt distinguishes internal vs external apps" do
+    prompt = @builder.build
+    assert_match /INTERNAL.*app/i, prompt
+    assert_match /EXTERNAL-FACING.*web_app/im, prompt
+  end
+
+  test "prompt includes web_app in show visual assets" do
+    prompt = @builder.build
+    assert_match /web_app.*load_canvas/im, prompt
+  end
+
+  test "prompt includes website in show visual assets" do
+    prompt = @builder.build
+    # Check that website creation is followed by a load_canvas instruction
+    assert_match /website.*my_creations/im, prompt
+  end
+
   test "prompt is under 15K tokens (rough estimate)" do
     prompt = @builder.build(
       current_canvas: "dashboard",
