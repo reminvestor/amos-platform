@@ -15,6 +15,8 @@
 #   - Auto-publish workflow (schedules posts)
 #
 class App < ApplicationRecord
+  include EntityShareable
+
   belongs_to :entity
   belongs_to :created_by, class_name: 'User', optional: true
   

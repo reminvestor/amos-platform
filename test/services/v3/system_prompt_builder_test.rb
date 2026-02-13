@@ -89,44 +89,43 @@ class V3::SystemPromptBuilderTest < ActiveSupport::TestCase
   end
 
   # ═══════════════════════════════════════════════════════════════
-  # ASSET TYPE DECISION TREE
+  # QUICK ASSET TYPE GUIDE (compact version — full tree in GuidanceLibrary)
   # ═══════════════════════════════════════════════════════════════
 
-  test "includes asset type decision tree" do
+  test "includes quick asset type guide" do
     prompt = @builder.build
-    assert_match /ASSET TYPE DECISION TREE/i, prompt
+    assert_match /Quick Asset Type Guide/i, prompt
   end
 
-  test "decision tree mentions landing_page type" do
+  test "asset guide mentions landing_page type" do
     prompt = @builder.build
-    assert_match /Landing Page.*platform_create.*landing_page/m, prompt
+    assert_match /landing.page.*platform_create.*landing_page/im, prompt
   end
 
-  test "decision tree mentions website type" do
+  test "asset guide mentions website type" do
     prompt = @builder.build
-    assert_match /Website.*platform_create.*website/m, prompt
+    assert_match /website.*platform_create.*website/im, prompt
   end
 
-  test "decision tree mentions web_app type" do
+  test "asset guide mentions web_app type" do
     prompt = @builder.build
-    assert_match /Web App.*platform_create.*web_app/m, prompt
+    assert_match /platform_create.*web_app/im, prompt
   end
 
-  test "decision tree mentions app type for internal modules" do
+  test "asset guide mentions app type for internal modules" do
     prompt = @builder.build
-    assert_match /App.*Module.*platform_create.*app/m, prompt
+    assert_match /internal.*module.*platform_create.*app/im, prompt
   end
 
-  test "decision tree includes decision shortcuts" do
+  test "asset guide includes email sequence type" do
     prompt = @builder.build
-    assert_match /DECISION SHORTCUTS/i, prompt
-    assert_match /tracker.*web_app/i, prompt
+    assert_match /email.*sequence.*platform_create.*email_sequence/im, prompt
   end
 
   test "prompt distinguishes internal vs external apps" do
     prompt = @builder.build
-    assert_match /INTERNAL.*app/i, prompt
-    assert_match /EXTERNAL-FACING.*web_app/im, prompt
+    assert_match /Internal.*app/i, prompt
+    assert_match /External.*web_app/im, prompt
   end
 
   test "prompt includes web_app in show visual assets" do

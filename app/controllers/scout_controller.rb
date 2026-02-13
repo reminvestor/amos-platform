@@ -997,6 +997,62 @@ class ScoutController < ApplicationController
     end
   end
   
+  # POST /scout/toggle_asset_sharing
+  # Generic endpoint to toggle shared_with_entity on any asset type
+  def toggle_asset_sharing
+    asset_type = params[:asset_type]
+    asset_id = params[:asset_id]
+
+    asset = case asset_type
+            when 'landing_page'
+              current_entity.landing_pages.find_by(id: asset_id, user_id: current_user.id)
+            when 'automation'
+              current_entity.automation_codes.find_by(id: asset_id, created_by_id: current_user.id)
+            when 'website'
+              current_entity.websites.find_by(id: asset_id, created_by_id: current_user.id)
+            when 'web_app'
+              current_entity.web_apps.find_by(id: asset_id, created_by_id: current_user.id)
+            when 'app'
+              current_entity.apps.find_by(id: asset_id, created_by_id: current_user.id)
+            when 'email_sequence'
+              current_entity.email_sequences.find_by(id: asset_id, created_by_id: current_user.id)
+            end
+
+    unless asset
+      render json: { success: false, error: 'Asset not found or not owned by you' }, status: :not_found
+      return
+    end
+
+    new_state = !asset.shared_with_entity?
+    asset.update!(shared_with_entity: new_state)
+    render json: { success: true, shared: new_state }
+  rescue => e
+    render json: { success: false, error: e.message }, status: :unprocessable_entity
+  end
+
+  # POST /scout/update_website_page
+  # Save inline-edited content for a website page
+  def update_website_page
+    website = current_entity.websites.find_by(id: params[:website_id])
+    page = website&.website_pages&.find_by(id: params[:page_id])
+
+    unless page
+      render json: { success: false, error: 'Page not found' }, status: :not_found
+      return
+    end
+
+    # Verify ownership
+    unless website.created_by_id == current_user.id || (website.respond_to?(:shared_with_entity?) && website.shared_with_entity? && website.entity_id == current_user.entity_id)
+      render json: { success: false, error: 'Not authorized' }, status: :forbidden
+      return
+    end
+
+    page.update!(html_content: params[:html_content])
+    render json: { success: true }
+  rescue => e
+    render json: { success: false, error: e.message }, status: :unprocessable_entity
+  end
+
   def load_canvas
     canvas_type = params[:canvas_type]
     # Ensure canvas_data is a proper hash with indifferent access for ERB templates
@@ -1032,6 +1088,9 @@ class ScoutController < ApplicationController
       when "landing_page_editor"
         canvas_content = render_landing_page_editor(canvas_data)
         canvas_title = "Edit Landing Page"
+      when "website_page_editor"
+        canvas_content = render_website_page_editor(canvas_data)
+        canvas_title = "Edit Website Page"
       when "landing_page_versions"
         canvas_content = render_landing_page_versions(canvas_data)
         canvas_title = "Version History"
@@ -3706,6 +3765,34 @@ class ScoutController < ApplicationController
       partial: "scout/canvas/landing_page_editor",
       locals: {
         landing_page: landing_page,
+        entity: current_entity,
+        user: current_user
+      },
+      formats: [:html]
+    )
+  end
+
+  def render_website_page_editor(data = {})
+    website_page = nil
+    website = nil
+
+    if data["website_page_id"]
+      website_page = WebsitePage.find_by(id: data["website_page_id"])
+      website = website_page&.website
+    elsif data["website_id"] && data["page_slug"]
+      website = current_entity.websites.find_by(id: data["website_id"])
+      website_page = website&.website_pages&.find_by(slug: data["page_slug"])
+    end
+
+    if website_page.nil? || website.nil?
+      return render_default_canvas
+    end
+
+    render_to_string(
+      partial: "scout/canvas/website_page_editor",
+      locals: {
+        website: website,
+        website_page: website_page,
         entity: current_entity,
         user: current_user
       },

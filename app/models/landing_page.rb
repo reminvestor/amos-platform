@@ -39,6 +39,8 @@
 class LandingPage < ApplicationRecord
   include HasCustomFields
   include WorkflowTriggerable
+  include EntityShareable
+  self.owner_foreign_key = :user_id
 
   # Reserved subdomains that cannot be used for landing pages
   RESERVED_SUBDOMAINS = %w[

@@ -1,6 +1,9 @@
 class EmailSequence < ApplicationRecord
+  include EntityShareable
+
   belongs_to :entity
   belongs_to :contact_group
+  belongs_to :created_by, class_name: 'User', optional: true
 
   # Associations
   has_many :sequence_steps, dependent: :destroy

@@ -1263,6 +1263,8 @@ Rails.application.routes.draw do
   post "scout/set_premium_model", to: "scout#set_premium_model"
 
   # Scout Intelligent Canvas routes
+  post "scout/toggle_asset_sharing", to: "scout#toggle_asset_sharing"
+  post "scout/update_website_page", to: "scout#update_website_page"
   post "scout/load_canvas", to: "scout#load_canvas"
   post "scout/update_design_plan", to: "scout#update_design_plan"
   get "scout/available_canvases", to: "scout#available_canvases"

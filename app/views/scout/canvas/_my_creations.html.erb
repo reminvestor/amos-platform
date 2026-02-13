@@ -6,23 +6,24 @@
   search_query = (data[:search] || data['search'] || '').to_s.strip.downcase
   max_display = 100
 
-  # ── Fetch data scoped to current user ──
-  # Assets are user-owned by default. Users see only their own creations.
-  # For app_modules, respect the existing visibility system.
-  landing_pages_all = entity.landing_pages.where(user_id: current_user.id).order(updated_at: :desc)
+  # ── Fetch data: user's own + entity-shared assets ──
+  # Each asset uses visible_to_user(user) scope: shows user's own creations
+  # plus anything shared_with_entity by teammates.
+  # AppModule keeps its own visibility system (user_private/entity_shared/public).
+  landing_pages_all = entity.landing_pages.visible_to_user(current_user).order(updated_at: :desc)
   app_modules_all = entity.app_modules
     .visible_to(current_user)
     .includes(:app, :module_canvases, :module_codes, :tool_definitions, :agent_plugins, :module_webhooks, :module_actions)
     .order(updated_at: :desc) rescue []
-  automations_all = entity.automation_codes.where(created_by_id: current_user.id).order(updated_at: :desc) rescue []
-  websites_all = entity.websites.where(created_by_id: current_user.id).includes(:website_pages).order(updated_at: :desc) rescue []
-  web_apps_all = entity.web_apps.where(created_by_id: current_user.id).includes(:website, :web_app_modules, :app_modules).order(updated_at: :desc) rescue []
+  automations_all = entity.automation_codes.visible_to_user(current_user).order(updated_at: :desc) rescue []
+  websites_all = entity.websites.visible_to_user(current_user).includes(:website_pages).order(updated_at: :desc) rescue []
+  web_apps_all = entity.web_apps.visible_to_user(current_user).includes(:website, :web_app_modules, :app_modules).order(updated_at: :desc) rescue []
   
   # Fetch Apps (parent containers for grouped modules)
-  apps_all = entity.apps.where(created_by: current_user).includes(app_modules: [:module_canvases, :module_codes, :tool_definitions, :agent_plugins]).order(updated_at: :desc) rescue []
+  apps_all = entity.apps.visible_to_user(current_user).includes(app_modules: [:module_canvases, :module_codes, :tool_definitions, :agent_plugins]).order(updated_at: :desc) rescue []
   
-  # Fetch Email Sequences (entity-scoped, no user_id column)
-  email_sequences_all = entity.email_sequences.includes(:sequence_steps).order(updated_at: :desc) rescue []
+  # Fetch Email Sequences (user's own + entity-shared)
+  email_sequences_all = entity.email_sequences.visible_to_user(current_user).includes(:sequence_steps).order(updated_at: :desc) rescue []
 
   # Apply search filter
   if search_query.present?
@@ -75,8 +76,8 @@
   end
   prefix_groups.reject! { |_, items| items.size < 2 }
 
-  # ── Stats (user-scoped) ──
-  my_landing_pages = entity.landing_pages.where(user_id: current_user.id)
+  # ── Stats (user's own + entity-shared) ──
+  my_landing_pages = entity.landing_pages.visible_to_user(current_user)
   total_landing_pages = my_landing_pages.count rescue 0
   published_landing_pages = my_landing_pages.where(status: 'published').count rescue 0
   draft_landing_pages = total_landing_pages - published_landing_pages
@@ -87,26 +88,26 @@
   active_app_modules = (my_app_modules.where(status: 'active').count rescue 0)
   deployed_app_modules = (my_app_modules.where.not(deployed_at: nil).count rescue 0)
 
-  my_automations = entity.automation_codes.where(created_by_id: current_user.id)
+  my_automations = entity.automation_codes.visible_to_user(current_user)
   total_automations = (my_automations.count rescue 0)
   active_automations = (my_automations.where(status: 'active').count rescue 0)
   total_executions = (my_automations.sum(:execution_count) rescue 0)
   total_successes = (my_automations.sum(:success_count) rescue 0)
   avg_success_rate = total_executions > 0 ? ((total_successes.to_f / total_executions) * 100).round(1) : 0
 
-  my_websites = entity.websites.where(created_by_id: current_user.id)
+  my_websites = entity.websites.visible_to_user(current_user)
   total_websites = (my_websites.count rescue 0)
   published_websites = (my_websites.where(status: 'published').count rescue 0)
 
-  my_web_apps = entity.web_apps.where(created_by_id: current_user.id)
+  my_web_apps = entity.web_apps.visible_to_user(current_user)
   total_web_apps = (my_web_apps.count rescue 0)
   active_web_apps = (my_web_apps.where(status: 'active').count rescue 0)
   total_web_app_modules = (my_web_apps.joins(:web_app_modules).count rescue 0)
 
-  total_apps = (entity.apps.where(created_by: current_user).count rescue 0)
+  total_apps = (entity.apps.visible_to_user(current_user).count rescue 0)
   
-  total_email_sequences = (entity.email_sequences.count rescue 0)
-  active_email_sequences = (entity.email_sequences.where(status: 'active').count rescue 0)
+  total_email_sequences = (entity.email_sequences.visible_to_user(current_user).count rescue 0)
+  active_email_sequences = (entity.email_sequences.visible_to_user(current_user).where(status: 'active').count rescue 0)
 
   total_items = total_landing_pages + total_app_modules + total_automations + total_websites + total_web_apps + total_email_sequences
 
@@ -308,6 +309,11 @@
                 <button type="button" class="btn btn-sm btn-outline-secondary flex-fill action-btn preview-btn" data-id="<%= lp.id %>" data-type="landing_page">
                   <i data-lucide="eye" style="width: 12px; height: 12px;" class="me-1"></i>View
                 </button>
+                <button type="button" class="btn btn-sm <%= lp.shared_with_entity? ? 'btn-info' : 'btn-outline-secondary' %> share-toggle-btn" 
+                        data-id="<%= lp.id %>" data-asset-type="landing_page" data-shared="<%= lp.shared_with_entity? %>"
+                        title="<%= lp.shared_with_entity? ? 'Shared with team — click to make private' : 'Private — click to share with team' %>">
+                  <i data-lucide="<%= lp.shared_with_entity? ? 'users' : 'lock' %>" style="width: 12px; height: 12px;"></i>
+                </button>
                 <button type="button" class="btn btn-sm btn-outline-secondary action-btn more-btn" data-id="<%= lp.id %>" data-type="landing_page">
                   <i data-lucide="more-horizontal" style="width: 12px; height: 12px;"></i>
                 </button>
@@ -368,6 +374,11 @@
                     <i data-lucide="external-link" style="width: 12px; height: 12px;" class="me-1"></i>Visit
                   </a>
                 <% end %>
+                <button type="button" class="btn btn-sm <%= site.shared_with_entity? ? 'btn-info' : 'btn-outline-secondary' %> share-toggle-btn"
+                        data-id="<%= site.id %>" data-asset-type="website" data-shared="<%= site.shared_with_entity? %>"
+                        title="<%= site.shared_with_entity? ? 'Shared — make private' : 'Private — share with team' %>">
+                  <i data-lucide="<%= site.shared_with_entity? ? 'users' : 'lock' %>" style="width: 12px; height: 12px;"></i>
+                </button>
               </div>
             </div>
           <% end %>
@@ -514,6 +525,11 @@
                       <button type="button" class="btn btn-sm btn-outline-secondary web-app-edit-btn" data-id="<%= wa.id %>" data-slug="<%= wa.slug %>">
                         <i data-lucide="settings" style="width: 12px; height: 12px;" class="me-1"></i>Manage
                       </button>
+                      <button type="button" class="btn btn-sm <%= wa.shared_with_entity? ? 'btn-info' : 'btn-outline-secondary' %> share-toggle-btn"
+                              data-id="<%= wa.id %>" data-asset-type="web_app" data-shared="<%= wa.shared_with_entity? %>"
+                              title="<%= wa.shared_with_entity? ? 'Shared — make private' : 'Private — share with team' %>">
+                        <i data-lucide="<%= wa.shared_with_entity? ? 'users' : 'lock' %>" style="width: 12px; height: 12px;"></i>
+                      </button>
                       <span class="text-muted small align-self-center">Updated <%= wa.updated_at.strftime('%b %d, %Y') rescue 'N/A' %></span>
                     </div>
                   </div>
@@ -604,6 +620,11 @@
                             <i data-lucide="external-link" style="width: 12px; height: 12px;" class="me-1"></i>Open App
                           </button>
                         <% end %>
+                        <button type="button" class="btn btn-sm <%= parent_app.shared_with_entity? ? 'btn-info' : 'btn-outline-secondary' %> share-toggle-btn"
+                                data-id="<%= parent_app.id %>" data-asset-type="app" data-shared="<%= parent_app.shared_with_entity? %>"
+                                title="<%= parent_app.shared_with_entity? ? 'Shared — make private' : 'Private — share with team' %>">
+                          <i data-lucide="<%= parent_app.shared_with_entity? ? 'users' : 'lock' %>" style="width: 12px; height: 12px;"></i>
+                        </button>
                         <span class="text-muted small align-self-center">Updated <%= parent_app.updated_at.strftime('%b %d, %Y') rescue 'N/A' %></span>
                       </div>
                     </div>
@@ -977,6 +998,11 @@
                       <div class="d-flex gap-1 flex-shrink-0">
                         <button type="button" class="btn btn-sm btn-outline-secondary automation-edit-btn" data-id="<%= auto.id %>" title="Edit">
                           <i data-lucide="edit-2" style="width: 12px; height: 12px;"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm <%= auto.shared_with_entity? ? 'btn-info' : 'btn-outline-secondary' %> share-toggle-btn"
+                                data-id="<%= auto.id %>" data-asset-type="automation" data-shared="<%= auto.shared_with_entity? %>"
+                                title="<%= auto.shared_with_entity? ? 'Shared — make private' : 'Private — share with team' %>">
+                          <i data-lucide="<%= auto.shared_with_entity? ? 'users' : 'lock' %>" style="width: 12px; height: 12px;"></i>
                         </button>
                         <% if auto.status == 'active' %>
                           <button type="button" class="btn btn-sm btn-outline-warning toggle-btn" data-id="<%= auto.id %>" data-action-type="pause" title="Pause">
@@ -1492,6 +1518,40 @@
         applyFilters();
       });
     }
+
+    // ── Share / Make Private toggle ──
+    container.querySelectorAll('.share-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', async function(e) {
+        e.stopPropagation();
+        const assetId = this.dataset.id;
+        const assetType = this.dataset.assetType;
+        const wasShared = this.dataset.shared === 'true';
+
+        this.disabled = true;
+        try {
+          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+          const resp = await fetch('/scout/toggle_asset_sharing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ asset_type: assetType, asset_id: assetId })
+          });
+          const data = await resp.json();
+          if (data.success) {
+            const nowShared = data.shared;
+            this.dataset.shared = nowShared.toString();
+            this.className = 'btn btn-sm ' + (nowShared ? 'btn-info' : 'btn-outline-secondary') + ' share-toggle-btn';
+            this.title = nowShared ? 'Shared with team — click to make private' : 'Private — click to share with team';
+            const icon = this.querySelector('i, [data-lucide]');
+            if (icon) { icon.setAttribute('data-lucide', nowShared ? 'users' : 'lock'); }
+            if (typeof lucide !== 'undefined') lucide.createIcons({ node: this });
+          }
+        } catch (err) {
+          console.error('Share toggle failed:', err);
+        } finally {
+          this.disabled = false;
+        }
+      });
+    });
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
 

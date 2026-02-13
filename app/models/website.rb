@@ -5,6 +5,8 @@
 # Progression: LandingPage (single page) → Website (multi-page) → WebApp (website + modules)
 #
 class Website < ApplicationRecord
+  include EntityShareable
+
   # Associations
   belongs_to :entity
   belongs_to :created_by, class_name: 'User'

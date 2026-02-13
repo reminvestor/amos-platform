@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_12_000002) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1367,7 +1367,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_12_000002) do
     t.jsonb "changelog", default: []
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "shared_with_entity", default: false, null: false
     t.index ["created_by_id"], name: "index_apps_on_created_by_id"
+    t.index ["entity_id", "shared_with_entity"], name: "idx_apps_entity_shared"
     t.index ["entity_id", "slug"], name: "index_apps_on_entity_id_and_slug", unique: true
     t.index ["entity_id"], name: "index_apps_on_entity_id"
     t.index ["name"], name: "index_apps_on_name"
@@ -1441,9 +1443,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_12_000002) do
     t.jsonb "compilation_errors", default: []
     t.boolean "is_compiled", default: false
     t.boolean "design_mode", default: true
+    t.boolean "shared_with_entity", default: false, null: false
     t.index ["app_module_id", "trigger_type"], name: "index_automation_codes_on_app_module_id_and_trigger_type"
     t.index ["app_module_id"], name: "index_automation_codes_on_app_module_id"
     t.index ["created_by_id"], name: "index_automation_codes_on_created_by_id"
+    t.index ["entity_id", "shared_with_entity"], name: "idx_auto_entity_shared"
     t.index ["entity_id", "slug"], name: "index_automation_codes_on_entity_id_and_slug", unique: true
     t.index ["entity_id", "status"], name: "index_automation_codes_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_automation_codes_on_entity_id"
@@ -2581,7 +2585,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_12_000002) do
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "created_by_id"
+    t.boolean "shared_with_entity", default: false, null: false
     t.index ["contact_group_id"], name: "index_email_sequences_on_contact_group_id"
+    t.index ["created_by_id"], name: "index_email_sequences_on_created_by_id"
+    t.index ["entity_id", "shared_with_entity"], name: "idx_seqs_entity_shared"
     t.index ["entity_id", "status"], name: "index_email_sequences_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_email_sequences_on_entity_id"
     t.index ["status"], name: "index_email_sequences_on_status"
@@ -3760,9 +3768,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_12_000002) do
     t.jsonb "custom_fields", default: {}
     t.string "subdomain"
     t.bigint "custom_domain_id"
+    t.boolean "shared_with_entity", default: false, null: false
     t.index ["campaign_id"], name: "index_landing_pages_on_campaign_id"
     t.index ["custom_domain_id"], name: "index_landing_pages_on_custom_domain_id"
     t.index ["custom_fields"], name: "index_landing_pages_on_custom_fields", using: :gin
+    t.index ["entity_id", "shared_with_entity"], name: "idx_lp_entity_shared"
     t.index ["entity_id", "status"], name: "index_landing_pages_on_entity_status"
     t.index ["entity_id"], name: "index_landing_pages_on_entity_id"
     t.index ["metadata"], name: "index_landing_pages_on_metadata", using: :gin
@@ -6498,9 +6508,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_12_000002) do
     t.datetime "last_activity_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "shared_with_entity", default: false, null: false
     t.index ["application_plan_id"], name: "index_web_apps_on_application_plan_id"
     t.index ["created_by_id"], name: "index_web_apps_on_created_by_id"
     t.index ["custom_domain"], name: "index_web_apps_on_custom_domain", unique: true
+    t.index ["entity_id", "shared_with_entity"], name: "idx_webapps_entity_shared"
     t.index ["entity_id", "slug"], name: "index_web_apps_on_entity_id_and_slug", unique: true
     t.index ["entity_id"], name: "index_web_apps_on_entity_id"
     t.index ["status"], name: "index_web_apps_on_status"
@@ -6603,10 +6615,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_12_000002) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "custom_domain_id"
+    t.boolean "shared_with_entity", default: false, null: false
     t.index ["application_plan_id"], name: "index_websites_on_application_plan_id"
     t.index ["created_by_id"], name: "index_websites_on_created_by_id"
     t.index ["custom_domain"], name: "index_websites_on_custom_domain", unique: true
     t.index ["custom_domain_id"], name: "index_websites_on_custom_domain_id"
+    t.index ["entity_id", "shared_with_entity"], name: "idx_sites_entity_shared"
     t.index ["entity_id", "slug"], name: "index_websites_on_entity_id_and_slug", unique: true
     t.index ["entity_id"], name: "index_websites_on_entity_id"
     t.index ["slug"], name: "index_websites_on_slug"
@@ -7082,6 +7096,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_12_000002) do
   add_foreign_key "email_deliveries", "email_templates"
   add_foreign_key "email_sequences", "contact_groups"
   add_foreign_key "email_sequences", "entities"
+  add_foreign_key "email_sequences", "users", column: "created_by_id"
   add_foreign_key "email_templates", "entities"
   add_foreign_key "email_templates", "users"
   add_foreign_key "entity_billing_accounts", "entities"

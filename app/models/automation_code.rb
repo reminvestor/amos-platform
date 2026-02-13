@@ -8,6 +8,8 @@
 # This follows the same pattern as TransformCodeExecutor in the ETL pipeline.
 #
 class AutomationCode < ApplicationRecord
+  include EntityShareable
+
   # ============================================
   # ASSOCIATIONS
   # ============================================

@@ -12,6 +12,8 @@
 # - Role-based permissions
 #
 class WebApp < ApplicationRecord
+  include EntityShareable
+
   # Associations
   belongs_to :entity
   belongs_to :created_by, class_name: 'User'

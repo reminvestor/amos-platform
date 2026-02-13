@@ -1,0 +1,340 @@
+<%# Universal Inline Editor — floating text toolbar for any contenteditable surface
+    Include in any canvas that has [contenteditable="true"] elements.
+    
+    Usage:
+      <%= render 'shared/inline_editor', content_container_id: 'landingContent' %>
+    
+    Params:
+      content_container_id - ID of the DOM element that contains editable content
+      on_change_callback   - Optional JS function name to call when content changes (default: 'markChanged')
+      accent_color         - Optional hex color for toolbar accents (default: '#ec4899')
+%>
+
+<% content_container_id ||= 'landingContent' %>
+<% on_change_callback ||= 'markChanged' %>
+<% accent_color ||= '#ec4899' %>
+
+<style>
+  /* ─── Inline Editor: Editable Elements ─── */
+  [contenteditable="true"] { 
+    outline: none; 
+    cursor: text;
+    transition: background-color 0.15s, box-shadow 0.15s;
+  }
+  [contenteditable="true"]:hover {
+    background-color: <%= accent_color %>14;
+    box-shadow: inset 0 0 0 1px <%= accent_color %>4d;
+  }
+  [contenteditable="true"]:focus {
+    background-color: <%= accent_color %>1f;
+    box-shadow: inset 0 -2px 0 0 <%= accent_color %>80;
+  }
+
+  /* ─── Floating Text Toolbar ─── */
+  .inline-text-toolbar {
+    position: fixed;
+    display: none;
+    background: #1a1a2e;
+    border: 1px solid #2d2d44;
+    border-radius: 8px;
+    padding: 4px;
+    gap: 2px;
+    z-index: 10000;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    align-items: center;
+  }
+  .inline-text-toolbar.visible { display: flex; }
+
+  .inline-text-toolbar-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: #a0a0b8;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+    padding: 0;
+    line-height: 1;
+    transition: all 0.15s;
+  }
+  .inline-text-toolbar-btn:hover {
+    background: <%= accent_color %>33;
+    color: <%= accent_color %>;
+  }
+  .inline-text-toolbar-btn.active {
+    background: <%= accent_color %>;
+    color: white;
+  }
+
+  .inline-text-toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: #2d2d44;
+    margin: 0 4px;
+  }
+
+  .inline-text-toolbar-link-input {
+    display: none;
+    padding: 6px 10px;
+    background: #252536;
+    border: 1px solid #2d2d44;
+    color: #e0e0e8;
+    border-radius: 4px;
+    font-size: 13px;
+    width: 200px;
+    margin-left: 4px;
+  }
+  .inline-text-toolbar-link-input:focus {
+    outline: none;
+    border-color: <%= accent_color %>;
+  }
+  .inline-text-toolbar.link-mode .inline-text-toolbar-link-input { display: block; }
+
+  .inline-text-toolbar .color-picker-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+  .inline-text-toolbar .color-indicator {
+    font-weight: bold;
+    font-size: 15px;
+    color: #a0a0b8;
+    border-bottom: 3px solid <%= accent_color %>;
+    line-height: 1;
+    padding-bottom: 1px;
+  }
+
+  /* Light mode */
+  body.light-mode .inline-text-toolbar,
+  body[data-theme="light"] .inline-text-toolbar {
+    background: #ffffff;
+    border-color: #e0e0e0;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  }
+  body.light-mode .inline-text-toolbar-btn,
+  body[data-theme="light"] .inline-text-toolbar-btn { color: #555; }
+  body.light-mode .inline-text-toolbar-btn:hover,
+  body[data-theme="light"] .inline-text-toolbar-btn:hover {
+    background: <%= accent_color %>26;
+    color: <%= accent_color %>;
+  }
+  body.light-mode .inline-text-toolbar-divider,
+  body[data-theme="light"] .inline-text-toolbar-divider { background: #e0e0e0; }
+  body.light-mode .inline-text-toolbar-link-input,
+  body[data-theme="light"] .inline-text-toolbar-link-input {
+    background: #f5f5f5;
+    border-color: #e0e0e0;
+    color: #333;
+  }
+</style>
+
+<!-- Floating Text Toolbar -->
+<div class="inline-text-toolbar" id="inlineTextToolbar">
+  <button type="button" class="inline-text-toolbar-btn" data-command="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+  <button type="button" class="inline-text-toolbar-btn" data-command="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+  <button type="button" class="inline-text-toolbar-btn" data-command="underline" title="Underline (Ctrl+U)"><u>U</u></button>
+  <div class="inline-text-toolbar-divider"></div>
+  <button type="button" class="inline-text-toolbar-btn color-btn" data-command="foreColor" title="Text Color">
+    <span class="color-indicator" id="inlineColorIndicator">A</span>
+  </button>
+  <input type="color" id="inlineColorPicker" class="color-picker-input" value="<%= accent_color %>">
+  <div class="inline-text-toolbar-divider"></div>
+  <button type="button" class="inline-text-toolbar-btn" data-command="link" title="Add Link">🔗</button>
+  <input type="text" class="inline-text-toolbar-link-input" id="inlineLinkInput" placeholder="Enter URL and press Enter">
+  <div class="inline-text-toolbar-divider"></div>
+  <button type="button" class="inline-text-toolbar-btn" data-command="removeFormat" title="Clear Formatting">✕</button>
+</div>
+
+<script>
+/**
+ * Universal Inline Editor — setupInlineTextToolbar()
+ * 
+ * Call this after the DOM is ready. Attaches a floating formatting toolbar
+ * to any [contenteditable="true"] element inside the specified container.
+ *
+ * @param {string} containerId  - ID of the container with editable elements
+ * @param {function} onChange   - Callback when content is modified
+ */
+function setupInlineTextToolbar(containerId, onChange) {
+  const container = document.getElementById(containerId);
+  const toolbar = document.getElementById('inlineTextToolbar');
+  const linkInput = document.getElementById('inlineLinkInput');
+  if (!toolbar || !container) return;
+
+  let savedSelection = null;
+  const notifyChange = typeof onChange === 'function' ? onChange : function() {};
+
+  // Show toolbar on text selection
+  document.addEventListener('selectionchange', function() {
+    const selection = window.getSelection();
+
+    if (!selection || selection.isCollapsed || selection.toString().trim() === '') {
+      if (!toolbar.classList.contains('link-mode')) {
+        toolbar.classList.remove('visible');
+      }
+      return;
+    }
+
+    const anchorNode = selection.anchorNode;
+    const editableParent = anchorNode?.parentElement?.closest('[contenteditable="true"]') ||
+                          (anchorNode?.nodeType === 1 && anchorNode.closest('[contenteditable="true"]'));
+
+    if (!editableParent || !container.contains(editableParent)) {
+      toolbar.classList.remove('visible');
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    toolbar.style.left = (rect.left + rect.width / 2 - toolbar.offsetWidth / 2) + 'px';
+    toolbar.style.top = (rect.top - toolbar.offsetHeight - 8) + 'px';
+
+    const toolbarRect = toolbar.getBoundingClientRect();
+    if (toolbarRect.left < 10) toolbar.style.left = '10px';
+    if (toolbarRect.top < 10) toolbar.style.top = (rect.bottom + 8) + 'px';
+
+    toolbar.classList.add('visible');
+    toolbar.classList.remove('link-mode');
+    updateBtnStates();
+  });
+
+  function updateBtnStates() {
+    toolbar.querySelectorAll('.inline-text-toolbar-btn[data-command]').forEach(function(btn) {
+      var cmd = btn.dataset.command;
+      if (cmd === 'link' || cmd === 'removeFormat') return;
+      btn.classList.toggle('active', document.queryCommandState(cmd));
+    });
+  }
+
+  function saveSelection() {
+    var sel = window.getSelection();
+    if (sel.rangeCount > 0) savedSelection = sel.getRangeAt(0).cloneRange();
+  }
+
+  function restoreSelection() {
+    if (savedSelection) {
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedSelection);
+    }
+  }
+
+  // Button clicks
+  toolbar.querySelectorAll('.inline-text-toolbar-btn').forEach(function(btn) {
+    btn.addEventListener('mousedown', function(e) { e.preventDefault(); });
+
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var command = btn.dataset.command;
+
+      if (command === 'link') {
+        saveSelection();
+        toolbar.classList.add('link-mode');
+        linkInput.value = '';
+        linkInput.focus();
+        var sel = window.getSelection();
+        if (sel.anchorNode) {
+          var link = sel.anchorNode.parentElement?.closest('a');
+          if (link) linkInput.value = link.href;
+        }
+      } else if (command === 'foreColor') {
+        saveSelection();
+        document.getElementById('inlineColorPicker').click();
+      } else if (command === 'removeFormat') {
+        document.execCommand('removeFormat', false, null);
+        document.execCommand('unlink', false, null);
+        notifyChange();
+      } else {
+        document.execCommand(command, false, null);
+        updateBtnStates();
+        notifyChange();
+      }
+    });
+  });
+
+  // Link input
+  linkInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      var url = linkInput.value.trim();
+      restoreSelection();
+      if (url) {
+        var finalUrl = url.match(/^https?:\/\//) ? url : 'https://' + url;
+        document.execCommand('createLink', false, finalUrl);
+      } else {
+        document.execCommand('unlink', false, null);
+      }
+      toolbar.classList.remove('link-mode');
+      notifyChange();
+    } else if (e.key === 'Escape') {
+      toolbar.classList.remove('link-mode');
+      restoreSelection();
+    }
+  });
+
+  linkInput.addEventListener('blur', function() {
+    setTimeout(function() {
+      if (!toolbar.contains(document.activeElement)) {
+        toolbar.classList.remove('link-mode');
+      }
+    }, 100);
+  });
+
+  // Color picker
+  var colorPicker = document.getElementById('inlineColorPicker');
+  var colorIndicator = document.getElementById('inlineColorIndicator');
+
+  colorPicker.addEventListener('input', function(e) {
+    colorIndicator.style.borderBottomColor = e.target.value;
+    restoreSelection();
+    document.execCommand('foreColor', false, e.target.value);
+    notifyChange();
+  });
+
+  colorPicker.addEventListener('change', function(e) {
+    colorIndicator.style.borderBottomColor = e.target.value;
+  });
+
+  // Keyboard shortcuts
+  container.addEventListener('keydown', function(e) {
+    if (!e.ctrlKey && !e.metaKey) return;
+    var editableParent = e.target.closest('[contenteditable="true"]');
+    if (!editableParent) return;
+
+    switch (e.key.toLowerCase()) {
+      case 'b':
+        e.preventDefault();
+        document.execCommand('bold', false, null);
+        notifyChange();
+        break;
+      case 'i':
+        e.preventDefault();
+        document.execCommand('italic', false, null);
+        notifyChange();
+        break;
+      case 'u':
+        e.preventDefault();
+        document.execCommand('underline', false, null);
+        notifyChange();
+        break;
+      case 'k':
+        e.preventDefault();
+        saveSelection();
+        toolbar.classList.add('visible', 'link-mode');
+        linkInput.value = '';
+        linkInput.focus();
+        break;
+    }
+  });
+
+  console.log('📝 Universal inline text toolbar initialized for #' + containerId);
+}
+</script>

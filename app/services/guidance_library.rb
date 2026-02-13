@@ -169,21 +169,19 @@ class GuidanceLibrary
     landing_page_create: {
       title: "Landing Page Creation",
       expertise: <<~GUIDANCE.strip,
-        ## Available Approaches
+        ## When to Use Landing Page
+        USE FOR: Single marketing/conversion page — product launches, lead capture, event registration, newsletter signup, promotions.
+        These are standalone marketing pages with hero sections, CTAs, testimonials, and signup forms.
+        DO NOT use landing_page for functional apps, dashboards, trackers, or tools (use web_app instead).
         
-        **Visual Builder (recommended for most users):**
-        `load_canvas(canvas_name: "design_studio")` — Opens the drag-drop landing page builder
-        
-        **Query existing pages:**
-        `platform_query(type: "landing_pages")` — See what already exists
-        
-        **View created assets:**
-        `load_canvas(canvas_name: "my_creations")` — Show all user's creations
+        ## Create
+        `platform_create(type: "landing_page", data: { title: "...", description: "..." })`
+        After creation → load_canvas(canvas_name: "landing_page_editor", canvas_data: { landing_page_id: ID })
         
         ## Context
         - BusinessProfile contains company name, colors, industry
-        - The design studio provides AI-assisted content generation
         - Pages can be saved as drafts before publishing
+        - IMAGE + LANDING PAGE: 1) platform_execute(action: "generate_image") → get URL, 2) platform_update landing page section
       GUIDANCE
       anti_hallucination: nil
     },
@@ -191,18 +189,25 @@ class GuidanceLibrary
     website_create: {
       title: "Website Creation",
       expertise: <<~GUIDANCE.strip,
-        ## Creating a Website
+        ## When to Use Website
+        USE FOR: Multi-page sites with shared layout — company sites, portfolios, documentation, content sites.
+        NOT for single marketing pages (use landing_page) or functional apps (use web_app).
         
-        Use `platform_create(type: "website", data: { name: "...", pages: [{title: "...", description: "..."}] })`.
-        Each page is generated independently. Pages can be marketing (hero/CTA) or functional (dashboard/form/list).
-        The system auto-detects page purpose from the description, or you can set page_purpose: "functional" or "marketing".
+        ## Create
+        `platform_create(type: "website", data: { name: "...", pages: [{title: "...", description: "..."}] })`
+        Each page auto-detects purpose from description, or set page_purpose: "functional" or "marketing".
+        After creation → load_canvas(canvas_name: "my_creations", canvas_data: { type: "website" })
+        
+        ## Editing Individual Pages
+        To edit a specific website page inline:
+        load_canvas(canvas_name: "website_page_editor", canvas_data: { website_page_id: PAGE_ID })
+        or: load_canvas(canvas_name: "website_page_editor", canvas_data: { website_id: SITE_ID, page_slug: "about" })
         
         ## Context
-        - Websites have multiple pages with shared navigation
+        - Shared navigation across pages
         - Common pages: Home, About, Services, Contact
         - Functional pages get app-like UI (tables, forms, dashboards)
         - Marketing pages get conversion-focused layouts (hero, testimonials, CTAs)
-        - After creation → load_canvas(canvas_name: "my_creations", canvas_data: { type: "website" })
       GUIDANCE
       anti_hallucination: nil
     },
@@ -210,22 +215,25 @@ class GuidanceLibrary
     web_app_create: {
       title: "Web App Creation",
       expertise: <<~GUIDANCE.strip,
-        ## Creating a Web App (External-Facing Application)
+        ## When to Use Web App
+        USE FOR: External-facing functional applications — task trackers, CRM portals, customer dashboards, form-based tools, any app with data + UI + optional auth.
+        If user says "build me an app that customers/users can access" → web_app.
+        NOT for marketing pages (landing_page) or content sites (website).
         
-        Use `platform_create(type: "web_app", data: { name: "...", pages: [...], modules: ["module_slug"], auth: {methods: ["email"]} })`.
-        This creates a full external application: Website + App Modules + User Auth.
+        ## Create
+        `platform_create(type: "web_app", data: { name: "...", pages: [...], modules: ["module_slug"], auth: {methods: ["email"]} })`
+        Creates Website with FUNCTIONAL pages + WebApp record linking modules + auth.
         
         ## Flow
-        1. First build the internal module if needed: platform_create(type: "app", data: {...})
-        2. Then create the web app: platform_create(type: "web_app", data: { name: "...", pages: [...], modules: ["module_slug"] })
-        3. The web app gets a subdomain (e.g., name.app.amoslabs.com)
+        1. Build internal module if needed: platform_create(type: "app", data: {...})
+        2. Create the web app: platform_create(type: "web_app", data: { name: "...", pages: [...], modules: ["slug"] })
+        3. Gets subdomain (e.g., name.app.amoslabs.com)
         4. After creation → load_canvas(canvas_name: "my_creations", canvas_data: { type: "web_app" })
         
-        ## Key Differences from Other Types
-        - **Landing Page**: Single marketing page with CTA — NOT for apps
-        - **Website**: Multi-page content site — for informational sites, not functional tools
-        - **Web App**: External app with modules, auth, functional pages — for trackers, portals, dashboards
-        - **App/Module**: Internal AMOS module with data + canvases — not public-facing
+        ## Decision Shortcuts
+        - "build a task tracker app" → web_app (tracker + app = functional external tool)
+        - "create a customer portal" → web_app
+        - "build a dashboard for my team" → web_app
       GUIDANCE
       anti_hallucination: nil
     },
@@ -341,24 +349,27 @@ class GuidanceLibrary
         ## Available Tools
         - `platform_query(type: "connections")` — See connected integrations
         - `platform_query(type: "integrations")` — See available integrations
-        - `platform_execute(operation: "integration_action", ...)` — Call integration APIs
+        - `platform_query(type: "integration_actions", integration: "stripe")` — Discover operations
+        - `platform_execute(action: "integration", integration: "stripe", operation: "list_customers")` — Call integration APIs
         - `load_canvas(canvas_name: "integrations_manager")` — Visual integration manager
-        - `discover(query: "stripe actions")` — Find available integration actions
         
-        ## Parameter Pattern
+        ## Using Existing Integrations
+        Smart cascade: tries IntegrationAction first, falls back to raw operation.
         ```
-        platform_execute(
-          operation: "integration_action",
-          params: { 
-            integration: "stripe", 
-            action: "list_customers", 
-            inputs: { limit: 10 } 
-          }
-        )
+        platform_execute(action: "integration", integration: "stripe", operation: "list_customers", params: { limit: 10 })
         ```
         
-        ## Knowledge Base
-        Use `discover` to find API-specific documentation and quirks for integrations.
+        ## Setting Up NEW Integrations — Exact Flow
+        1. Research the API: Use web_search to find docs, base URL, auth type (api_key, bearer_token, oauth2, basic_auth), and endpoints.
+        2. Ask user for requirements (but NEVER ask for credentials).
+        3. Build the shell: platform_create(type: "integration", data: { name: "...", base_url: "...", auth_type: "api_key", category: "crm", operations: [...] })
+        4. System opens Integrations canvas where user enters credentials securely — NOT through chat.
+        5. After connected, test with platform_execute.
+        
+        ## SECURITY
+        NEVER ask for API keys, tokens, passwords, or credentials in chat.
+        Credentials are entered ONLY through the Integrations canvas UI.
+        If a user pastes credentials in chat, tell them to delete the message and use the Integrations panel.
       GUIDANCE
       anti_hallucination: nil
     },
@@ -366,22 +377,26 @@ class GuidanceLibrary
     app_design: {
       title: "App/Module Design",
       expertise: <<~GUIDANCE.strip,
-        ## Available Approaches
+        ## Building New Apps/Modules
         
-        **Visual Builder:**
-        `load_canvas(canvas_name: "app_designer")` — Drag-drop app builder
+        **Internal app** (data module, AMOS-only):
+          platform_create(type: "app", data: { name: "App Name", description: "What it does and key features" })
+          Build takes 30-60s. Creates: database tables, list/form/detail canvases, CRUD tools, agent plugins.
+          After build → load_canvas(canvas_name: "module_manager", canvas_data: { app_module_id: ID })
+          NEVER say "I've created your module" unless platform_create returned success with module IDs.
         
-        **Programmatic:**
-        ```
-        platform_create(type: "app_module", data: {
-          name: "Project Tracker",
-          schema: { fields: [...] }
-        })
-        ```
+        **External-facing app** (public, with auth):
+          platform_create(type: "web_app", data: { name: "...", pages: [...], modules: ["slug"], auth: {methods: ["email"]} })
+          Creates Website + WebApp record + links modules + manages auth.
+        
+        ## Using Existing Modules
+        CRUD records: platform_create(type: "task", data: {...}), platform_query(type: "tasks")
+        Discover types: platform_query(type: "schema")
+        Module slugs: e.g., "project_management_task". Sub-modules filter by parent ID.
+        Update module: platform_update(type: "app_module", id: ID, data: {...}). Do NOT create new when user wants to modify.
         
         ## Schema Field Types
-        text, textarea, number, currency, date, datetime, select, 
-        multi_select, boolean, reference, file, json
+        text, textarea, number, currency, date, datetime, select, multi_select, boolean, reference, file, json
         
         ## Context
         If on design_studio with a plan_id, the user is working on a design draft.
@@ -419,18 +434,26 @@ class GuidanceLibrary
     custom_domain_management: {
       title: "Custom Domain Management",
       expertise: <<~GUIDANCE.strip,
-        ## Available Tools
-        - `platform_execute(operation: "manage_domain", params: { action: "create", domain: "..." })`
-        - `platform_execute(operation: "manage_domain", params: { action: "verify", domain: "..." })`
-        - `load_canvas(canvas_name: "custom_domains")` — Visual domain manager
+        ## Full Domain Setup Flow
+        1. **Register**: platform_create(type: "custom_domain", data: { domain_name: "example.com" })
+           - Creates a CNAME target (e.g., example-com.custom.amoslabs.co)
+           - Tell the user to add a CNAME record pointing their domain to that target
+        2. **Verify Web DNS**: platform_execute(action: "verify_domain", domain_id: ID)
+           - Checks if CNAME is configured; SSL auto-provisioned on success
+        3. **Verify Email (optional)**: platform_execute(action: "verify_email_domain", domain_id: ID)
+           - Returns DKIM (3 CNAME records), SPF (TXT), DMARC (TXT) records
+        4. **Assign to assets**: platform_execute(action: "assign_domain", domain_id: ID, type: "landing_page", id: LP_ID)
+        5. **Query domains**: platform_query(type: "custom_domains")
         
-        ## Actions
-        - create: Returns DNS records (CNAME, TXT) to configure
-        - verify: Checks if DNS is properly configured
-        - setup_ses: Configure email sending from domain
+        ## DNS Guidance
+        - Landing pages/websites: CNAME record pointing to our target
+        - Email sending: DKIM + SPF + DMARC records
+        - GoDaddy with connected integration can auto-configure DNS
+        - Always show current domain status before creating new ones
+        - DNS changes can take up to 48 hours to propagate
         
-        ## Note
-        DNS changes can take up to 48 hours to propagate.
+        ## Visual Manager
+        `load_canvas(canvas_name: "custom_domains")`
       GUIDANCE
       anti_hallucination: nil
     },
