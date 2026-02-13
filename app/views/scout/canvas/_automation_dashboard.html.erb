@@ -540,6 +540,22 @@
     });
   });
   
+  // Helper: send a chat message via the scout controller
+  function sendToAmos(message) {
+    if (window.scoutController && typeof window.scoutController.sendScoutMessage === 'function') {
+      window.scoutController.sendScoutMessage(message);
+    } else {
+      console.warn('Scout controller not available for message:', message);
+    }
+  }
+  
+  // Helper: load a canvas via the scout controller
+  function loadCanvas(canvasType, canvasData) {
+    document.dispatchEvent(new CustomEvent('scout:load-canvas', {
+      detail: { canvas: canvasType, data: canvasData || {} }
+    }));
+  }
+
   // Automation dropdown actions
   container.querySelectorAll('[data-action]').forEach(btn => {
     btn.addEventListener('click', function(e) {
@@ -553,24 +569,16 @@
           showAutomationDetail(automationId);
           break;
         case 'edit':
-          window.dispatchEvent(new CustomEvent('sendMessage', {
-            detail: { message: `Edit automation #${automationId}` }
-          }));
+          sendToAmos(`Edit automation #${automationId}`);
           break;
         case 'test':
-          window.dispatchEvent(new CustomEvent('sendMessage', {
-            detail: { message: `Test run automation #${automationId}` }
-          }));
+          sendToAmos(`Test run automation #${automationId}`);
           break;
         case 'pause':
-          window.dispatchEvent(new CustomEvent('sendMessage', {
-            detail: { message: `Pause automation #${automationId}` }
-          }));
+          sendToAmos(`Pause automation #${automationId}`);
           break;
         case 'activate':
-          window.dispatchEvent(new CustomEvent('sendMessage', {
-            detail: { message: `Activate automation #${automationId}` }
-          }));
+          sendToAmos(`Activate automation #${automationId}`);
           break;
       }
     });
@@ -581,40 +589,30 @@
     const id = detailPanel.dataset.currentId;
     const auto = automationData[id];
     const action = auto?.status === 'active' ? 'Pause' : 'Activate';
-    window.dispatchEvent(new CustomEvent('sendMessage', {
-      detail: { message: `${action} automation #${id}` }
-    }));
+    sendToAmos(`${action} automation #${id}`);
   });
   
   container.querySelector('#detail-test-run')?.addEventListener('click', function() {
     const id = detailPanel.dataset.currentId;
-    window.dispatchEvent(new CustomEvent('sendMessage', {
-      detail: { message: `Test run automation #${id}` }
-    }));
+    sendToAmos(`Test run automation #${id}`);
   });
   
   // Use recipe
   container.querySelectorAll('.use-recipe-btn').forEach(btn => {
     btn.addEventListener('click', function() {
       const recipeId = this.closest('.recipe-card').dataset.recipeId;
-      window.dispatchEvent(new CustomEvent('sendMessage', {
-        detail: { message: `Use automation recipe: ${recipeId}` }
-      }));
+      sendToAmos(`Use automation recipe: ${recipeId}`);
     });
   });
   
   // Create new automation
   container.querySelector('#create-automation')?.addEventListener('click', function() {
-    window.dispatchEvent(new CustomEvent('sendMessage', {
-      detail: { message: 'Create a new automation' }
-    }));
+    sendToAmos('Create a new automation');
   });
   
   // Refresh dashboard
   container.querySelector('#refresh-dashboard')?.addEventListener('click', function() {
-    window.dispatchEvent(new CustomEvent('loadCanvas', {
-      detail: { type: 'automation_dashboard', data: {} }
-    }));
+    loadCanvas('automation_dashboard', {});
   });
   
   // Auto-open a specific automation if navigated from My Projects & Assets

@@ -283,14 +283,21 @@ document.addEventListener('DOMContentLoaded', function() {
   
   let selectedComponent = null;
   
+  // Helper: send a chat message via the scout controller
+  function sendToAmos(message) {
+    if (window.scoutController && typeof window.scoutController.sendScoutMessage === 'function') {
+      window.scoutController.sendScoutMessage(message);
+    }
+  }
+  
   // Category selection
   container.querySelectorAll('.category-sidebar .list-group-item').forEach(btn => {
     btn.addEventListener('click', function() {
       const category = this.dataset.category;
       // Reload canvas with new category
-      window.dispatchEvent(new CustomEvent('loadCanvas', {
+      document.dispatchEvent(new CustomEvent('scout:load-canvas', {
         detail: {
-          type: 'component_gallery',
+          canvas: 'component_gallery',
           data: { category: category }
         }
       }));
@@ -334,11 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const variant = card.dataset.componentVariant;
       
       // Send component selection to chat
-      window.dispatchEvent(new CustomEvent('sendMessage', {
-        detail: {
-          message: `Add a ${type} section using the "${variant}" variant.`
-        }
-      }));
+      sendToAmos(`Add a ${type} section using the "${variant}" variant.`);
     });
   });
   
@@ -347,11 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (useFromModalBtn) {
     useFromModalBtn.addEventListener('click', function() {
       if (selectedComponent) {
-        window.dispatchEvent(new CustomEvent('sendMessage', {
-          detail: {
-            message: `Add a ${selectedComponent.type} section using the "${selectedComponent.variant}" variant.`
-          }
-        }));
+        sendToAmos(`Add a ${selectedComponent.type} section using the "${selectedComponent.variant}" variant.`);
       }
       bootstrap.Modal.getInstance(container.querySelector('#component-preview-modal')).hide();
     });
