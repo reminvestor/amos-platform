@@ -21,42 +21,65 @@
   </div>
 
   <%
-    # Gather stats
+    # ── Notifications ──
     notification_service = SystemNotificationService.new(entity: current_entity, user: current_user) rescue nil
     stats = notification_service&.stats(since: 24.hours.ago) || {}
     unread_count = notification_service&.unread_count || 0
     recent_notifications = notification_service&.recent_notifications(limit: 15) || []
-    
-    # Execution stats
-    running_jobs = AgentPluginExecution.where(user: current_user)
-                                       .where(status: ['running', 'waiting_for_input'])
-                                       .count rescue 0
-    failed_24h = AgentPluginExecution.where(user: current_user)
-                                      .where(status: 'failed')
-                                      .where('created_at > ?', 24.hours.ago)
-                                      .count rescue 0
-    completed_24h = AgentPluginExecution.where(user: current_user)
-                                         .where(status: 'completed')
-                                         .where('created_at > ?', 24.hours.ago)
-                                         .count rescue 0
-    total_24h = failed_24h + completed_24h
-    success_rate = total_24h > 0 ? ((completed_24h.to_f / total_24h) * 100).round(1) : 100
-    
-    # Scheduled task stats
-    scheduled_active = ScheduledAgentTask.where(entity: current_entity, user: current_user).active.count rescue 0
-    scheduled_blocked = ScheduledAgentTask.where(entity: current_entity, user: current_user)
-                                          .where('consecutive_failures >= 3').count rescue 0
-    
-    # Agent health
-    agents_in_school = AgentPlugin.where(entity: current_entity).where(status: 'in_school').count rescue 0
-    agents_active = AgentPlugin.where(entity: current_entity).active.count rescue 0
-    
-    # Automation stats
+
+    # ── Automations ──
+    automation_total = AutomationCode.for_entity(current_entity).count rescue 0
     automation_active = AutomationCode.for_entity(current_entity).active.count rescue 0
     automation_errors_24h = AutomationExecution.for_entity(current_entity)
                                                 .failed
                                                 .where('created_at > ?', 24.hours.ago)
                                                 .count rescue 0
+    automation_runs_24h = AutomationExecution.for_entity(current_entity)
+                                              .where('created_at > ?', 24.hours.ago)
+                                              .count rescue 0
+
+    # ── Integrations ──
+    connections_active = current_entity.connections.active.count rescue 0
+    connections_failing = current_entity.connections.failing.count rescue 0
+    connections_total = current_entity.connections.count rescue 0
+
+    # ── Landing Pages ──
+    lp_published = LandingPage.by_entity(current_entity.id).published.count rescue 0
+    lp_draft = LandingPage.by_entity(current_entity.id).drafts.count rescue 0
+    lp_submissions_week = LandingPageSubmission.joins(:landing_page)
+                                                .where(landing_pages: { entity_id: current_entity.id })
+                                                .where('landing_page_submissions.created_at > ?', 7.days.ago)
+                                                .count rescue 0
+
+    # ── Campaigns ──
+    campaigns_active = current_entity.campaigns.active.count rescue 0
+    campaigns_completed = current_entity.campaigns.completed.count rescue 0
+    emails_sent_24h = EmailDelivery.joins(:campaign)
+                                    .where(campaigns: { entity_id: current_entity.id })
+                                    .sent
+                                    .where('email_deliveries.created_at > ?', 24.hours.ago)
+                                    .count rescue 0
+
+    # ── Custom Domains ──
+    domains_total = current_entity.custom_domains.count rescue 0
+    domains_verified = current_entity.custom_domains.verified.count rescue 0
+    domains_pending = current_entity.custom_domains.where(web_status: 'pending').count rescue 0
+
+    # ── Scheduled Tasks ──
+    scheduled_active = ScheduledAgentTask.where(entity: current_entity).active.count rescue 0
+    scheduled_due = ScheduledAgentTask.where(entity: current_entity).due_now.count rescue 0
+
+    # ── Workflows (24h) ──
+    workflows_completed_24h = WorkflowExecution.where(entity: current_entity)
+                                                .status_completed
+                                                .where('created_at > ?', 24.hours.ago)
+                                                .count rescue 0
+    workflows_failed_24h = WorkflowExecution.where(entity: current_entity)
+                                             .status_failed
+                                             .where('created_at > ?', 24.hours.ago)
+                                             .count rescue 0
+    workflows_total_24h = workflows_completed_24h + workflows_failed_24h
+    workflow_success_rate = workflows_total_24h > 0 ? ((workflows_completed_24h.to_f / workflows_total_24h) * 100).round(1) : 100
   %>
 
   <!-- Quick Stats -->
@@ -71,28 +94,28 @@
       </div>
     </div>
     <div class="col-md-3">
-      <div class="stat-card <%= running_jobs > 0 ? 'is-active' : '' %>">
+      <div class="stat-card <%= automation_active > 0 ? 'is-active' : '' %>">
         <div class="stat-icon"><i data-lucide="zap" style="width: 24px; height: 24px;"></i></div>
         <div class="stat-content">
-          <div class="stat-value"><%= running_jobs %></div>
-          <div class="stat-label">Running Jobs</div>
+          <div class="stat-value"><%= automation_active %><small class="fw-normal text-muted"> / <%= automation_total %></small></div>
+          <div class="stat-label">Active Automations</div>
         </div>
       </div>
     </div>
     <div class="col-md-3">
-      <div class="stat-card <%= success_rate < 80 ? 'has-warning' : '' %>">
+      <div class="stat-card <%= workflow_success_rate < 80 ? 'has-warning' : '' %>">
         <div class="stat-icon"><i data-lucide="trending-up" style="width: 24px; height: 24px;"></i></div>
         <div class="stat-content">
-          <div class="stat-value"><%= success_rate %>%</div>
+          <div class="stat-value"><%= workflow_success_rate %>%</div>
           <div class="stat-label">Success Rate (24h)</div>
         </div>
       </div>
     </div>
     <div class="col-md-3">
-      <div class="stat-card <%= (scheduled_blocked + agents_in_school) > 0 ? 'has-alert' : '' %>">
+      <div class="stat-card <%= (automation_errors_24h + workflows_failed_24h + connections_failing) > 0 ? 'has-alert' : '' %>">
         <div class="stat-icon"><i data-lucide="alert-triangle" style="width: 24px; height: 24px;"></i></div>
         <div class="stat-content">
-          <div class="stat-value"><%= stats.dig(:by_severity, :critical).to_i + stats.dig(:by_severity, :error).to_i %></div>
+          <div class="stat-value"><%= automation_errors_24h + workflows_failed_24h %></div>
           <div class="stat-label">Errors (24h)</div>
         </div>
       </div>
@@ -101,50 +124,93 @@
 
   <!-- System Health Summary -->
   <div class="row g-3 mb-4">
-    <div class="col-md-6">
+    <!-- Left: Automations & Workflows -->
+    <div class="col-md-4">
       <div class="health-panel">
-        <h5 class="mb-3"><i data-lucide="server" class="me-2" style="width: 18px; height: 18px;"></i> System Health</h5>
+        <h5 class="mb-3"><i data-lucide="workflow" class="me-2" style="width: 18px; height: 18px;"></i> Automations & Tasks</h5>
         <div class="health-items">
-          <div class="health-item">
-            <span class="health-label">Active Agents</span>
-            <span class="health-value text-success"><%= agents_active %></span>
-          </div>
-          <div class="health-item">
-            <span class="health-label">Agents in School</span>
-            <span class="health-value <%= agents_in_school > 0 ? 'text-warning' : 'text-muted' %>"><%= agents_in_school %></span>
-          </div>
-          <div class="health-item">
-            <span class="health-label">Scheduled Tasks</span>
-            <span class="health-value text-success"><%= scheduled_active %></span>
-          </div>
-          <div class="health-item">
-            <span class="health-label">Blocked Tasks</span>
-            <span class="health-value <%= scheduled_blocked > 0 ? 'text-danger' : 'text-muted' %>"><%= scheduled_blocked %></span>
-          </div>
-          <div class="health-item">
+          <div class="health-item clickable" onclick="document.dispatchEvent(new CustomEvent('scout:load-canvas', { detail: { canvas: 'automation_dashboard', data: {} } }))">
             <span class="health-label">Active Automations</span>
             <span class="health-value text-success"><%= automation_active %></span>
           </div>
           <div class="health-item">
-            <span class="health-label">Automation Errors (24h)</span>
+            <span class="health-label">Runs (24h)</span>
+            <span class="health-value text-primary"><%= automation_runs_24h %></span>
+          </div>
+          <div class="health-item">
+            <span class="health-label">Errors (24h)</span>
             <span class="health-value <%= automation_errors_24h > 0 ? 'text-danger' : 'text-muted' %>"><%= automation_errors_24h %></span>
           </div>
+          <div class="health-item">
+            <span class="health-label">Scheduled Tasks</span>
+            <span class="health-value text-primary"><%= scheduled_active %></span>
+          </div>
+          <% if scheduled_due > 0 %>
+            <div class="health-item">
+              <span class="health-label">Tasks Due Now</span>
+              <span class="health-value text-warning"><%= scheduled_due %></span>
+            </div>
+          <% end %>
         </div>
       </div>
     </div>
-    <div class="col-md-6">
+
+    <!-- Center: Integrations & Domains -->
+    <div class="col-md-4">
       <div class="health-panel">
-        <h5 class="mb-3"><i data-lucide="pie-chart" class="me-2" style="width: 18px; height: 18px;"></i> Notifications by Category</h5>
-        <div class="category-breakdown">
-          <% (stats[:by_category] || {}).each do |category, count| %>
-            <div class="category-item">
-              <span class="category-label"><%= category.to_s.titleize %></span>
-              <span class="category-count"><%= count %></span>
+        <h5 class="mb-3"><i data-lucide="plug" class="me-2" style="width: 18px; height: 18px;"></i> Integrations & Domains</h5>
+        <div class="health-items">
+          <div class="health-item clickable" onclick="document.dispatchEvent(new CustomEvent('scout:load-canvas', { detail: { canvas: 'integrations', data: {} } }))">
+            <span class="health-label">Connected Integrations</span>
+            <span class="health-value text-success"><%= connections_active %><small class="text-muted fw-normal"> / <%= connections_total %></small></span>
+          </div>
+          <% if connections_failing > 0 %>
+            <div class="health-item">
+              <span class="health-label">Failing Connections</span>
+              <span class="health-value text-danger"><%= connections_failing %></span>
             </div>
           <% end %>
-          <% if stats[:by_category].blank? %>
-            <p class="text-muted mb-0 small">No notifications in the last 24 hours 🎉</p>
+          <div class="health-item clickable" onclick="document.dispatchEvent(new CustomEvent('scout:load-canvas', { detail: { canvas: 'custom_domains', data: {} } }))">
+            <span class="health-label">Custom Domains</span>
+            <span class="health-value <%= domains_verified > 0 ? 'text-success' : 'text-muted' %>"><%= domains_verified %><small class="text-muted fw-normal"> verified</small></span>
+          </div>
+          <% if domains_pending > 0 %>
+            <div class="health-item">
+              <span class="health-label">Domains Pending</span>
+              <span class="health-value text-warning"><%= domains_pending %></span>
+            </div>
           <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Content & Campaigns -->
+    <div class="col-md-4">
+      <div class="health-panel">
+        <h5 class="mb-3"><i data-lucide="layout" class="me-2" style="width: 18px; height: 18px;"></i> Content & Campaigns</h5>
+        <div class="health-items">
+          <div class="health-item clickable" onclick="document.dispatchEvent(new CustomEvent('scout:load-canvas', { detail: { canvas: 'my_creations', data: { type: 'landing_page' } } }))">
+            <span class="health-label">Landing Pages</span>
+            <span class="health-value text-success"><%= lp_published %> <small class="text-muted fw-normal">published</small></span>
+          </div>
+          <% if lp_draft > 0 %>
+            <div class="health-item">
+              <span class="health-label">Drafts</span>
+              <span class="health-value text-muted"><%= lp_draft %></span>
+            </div>
+          <% end %>
+          <div class="health-item">
+            <span class="health-label">Form Submissions (7d)</span>
+            <span class="health-value text-primary"><%= lp_submissions_week %></span>
+          </div>
+          <div class="health-item">
+            <span class="health-label">Active Campaigns</span>
+            <span class="health-value <%= campaigns_active > 0 ? 'text-success' : 'text-muted' %>"><%= campaigns_active %></span>
+          </div>
+          <div class="health-item">
+            <span class="health-label">Emails Sent (24h)</span>
+            <span class="health-value text-primary"><%= emails_sent_24h %></span>
+          </div>
         </div>
       </div>
     </div>
@@ -314,6 +380,18 @@
 
   .health-item:last-child {
     border-bottom: none;
+  }
+
+  .health-item.clickable {
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 8px 4px;
+    margin: -4px -4px;
+    transition: background 0.15s;
+  }
+
+  .health-item.clickable:hover {
+    background: rgba(255, 255, 255, 0.08);
   }
 
   .health-label {
@@ -554,11 +632,9 @@
 
   // Global functions
   window.refreshOperationsDashboard = function() {
-    if (typeof window.scoutLoadCanvas === 'function') {
-      window.scoutLoadCanvas('operations_dashboard', {}, true);
-    } else {
-      location.reload();
-    }
+    document.dispatchEvent(new CustomEvent('scout:load-canvas', {
+      detail: { canvas: 'operations_dashboard', data: {} }
+    }));
   };
 
   window.markAllNotificationsRead = function() {
