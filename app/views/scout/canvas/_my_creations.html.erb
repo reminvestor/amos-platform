@@ -184,66 +184,53 @@
     <!-- ════════════════════════════════════════════════ -->
     <div class="stats-row row g-2 mb-3" data-stats="all">
       <div class="col-6 col-lg-3">
-        <div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div><p class="text-muted small mb-0">Total Assets</p><h5 class="mb-0 fw-bold"><%= total_items %></h5></div>
-            <div class="stat-icon-sm bg-primary bg-opacity-10 rounded-2 p-1"><i data-lucide="layers" class="text-primary" style="width: 18px; height: 18px;"></i></div>
-          </div>
+        <div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center">
+          <p class="text-muted small mb-0">Total Assets</p><h5 class="mb-0 fw-bold"><%= total_items %></h5>
         </div></div>
       </div>
       <div class="col-6 col-lg-3">
-        <div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div><p class="text-muted small mb-0">Landing Pages</p><h5 class="mb-0 fw-bold"><%= total_landing_pages %></h5></div>
-            <div class="stat-icon-sm bg-info bg-opacity-10 rounded-2 p-1"><i data-lucide="file-text" class="text-info" style="width: 18px; height: 18px;"></i></div>
-          </div>
+        <div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center">
+          <p class="text-muted small mb-0">Landing Pages</p><h5 class="mb-0 fw-bold"><%= total_landing_pages %></h5>
         </div></div>
       </div>
       <div class="col-6 col-lg-3">
-        <div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div><p class="text-muted small mb-0">Apps</p><h5 class="mb-0 fw-bold"><%= total_app_modules %></h5></div>
-            <div class="stat-icon-sm rounded-2 p-1" style="background: rgba(139,92,246,0.1);"><i data-lucide="boxes" style="width: 18px; height: 18px; color: #8b5cf6;"></i></div>
-          </div>
+        <div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center">
+          <p class="text-muted small mb-0">Apps</p><h5 class="mb-0 fw-bold"><%= total_app_modules %></h5>
         </div></div>
       </div>
       <div class="col-6 col-lg-3">
-        <div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div><p class="text-muted small mb-0">Automations</p><h5 class="mb-0 fw-bold"><%= total_automations %></h5></div>
-            <div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="zap" class="text-success" style="width: 18px; height: 18px;"></i></div>
-          </div>
+        <div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center">
+          <p class="text-muted small mb-0">Automations</p><h5 class="mb-0 fw-bold"><%= total_automations %></h5>
         </div></div>
       </div>
     </div>
 
     <div class="stats-row row g-2 mb-3" data-stats="landing_page" style="display: none;">
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Total</p><h5 class="mb-0 fw-bold text-primary"><%= total_landing_pages %></h5></div><div class="stat-icon-sm bg-primary bg-opacity-10 rounded-2 p-1"><i data-lucide="file-text" class="text-primary" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Published</p><h5 class="mb-0 fw-bold text-success"><%= published_landing_pages %></h5></div><div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="check-circle" class="text-success" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Drafts</p><h5 class="mb-0 fw-bold text-warning"><%= draft_landing_pages %></h5></div><div class="stat-icon-sm bg-warning bg-opacity-10 rounded-2 p-1"><i data-lucide="pencil" class="text-warning" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Submissions</p><h5 class="mb-0 fw-bold text-info"><%= total_submissions %></h5></div><div class="stat-icon-sm bg-info bg-opacity-10 rounded-2 p-1"><i data-lucide="inbox" class="text-info" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Total</p><h5 class="mb-0 fw-bold text-primary"><%= total_landing_pages %></h5></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Published</p><h5 class="mb-0 fw-bold text-success"><%= published_landing_pages %></h5></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Drafts</p><h5 class="mb-0 fw-bold text-warning"><%= draft_landing_pages %></h5></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Submissions</p><h5 class="mb-0 fw-bold text-info"><%= total_submissions %></h5></div></div></div>
     </div>
 
     <div class="stats-row row g-2 mb-3" data-stats="app_module" style="display: none;">
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Total Apps</p><h5 class="mb-0 fw-bold text-primary"><%= total_app_modules %></h5></div><div class="stat-icon-sm bg-primary bg-opacity-10 rounded-2 p-1"><i data-lucide="boxes" class="text-primary" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Active</p><h5 class="mb-0 fw-bold text-success"><%= active_app_modules %></h5></div><div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="check-circle" class="text-success" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Deployed</p><h5 class="mb-0 fw-bold text-info"><%= deployed_app_modules %></h5></div><div class="stat-icon-sm bg-info bg-opacity-10 rounded-2 p-1"><i data-lucide="rocket" class="text-info" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Draft</p><h5 class="mb-0 fw-bold text-warning"><%= total_app_modules - active_app_modules %></h5></div><div class="stat-icon-sm bg-warning bg-opacity-10 rounded-2 p-1"><i data-lucide="pencil" class="text-warning" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Total Apps</p><h5 class="mb-0 fw-bold text-primary"><%= total_app_modules %></h5></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Active</p><h5 class="mb-0 fw-bold text-success"><%= active_app_modules %></h5></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Deployed</p><h5 class="mb-0 fw-bold text-info"><%= deployed_app_modules %></h5></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Draft</p><h5 class="mb-0 fw-bold text-warning"><%= total_app_modules - active_app_modules %></h5></div></div></div>
     </div>
 
     <div class="stats-row row g-2 mb-3" data-stats="automation" style="display: none;">
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Automations</p><h5 class="mb-0 fw-bold text-primary"><%= total_automations %></h5></div><div class="stat-icon-sm bg-primary bg-opacity-10 rounded-2 p-1"><i data-lucide="zap" class="text-primary" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Sequences</p><h5 class="mb-0 fw-bold" style="color: #a855f7;"><%= total_email_sequences %></h5></div><div class="stat-icon-sm rounded-2 p-1" style="background: rgba(168,85,247,0.1);"><i data-lucide="mail" style="width: 18px; height: 18px; color: #a855f7;"></i></div></div></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Executions</p><h5 class="mb-0 fw-bold text-info"><%= total_executions %></h5></div><div class="stat-icon-sm bg-info bg-opacity-10 rounded-2 p-1"><i data-lucide="activity" class="text-info" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Success</p><h5 class="mb-0 fw-bold <%= avg_success_rate >= 95 ? 'text-success' : avg_success_rate >= 80 ? 'text-warning' : 'text-danger' %>"><%= avg_success_rate %>%</h5></div><div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="check-circle" class="text-success" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Automations</p><h5 class="mb-0 fw-bold text-primary"><%= total_automations %></h5></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Sequences</p><h5 class="mb-0 fw-bold" style="color: #a855f7;"><%= total_email_sequences %></h5></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Executions</p><h5 class="mb-0 fw-bold text-info"><%= total_executions %></h5></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Success</p><h5 class="mb-0 fw-bold <%= avg_success_rate >= 95 ? 'text-success' : avg_success_rate >= 80 ? 'text-warning' : 'text-danger' %>"><%= avg_success_rate %>%</h5></div></div></div>
     </div>
 
-
     <div class="stats-row row g-2 mb-3" data-stats="web_app" style="display: none;">
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Total Web Apps</p><h5 class="mb-0 fw-bold text-primary"><%= total_web_apps %></h5></div><div class="stat-icon-sm rounded-2 p-1" style="background: rgba(14,165,233,0.1);"><i data-lucide="app-window" style="width: 18px; height: 18px; color: #0ea5e9;"></i></div></div></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Active</p><h5 class="mb-0 fw-bold text-success"><%= active_web_apps %></h5></div><div class="stat-icon-sm bg-success bg-opacity-10 rounded-2 p-1"><i data-lucide="check-circle" class="text-success" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Connected Modules</p><h5 class="mb-0 fw-bold text-info"><%= total_web_app_modules %></h5></div><div class="stat-icon-sm bg-info bg-opacity-10 rounded-2 p-1"><i data-lucide="boxes" class="text-info" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3"><div class="d-flex justify-content-between align-items-center"><div><p class="text-muted small mb-0">Draft</p><h5 class="mb-0 fw-bold text-warning"><%= total_web_apps - active_web_apps %></h5></div><div class="stat-icon-sm bg-warning bg-opacity-10 rounded-2 p-1"><i data-lucide="pencil" class="text-warning" style="width: 18px; height: 18px;"></i></div></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Total Web Apps</p><h5 class="mb-0 fw-bold text-primary"><%= total_web_apps %></h5></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Active</p><h5 class="mb-0 fw-bold text-success"><%= active_web_apps %></h5></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Connected Modules</p><h5 class="mb-0 fw-bold text-info"><%= total_web_app_modules %></h5></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card card border-0 shadow-sm h-100"><div class="card-body py-2 px-3 text-center"><p class="text-muted small mb-0">Draft</p><h5 class="mb-0 fw-bold text-warning"><%= total_web_apps - active_web_apps %></h5></div></div></div>
     </div>
 
 
