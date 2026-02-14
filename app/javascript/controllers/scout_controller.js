@@ -75,9 +75,9 @@ export default class extends Controller {
     
     // Also listen for custom canvas load events
     this.handleCanvasLoadEvent = (event) => {
-      const { canvas, data } = event.detail
-      console.log("📨 Received canvas load event:", canvas, data)
-      this.loadScoutCanvas(canvas, data)
+      const { canvas, data, forceRefresh } = event.detail
+      console.log("📨 Received canvas load event:", canvas, data, "forceRefresh:", forceRefresh)
+      this.loadScoutCanvas(canvas, data, !!forceRefresh)
     }
     document.addEventListener('scout:load-canvas', this.handleCanvasLoadEvent)
     

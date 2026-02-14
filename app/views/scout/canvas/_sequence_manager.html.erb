@@ -36,6 +36,7 @@
       created_at: seq.created_at&.strftime('%b %d, %Y'),
       steps: seq.sequence_steps.ordered.map do |step|
         {
+          id: step.id,
           step_number: step.step_number,
           subject: step.effective_subject,
           delay_hours: step.delay_hours,
@@ -48,7 +49,9 @@
           has_template: step.has_template?,
           template_name: step.email_template&.name,
           template_id: step.email_template_id,
-          body_preview: (step.effective_body.to_s.gsub(/<[^>]*>/, '').strip.truncate(120) rescue '')
+          body_preview: (step.effective_body.to_s.gsub(/<[^>]*>/, '').strip.truncate(120) rescue ''),
+          body_html: step.effective_body.to_s,
+          metadata: step.metadata || {}
         }
       end
     }
@@ -246,6 +249,23 @@
         </div>
       <% end %>
     <% end %>
+  </div>
+
+  <!-- Floating Text Toolbar for Email Editors -->
+  <div class="seq-text-toolbar" id="seqTextToolbar">
+    <button type="button" class="seq-toolbar-btn" data-command="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+    <button type="button" class="seq-toolbar-btn" data-command="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+    <button type="button" class="seq-toolbar-btn" data-command="underline" title="Underline (Ctrl+U)"><u>U</u></button>
+    <div class="seq-toolbar-divider"></div>
+    <button type="button" class="seq-toolbar-btn seq-color-btn" data-command="foreColor" title="Text Color">
+      <span class="seq-color-indicator" id="seqColorIndicator">A</span>
+    </button>
+    <input type="color" id="seqColorPicker" class="seq-color-picker-input" value="#3B82F6">
+    <div class="seq-toolbar-divider"></div>
+    <button type="button" class="seq-toolbar-btn" data-command="link" title="Add/Edit Link">&#128279;</button>
+    <input type="text" class="seq-toolbar-link-input" id="seqLinkInput" placeholder="Enter URL and press Enter">
+    <div class="seq-toolbar-divider"></div>
+    <button type="button" class="seq-toolbar-btn" data-command="removeFormat" title="Clear Formatting">&times;</button>
   </div>
 </div>
 
@@ -696,6 +716,15 @@
   position: relative;
 }
 
+.step-timeline-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 32px;
+}
+
 .sequence-step-detail .step-number {
   width: 32px;
   height: 32px;
@@ -709,16 +738,14 @@
   justify-content: center;
   flex-shrink: 0;
   z-index: 1;
-  margin-top: 1rem;
+  margin-top: 0.75rem;
 }
 
-.sequence-step-detail .step-connector {
-  position: absolute;
-  left: 15px;
-  top: 44px;
-  bottom: 0;
+.step-timeline-col .step-connector {
+  flex: 1;
   width: 2px;
   background: var(--sm-border);
+  min-height: 8px;
 }
 
 .sequence-step-detail:last-child .step-connector {
@@ -736,11 +763,14 @@
 }
 
 .step-detail-header {
+  margin-bottom: 0.35rem;
+}
+
+.step-subject-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.5rem;
-  margin-bottom: 0.35rem;
 }
 
 .step-detail-content .step-subject {
@@ -749,33 +779,221 @@
   font-size: 0.9rem;
 }
 
+.step-timing-badges {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.step-day-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #3B82F6;
+  background: rgba(59, 130, 246, 0.15);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 .step-delay-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   font-size: 0.7rem;
   color: var(--sm-text-muted);
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(59, 130, 246, 0.08);
   padding: 0.2rem 0.5rem;
   border-radius: 999px;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-.step-body-preview {
-  font-size: 0.8rem;
-  color: var(--sm-text-muted);
-  line-height: 1.4;
-  margin-bottom: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: rgba(0,0,0,0.03);
+/* Step Logic/Condition Row */
+.step-logic-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  padding: 0.4rem 0.6rem;
   border-radius: 6px;
-  border-left: 3px solid var(--sm-border);
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
 }
 
-[data-theme="dark"] .step-body-preview,
-[data-bs-theme="dark"] .step-body-preview {
-  background: rgba(255,255,255,0.03);
+[data-theme="dark"] .step-logic-row,
+[data-bs-theme="dark"] .step-logic-row {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+/* Expandable Email Toggle */
+.step-email-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #3B82F6;
+  cursor: pointer;
+  padding: 0.4rem 0;
+  margin-bottom: 0.25rem;
+  user-select: none;
+}
+
+.step-email-toggle:hover {
+  color: #2563EB;
+}
+
+.step-save-indicator {
+  font-size: 0.7rem;
+  margin-left: auto;
+  transition: all 0.2s;
+}
+
+.step-save-indicator.saving { color: #F59E0B; }
+.step-save-indicator.saved { color: #10B981; }
+.step-save-indicator.error { color: #EF4444; }
+
+/* Expandable Email Content */
+.step-email-expandable {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+  opacity: 0;
+  padding: 0;
+}
+
+.step-email-expandable.expanded {
+  max-height: 800px;
+  overflow-y: auto;
+  opacity: 1;
+  padding: 0.75rem 0;
+}
+
+.step-email-subject-edit {
+  margin-bottom: 0.75rem;
+}
+
+.step-email-subject-edit label,
+.step-email-body-edit label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--sm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.3rem;
+}
+
+.step-subject-input {
+  width: 100%;
+  background: var(--sm-card-bg);
+  border: 1px solid var(--sm-border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--sm-text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.step-subject-input:focus {
+  border-color: #3B82F6;
+}
+
+.step-template-edit-hint {
+  font-weight: 400;
+  font-size: 0.65rem;
+  color: #F59E0B;
+  text-transform: none;
+  letter-spacing: normal;
+  margin-left: 0.5rem;
+}
+
+.step-body-editor {
+  width: 100%;
+  min-height: 120px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--sm-card-bg);
+  border: 1px solid var(--sm-border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--sm-text);
+  line-height: 1.6;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.step-body-editor:focus {
+  border-color: #3B82F6;
+}
+
+.step-body-editor h1, .step-body-editor h2, .step-body-editor h3 { color: var(--sm-text); }
+.step-body-editor p { margin: 0.5em 0; }
+.step-body-editor a { color: #3B82F6; }
+.step-body-editor strong { font-weight: 700; }
+
+/* Variable Insert Pills */
+.step-variable-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--sm-border);
+}
+
+.variable-pills-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--sm-text-muted);
+  font-weight: 600;
+  margin-right: 0.25rem;
+  white-space: nowrap;
+}
+
+.variable-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.68rem;
+  font-family: monospace;
+  color: #8B5CF6;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.variable-pill:hover {
+  background: rgba(139, 92, 246, 0.18);
+  border-color: rgba(139, 92, 246, 0.4);
+  color: #7C3AED;
+}
+
+[data-theme="dark"] .variable-pill,
+[data-bs-theme="dark"] .variable-pill {
+  color: #A78BFA;
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.25);
+}
+
+[data-theme="dark"] .variable-pill:hover,
+[data-bs-theme="dark"] .variable-pill:hover {
+  background: rgba(139, 92, 246, 0.25);
+  border-color: rgba(139, 92, 246, 0.5);
 }
 
 .step-detail-footer {
@@ -784,6 +1002,7 @@
   justify-content: space-between;
   gap: 0.5rem;
   flex-wrap: wrap;
+  margin-top: 0.35rem;
 }
 
 .step-template-badge {
@@ -844,6 +1063,129 @@
   margin-top: 1.5rem;
   flex-wrap: wrap;
 }
+
+/* ═══════════════════════════════ */
+/* Floating Text Toolbar           */
+/* ═══════════════════════════════ */
+.seq-text-toolbar {
+  position: fixed;
+  display: none;
+  background: var(--sm-card-bg, #fff);
+  border: 1px solid var(--sm-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 4px;
+  gap: 2px;
+  z-index: 10001;
+  box-shadow: 0 4px 16px var(--sm-shadow, rgba(0,0,0,0.12));
+  flex-direction: row;
+  align-items: center;
+}
+
+.seq-text-toolbar.visible {
+  display: flex;
+}
+
+[data-theme="dark"] .seq-text-toolbar,
+[data-bs-theme="dark"] .seq-text-toolbar {
+  background: #1a1a2e;
+  border-color: #2d2d44;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.seq-toolbar-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--sm-text-muted, #64748b);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+
+.seq-toolbar-btn:hover {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3B82F6;
+}
+
+.seq-toolbar-btn.active {
+  background: #3B82F6;
+  color: white;
+}
+
+[data-theme="dark"] .seq-toolbar-btn,
+[data-bs-theme="dark"] .seq-toolbar-btn {
+  color: #a0a0b0;
+}
+
+[data-theme="dark"] .seq-toolbar-btn:hover,
+[data-bs-theme="dark"] .seq-toolbar-btn:hover {
+  background: rgba(59, 130, 246, 0.25);
+  color: #60a5fa;
+}
+
+.seq-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--sm-border, #e2e8f0);
+  margin: 0 3px;
+}
+
+[data-theme="dark"] .seq-toolbar-divider,
+[data-bs-theme="dark"] .seq-toolbar-divider {
+  background: #2d2d44;
+}
+
+.seq-toolbar-link-input {
+  display: none;
+  padding: 5px 8px;
+  background: var(--sm-card-bg, #f8fafc);
+  border: 1px solid var(--sm-border, #e2e8f0);
+  border-radius: 4px;
+  color: var(--sm-text, #1e293b);
+  font-size: 12px;
+  width: 200px;
+  margin-left: 4px;
+  outline: none;
+}
+
+.seq-toolbar-link-input:focus {
+  border-color: #3B82F6;
+}
+
+[data-theme="dark"] .seq-toolbar-link-input,
+[data-bs-theme="dark"] .seq-toolbar-link-input {
+  background: #252536;
+  border-color: #2d2d44;
+  color: #f1f5f9;
+}
+
+.seq-text-toolbar.link-mode .seq-toolbar-link-input {
+  display: block;
+}
+
+.seq-color-btn { position: relative; }
+
+.seq-color-indicator {
+  font-weight: 700;
+  font-size: 13px;
+  border-bottom: 3px solid #3B82F6;
+  line-height: 1;
+  padding-bottom: 1px;
+}
+
+.seq-color-picker-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
 </style>
 
 <script>
@@ -869,7 +1211,9 @@ function loadCanvas(canvasType, canvasData) {
 }
 
 function sequenceRefresh() {
-  loadCanvas('sequence_manager', {});
+  document.dispatchEvent(new CustomEvent('scout:load-canvas', {
+    detail: { canvas: 'sequence_manager', data: {}, forceRefresh: true }
+  }));
 }
 
 function sequenceCreate() {
@@ -881,6 +1225,132 @@ function formatDelay(hours) {
   if (hours < 24) return hours + 'h after previous';
   const days = Math.round(hours / 24);
   return days === 1 ? '1 day after previous' : days + ' days after previous';
+}
+
+function formatDayLabel(hours) {
+  if (hours === 0) return 'Day 0';
+  const days = Math.round(hours / 24);
+  return 'Day ' + days;
+}
+
+// Compute cumulative day for each step
+function getCumulativeDay(steps, idx) {
+  let total = 0;
+  for (let i = 0; i <= idx; i++) {
+    total += steps[i].delay_hours;
+  }
+  return Math.round(total / 24);
+}
+
+// Describe the sending logic for a step based on its position and metadata
+function describeStepLogic(step, idx, totalSteps) {
+  const meta = step.metadata || {};
+  // Check for explicit condition in metadata
+  if (meta.condition) return meta.condition;
+  if (meta.send_condition) return meta.send_condition;
+  if (meta.description) return meta.description;
+
+  // Auto-generate a human-readable description
+  if (idx === 0) {
+    return 'Sends to all contacts in the group when the sequence is activated.';
+  }
+  // For follow-ups, describe the re-engagement logic
+  const prevSteps = [];
+  for (let i = 0; i < idx; i++) prevSteps.push('Step ' + (i + 1));
+  return `Automatically sends to contacts who have not opened ${prevSteps.join(' or ')}.`;
+}
+
+// Auto-save step content
+let saveTimers = {};
+async function autoSaveStep(sequenceId, stepId, field, value) {
+  // Debounce - wait 1.5s after last keystroke
+  const key = `${stepId}-${field}`;
+  if (saveTimers[key]) clearTimeout(saveTimers[key]);
+  
+  saveTimers[key] = setTimeout(async () => {
+    const indicator = document.getElementById(`save-indicator-${stepId}`);
+    if (indicator) {
+      indicator.textContent = 'Saving...';
+      indicator.className = 'step-save-indicator saving';
+    }
+    
+    try {
+      const response = await fetch(`/email_sequences/${sequenceId}/sequence_steps/${stepId}.json`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({ sequence_step: { [field]: value } })
+      });
+      
+      const data = await response.json();
+      if (indicator) {
+        if (data.success) {
+          indicator.textContent = 'Saved';
+          indicator.className = 'step-save-indicator saved';
+          setTimeout(() => {
+            if (indicator.textContent === 'Saved') {
+              indicator.textContent = '';
+              indicator.className = 'step-save-indicator';
+            }
+          }, 2000);
+        } else {
+          indicator.textContent = 'Error saving';
+          indicator.className = 'step-save-indicator error';
+        }
+      }
+    } catch (err) {
+      console.error('Auto-save error:', err);
+      if (indicator) {
+        indicator.textContent = 'Error saving';
+        indicator.className = 'step-save-indicator error';
+      }
+    }
+  }, 1500);
+}
+
+// Toggle expanded email content
+function toggleStepEmail(stepId, sequenceId) {
+  const expandable = document.getElementById(`step-email-expand-${stepId}`);
+  const chevron = document.getElementById(`step-chevron-${stepId}`);
+  if (!expandable) return;
+  
+  const isExpanded = expandable.classList.contains('expanded');
+  if (isExpanded) {
+    expandable.classList.remove('expanded');
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+  } else {
+    expandable.classList.add('expanded');
+    if (chevron) chevron.style.transform = 'rotate(90deg)';
+  }
+}
+
+// Insert a template variable into the body editor at cursor position
+function insertSeqVariable(stepId, variable) {
+  const editor = document.getElementById(`step-body-editor-${stepId}`);
+  if (!editor) return;
+
+  editor.focus();
+
+  // Try to insert at cursor position
+  const sel = window.getSelection();
+  if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+    // Insert at cursor
+    document.execCommand('insertText', false, variable);
+  } else {
+    // No cursor in editor — append at end
+    editor.focus();
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false); // collapse to end
+    sel.removeAllRanges();
+    sel.addRange(range);
+    document.execCommand('insertText', false, variable);
+  }
+
+  // Trigger auto-save
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 function sequenceView(id) {
@@ -905,6 +1375,11 @@ function sequenceView(id) {
         : `<span class="step-template-badge inline-content"><i data-lucide="pen-line" style="width:12px;height:12px;"></i> Inline content</span>`;
 
       const delayLabel = idx === 0 ? 'Starts immediately' : formatDelay(step.delay_hours);
+      const dayLabel = formatDayLabel(getCumulativeDay(seq.steps, idx) === 0 ? 0 : getCumulativeDay(seq.steps, idx) * 24);
+      const cumulativeDay = getCumulativeDay(seq.steps, idx);
+
+      // Sending logic description
+      const logicDesc = describeStepLogic(step, idx, seq.steps.length);
 
       const stepMetrics = (step.sent_count > 0)
         ? `<div class="step-metrics-row">
@@ -914,20 +1389,62 @@ function sequenceView(id) {
            </div>`
         : `<div class="step-metrics-row"><span class="step-metric muted">Not sent yet</span></div>`;
 
-      const bodyPreview = step.body_preview
-        ? `<div class="step-body-preview">${step.body_preview}</div>`
-        : '';
+      // Sanitize body HTML for safe display in contenteditable
+      const bodyHtml = step.body_html || '';
+      const safeBodyHtml = bodyHtml.replace(/`/g, '&#96;').replace(/\$/g, '&#36;');
 
       stepsHtml += `
         <div class="sequence-step-detail">
-          <div class="step-number">${step.step_number}</div>
-          <div class="step-connector"></div>
+          <div class="step-timeline-col">
+            <div class="step-number">${step.step_number}</div>
+            <div class="step-connector"></div>
+          </div>
           <div class="step-detail-content">
             <div class="step-detail-header">
-              <div class="step-subject">${step.subject || 'No subject'}</div>
-              <div class="step-delay-badge"><i data-lucide="clock" style="width:12px;height:12px;"></i> ${delayLabel}</div>
+              <div class="step-subject-row">
+                <div class="step-subject">${step.subject || 'No subject'}</div>
+                <div class="step-timing-badges">
+                  <span class="step-day-badge">Day ${cumulativeDay}</span>
+                  <span class="step-delay-badge"><i data-lucide="clock" style="width:12px;height:12px;"></i> ${delayLabel}</span>
+                </div>
+              </div>
             </div>
-            ${bodyPreview}
+            
+            <div class="step-logic-row">
+              <i data-lucide="filter" style="width:13px;height:13px;flex-shrink:0;"></i>
+              <span>${logicDesc}</span>
+            </div>
+            
+            <div class="step-email-toggle" onclick="toggleStepEmail(${step.id}, ${seq.id})">
+              <i data-lucide="chevron-right" style="width:14px;height:14px;transition:transform 0.2s;" id="step-chevron-${step.id}"></i>
+              <span>View / Edit Email Content</span>
+              <span id="save-indicator-${step.id}" class="step-save-indicator"></span>
+            </div>
+            
+            <div class="step-email-expandable" id="step-email-expand-${step.id}">
+              <div class="step-email-subject-edit">
+                <label>Subject:</label>
+                <input type="text" value="${(step.subject || '').replace(/"/g, '&quot;')}" 
+                       class="step-subject-input"
+                       oninput="autoSaveStep(${seq.id}, ${step.id}, 'subject', this.value)" />
+              </div>
+              <div class="step-email-body-edit">
+                <label>Email Body: ${step.has_template ? '<span class="step-template-edit-hint">Edits here override the linked template</span>' : ''}</label>
+                <div class="step-body-editor" 
+                     contenteditable="true"
+                     id="step-body-editor-${step.id}"
+                     oninput="autoSaveStep(${seq.id}, ${step.id}, 'body', this.innerHTML)">${safeBodyHtml}</div>
+              </div>
+              <div class="step-variable-pills">
+                <span class="variable-pills-label"><i data-lucide="variable" style="width:12px;height:12px;"></i> Insert variable:</span>
+                <button type="button" class="variable-pill" onclick="insertSeqVariable(${step.id}, '{{first_name}}')">{{first_name}}</button>
+                <button type="button" class="variable-pill" onclick="insertSeqVariable(${step.id}, '{{last_name}}')">{{last_name}}</button>
+                <button type="button" class="variable-pill" onclick="insertSeqVariable(${step.id}, '{{full_name}}')">{{full_name}}</button>
+                <button type="button" class="variable-pill" onclick="insertSeqVariable(${step.id}, '{{email}}')">{{email}}</button>
+                <button type="button" class="variable-pill" onclick="insertSeqVariable(${step.id}, '{{company}}')">{{company}}</button>
+              </div>
+            </div>
+            
             <div class="step-detail-footer">
               ${templateBadge}
               ${stepMetrics}
@@ -1020,7 +1537,7 @@ function sequenceView(id) {
       <button onclick="event.stopPropagation(); sendToAmos('Modify the email templates in sequence \\'${seq.name}\\'')" class="canvas-btn outline sm">
         <i data-lucide="file-edit" style="width:14px;height:14px;"></i> Edit Templates
       </button>
-      <button onclick="event.stopPropagation(); if(confirm('Delete this sequence?')) sendToAmos('Delete email sequence #${id}')" class="canvas-btn outline sm" style="color: #EF4444; border-color: #EF4444;">
+      <button onclick="event.stopPropagation(); (window.showConfirm ? window.showConfirm('Delete this sequence? This cannot be undone.', { title: 'Delete Sequence', dangerous: true, confirmText: 'Delete' }) : Promise.resolve(confirm('Delete this sequence?'))).then(ok => { if(ok) sendToAmos('Delete email sequence #${id}') })" class="canvas-btn outline sm" style="color: #EF4444; border-color: #EF4444;">
         <i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete
       </button>
     </div>
@@ -1037,8 +1554,185 @@ function sequenceView(id) {
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
+// ═══════════════════════════════════════════════
+// Floating Text Toolbar for contenteditable editors
+// ═══════════════════════════════════════════════
+(function setupSeqTextToolbar() {
+  const toolbar = document.getElementById('seqTextToolbar');
+  const linkInput = document.getElementById('seqLinkInput');
+  const colorPicker = document.getElementById('seqColorPicker');
+  const colorIndicator = document.getElementById('seqColorIndicator');
+  if (!toolbar) return;
+
+  let savedSelection = null;
+
+  // Show toolbar on text selection within step-body-editor elements
+  document.addEventListener('selectionchange', () => {
+    const selection = window.getSelection();
+
+    if (!selection || selection.isCollapsed || selection.toString().trim() === '') {
+      if (!toolbar.classList.contains('link-mode')) {
+        toolbar.classList.remove('visible');
+      }
+      return;
+    }
+
+    // Check if selection is within a step-body-editor
+    const anchorNode = selection.anchorNode;
+    const editableParent = anchorNode?.parentElement?.closest('.step-body-editor[contenteditable="true"]') ||
+                          (anchorNode?.nodeType === 1 && anchorNode.closest('.step-body-editor[contenteditable="true"]'));
+
+    if (!editableParent) {
+      if (!toolbar.classList.contains('link-mode')) {
+        toolbar.classList.remove('visible');
+      }
+      return;
+    }
+
+    // Make toolbar visible first so offsetWidth/offsetHeight are available
+    toolbar.classList.add('visible');
+    toolbar.classList.remove('link-mode');
+
+    // Position toolbar above selection
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    const tw = toolbar.offsetWidth;
+    const th = toolbar.offsetHeight;
+
+    let left = rect.left + rect.width / 2 - tw / 2;
+    let top = rect.top - th - 8;
+
+    // Keep on screen horizontally
+    if (left < 10) left = 10;
+    if (left + tw > window.innerWidth - 10) left = window.innerWidth - tw - 10;
+    // If above goes off top, show below selection instead
+    if (top < 10) top = rect.bottom + 8;
+
+    toolbar.style.left = left + 'px';
+    toolbar.style.top = top + 'px';
+    updateToolbarStates();
+  });
+
+  function updateToolbarStates() {
+    toolbar.querySelectorAll('.seq-toolbar-btn[data-command]').forEach(btn => {
+      const cmd = btn.dataset.command;
+      if (cmd === 'link' || cmd === 'removeFormat' || cmd === 'foreColor') return;
+      try {
+        btn.classList.toggle('active', document.queryCommandState(cmd));
+      } catch(e) {}
+    });
+  }
+
+  function saveSelection() {
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0) savedSelection = sel.getRangeAt(0).cloneRange();
+  }
+
+  function restoreSelection() {
+    if (savedSelection) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedSelection);
+    }
+  }
+
+  // Find the parent editor to trigger auto-save after formatting
+  function triggerAutoSave() {
+    const sel = window.getSelection();
+    if (!sel.anchorNode) return;
+    const editor = sel.anchorNode.parentElement?.closest('.step-body-editor') ||
+                   (sel.anchorNode.nodeType === 1 && sel.anchorNode.closest('.step-body-editor'));
+    if (editor) {
+      // Dispatch an input event to trigger the oninput handler
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
+  // Button clicks
+  toolbar.querySelectorAll('.seq-toolbar-btn').forEach(btn => {
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
+
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const cmd = btn.dataset.command;
+
+      if (cmd === 'link') {
+        saveSelection();
+        toolbar.classList.add('link-mode');
+        linkInput.value = '';
+        linkInput.focus();
+        // Pre-fill with existing link
+        const sel = window.getSelection();
+        if (sel.anchorNode) {
+          const link = sel.anchorNode.parentElement?.closest('a');
+          if (link) linkInput.value = link.href;
+        }
+      } else if (cmd === 'foreColor') {
+        saveSelection();
+        colorPicker.click();
+      } else if (cmd === 'removeFormat') {
+        document.execCommand('removeFormat', false, null);
+        document.execCommand('unlink', false, null);
+        triggerAutoSave();
+      } else {
+        document.execCommand(cmd, false, null);
+        updateToolbarStates();
+        triggerAutoSave();
+      }
+    });
+  });
+
+  // Link input
+  linkInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const url = linkInput.value.trim();
+      restoreSelection();
+      if (url) {
+        const finalUrl = url.match(/^https?:\/\//) ? url : 'https://' + url;
+        document.execCommand('createLink', false, finalUrl);
+        // Make links open in new tab
+        const sel = window.getSelection();
+        if (sel.anchorNode) {
+          const newLink = sel.anchorNode.parentElement?.closest('a') ||
+                         (sel.anchorNode.nodeType === 1 && sel.anchorNode.querySelector('a'));
+          if (newLink) newLink.setAttribute('target', '_blank');
+        }
+      } else {
+        document.execCommand('unlink', false, null);
+      }
+      toolbar.classList.remove('link-mode');
+      triggerAutoSave();
+    } else if (e.key === 'Escape') {
+      toolbar.classList.remove('link-mode');
+      restoreSelection();
+    }
+  });
+
+  linkInput.addEventListener('blur', () => {
+    setTimeout(() => {
+      if (!toolbar.contains(document.activeElement)) {
+        toolbar.classList.remove('link-mode');
+      }
+    }, 150);
+  });
+
+  // Color picker
+  colorPicker.addEventListener('input', (e) => {
+    const color = e.target.value;
+    colorIndicator.style.borderBottomColor = color;
+    restoreSelection();
+    document.execCommand('foreColor', false, color);
+    triggerAutoSave();
+  });
+})();
+
 async function sequenceActivate(id) {
-  if (!confirm('Activate this sequence? Enrolled contacts will start receiving emails.')) return;
+  const confirmed = window.showConfirm
+    ? await window.showConfirm('Activate this sequence? Enrolled contacts will start receiving emails.', { title: 'Activate Sequence', confirmText: 'Activate', confirmClass: 'btn-success' })
+    : confirm('Activate this sequence? Enrolled contacts will start receiving emails.');
+  if (!confirmed) return;
   
   try {
     const response = await fetch(`/api/v1/email_sequences/${id}/activate`, {

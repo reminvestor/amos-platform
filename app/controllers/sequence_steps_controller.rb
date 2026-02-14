@@ -34,10 +34,18 @@ class SequenceStepsController < ApplicationController
 
   def update
     if @step.update(step_params)
-      redirect_to @sequence, notice: 'Step updated successfully.'
+      respond_to do |format|
+        format.html { redirect_to @sequence, notice: 'Step updated successfully.' }
+        format.json { render json: { success: true, message: 'Step updated successfully.' } }
+      end
     else
-      @email_templates = current_entity.email_templates
-      render :edit, status: :unprocessable_entity
+      respond_to do |format|
+        format.html do
+          @email_templates = current_entity.email_templates
+          render :edit, status: :unprocessable_entity
+        end
+        format.json { render json: { success: false, errors: @step.errors.full_messages }, status: :unprocessable_entity }
+      end
     end
   end
 

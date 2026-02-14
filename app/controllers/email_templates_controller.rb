@@ -68,9 +68,21 @@ class EmailTemplatesController < ApplicationController
         current_user
       ).deliver_now
 
-      redirect_to @email_template, notice: "Test email sent to #{params[:email]}"
+      respond_to do |format|
+        format.html { redirect_to @email_template, notice: "Test email sent to #{params[:email]}" }
+        format.json { render json: { success: true, message: "Test email sent to #{params[:email]}" } }
+      end
     else
-      redirect_to @email_template, alert: "Please provide an email address"
+      respond_to do |format|
+        format.html { redirect_to @email_template, alert: "Please provide an email address" }
+        format.json { render json: { success: false, message: "Please provide an email address" }, status: :unprocessable_entity }
+      end
+    end
+  rescue => e
+    Rails.logger.error("Test email error: #{e.message}")
+    respond_to do |format|
+      format.html { redirect_to @email_template, alert: "Error sending test email: #{e.message}" }
+      format.json { render json: { success: false, message: "Error sending test email: #{e.message}" }, status: :internal_server_error }
     end
   end
 

@@ -268,6 +268,101 @@ export function showConfirm(message, options = {}) {
   })
 }
 
+/**
+ * Show a prompt dialog using a custom modal
+ * Returns a Promise that resolves to the entered string, or null if cancelled
+ * @param {string} message - The prompt message
+ * @param {Object} options - Configuration options
+ * @returns {Promise<string|null>}
+ */
+export function showPrompt(message, options = {}) {
+  return new Promise((resolve) => {
+    const defaults = {
+      title: 'Input Required',
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      defaultValue: '',
+      placeholder: '',
+      inputType: 'text'
+    }
+    const opts = { ...defaults, ...options }
+
+    const modalId = `prompt-modal-${Date.now()}`
+    const modalEl = document.createElement('div')
+    modalEl.className = 'modal fade'
+    modalEl.id = modalId
+    modalEl.setAttribute('tabindex', '-1')
+    modalEl.setAttribute('aria-labelledby', `${modalId}-label`)
+    modalEl.setAttribute('aria-hidden', 'true')
+
+    modalEl.innerHTML = `
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="${modalId}-label">${opts.title}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-3">${message}</p>
+            <input type="${opts.inputType}" class="form-control" id="${modalId}-input"
+                   value="${opts.defaultValue}" placeholder="${opts.placeholder}" autofocus />
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">${opts.cancelText}</button>
+            <button type="button" class="btn btn-primary" data-action="confirm">${opts.confirmText}</button>
+          </div>
+        </div>
+      </div>
+    `
+
+    document.body.appendChild(modalEl)
+
+    const Modal = window.bootstrap?.Modal
+    if (!Modal) {
+      console.warn('Bootstrap Modal not available — prompt message:', message)
+      modalEl.remove()
+      resolve(null)
+      return
+    }
+
+    const modal = new Modal(modalEl)
+    const input = modalEl.querySelector(`#${modalId}-input`)
+    let resolved = false
+
+    // Handle confirm
+    const confirmBtn = modalEl.querySelector('[data-action="confirm"]')
+    confirmBtn.addEventListener('click', () => {
+      resolved = true
+      modal.hide()
+      resolve(input.value)
+    })
+
+    // Handle Enter key in input
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        resolved = true
+        modal.hide()
+        resolve(input.value)
+      }
+    })
+
+    // Handle modal close (cancel)
+    modalEl.addEventListener('hidden.bs.modal', () => {
+      modalEl.remove()
+      if (!resolved) resolve(null)
+    }, { once: true })
+
+    // Focus input after modal is shown
+    modalEl.addEventListener('shown.bs.modal', () => {
+      input.focus()
+      input.select()
+    }, { once: true })
+
+    modal.show()
+  })
+}
+
 // Make functions globally available for inline scripts and non-module contexts
 if (typeof window !== 'undefined') {
   window.showToast = showToast
@@ -276,4 +371,5 @@ if (typeof window !== 'undefined') {
   window.showWarning = showWarning
   window.showInfo = showInfo
   window.showConfirm = showConfirm
+  window.showPrompt = showPrompt
 }

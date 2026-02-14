@@ -329,8 +329,8 @@
   }
 
   // Insert link
-  function insertLink() {
-    const url = prompt('Enter URL:', 'https://');
+  async function insertLink() {
+    const url = await (window.showPrompt ? window.showPrompt('Enter URL:', { defaultValue: 'https://', title: 'Insert Link' }) : prompt('Enter URL:', 'https://'));
     if (url) {
       formatText('createLink', url);
     }
@@ -488,20 +488,28 @@
   }
 
   // Send test email
-  function sendTestEmail() {
+  async function sendTestEmail() {
     const templateId = <%= email_template.id %>;
-    const email = prompt('Enter email address to send test to:', '<%= current_user.email %>');
+    const email = await (window.showPrompt
+      ? window.showPrompt('Enter email address to send test to:', { defaultValue: '<%= current_user.email %>', title: 'Send Test Email' })
+      : prompt('Enter email address to send test to:', '<%= current_user.email %>'));
 
     if (!email) return;
 
-    // Direct API call to send test email
-    fetch(`/api/v1/campaigns`, {
+    // Send test email via web route (Devise auth, CSRF token)
+    fetch(`/email_templates/${templateId}/test_email.json`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content },
-      body: JSON.stringify({ email_template_id: templateId, test_email: email, send_test: true })
+      body: JSON.stringify({ email: email })
     }).then(r => r.json()).then(d => {
-      alert(d.success ? 'Test email sent!' : (d.message || 'Failed to send test'));
-    }).catch(e => alert('Error: ' + e.message));
+      if (d.success) {
+        window.showSuccess ? window.showSuccess(d.message || 'Test email sent!') : alert('Test email sent!');
+      } else {
+        window.showError ? window.showError(d.message || 'Failed to send test') : alert(d.message || 'Failed to send test');
+      }
+    }).catch(e => {
+      window.showError ? window.showError('Error: ' + e.message) : alert('Error: ' + e.message);
+    });
   }
 
   // Add event listeners

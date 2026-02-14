@@ -22,8 +22,8 @@
   # Fetch Apps (parent containers for grouped modules)
   apps_all = entity.apps.visible_to_user(current_user).includes(app_modules: [:module_canvases, :module_codes, :tool_definitions, :agent_plugins]).order(updated_at: :desc) rescue []
   
-  # Fetch Email Sequences (user's own + entity-shared)
-  email_sequences_all = entity.email_sequences.visible_to_user(current_user).includes(:sequence_steps).order(updated_at: :desc) rescue []
+  # Fetch Email Sequences — show all entity sequences (many are created by AI with no created_by_id)
+  email_sequences_all = entity.email_sequences.includes(:sequence_steps, :contact_group).order(updated_at: :desc) rescue []
 
   # Apply search filter
   if search_query.present?
@@ -106,8 +106,8 @@
 
   total_apps = (entity.apps.visible_to_user(current_user).count rescue 0)
   
-  total_email_sequences = (entity.email_sequences.visible_to_user(current_user).count rescue 0)
-  active_email_sequences = (entity.email_sequences.visible_to_user(current_user).where(status: 'active').count rescue 0)
+  total_email_sequences = (entity.email_sequences.count rescue 0)
+  active_email_sequences = (entity.email_sequences.where(status: 'active').count rescue 0)
 
   total_items = total_landing_pages + total_app_modules + total_automations + total_websites + total_web_apps + total_email_sequences
 
@@ -794,9 +794,30 @@
                           <% if seq.respond_to?(:goal) && seq.goal.present? %><span><%= seq.goal.to_s.truncate(40) %></span><% end %>
                         </div>
                       </div>
-                      <button type="button" class="btn btn-sm btn-outline-secondary project-expand-btn" data-bs-toggle="collapse" data-bs-target="#seq-<%= seq.id %>">
-                        <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
-                      </button>
+                      <div class="d-flex gap-1 flex-shrink-0 align-items-center">
+                        <button type="button" class="btn btn-sm btn-outline-secondary seq-edit-btn" data-id="<%= seq.id %>" data-name="<%= seq.name %>" title="Edit in Sequence Manager">
+                          <i data-lucide="edit-2" style="width: 11px; height: 11px;"></i>
+                        </button>
+                        <% if seq.status == 'draft' %>
+                          <button type="button" class="btn btn-sm btn-outline-success seq-activate-btn" data-id="<%= seq.id %>" title="Activate">
+                            <i data-lucide="play" style="width: 11px; height: 11px;"></i>
+                          </button>
+                        <% elsif seq.status == 'active' %>
+                          <button type="button" class="btn btn-sm btn-outline-warning seq-pause-btn" data-id="<%= seq.id %>" title="Pause">
+                            <i data-lucide="pause" style="width: 11px; height: 11px;"></i>
+                          </button>
+                        <% elsif seq.status == 'paused' %>
+                          <button type="button" class="btn btn-sm btn-outline-success seq-resume-btn" data-id="<%= seq.id %>" title="Resume">
+                            <i data-lucide="play" style="width: 11px; height: 11px;"></i>
+                          </button>
+                        <% end %>
+                        <button type="button" class="btn btn-sm btn-outline-danger seq-delete-btn" data-id="<%= seq.id %>" data-name="<%= seq.name %>" title="Delete">
+                          <i data-lucide="trash-2" style="width: 11px; height: 11px;"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary project-expand-btn" data-bs-toggle="collapse" data-bs-target="#seq-<%= seq.id %>">
+                          <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div class="collapse" id="seq-<%= seq.id %>">
@@ -1202,9 +1223,9 @@
     let currentTypeFilter = '<%= filter_type %>';
     let currentStatusFilter = 'all';
 
-    function loadCanvas(canvasType, canvasData = {}) {
+    function loadCanvas(canvasType, canvasData = {}, forceRefresh = false) {
       document.dispatchEvent(new CustomEvent('scout:load-canvas', { 
-        detail: { canvas: canvasType, data: canvasData } 
+        detail: { canvas: canvasType, data: canvasData, forceRefresh: forceRefresh } 
       }));
     }
 
@@ -1354,20 +1375,25 @@
       if (typeof lucide !== 'undefined') lucide.createIcons({ node: dropdown });
 
       dropdown.querySelectorAll('.dropdown-item').forEach(item => {
-        item.addEventListener('click', function() {
+        item.addEventListener('click', async function() {
           const action = this.dataset.action;
-          if (action === 'delete' && confirm('Delete this landing page?')) {
-            fetch('/landing_pages/' + id, {
-              method: 'DELETE',
-              headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content, 'Accept': 'application/json' }
-            }).then(() => loadCanvas('my_creations', {}));
+          if (action === 'delete') {
+            const confirmed = window.showConfirm
+              ? await window.showConfirm('Delete this landing page? This cannot be undone.', { title: 'Delete Landing Page', dangerous: true, confirmText: 'Delete' })
+              : confirm('Delete this landing page?');
+            if (confirmed) {
+              fetch('/landing_pages/' + id, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content, 'Accept': 'application/json' }
+              }).then(() => loadCanvas('my_creations', {}));
+            }
           } else if (action === 'publish') {
             fetch('/landing_pages/' + id + '/publish', {
               method: 'POST',
               headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content, 'Accept': 'application/json' }
             }).then(() => loadCanvas('my_creations', {}));
           } else if (action === 'duplicate') {
-            alert('Duplicate feature coming soon!');
+            window.showInfo ? window.showInfo('Duplicate feature coming soon!') : alert('Duplicate feature coming soon!');
           }
           dropdown.remove();
         });
@@ -1486,6 +1512,102 @@
       } else if (window.scoutSendMessage) {
         window.scoutSendMessage(msg);
       }
+    });
+
+    // ── Email Sequence actions ──
+    // Edit - open the sequence manager canvas
+    container.addEventListener('click', function(e) {
+      const editBtn = e.target.closest('.seq-edit-btn');
+      if (!editBtn) return;
+      e.preventDefault(); e.stopPropagation();
+      loadCanvas('sequence_manager', {});
+    });
+
+    // Activate
+    container.addEventListener('click', async function(e) {
+      const btn = e.target.closest('.seq-activate-btn');
+      if (!btn) return;
+      e.preventDefault(); e.stopPropagation();
+      const confirmed = window.showConfirm
+        ? await window.showConfirm('Activate this sequence? Enrolled contacts will start receiving emails.', { title: 'Activate Sequence', confirmText: 'Activate', confirmClass: 'btn-success' })
+        : confirm('Activate this sequence? Enrolled contacts will start receiving emails.');
+      if (!confirmed) return;
+      try {
+        const resp = await fetch('/api/v1/email_sequences/' + btn.dataset.id + '/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content }
+        });
+        const data = await resp.json();
+        if (data.success) {
+          window.showSuccess ? window.showSuccess('Sequence activated! Emails will start sending.') : null;
+          loadCanvas('my_creations', {}, true);
+        } else {
+          window.showError ? window.showError(data.message || 'Failed to activate') : alert(data.message || 'Failed to activate');
+        }
+      } catch(err) { console.error(err); window.showError ? window.showError('Error activating sequence') : alert('Error activating sequence'); }
+    });
+
+    // Pause
+    container.addEventListener('click', async function(e) {
+      const btn = e.target.closest('.seq-pause-btn');
+      if (!btn) return;
+      e.preventDefault(); e.stopPropagation();
+      try {
+        const resp = await fetch('/api/v1/email_sequences/' + btn.dataset.id + '/pause', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content }
+        });
+        const data = await resp.json();
+        if (data.success) {
+          window.showSuccess ? window.showSuccess('Sequence paused.') : null;
+          loadCanvas('my_creations', {}, true);
+        } else {
+          window.showError ? window.showError(data.message || 'Failed to pause') : alert(data.message || 'Failed to pause');
+        }
+      } catch(err) { console.error(err); window.showError ? window.showError('Error pausing sequence') : alert('Error pausing sequence'); }
+    });
+
+    // Resume
+    container.addEventListener('click', async function(e) {
+      const btn = e.target.closest('.seq-resume-btn');
+      if (!btn) return;
+      e.preventDefault(); e.stopPropagation();
+      try {
+        const resp = await fetch('/api/v1/email_sequences/' + btn.dataset.id + '/resume', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content }
+        });
+        const data = await resp.json();
+        if (data.success) {
+          window.showSuccess ? window.showSuccess('Sequence resumed.') : null;
+          loadCanvas('my_creations', {}, true);
+        } else {
+          window.showError ? window.showError(data.message || 'Failed to resume') : alert(data.message || 'Failed to resume');
+        }
+      } catch(err) { console.error(err); window.showError ? window.showError('Error resuming sequence') : alert('Error resuming sequence'); }
+    });
+
+    // Delete
+    container.addEventListener('click', async function(e) {
+      const btn = e.target.closest('.seq-delete-btn');
+      if (!btn) return;
+      e.preventDefault(); e.stopPropagation();
+      const name = btn.dataset.name || 'this sequence';
+      const confirmed = window.showConfirm
+        ? await window.showConfirm('Delete "' + name + '"? This cannot be undone.', { title: 'Delete Sequence', dangerous: true, confirmText: 'Delete' })
+        : confirm('Delete "' + name + '"? This cannot be undone.');
+      if (!confirmed) return;
+      if (window.scoutController?.sendScoutMessage) {
+        window.scoutController.sendScoutMessage('Delete email sequence #' + btn.dataset.id);
+      }
+    });
+
+    // Sequence card body click -> open sequence manager
+    container.addEventListener('click', function(e) {
+      if (e.target.closest('button') || e.target.closest('.collapse')) return;
+      const card = e.target.closest('.sequence-card');
+      if (!card) return;
+      loadCanvas('sequence_manager', {});
     });
 
     // ── Create new ──
