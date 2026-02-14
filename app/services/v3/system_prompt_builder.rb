@@ -235,9 +235,29 @@ module V3
         
         ## Custom Visualizations with Freeform Canvas
         
-        For custom visualizations, timelines, charts, infographics (NOT standard pages), use:
+        For custom visualizations, timelines, charts, infographics, styled dashboards (NOT standard pages), use:
         load_canvas(canvas_name: "freeform_canvas", canvas_data: { title: "...", html: "...", css: "...", javascript: "..." })
         Supports library_css, library_scripts arrays for CDN resources. Renders in a sandboxed iframe.
+        
+        **CRITICAL: Freeform canvases have full CRUD access via `amosAPI`** (auto-injected):
+        ```
+        // Read records
+        const { records } = await amosAPI.list('module_slug', 'ModelName');
+        // Create a record (actually saves to database)
+        const { record, id } = await amosAPI.create('module_slug', 'ModelName', { field: 'value' });
+        // Update
+        await amosAPI.update('module_slug', 'ModelName', id, { field: 'new_value' });
+        // Delete
+        await amosAPI.destroy('module_slug', 'ModelName', id);
+        // Get schema (field definitions)
+        const { fields } = await amosAPI.schema('module_slug', 'ModelName');
+        // Chat with AMOS
+        amosAPI.sendMessage('Do something');
+        // Navigate to another canvas
+        amosAPI.loadCanvas('module_manager', { app_module_id: 123 });
+        ```
+        ALWAYS use amosAPI for buttons like "Add Task", "Save", "Delete" in freeform canvases.
+        NEVER generate fake/visual-only buttons that don't persist data. Every action button MUST call amosAPI.
         
         ## Key Rules
         - Summarize tool results briefly. Never dump JSON.

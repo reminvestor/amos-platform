@@ -286,6 +286,65 @@ ${css}
         return originalAddEventListener.call(document, type, listener, options);
       };
     })();
+
+    // ── AMOS Platform API — available in all freeform canvases ──
+    // Lets canvas JavaScript create, read, update, and delete module records.
+    // Usage:
+    //   const { records } = await amosAPI.list('my_module', 'Task');
+    //   const { record }  = await amosAPI.create('my_module', 'Task', { title: 'Buy milk' });
+    //   await amosAPI.update('my_module', 'Task', 42, { completed: true });
+    //   await amosAPI.destroy('my_module', 'Task', 42);
+    //   const { fields }  = await amosAPI.schema('my_module', 'Task');
+    //   amosAPI.sendMessage('Do something for me');   // chat with AMOS
+    //   amosAPI.loadCanvas('module_manager', { ... }); // navigate to a canvas
+    window.amosAPI = (function() {
+      function csrf() {
+        try { return window.parent.document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''; }
+        catch(e) { return ''; }
+      }
+      function headers(method) {
+        var h = { 'Accept': 'application/json' };
+        if (method !== 'GET') { h['Content-Type'] = 'application/json'; h['X-CSRF-Token'] = csrf(); }
+        return h;
+      }
+      return {
+        async list(moduleSlug, modelName, params) {
+          var qs = params ? new URLSearchParams(params).toString() : '';
+          var url = '/api/modules/' + moduleSlug + '/models/' + modelName + (qs ? '?' + qs : '');
+          return (await fetch(url, { headers: headers('GET') })).json();
+        },
+        async show(moduleSlug, modelName, id) {
+          return (await fetch('/api/modules/' + moduleSlug + '/models/' + modelName + '/' + id, { headers: headers('GET') })).json();
+        },
+        async create(moduleSlug, modelName, data) {
+          return (await fetch('/api/modules/' + moduleSlug + '/models/' + modelName, {
+            method: 'POST', headers: headers('POST'), body: JSON.stringify(data)
+          })).json();
+        },
+        async update(moduleSlug, modelName, id, data) {
+          return (await fetch('/api/modules/' + moduleSlug + '/models/' + modelName + '/' + id, {
+            method: 'PATCH', headers: headers('PATCH'), body: JSON.stringify(data)
+          })).json();
+        },
+        async destroy(moduleSlug, modelName, id) {
+          return (await fetch('/api/modules/' + moduleSlug + '/models/' + modelName + '/' + id, {
+            method: 'DELETE', headers: headers('DELETE')
+          })).json();
+        },
+        async schema(moduleSlug, modelName) {
+          return (await fetch('/api/modules/' + moduleSlug + '/models/' + modelName + '/schema', { headers: headers('GET') })).json();
+        },
+        async stats(moduleSlug) {
+          return (await fetch('/api/modules/' + moduleSlug + '/stats', { headers: headers('GET') })).json();
+        },
+        sendMessage(msg) {
+          try { window.parent.scoutSendMessage?.(msg) || window.parent.window.scoutSendMessage?.(msg); } catch(e) { console.warn('sendMessage unavailable', e); }
+        },
+        loadCanvas(type, data) {
+          try { window.parent.document.dispatchEvent(new CustomEvent('scout:load-canvas', { detail: { canvas: type, data: data || {} } })); } catch(e) { console.warn('loadCanvas unavailable', e); }
+        }
+      };
+    })();
   <\/script>
   
   <script>

@@ -398,6 +398,16 @@ class GuidanceLibrary
         ## Schema Field Types
         text, textarea, number, currency, date, datetime, select, multi_select, boolean, reference, file, json
         
+        ## Freeform Canvas CRUD (amosAPI)
+        When building styled dashboards/UIs via freeform_canvas, the `amosAPI` object is auto-injected:
+        - `await amosAPI.list('slug', 'Model')` → { records: [...] }
+        - `await amosAPI.create('slug', 'Model', { field: value })` → { success, id, record }
+        - `await amosAPI.update('slug', 'Model', id, { field: value })` → { success, record }
+        - `await amosAPI.destroy('slug', 'Model', id)` → { success }
+        - `await amosAPI.schema('slug', 'Model')` → { fields: [...] }
+        ALWAYS wire "Add", "Edit", "Delete" buttons to amosAPI calls. NEVER make visual-only buttons.
+        After create/update, refresh the UI by re-fetching data with amosAPI.list().
+        
         ## Context
         If on design_studio with a plan_id, the user is working on a design draft.
       GUIDANCE

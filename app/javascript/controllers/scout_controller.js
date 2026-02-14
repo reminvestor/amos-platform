@@ -2417,6 +2417,64 @@ export default class extends Controller {
     window.scoutLoadCanvas = (canvasType, canvasData = {}, forceRefresh = false) => {
       this.loadScoutCanvas(canvasType, canvasData, forceRefresh)
     }
+
+    // ── Module Data API helper for freeform canvases ──
+    // Provides simple CRUD operations against /api/modules/:slug/models/:model
+    // Usage in canvas JS:
+    //   const records = await amosModuleAPI.list('my_module', 'Task')
+    //   const created = await amosModuleAPI.create('my_module', 'Task', { title: 'New Task' })
+    //   const updated = await amosModuleAPI.update('my_module', 'Task', 123, { title: 'Updated' })
+    //   await amosModuleAPI.destroy('my_module', 'Task', 123)
+    //   const schema = await amosModuleAPI.schema('my_module', 'Task')
+    window.amosModuleAPI = {
+      _csrf() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+      },
+      _headers(method) {
+        const h = { 'Accept': 'application/json' }
+        if (method !== 'GET') {
+          h['Content-Type'] = 'application/json'
+          h['X-CSRF-Token'] = this._csrf()
+        }
+        return h
+      },
+      async list(moduleSlug, modelName, params = {}) {
+        const qs = new URLSearchParams(params).toString()
+        const url = `/api/modules/${moduleSlug}/models/${modelName}${qs ? '?' + qs : ''}`
+        const res = await fetch(url, { headers: this._headers('GET') })
+        return res.json()
+      },
+      async show(moduleSlug, modelName, id) {
+        const res = await fetch(`/api/modules/${moduleSlug}/models/${modelName}/${id}`, { headers: this._headers('GET') })
+        return res.json()
+      },
+      async create(moduleSlug, modelName, data) {
+        const res = await fetch(`/api/modules/${moduleSlug}/models/${modelName}`, {
+          method: 'POST', headers: this._headers('POST'), body: JSON.stringify(data)
+        })
+        return res.json()
+      },
+      async update(moduleSlug, modelName, id, data) {
+        const res = await fetch(`/api/modules/${moduleSlug}/models/${modelName}/${id}`, {
+          method: 'PATCH', headers: this._headers('PATCH'), body: JSON.stringify(data)
+        })
+        return res.json()
+      },
+      async destroy(moduleSlug, modelName, id) {
+        const res = await fetch(`/api/modules/${moduleSlug}/models/${modelName}/${id}`, {
+          method: 'DELETE', headers: this._headers('DELETE')
+        })
+        return res.json()
+      },
+      async schema(moduleSlug, modelName) {
+        const res = await fetch(`/api/modules/${moduleSlug}/models/${modelName}/schema`, { headers: this._headers('GET') })
+        return res.json()
+      },
+      async stats(moduleSlug) {
+        const res = await fetch(`/api/modules/${moduleSlug}/stats`, { headers: this._headers('GET') })
+        return res.json()
+      }
+    }
     
     // SECURITY: Global function to clear user-specific localStorage on logout
     // Called from logout buttons in other layouts (customer_admin, etc.)
