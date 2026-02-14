@@ -3,6 +3,8 @@ name: "Automated Email Sequence Builder"
 slug: "email_sequence_v2"
 description: "Create automated email sequences with time-based delays conversationally"
 category: "campaign_automation"
+industry: "general"
+tags: ["marketing", "email", "automation", "sequences"]
 
 config:
   execution_mode: "adaptive"

@@ -3,6 +3,8 @@ name: "Email Campaign Builder"
 slug: "email_campaign_v2"
 description: "Create email campaigns conversationally with AI assistance"
 category: "campaign_creation"
+industry: "general"
+tags: ["marketing", "email", "campaigns", "outreach"]
 
 config:
   execution_mode: "adaptive"

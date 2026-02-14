@@ -3,6 +3,8 @@ name: "AI Integration Builder"
 slug: "integration_builder_v2"
 description: "Intelligently build integrations with external APIs through research, RAG storage, and iterative development"
 category: "integration"
+industry: "general"
+tags: ["integrations", "automation", "api", "connectivity"]
 
 config:
   execution_mode: "adaptive"

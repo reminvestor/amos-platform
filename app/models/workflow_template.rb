@@ -1,4 +1,6 @@
 class WorkflowTemplate < ApplicationRecord
+  belongs_to :entity, optional: true
+
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true
   validates :category, presence: true
@@ -7,6 +9,28 @@ class WorkflowTemplate < ApplicationRecord
   scope :active, -> { where(is_active: true) }
   scope :system, -> { where(is_system: true) }
   scope :by_category, ->(category) { where(category: category) }
+
+  # Entity scoping: returns system templates, entity-owned templates, and shared templates
+  scope :for_entity, ->(entity_id) {
+    where(entity_id: [nil, entity_id])
+      .or(where(shared: true))
+  }
+  scope :custom, -> { where(is_system: false) }
+  scope :shared_templates, -> { where(shared: true, is_system: false) }
+  scope :by_industry, ->(industry) { where(industry: industry) }
+  scope :tagged_with, ->(tag) { where("tags @> ?", [tag].to_json) }
+
+  # Duplicate a system or shared template for a specific entity
+  def duplicate_for_entity(entity)
+    dup.tap do |copy|
+      copy.entity = entity
+      copy.is_system = false
+      copy.shared = false
+      copy.name = "#{name} (Custom)"
+      copy.slug = "#{slug}-#{entity.id}-#{SecureRandom.hex(4)}"
+      copy.save!
+    end
+  end
 
   # Class method to get all templates (DB + file-based)
   def self.all_templates

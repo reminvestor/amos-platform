@@ -3,6 +3,8 @@ name: "AI-Powered Analytics Deep Dive"
 slug: "analytics_deep_dive_v2"
 description: "Analyze business metrics with AI-powered insights, safe query execution, and beautiful visualizations"
 category: "analytics"
+industry: "general"
+tags: ["analytics", "reporting", "data", "insights"]
 
 config:
   execution_mode: "adaptive"

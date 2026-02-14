@@ -1,0 +1,699 @@
+<%#
+  Template Gallery Canvas
+  Displays workflow templates available to the current entity.
+  Allows filtering by category, industry, and search text.
+  "Start" button triggers the workflow via chat message.
+
+  Locals available: canvas_data, user, entity
+%>
+<%
+  data = canvas_data || {}
+  search_query = data[:query] || data['query'] || ''
+
+  # Load templates: system templates + entity-specific + shared
+  entity_id = entity&.id || current_entity&.id
+  templates_scope = WorkflowTemplate.active
+
+  if entity_id.present?
+    templates_scope = templates_scope.for_entity(entity_id)
+  else
+    templates_scope = templates_scope.system
+  end
+
+  # Apply filters from canvas_data if present
+  filter_category = data[:category] || data['category']
+  filter_industry = data[:industry] || data['industry']
+  filter_tag = data[:tag] || data['tag']
+
+  templates_scope = templates_scope.by_category(filter_category) if filter_category.present?
+  templates_scope = templates_scope.by_industry(filter_industry) if filter_industry.present?
+  templates_scope = templates_scope.tagged_with(filter_tag) if filter_tag.present?
+
+  db_templates = templates_scope.order(:category, :name).to_a
+
+  # Also load file-based templates (V2 YAML templates)
+  file_templates = begin
+    WorkflowTemplate.active_with_files.select do |t|
+      next false unless t.is_active != false
+      next false if filter_category.present? && t.category != filter_category
+      true
+    end
+  rescue => e
+    Rails.logger.warn "Template Gallery: Could not load file templates: #{e.message}"
+    []
+  end
+
+  # Merge and deduplicate (prefer DB over file-based by slug)
+  db_slugs = db_templates.map(&:slug).compact
+  unique_file_templates = file_templates.reject { |ft| db_slugs.include?(ft.slug) }
+  all_templates = db_templates + unique_file_templates
+
+  # Collect usage counts from WorkflowExecution
+  template_slugs = all_templates.map(&:slug).compact
+  usage_counts = if template_slugs.any?
+    WorkflowExecution.where(workflow_template_id: template_slugs)
+                     .group(:workflow_template_id)
+                     .count
+  else
+    {}
+  end
+
+  # Collect unique categories and industries for filter dropdowns
+  all_categories = all_templates.map(&:category).compact.uniq.sort
+  all_industries = all_templates.map { |t| t.try(:industry) }.compact.uniq.sort
+  all_tags = all_templates.flat_map { |t| Array(t.try(:tags)) }.compact.uniq.sort
+%>
+
+<div class="template-gallery-canvas" data-controller="template-gallery">
+  <!-- Header -->
+  <div class="tg-header">
+    <div class="tg-header-left">
+      <i data-lucide="layout-grid" class="tg-header-icon"></i>
+      <div>
+        <h4 class="tg-title">Workflow Templates</h4>
+        <p class="tg-subtitle">Browse and start pre-built workflows for your business</p>
+      </div>
+    </div>
+    <div class="tg-header-right">
+      <div class="tg-search-wrapper">
+        <i data-lucide="search" class="tg-search-icon"></i>
+        <input type="text"
+               class="tg-search-input"
+               placeholder="Search templates..."
+               value="<%= search_query %>"
+               data-template-gallery-target="searchInput"
+               data-action="input->template-gallery#filterTemplates">
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="tg-filters">
+    <div class="tg-filter-group">
+      <label class="tg-filter-label">Category</label>
+      <select class="tg-filter-select"
+              data-template-gallery-target="categoryFilter"
+              data-action="change->template-gallery#filterTemplates">
+        <option value="">All Categories</option>
+        <% all_categories.each do |cat| %>
+          <option value="<%= cat %>" <%= 'selected' if filter_category == cat %>>
+            <%= cat.to_s.titleize %>
+          </option>
+        <% end %>
+      </select>
+    </div>
+
+    <% if all_industries.any? %>
+      <div class="tg-filter-group">
+        <label class="tg-filter-label">Industry</label>
+        <select class="tg-filter-select"
+                data-template-gallery-target="industryFilter"
+                data-action="change->template-gallery#filterTemplates">
+          <option value="">All Industries</option>
+          <% all_industries.each do |ind| %>
+            <option value="<%= ind %>" <%= 'selected' if filter_industry == ind %>>
+              <%= ind.to_s.titleize %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+    <% end %>
+
+    <div class="tg-filter-count" data-template-gallery-target="resultCount">
+      <%= all_templates.size %> template<%= all_templates.size == 1 ? '' : 's' %>
+    </div>
+  </div>
+
+  <!-- Template grid -->
+  <div class="tg-grid-container">
+    <div class="tg-grid" data-template-gallery-target="grid">
+      <% if all_templates.present? %>
+        <% all_templates.each do |template| %>
+          <%
+            usage = usage_counts[template.slug] || 0
+            tags = Array(template.try(:tags))
+            industry = template.try(:industry)
+            category_label = template.category.to_s.titleize
+            is_system = template.is_system
+          %>
+          <div class="tg-card"
+               data-template-gallery-target="card"
+               data-slug="<%= template.slug %>"
+               data-name="<%= template.name %>"
+               data-description="<%= template.description %>"
+               data-category="<%= template.category %>"
+               data-industry="<%= industry %>"
+               data-tags="<%= tags.join(',') %>"
+               data-system="<%= is_system %>">
+            <div class="tg-card-header">
+              <div class="tg-card-icon">
+                <%
+                  icon_name = case template.category.to_s
+                    when 'analytics', 'data_analytics' then 'bar-chart-2'
+                    when 'campaign_creation', 'campaign' then 'mail'
+                    when 'data_import' then 'upload'
+                    when 'customer_analysis' then 'users'
+                    when 'content_generation', 'content' then 'file-text'
+                    when 'maintenance' then 'wrench'
+                    when 'marketing' then 'megaphone'
+                    when 'sales' then 'trending-up'
+                    when 'operations' then 'settings'
+                    when 'automation' then 'zap'
+                    else 'git-branch'
+                  end
+                %>
+                <i data-lucide="<%= icon_name %>" style="width: 24px; height: 24px;"></i>
+              </div>
+              <div class="tg-card-badges">
+                <span class="tg-badge tg-badge-category"><%= category_label %></span>
+                <% if industry.present? %>
+                  <span class="tg-badge tg-badge-industry"><%= industry.titleize %></span>
+                <% end %>
+                <% if is_system %>
+                  <span class="tg-badge tg-badge-system">System</span>
+                <% end %>
+              </div>
+            </div>
+
+            <div class="tg-card-body">
+              <h6 class="tg-card-name"><%= template.name %></h6>
+              <p class="tg-card-description"><%= truncate(template.description, length: 120) %></p>
+
+              <% if tags.present? %>
+                <div class="tg-card-tags">
+                  <% tags.first(4).each do |tag| %>
+                    <span class="tg-tag"><%= tag %></span>
+                  <% end %>
+                  <% if tags.size > 4 %>
+                    <span class="tg-tag tg-tag-more">+<%= tags.size - 4 %></span>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+
+            <div class="tg-card-footer">
+              <div class="tg-card-stats">
+                <% if usage > 0 %>
+                  <span class="tg-stat" title="Times used">
+                    <i data-lucide="activity" style="width: 12px; height: 12px;"></i>
+                    <%= usage %> run<%= usage == 1 ? '' : 's' %>
+                  </span>
+                <% end %>
+              </div>
+              <button type="button"
+                      class="tg-start-btn"
+                      data-action="click->template-gallery#startWorkflow"
+                      data-template-gallery-slug-param="<%= template.slug %>"
+                      data-template-gallery-name-param="<%= template.name %>">
+                <i data-lucide="play" style="width: 14px; height: 14px;"></i>
+                Start
+              </button>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="tg-empty-state">
+          <i data-lucide="inbox" style="width: 48px; height: 48px; opacity: 0.5;"></i>
+          <h5>No Templates Available</h5>
+          <p class="text-muted">Workflow templates will appear here once they are configured.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Quick Start Hint -->
+  <div class="tg-hint">
+    <div class="tg-hint-content">
+      <i data-lucide="message-circle" class="tg-hint-icon"></i>
+      <div class="tg-hint-text">
+        <strong>Or describe your workflow</strong>
+        <span>Type in the chat: "Create an email campaign workflow" or "Build a lead nurture sequence"</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .template-gallery-canvas {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--canvas-bg, #1e1e2e);
+    color: var(--canvas-text, #e0e0e0);
+  }
+
+  /* Header */
+  .tg-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--canvas-border, #3a3a4a);
+    background: var(--canvas-header-bg, #252536);
+  }
+
+  .tg-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .tg-header-icon {
+    width: 32px;
+    height: 32px;
+    color: #6366f1;
+  }
+
+  .tg-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--canvas-text, #e0e0e0);
+  }
+
+  .tg-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+
+  .tg-header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .tg-search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .tg-search-icon {
+    position: absolute;
+    left: 12px;
+    width: 16px;
+    height: 16px;
+    color: var(--canvas-text-muted, #a0a0a0);
+    pointer-events: none;
+  }
+
+  .tg-search-input {
+    padding: 8px 12px 8px 36px;
+    border: 1px solid var(--canvas-border, #3a3a4a);
+    border-radius: 8px;
+    background: var(--canvas-input-bg, #2a2a3a);
+    color: var(--canvas-text, #e0e0e0);
+    width: 260px;
+    font-size: 0.875rem;
+  }
+
+  .tg-search-input::placeholder {
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+
+  .tg-search-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  }
+
+  /* Filters */
+  .tg-filters {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1.5rem;
+    border-bottom: 1px solid var(--canvas-border, #3a3a4a);
+    background: var(--canvas-header-bg, #252536);
+  }
+
+  .tg-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .tg-filter-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--canvas-text-muted, #a0a0a0);
+    white-space: nowrap;
+  }
+
+  .tg-filter-select {
+    padding: 6px 28px 6px 10px;
+    border: 1px solid var(--canvas-border, #3a3a4a);
+    border-radius: 6px;
+    background: var(--canvas-input-bg, #2a2a3a);
+    color: var(--canvas-text, #e0e0e0);
+    font-size: 0.85rem;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a0a0a0' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 6px center;
+    background-repeat: no-repeat;
+    background-size: 16px 16px;
+  }
+
+  .tg-filter-select:focus {
+    outline: none;
+    border-color: #6366f1;
+  }
+
+  .tg-filter-count {
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+
+  /* Grid container */
+  .tg-grid-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+  }
+
+  .tg-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+
+  /* Cards */
+  .tg-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--canvas-card-bg, #252536);
+    border: 1px solid var(--canvas-border, #3a3a4a);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+  }
+
+  .tg-card:hover {
+    border-color: #6366f1;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
+  }
+
+  .tg-card.hidden {
+    display: none;
+  }
+
+  .tg-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 16px 16px 8px;
+  }
+
+  .tg-card-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(99, 102, 241, 0.15);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #818cf8;
+  }
+
+  .tg-card-badges {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .tg-badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .tg-badge-category {
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+  }
+
+  .tg-badge-industry {
+    background: rgba(34, 197, 94, 0.2);
+    color: #86efac;
+  }
+
+  .tg-badge-system {
+    background: rgba(251, 146, 60, 0.2);
+    color: #fdba74;
+  }
+
+  .tg-card-body {
+    padding: 0 16px 12px;
+    flex-grow: 1;
+  }
+
+  .tg-card-name {
+    color: var(--canvas-text, #e0e0e0);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .tg-card-description {
+    color: var(--canvas-text-muted, #a0a0a0);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    margin-bottom: 12px;
+  }
+
+  .tg-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .tg-tag {
+    padding: 2px 8px;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 10px;
+    font-size: 0.7rem;
+    color: #a5b4fc;
+  }
+
+  .tg-tag-more {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+
+  .tg-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .tg-card-stats {
+    display: flex;
+    gap: 12px;
+  }
+
+  .tg-stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+
+  .tg-start-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .tg-start-btn:hover {
+    filter: brightness(1.1);
+    transform: scale(1.02);
+  }
+
+  .tg-start-btn:active {
+    transform: scale(0.98);
+  }
+
+  /* Empty state */
+  .tg-empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+
+  .tg-empty-state h5 {
+    color: var(--canvas-text, #e0e0e0);
+    margin-top: 1rem;
+  }
+
+  /* Hint bar */
+  .tg-hint {
+    padding: 0.75rem 1.5rem;
+    border-top: 1px solid var(--canvas-border, #3a3a4a);
+    background: rgba(99, 102, 241, 0.05);
+  }
+
+  .tg-hint-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .tg-hint-icon {
+    width: 24px;
+    height: 24px;
+    color: #6366f1;
+    flex-shrink: 0;
+  }
+
+  .tg-hint-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .tg-hint-text strong {
+    color: var(--canvas-text, #e0e0e0);
+    font-size: 0.875rem;
+  }
+
+  .tg-hint-text span {
+    font-size: 0.8rem;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+
+  /* Light mode */
+  [data-theme="light"] .template-gallery-canvas {
+    --canvas-bg: #f8f9fa;
+    --canvas-text: #1a1a2e;
+    --canvas-text-muted: #6b7280;
+    --canvas-header-bg: #ffffff;
+    --canvas-card-bg: #ffffff;
+    --canvas-border: #e5e7eb;
+    --canvas-input-bg: #f3f4f6;
+  }
+
+  [data-theme="light"] .tg-header {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+
+  [data-theme="light"] .tg-filters {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+
+  [data-theme="light"] .tg-card {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+
+  [data-theme="light"] .tg-card:hover {
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.1);
+  }
+
+  [data-theme="light"] .tg-card-icon {
+    background: rgba(99, 102, 241, 0.1);
+  }
+
+  [data-theme="light"] .tg-badge-category {
+    background: rgba(99, 102, 241, 0.1);
+    color: #4f46e5;
+  }
+
+  [data-theme="light"] .tg-badge-industry {
+    background: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+  }
+
+  [data-theme="light"] .tg-badge-system {
+    background: rgba(251, 146, 60, 0.1);
+    color: #ea580c;
+  }
+
+  [data-theme="light"] .tg-card-name {
+    color: #1a1a2e;
+  }
+
+  [data-theme="light"] .tg-card-description {
+    color: #6b7280;
+  }
+
+  [data-theme="light"] .tg-tag {
+    background: #eef2ff;
+    color: #4f46e5;
+  }
+
+  [data-theme="light"] .tg-tag-more {
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+
+  [data-theme="light"] .tg-card-footer {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+  }
+
+  [data-theme="light"] .tg-search-input {
+    background: #f3f4f6;
+    border-color: #e5e7eb;
+    color: #1a1a2e;
+  }
+
+  [data-theme="light"] .tg-filter-select {
+    background-color: #f3f4f6;
+    border-color: #e5e7eb;
+    color: #1a1a2e;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  }
+
+  [data-theme="light"] .tg-hint {
+    background: rgba(99, 102, 241, 0.03);
+    border-color: #e5e7eb;
+  }
+
+  [data-theme="light"] .tg-hint-text strong {
+    color: #1a1a2e;
+  }
+
+  [data-theme="light"] .tg-hint-text span {
+    color: #6b7280;
+  }
+
+  [data-theme="light"] .tg-empty-state {
+    color: #6b7280;
+  }
+
+  [data-theme="light"] .tg-empty-state h5 {
+    color: #1a1a2e;
+  }
+</style>
+
+<script>
+(function() {
+  // Initialize Lucide icons for dynamically loaded canvas
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+})();
+</script>

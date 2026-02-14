@@ -3,6 +3,8 @@ name: "Add Contact Group to Campaign"
 slug: "add_group_to_campaign_v2"
 description: "Add a contact group to an existing campaign"
 category: "campaign_management"
+industry: "general"
+tags: ["marketing", "campaigns", "contacts", "groups"]
 
 config:
   execution_mode: "adaptive"

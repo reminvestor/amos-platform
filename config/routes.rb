@@ -684,6 +684,13 @@ Rails.application.routes.draw do
       end
     end
 
+    # Workflow Templates (entity-scoped)
+    resources :workflow_templates, only: [:index, :show, :update, :destroy] do
+      member do
+        post :duplicate
+      end
+    end
+
     # User referral program (not affiliate program)
     resources :referrals, only: [:index, :create]
 
@@ -1268,6 +1275,7 @@ Rails.application.routes.draw do
   post "scout/load_canvas", to: "scout#load_canvas"
   post "scout/update_design_plan", to: "scout#update_design_plan"
   get "scout/available_canvases", to: "scout#available_canvases"
+  get "scout/template_gallery", to: "scout#template_gallery"
   get "scout/workflow_items", to: "scout#workflow_items"
   get "scout/load_workflow", to: "scout#load_workflow"
   post "scout/save_workflow", to: "scout#save_workflow"
@@ -1315,6 +1323,7 @@ Rails.application.routes.draw do
   get "amos/bookmarks/:id", to: "scout#show_bookmark"
   post "amos/load_canvas", to: "scout#load_canvas"
   get "amos/available_canvases", to: "scout#available_canvases"
+  get "amos/template_gallery", to: "scout#template_gallery"
   post "amos/cancel_job", to: "scout#cancel_job"
   post "amos/capture_web_page", to: "scout#capture_web_page"
   get "amos/browser_session_screenshot/:session_id", to: "scout#browser_session_screenshot"
@@ -1546,6 +1555,9 @@ Rails.application.routes.draw do
     get "/observability/workflows", to: "observability#workflows", as: :observability_workflows
     get "/observability/performance", to: "observability#performance", as: :observability_performance
     get "/observability/errors", to: "observability#errors", as: :observability_errors
+
+    # User Feedback Dashboard
+    resources :feedbacks, only: [:index]
 
     # Platform Economics Dashboard
     get "/platform_economics", to: "platform_economics#index", as: :platform_economics

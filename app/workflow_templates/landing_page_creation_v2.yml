@@ -3,6 +3,8 @@ name: "AI-Powered Landing Page Creation"
 slug: "landing_page_creation_v2"
 description: "Create professional landing pages conversationally with AI"
 category: "content_generation"
+industry: "general"
+tags: ["marketing", "landing-pages", "conversion", "design"]
 
 config:
   execution_mode: "adaptive"

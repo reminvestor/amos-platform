@@ -4,6 +4,7 @@ class ScoutController < ApplicationController
   include ActionView::Helpers::DateHelper  # For time_ago_in_words
   include Scout::Streaming  # Streaming helpers
   include Scout::StreamingKeepalive  # Keep-alive for long operations
+  include EventTrackable
 
   skip_before_action :verify_authenticity_token, only: [:chat_stream, :chat]
   before_action :authenticate_user_or_api!
@@ -64,7 +65,10 @@ class ScoutController < ApplicationController
     # Business context for display
     @business_profile = current_user.business_profile
     @entity = current_entity
-    
+
+    # Post-onboarding personalization: show tailored quick action cards
+    @personalized_actions = build_personalized_actions if newly_onboarded?
+
     # Check if we should auto-load dashboard (e.g., just completed onboarding)
     @load_dashboard_on_entry = session.delete(:load_dashboard_on_entry)
     
@@ -545,6 +549,14 @@ class ScoutController < ApplicationController
     if user_message.blank?
       render json: { error: "Message cannot be empty" }, status: 400
       return
+    end
+
+    # Track chat event (async, non-blocking)
+    track_event("chat.message_sent", category: "feature", properties: { message_length: user_message.length })
+
+    # Track first message as a conversion event
+    if current_user && ScoutMessage.where(user_id: current_user.id, role: "user").none?
+      track_event("chat.first_message", category: "conversion")
     end
 
     # Set streaming headers
@@ -1256,6 +1268,17 @@ class ScoutController < ApplicationController
           formats: [:html]
         )
         canvas_title = "Template Library"
+      when "template_gallery"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/template_gallery",
+          locals: {
+            canvas_data: canvas_data,
+            user: current_user,
+            entity: current_entity
+          },
+          formats: [:html]
+        )
+        canvas_title = "Workflow Templates"
       when "workflow_designer"
         canvas_content = render_to_string(
           partial: "scout/canvas/workflow_designer",
@@ -1755,6 +1778,12 @@ class ScoutController < ApplicationController
           name: "Agent Marketplace",
           description: "Browse and use AI agents from the community",
           icon: "store"
+        },
+        {
+          type: "template_gallery",
+          name: "Workflow Templates",
+          description: "Browse and start pre-built workflow templates",
+          icon: "layout-grid"
         },
         {
           type: "favorites",
@@ -3674,6 +3703,98 @@ class ScoutController < ApplicationController
     # The system handles RAG stores internally without displaying to user
     # Users can check Admin > Services page for RAG system status
     ""
+  end
+
+  # Check if user just completed onboarding and is essentially brand new
+  def newly_onboarded?
+    return false unless current_user.onboarding_completed_at.present?
+    return false unless current_user.onboarding_completed_at > 24.hours.ago
+
+    # Only show personalized cards if user has very few conversations (new user)
+    user_message_count = current_user.scout_conversations.user_messages.count
+    user_message_count <= 3
+  end
+
+  # Build personalized quick action cards based on onboarding selections
+  def build_personalized_actions
+    actions = []
+
+    # Get user's enabled features from menu configurations
+    enabled_features = []
+    current_user.menu_configurations.each do |config|
+      enabled_features.concat(config.visible_items || [])
+    end
+    enabled_features.uniq!
+
+    # Build personalized actions based on what features the user enabled
+    if enabled_features.include?('campaigns') || enabled_features.include?('email_templates')
+      actions << {
+        icon: 'mail',
+        label: 'Create your first email campaign',
+        desc: 'Design and send a professional email',
+        prompt: 'Help me create my first email campaign'
+      }
+    end
+
+    if enabled_features.include?('landing_pages')
+      actions << {
+        icon: 'file-text',
+        label: 'Build a landing page',
+        desc: 'Create a page for your business',
+        prompt: 'Create a landing page for my business'
+      }
+    end
+
+    if enabled_features.include?('integrations')
+      actions << {
+        icon: 'plug',
+        label: 'Connect an integration',
+        desc: 'Link your favorite tools',
+        prompt: 'Help me connect an external app integration'
+      }
+    end
+
+    if enabled_features.include?('contacts')
+      actions << {
+        icon: 'users',
+        label: 'Import your contacts',
+        desc: 'Add your contact list to get started',
+        prompt: 'Help me import my contacts'
+      }
+    end
+
+    if enabled_features.include?('analytics') || enabled_features.include?('dashboards')
+      actions << {
+        icon: 'bar-chart-2',
+        label: 'Explore analytics',
+        desc: 'See what insights are available',
+        prompt: 'Show me what analytics and insights are available'
+      }
+    end
+
+    if enabled_features.include?('documents') || enabled_features.include?('knowledge_base')
+      actions << {
+        icon: 'file-plus',
+        label: 'Upload a document',
+        desc: 'Add files to your knowledge base',
+        prompt: 'Help me upload and organize my documents'
+      }
+    end
+
+    # Always include "Ask Anything" as the last card
+    actions << {
+      icon: 'message-circle',
+      label: 'Ask Anything',
+      desc: 'Questions, ideas, brainstorm',
+      prompt: ''
+    }
+
+    # Limit to 6 cards max (5 feature cards + Ask Anything)
+    if actions.length > 6
+      actions = actions.first(5) + [actions.last]
+    end
+
+    actions
   end
 
   # Canvas rendering methods

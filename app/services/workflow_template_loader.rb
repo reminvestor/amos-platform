@@ -56,6 +56,8 @@ class WorkflowTemplateLoader
           name: yaml_content["name"],
           description: yaml_content["description"],
           category: yaml_content["category"],
+          industry: yaml_content["industry"],
+          tags: yaml_content["tags"] || [],
           version: yaml_content["template_version"] || 2
         }
       end.compact
@@ -75,6 +77,8 @@ class WorkflowTemplateLoader
         slug: yaml_content["slug"],
         description: yaml_content["description"],
         category: yaml_content["category"],
+        industry: yaml_content["industry"],
+        tags: yaml_content["tags"] || [],
         metadata: {
           keywords: yaml_content["keywords"] || [],
           validation: yaml_content["validation"] || {}
@@ -135,6 +139,8 @@ class WorkflowTemplateLoader
         slug: yaml_content["slug"],
         description: yaml_content["description"],
         category: yaml_content["category"],
+        industry: yaml_content["industry"],
+        tags: yaml_content["tags"] || [],
         template_spec: yaml_content.symbolize_keys,  # Entire YAML as spec
         is_active: true,
         is_system: true
