@@ -1,0 +1,378 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="message-square-heart" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>User Feedback</h1>
+        <p>Monitor user satisfaction and feedback trends across the platform</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Date Range Filter -->
+  <div class="admin-card admin-mb-xl">
+    <form method="get" action="<%= admin_feedbacks_path %>" class="admin-flex admin-items-center admin-flex-gap-md admin-flex-wrap">
+      <div>
+        <label class="admin-text-muted admin-text-sm admin-mb-xs d-block">Start Date</label>
+        <input type="date" name="start_date" value="<%= params[:start_date] || 30.days.ago.to_date %>"
+               class="form-control form-control-sm" style="max-width: 180px;">
+      </div>
+      <div>
+        <label class="admin-text-muted admin-text-sm admin-mb-xs d-block">End Date</label>
+        <input type="date" name="end_date" value="<%= params[:end_date] || Date.current %>"
+               class="form-control form-control-sm" style="max-width: 180px;">
+      </div>
+      <div style="align-self: flex-end;">
+        <button type="submit" class="admin-btn admin-btn-primary">
+          <i data-lucide="filter"></i>
+          <span>Filter</span>
+        </button>
+      </div>
+      <div style="align-self: flex-end;">
+        <%= link_to admin_feedbacks_path, class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="rotate-ccw"></i>
+          <span>Reset</span>
+        <% end %>
+      </div>
+    </form>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="message-square" class="admin-icon-lg admin-text-primary"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Total Feedback</p>
+          <h3 class="admin-stat-value"><%= number_with_delimiter(@total_count) %></h3>
+          <small class="admin-text-muted admin-text-xs">In selected period</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon <%= @satisfaction_score >= 0.7 ? 'success' : (@satisfaction_score >= 0.4 ? 'warning' : 'info') %>">
+          <i data-lucide="gauge" class="admin-icon-lg <%= @satisfaction_score >= 0.7 ? 'admin-text-success' : (@satisfaction_score >= 0.4 ? 'admin-text-warning' : 'admin-text-info') %>"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Satisfaction Score</p>
+          <h3 class="admin-stat-value"><%= (@satisfaction_score * 100).round(1) %>%</h3>
+          <small class="admin-text-muted admin-text-xs">Positive / (Positive + Negative)</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="thumbs-up" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Positive</p>
+          <h3 class="admin-stat-value"><%= number_with_delimiter(@positive_count) %></h3>
+          <small class="admin-text-muted admin-text-xs"><%= @total_count > 0 ? "#{(@positive_count.to_f / @total_count * 100).round(1)}%" : "0%" %> of total</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="thumbs-down" class="admin-icon-lg admin-text-error"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Negative</p>
+          <h3 class="admin-stat-value"><%= number_with_delimiter(@negative_count) %></h3>
+          <small class="admin-text-muted admin-text-xs"><%= @total_count > 0 ? "#{(@negative_count.to_f / @total_count * 100).round(1)}%" : "0%" %> of total</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="message-circle" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">With Comments</p>
+          <h3 class="admin-stat-value"><%= number_with_delimiter(@with_comments_count) %></h3>
+          <small class="admin-text-muted admin-text-xs"><%= @total_count > 0 ? "#{(@with_comments_count.to_f / @total_count * 100).round(1)}%" : "0%" %> of total</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Daily Trend Chart -->
+  <div class="admin-card admin-mb-xl">
+    <h3 class="card-title">
+      <i data-lucide="trending-up" class="admin-icon-md admin-inline-block admin-mr-sm"></i>
+      Daily Feedback Trend
+    </h3>
+    <div style="position: relative; height: 300px;">
+      <canvas id="feedbackTrendChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Two Column Layout: By Type + Negative Comments -->
+  <div class="admin-content-grid admin-mb-xl">
+    <!-- Satisfaction by Type -->
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="pie-chart" class="admin-icon-md admin-inline-block admin-mr-sm"></i>
+        Feedback by Type
+      </h3>
+      <% if @by_type.any? %>
+        <div class="table-responsive">
+          <table class="table table-sm" style="color: var(--admin-text-primary);">
+            <thead>
+              <tr>
+                <th style="border-color: var(--admin-border-color);">Type</th>
+                <th style="border-color: var(--admin-border-color);">Count</th>
+                <th style="border-color: var(--admin-border-color);">Satisfaction</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @by_type.each do |type, count| %>
+                <tr>
+                  <td style="border-color: var(--admin-border-color);">
+                    <span class="admin-badge admin-badge-outline"><%= type.underscore.humanize %></span>
+                  </td>
+                  <td style="border-color: var(--admin-border-color);"><%= number_with_delimiter(count) %></td>
+                  <td style="border-color: var(--admin-border-color);">
+                    <% score = @satisfaction_by_type[type] %>
+                    <% if score %>
+                      <span class="<%= score >= 0.7 ? 'admin-text-success' : (score >= 0.4 ? 'admin-text-warning' : 'admin-text-error') %>">
+                        <%= (score * 100).round(1) %>%
+                      </span>
+                    <% else %>
+                      <span class="admin-text-muted">N/A</span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="admin-empty-state admin-p-xl">
+          <div class="empty-icon admin-mb-md">
+            <i data-lucide="inbox" class="admin-icon-xl admin-text-muted"></i>
+          </div>
+          <p class="admin-m-0 admin-text-secondary">No feedback data in selected period</p>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Recent Negative Feedback with Comments -->
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="alert-triangle" class="admin-icon-md admin-inline-block admin-mr-sm"></i>
+        Recent Negative Feedback (with comments)
+      </h3>
+      <% if @negative_comments.any? %>
+        <div class="admin-flex-col admin-flex-gap-0\.75">
+          <% @negative_comments.each do |feedback| %>
+            <div class="admin-bg-darker admin-border admin-rounded-md admin-p-md">
+              <div class="admin-flex-between admin-mb-xs">
+                <div>
+                  <h6 class="admin-text-primary admin-m-0 admin-font-semibold">
+                    <%= feedback.user&.email || "Unknown User" %>
+                  </h6>
+                  <small class="admin-text-secondary admin-text-sm">
+                    <%= feedback.feedbackable_type.underscore.humanize %>
+                  </small>
+                </div>
+                <small class="admin-text-muted admin-text-xs"><%= time_ago_in_words(feedback.created_at) %> ago</small>
+              </div>
+              <p class="admin-text-secondary admin-text-sm admin-m-0 admin-mt-xs" style="font-style: italic;">
+                "<%= truncate(feedback.comment, length: 300) %>"
+              </p>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="admin-empty-state admin-p-xl">
+          <div class="empty-icon admin-mb-md">
+            <i data-lucide="check-circle" class="admin-icon-xl admin-text-success"></i>
+          </div>
+          <p class="admin-m-0 admin-text-secondary">No negative feedback with comments in this period</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Recent All Feedback -->
+  <div class="admin-card">
+    <h3 class="card-title">
+      <i data-lucide="list" class="admin-icon-md admin-inline-block admin-mr-sm"></i>
+      Recent Feedback
+    </h3>
+    <% if @recent_feedbacks.any? %>
+      <div class="table-responsive">
+        <table class="table table-sm" style="color: var(--admin-text-primary);">
+          <thead>
+            <tr>
+              <th style="border-color: var(--admin-border-color);">Rating</th>
+              <th style="border-color: var(--admin-border-color);">User</th>
+              <th style="border-color: var(--admin-border-color);">Type</th>
+              <th style="border-color: var(--admin-border-color);">Comment</th>
+              <th style="border-color: var(--admin-border-color);">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @recent_feedbacks.each do |feedback| %>
+              <tr>
+                <td style="border-color: var(--admin-border-color);">
+                  <% if feedback.positive? %>
+                    <span class="admin-badge admin-badge-online" title="Positive">Positive</span>
+                  <% elsif feedback.negative? %>
+                    <span class="admin-badge admin-badge-offline" title="Negative">Negative</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-outline" title="Neutral">Neutral</span>
+                  <% end %>
+                </td>
+                <td style="border-color: var(--admin-border-color);">
+                  <small><%= feedback.user&.email || "Unknown" %></small>
+                </td>
+                <td style="border-color: var(--admin-border-color);">
+                  <small class="admin-text-secondary"><%= feedback.feedbackable_type.underscore.humanize %></small>
+                </td>
+                <td style="border-color: var(--admin-border-color);">
+                  <% if feedback.comment.present? %>
+                    <small class="admin-text-secondary"><%= truncate(feedback.comment, length: 100) %></small>
+                  <% else %>
+                    <small class="admin-text-muted">--</small>
+                  <% end %>
+                </td>
+                <td style="border-color: var(--admin-border-color);">
+                  <small class="admin-text-muted"><%= feedback.created_at.strftime("%b %d, %Y %l:%M %p") %></small>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="admin-empty-state admin-p-xl">
+        <div class="empty-icon admin-mb-md">
+          <i data-lucide="inbox" class="admin-icon-xl admin-text-muted"></i>
+        </div>
+        <p class="admin-m-0 admin-text-secondary">No feedback in the selected period</p>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%= render "admin/chart_js" %>
+
+<script>
+  document.addEventListener('turbo:load', initFeedbackChart);
+  document.addEventListener('DOMContentLoaded', initFeedbackChart);
+
+  function initFeedbackChart() {
+    lucide.createIcons();
+
+    const canvas = document.getElementById('feedbackTrendChart');
+    if (!canvas) return;
+
+    // Prevent duplicate chart instances
+    if (canvas._chartInstance) {
+      canvas._chartInstance.destroy();
+    }
+
+    // Parse daily data from Rails
+    const dailyPositive = <%= raw(@daily_positive.map { |date, count| [date.strftime("%b %d"), count] }.to_json) %>;
+    const dailyNegative = <%= raw(@daily_negative.map { |date, count| [date.strftime("%b %d"), count] }.to_json) %>;
+
+    // Merge all dates and sort
+    const allDatesSet = new Set();
+    dailyPositive.forEach(([d]) => allDatesSet.add(d));
+    dailyNegative.forEach(([d]) => allDatesSet.add(d));
+    const allDates = Array.from(allDatesSet).sort((a, b) => new Date(a) - new Date(b));
+
+    const positiveMap = Object.fromEntries(dailyPositive);
+    const negativeMap = Object.fromEntries(dailyNegative);
+
+    const labels = allDates;
+    const positiveData = allDates.map(d => positiveMap[d] || 0);
+    const negativeData = allDates.map(d => negativeMap[d] || 0);
+
+    // Wait for Chart.js to load (it's lazy-loaded)
+    function createChart() {
+      if (typeof Chart === 'undefined') {
+        setTimeout(createChart, 100);
+        return;
+      }
+
+      canvas._chartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Positive',
+              data: positiveData,
+              borderColor: 'rgb(34, 197, 94)',
+              backgroundColor: 'rgba(34, 197, 94, 0.1)',
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: 'Negative',
+              data: negativeData,
+              borderColor: 'rgb(239, 68, 68)',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              fill: true,
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                color: getComputedStyle(document.documentElement).getPropertyValue('--admin-text-primary').trim() || '#e2e8f0'
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                color: getComputedStyle(document.documentElement).getPropertyValue('--admin-text-muted').trim() || '#94a3b8',
+                maxRotation: 45
+              },
+              grid: {
+                color: 'rgba(148, 163, 184, 0.1)'
+              }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: getComputedStyle(document.documentElement).getPropertyValue('--admin-text-muted').trim() || '#94a3b8',
+                stepSize: 1
+              },
+              grid: {
+                color: 'rgba(148, 163, 184, 0.1)'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    createChart();
+  }
+</script>

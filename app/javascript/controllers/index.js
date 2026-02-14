@@ -82,3 +82,6 @@ application.register("dropdown", DropdownController)
 
 import DesignChatController from "./design_chat_controller"
 application.register("design-chat", DesignChatController)
+
+import TemplateGalleryController from "./template_gallery_controller"
+application.register("template-gallery", TemplateGalleryController)
