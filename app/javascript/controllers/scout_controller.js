@@ -400,6 +400,10 @@ export default class extends Controller {
       return null
     }
 
+    // Remove all stale quick-reply / suggestion buttons from previous messages
+    // so users can't click out-of-sequence choices
+    this.chatMessagesTarget.querySelectorAll('.message-suggestions.quick-replies').forEach(el => el.remove())
+
     const messageDiv = document.createElement("div")
     messageDiv.className = `message ${role}-message`
     const messageId = `msg-${Date.now()}`
