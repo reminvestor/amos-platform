@@ -88,11 +88,12 @@ class EnableRowLevelSecurity < ActiveRecord::Migration[8.0]
 
     # Create policy that restricts to current entity
     # Policy allows all operations (SELECT, INSERT, UPDATE, DELETE) if entity_id matches
+    # NULLIF handles empty string from RESET (converts to NULL, denying all access)
     execute <<-SQL
       CREATE POLICY #{table}_entity_isolation ON #{table}
       FOR ALL
-      USING (entity_id = current_setting('app.current_entity_id', true)::bigint)
-      WITH CHECK (entity_id = current_setting('app.current_entity_id', true)::bigint)
+      USING (entity_id = NULLIF(current_setting('app.current_entity_id', true), '')::bigint)
+      WITH CHECK (entity_id = NULLIF(current_setting('app.current_entity_id', true), '')::bigint)
     SQL
   rescue ActiveRecord::StatementInvalid => e
     # Log but don't fail if table doesn't exist or already has RLS

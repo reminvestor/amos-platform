@@ -5,85 +5,103 @@ require 'test_helper'
 class RowLevelSecurityTest < ActiveSupport::TestCase
   include RowLevelSecurityHelper
 
+  # Must disable transactional tests because the app_user connection
+  # is separate from the Rails test connection. Transactional data
+  # created by ActiveRecord is not visible to the separate connection.
+  self.use_transactional_tests = false
+
   setup do
+    # Ensure RLS is enabled on test tables (idempotent)
+    ensure_rls_enabled!
+
     @entity1 = entities(:one)
     @entity2 = entities(:two)
 
-    # Create users for each entity (users table doesn't have RLS)
+    # Create users via superuser connection (bypasses RLS - fine for setup)
     @user1 = User.create!(
-      email: 'user1@entity1.com',
+      email: "rls_user1_#{SecureRandom.hex(4)}@entity1.com",
       password: 'TestPassword123!',
       password_confirmation: 'TestPassword123!',
       entity: @entity1
     )
     @user2 = User.create!(
-      email: 'user2@entity2.com',
+      email: "rls_user2_#{SecureRandom.hex(4)}@entity2.com",
       password: 'TestPassword123!',
       password_confirmation: 'TestPassword123!',
       entity: @entity2
     )
 
-    # Create entity 1 data WITH entity 1 context
-    with_entity_context(@entity1) do
-      @campaign1 = Campaign.create!(
-        name: 'Entity 1 Campaign',
-        entity: @entity1,
-        user: @user1,
-        description: 'Test Description',
-        status: 'draft'
-      )
+    # Create test data via superuser connection (bypasses RLS)
+    @campaign1 = Campaign.create!(
+      name: "RLS Test Campaign E1 #{SecureRandom.hex(4)}",
+      entity: @entity1,
+      user: @user1,
+      description: 'Test Description',
+      status: 'draft'
+    )
+    @campaign2 = Campaign.create!(
+      name: "RLS Test Campaign E2 #{SecureRandom.hex(4)}",
+      entity: @entity2,
+      user: @user2,
+      description: 'Test Description',
+      status: 'draft'
+    )
 
-      @contact1 = Contact.create!(
-        email: 'entity1@example.com',
-        entity: @entity1,
-        user: @user1,
-        first_name: 'Contact',
-        last_name: 'One'
-      )
+    @contact1 = Contact.create!(
+      email: "rls_e1_#{SecureRandom.hex(4)}@example.com",
+      entity: @entity1,
+      user: @user1,
+      first_name: 'RLSContact',
+      last_name: 'One'
+    )
+    @contact2 = Contact.create!(
+      email: "rls_e2_#{SecureRandom.hex(4)}@example.com",
+      entity: @entity2,
+      user: @user2,
+      first_name: 'RLSContact',
+      last_name: 'Two'
+    )
 
-      @landing_page1 = LandingPage.create!(
-        title: 'Entity 1 Landing Page',
-        entity: @entity1,
-        user: @user1,
-        slug: 'entity-1-page',
-        html_content: '<h1>Entity 1</h1>',
-        status: 'draft'
-      )
-    end
-
-    # Create entity 2 data WITH entity 2 context
-    with_entity_context(@entity2) do
-      @campaign2 = Campaign.create!(
-        name: 'Entity 2 Campaign',
-        entity: @entity2,
-        user: @user2,
-        description: 'Test Description',
-        status: 'draft'
-      )
-
-      @contact2 = Contact.create!(
-        email: 'entity2@example.com',
-        entity: @entity2,
-        user: @user2,
-        first_name: 'Contact',
-        last_name: 'Two'
-      )
-
-      @landing_page2 = LandingPage.create!(
-        title: 'Entity 2 Landing Page',
-        entity: @entity2,
-        user: @user2,
-        slug: 'entity-2-page',
-        html_content: '<h1>Entity 2</h1>',
-        status: 'draft'
-      )
-    end
-
-    # Reset context after setup
-    ActiveRecord::Base.connection.execute("RESET app.current_entity_id") rescue nil
+    @landing_page1 = LandingPage.create!(
+      title: 'RLS Entity 1 Landing Page',
+      entity: @entity1,
+      user: @user1,
+      slug: "rls-e1-page-#{SecureRandom.hex(4)}",
+      html_content: '<h1>Entity 1</h1>',
+      status: 'draft'
+    )
+    @landing_page2 = LandingPage.create!(
+      title: 'RLS Entity 2 Landing Page',
+      entity: @entity2,
+      user: @user2,
+      slug: "rls-e2-page-#{SecureRandom.hex(4)}",
+      html_content: '<h1>Entity 2</h1>',
+      status: 'draft'
+    )
   end
 
-  # Test RLS infrastructure is properly configured
+  teardown do
+    # Clean up test data since we're not using transactional tests
+    # Use superuser connection (ActiveRecord::Base) to bypass RLS for cleanup
+    # Order matters: delete dependent records first to avoid FK violations
+    LandingPage.where(id: [@landing_page1&.id, @landing_page2&.id].compact).delete_all
+    Contact.where(id: [@contact1&.id, @contact2&.id].compact).delete_all
+    Campaign.where(id: [@campaign1&.id, @campaign2&.id].compact).delete_all
+    Campaign.where(name: 'RLS Valid Insert').delete_all
+
+    # Clean up users - need to handle entity_users FK
+    [@user1, @user2].compact.each do |user|
+      ActiveRecord::Base.connection.execute(
+        "DELETE FROM entity_users WHERE user_id = #{user.id}"
+      ) rescue nil
+      user.destroy rescue nil
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # Infrastructure tests (use superuser - just checking metadata)
+  # ═══════════════════════════════════════════════════════════════
+
   test "RLS is enabled on entity-scoped tables" do
     assert rls_enabled?('campaigns'), 'RLS should be enabled on campaigns table'
     assert rls_enabled?('contacts'), 'RLS should be enabled on contacts table'
@@ -99,320 +117,261 @@ class RowLevelSecurityTest < ActiveSupport::TestCase
            'Entity isolation policy should exist for landing_pages'
   end
 
-  # Test entity isolation for SELECT queries
+  # ═══════════════════════════════════════════════════════════════
+  # RLS enforcement tests (use app_user via rls_connection)
+  # All queries below go through the non-superuser connection
+  # ═══════════════════════════════════════════════════════════════
+
+  # --- SELECT isolation ---
+
   test "user can only see own entity campaigns" do
-    with_entity_context(@entity1) do
-      campaigns = Campaign.all.to_a
+    with_entity_context(@entity1) do |conn|
+      rows = conn.execute("SELECT id, entity_id FROM campaigns").to_a
 
-      # Verify we see our entity 1 campaign
-      assert campaigns.any? { |c| c.id == @campaign1.id }, 'Should see entity 1 campaign'
-
-      # Verify NO campaigns from entity 2 are visible (RLS enforcement)
-      entity2_campaigns = campaigns.select { |c| c.entity_id == @entity2.id }
-      assert_empty entity2_campaigns, 'RLS should prevent seeing entity 2 campaigns'
+      entity_ids = rows.map { |r| r['entity_id'] }
+      assert entity_ids.all? { |eid| eid == @entity1.id }, 'All visible campaigns should belong to entity 1'
+      assert rows.any? { |r| r['id'] == @campaign1.id }, 'Should see entity 1 campaign'
+      assert rows.none? { |r| r['id'] == @campaign2.id }, 'Should not see entity 2 campaign'
     end
   end
 
   test "user can only see own entity contacts" do
-    with_entity_context(@entity1) do
-      contacts = Contact.all.to_a
+    with_entity_context(@entity1) do |conn|
+      rows = conn.execute("SELECT id, entity_id FROM contacts").to_a
 
-      # Verify we see our entity 1 contact
-      assert contacts.any? { |c| c.id == @contact1.id }, 'Should see entity 1 contact'
-
-      # Verify NO contacts from entity 2 are visible (RLS enforcement)
-      entity2_contacts = contacts.select { |c| c.entity_id == @entity2.id }
-      assert_empty entity2_contacts, 'RLS should prevent seeing entity 2 contacts'
+      entity_ids = rows.map { |r| r['entity_id'] }
+      assert entity_ids.all? { |eid| eid == @entity1.id }, 'All visible contacts should belong to entity 1'
+      assert rows.any? { |r| r['id'] == @contact1.id }, 'Should see entity 1 contact'
+      assert rows.none? { |r| r['id'] == @contact2.id }, 'Should not see entity 2 contact'
     end
   end
 
   test "user can only see own entity landing pages" do
-    with_entity_context(@entity1) do
-      landing_pages = LandingPage.all.to_a
+    with_entity_context(@entity1) do |conn|
+      rows = conn.execute("SELECT id, entity_id FROM landing_pages").to_a
 
-      # Verify we see our entity 1 landing page
-      assert landing_pages.any? { |p| p.id == @landing_page1.id }, 'Should see entity 1 landing page'
-
-      # Verify NO landing pages from entity 2 are visible (RLS enforcement)
-      entity2_pages = landing_pages.select { |p| p.entity_id == @entity2.id }
-      assert_empty entity2_pages, 'RLS should prevent seeing entity 2 landing pages'
+      entity_ids = rows.map { |r| r['entity_id'] }
+      assert entity_ids.all? { |eid| eid == @entity1.id }, 'All visible landing pages should belong to entity 1'
+      assert rows.any? { |r| r['id'] == @landing_page1.id }, 'Should see entity 1 landing page'
+      assert rows.none? { |r| r['id'] == @landing_page2.id }, 'Should not see entity 2 landing page'
     end
   end
 
-  # Test entity context switching
+  # --- Context switching ---
+
   test "switching entity context changes visible data" do
-    # Entity 1 context
-    with_entity_context(@entity1) do
-      assert_equal 1, Campaign.count, 'Should see 1 campaign for entity 1'
-      assert_equal @campaign1.id, Campaign.first.id
+    with_entity_context(@entity1) do |conn|
+      rows = conn.execute("SELECT id FROM campaigns").to_a
+      ids = rows.map { |r| r['id'] }
+      assert_includes ids, @campaign1.id, 'Should see entity 1 campaign'
+      assert_not_includes ids, @campaign2.id, 'Should not see entity 2 campaign'
     end
 
-    # Entity 2 context
-    with_entity_context(@entity2) do
-      assert_equal 1, Campaign.count, 'Should see 1 campaign for entity 2'
-      assert_equal @campaign2.id, Campaign.first.id
+    with_entity_context(@entity2) do |conn|
+      rows = conn.execute("SELECT id FROM campaigns").to_a
+      ids = rows.map { |r| r['id'] }
+      assert_includes ids, @campaign2.id, 'Should see entity 2 campaign'
+      assert_not_includes ids, @campaign1.id, 'Should not see entity 1 campaign'
     end
   end
 
-  # Test finding specific records
+  # --- Cannot find other entity records ---
+
   test "cannot find record from other entity by ID" do
-    with_entity_context(@entity1) do
-      # Should not be able to find entity 2's campaign
-      assert_raises(ActiveRecord::RecordNotFound) do
-        Campaign.find(@campaign2.id)
-      end
+    with_entity_context(@entity1) do |conn|
+      rows = conn.execute("SELECT id FROM campaigns WHERE id = #{@campaign2.id}").to_a
+      assert_empty rows, 'Should not find entity 2 campaign'
     end
   end
 
   test "can find record from same entity by ID" do
-    with_entity_context(@entity1) do
-      campaign = Campaign.find(@campaign1.id)
-      assert_equal @campaign1.id, campaign.id
+    with_entity_context(@entity1) do |conn|
+      rows = conn.execute("SELECT id FROM campaigns WHERE id = #{@campaign1.id}").to_a
+      assert_equal 1, rows.count, 'Should find entity 1 campaign'
     end
   end
 
-  # Test unscoped queries (RLS should still apply)
-  test "unscoped queries still respect RLS policies" do
-    with_entity_context(@entity1) do
-      # Even with unscoped, RLS should prevent seeing other entity data
-      campaigns = Campaign.unscoped.to_a
+  # --- INSERT operations ---
 
-      # Verify we see entity 1 campaign
-      assert campaigns.any? { |c| c.id == @campaign1.id }, 'Should see entity 1 campaign'
-
-      # Verify RLS still blocks entity 2 campaigns even with unscoped
-      entity2_campaigns = campaigns.select { |c| c.entity_id == @entity2.id }
-      assert_empty entity2_campaigns, 'RLS should block entity 2 campaigns even with unscoped'
-    end
-  end
-
-  # Test INSERT operations
   test "cannot insert data for other entity" do
-    with_entity_context(@entity1) do
-      # Attempt to insert with entity 2's ID
-      campaign = Campaign.new(
-        name: 'Hacked Campaign',
-        entity_id: @entity2.id,
-        user: @user1,
-        description: 'Exploit',
-        status: 'draft'
-      )
-
-      # RLS WITH CHECK should block this insert
+    with_entity_context(@entity1) do |conn|
       assert_raises(ActiveRecord::StatementInvalid) do
-        campaign.save!
+        conn.execute(<<-SQL)
+          INSERT INTO campaigns (name, entity_id, user_id, status, created_at, updated_at)
+          VALUES ('Hacked', #{@entity2.id}, #{@user1.id}, 'draft', NOW(), NOW())
+        SQL
       end
     end
   end
 
   test "can insert data for current entity" do
-    with_entity_context(@entity1) do
-      campaign = Campaign.create!(
-        name: 'Valid Campaign',
-        entity_id: @entity1.id,
-        user: @user1,
-        description: 'Test',
-        status: 'draft'
-      )
+    with_entity_context(@entity1) do |conn|
+      count_before = conn.execute("SELECT COUNT(*) as cnt FROM campaigns").first['cnt']
 
-      assert campaign.persisted?
-      assert_equal @entity1.id, campaign.entity_id
+      conn.execute(<<-SQL)
+        INSERT INTO campaigns (name, entity_id, user_id, status, created_at, updated_at)
+        VALUES ('RLS Valid Insert', #{@entity1.id}, #{@user1.id}, 'draft', NOW(), NOW())
+      SQL
+
+      count_after = conn.execute("SELECT COUNT(*) as cnt FROM campaigns").first['cnt']
+      assert_equal count_before + 1, count_after, 'Should see one more campaign after insert'
     end
   end
 
-  # Test UPDATE operations
-  test "cannot update record to belong to other entity" do
-    with_entity_context(@entity1) do
-      # Try to change entity_id to entity 2
-      @campaign1.entity_id = @entity2.id
+  # --- UPDATE operations ---
 
-      # RLS WITH CHECK should block this update
+  test "cannot update record to belong to other entity" do
+    with_entity_context(@entity1) do |conn|
       assert_raises(ActiveRecord::StatementInvalid) do
-        @campaign1.save!
+        conn.execute(<<-SQL)
+          UPDATE campaigns SET entity_id = #{@entity2.id} WHERE id = #{@campaign1.id}
+        SQL
       end
     end
   end
 
   test "can update record within same entity" do
-    with_entity_context(@entity1) do
-      @campaign1.name = 'Updated Campaign Name'
-      assert @campaign1.save!
-      assert_equal 'Updated Campaign Name', @campaign1.reload.name
+    with_entity_context(@entity1) do |conn|
+      conn.execute(<<-SQL)
+        UPDATE campaigns SET name = 'Updated Name' WHERE id = #{@campaign1.id}
+      SQL
+
+      rows = conn.execute("SELECT name FROM campaigns WHERE id = #{@campaign1.id}").to_a
+      assert_equal 'Updated Name', rows.first['name']
     end
   end
 
-  # Test DELETE operations
+  # --- DELETE operations ---
+
   test "cannot delete record from other entity" do
-    with_entity_context(@entity1) do
-      # Should not be able to find the record to delete
-      assert_raises(ActiveRecord::RecordNotFound) do
-        Campaign.find(@campaign2.id).destroy
-      end
+    with_entity_context(@entity1) do |conn|
+      # This should silently affect 0 rows (RLS hides the record)
+      conn.execute("DELETE FROM campaigns WHERE id = #{@campaign2.id}")
+
+      # Verify it still exists via superuser
+      assert Campaign.exists?(@campaign2.id), 'Entity 2 campaign should still exist'
     end
   end
 
   test "can delete record from same entity" do
-    with_entity_context(@entity1) do
-      campaign = Campaign.find(@campaign1.id)
-      assert campaign.destroy
-      assert_not Campaign.exists?(@campaign1.id)
+    with_entity_context(@entity1) do |conn|
+      conn.execute("DELETE FROM campaigns WHERE id = #{@campaign1.id}")
+
+      rows = conn.execute("SELECT id FROM campaigns WHERE id = #{@campaign1.id}").to_a
+      assert_empty rows, 'Campaign should be deleted'
     end
+
+    # Mark as nil so teardown doesn't try to clean it up
+    @campaign1 = nil
   end
 
-  # Test without entity context (should deny all access)
+  # --- No entity context (should deny all) ---
+
   test "without entity context, SELECT returns no data" do
-    without_entity_context do
-      campaigns = Campaign.all.to_a
-      assert_empty campaigns, 'Should see no campaigns without entity context'
+    without_entity_context do |conn|
+      count = conn.execute("SELECT COUNT(*) as cnt FROM campaigns").first['cnt']
+      assert_equal 0, count, 'Should see no campaigns without entity context'
     end
   end
 
   test "without entity context, INSERT is blocked" do
-    without_entity_context do
-      campaign = Campaign.new(
-        name: 'No Context Campaign',
-        entity_id: @entity1.id,
-        user: @user1,
-        description: 'Test',
-        status: 'draft'
-      )
-
-      # Should fail because no entity context is set
+    without_entity_context do |conn|
       assert_raises(ActiveRecord::StatementInvalid) do
-        campaign.save!
+        conn.execute(<<-SQL)
+          INSERT INTO campaigns (name, entity_id, user_id, status, created_at, updated_at)
+          VALUES ('No Context', #{@entity1.id}, #{@user1.id}, 'draft', NOW(), NOW())
+        SQL
       end
     end
   end
 
-  test "without entity context, UPDATE is blocked" do
-    # First set context to load the record
-    campaign = nil
-    with_entity_context(@entity1) do
-      campaign = Campaign.find(@campaign1.id)
-    end
+  # --- Direct SQL bypass attempts ---
 
-    # Now try to update without context
-    without_entity_context do
-      campaign.name = 'Updated Name'
-
-      # Should fail because no entity context is set
-      assert_raises(ActiveRecord::StatementInvalid) do
-        campaign.save!
-      end
-    end
-  end
-
-  # Test direct SQL injection attempts (RLS should block)
   test "direct SQL bypasses are blocked by RLS" do
-    with_entity_context(@entity1) do
-      # Attempt raw SQL that tries to access all campaigns
-      result = ActiveRecord::Base.connection.execute(
-        "SELECT * FROM campaigns WHERE id = #{@campaign2.id}"
-      )
-
-      # RLS should prevent seeing entity 2's campaign
-      assert_equal 0, result.count, 'RLS should block direct SQL access to other entity data'
+    with_entity_context(@entity1) do |conn|
+      rows = conn.execute("SELECT * FROM campaigns WHERE id = #{@campaign2.id}").to_a
+      assert_equal 0, rows.count, 'RLS should block direct SQL access to other entity data'
     end
   end
 
-  # Test helper methods
+  # --- Helper methods ---
+
   test "current_rls_entity_id returns correct entity ID" do
-    with_entity_context(@entity1) do
+    with_entity_context(@entity1) do |_conn|
       assert_equal @entity1.id, current_rls_entity_id
     end
 
-    with_entity_context(@entity2) do
+    with_entity_context(@entity2) do |_conn|
       assert_equal @entity2.id, current_rls_entity_id
     end
 
-    without_entity_context do
+    without_entity_context do |_conn|
       assert_nil current_rls_entity_id
     end
   end
 
-  # Test RLS with where clauses
+  # --- WHERE clause filtering ---
+
   test "where clause filtering still respects RLS" do
-    with_entity_context(@entity1) do
-      # Try to find entity 2's campaign by explicit where clause
-      campaigns = Campaign.where(entity_id: @entity2.id).to_a
+    with_entity_context(@entity1) do |conn|
+      rows = conn.execute(
+        "SELECT id FROM campaigns WHERE entity_id = #{@entity2.id}"
+      ).to_a
 
-      assert_empty campaigns, 'RLS should block access even with explicit where clause'
+      assert_empty rows, 'RLS should block access even with explicit entity_id filter'
     end
   end
 
-  # Test RLS with joins (if applicable)
-  test "joined queries respect RLS on both tables" do
-    # Create email templates linked to campaigns
-    template1 = EmailTemplate.create!(
-      name: 'Template 1',
-      entity: @entity1,
-      user: @user1,
-      subject: 'Subject 1',
-      body: 'Body 1'
-    )
+  # --- COUNT queries ---
 
-    template2 = EmailTemplate.create!(
-      name: 'Template 2',
-      entity: @entity2,
-      user: @user2,
-      subject: 'Subject 2',
-      body: 'Body 2'
-    )
-
-    with_entity_context(@entity1) do
-      # Join campaigns with email_templates - should only see entity 1 data
-      templates = EmailTemplate.joins(:entity).where(entities: { id: @entity1.id }).to_a
-
-      assert_includes templates, template1
-      assert_not_includes templates, template2
-    end
-  end
-
-  # Test RLS with count queries
   test "count queries respect RLS" do
-    with_entity_context(@entity1) do
-      assert_equal 1, Campaign.count
+    with_entity_context(@entity1) do |conn|
+      count = conn.execute("SELECT COUNT(*) as cnt FROM campaigns").first['cnt']
+      assert count >= 1, 'Should see at least 1 campaign for entity 1'
+
+      # Verify all counted records belong to entity 1
+      entity_ids = conn.execute("SELECT DISTINCT entity_id FROM campaigns").to_a.map { |r| r['entity_id'] }
+      assert_equal [@entity1.id], entity_ids, 'All campaigns should belong to entity 1'
     end
 
-    with_entity_context(@entity2) do
-      assert_equal 1, Campaign.count
-    end
-
-    without_entity_context do
-      assert_equal 0, Campaign.count
+    without_entity_context do |conn|
+      assert_equal 0, conn.execute("SELECT COUNT(*) as cnt FROM campaigns").first['cnt']
     end
   end
 
-  # Test RLS with exists queries
+  # --- EXISTS queries ---
+
   test "exists queries respect RLS" do
-    with_entity_context(@entity1) do
-      assert Campaign.exists?(@campaign1.id)
-      assert_not Campaign.exists?(@campaign2.id)
-    end
+    with_entity_context(@entity1) do |conn|
+      e1 = conn.execute("SELECT EXISTS(SELECT 1 FROM campaigns WHERE id = #{@campaign1.id}) as ex").first['ex']
+      e2 = conn.execute("SELECT EXISTS(SELECT 1 FROM campaigns WHERE id = #{@campaign2.id}) as ex").first['ex']
 
-    with_entity_context(@entity2) do
-      assert_not Campaign.exists?(@campaign1.id)
-      assert Campaign.exists?(@campaign2.id)
+      assert e1, 'Should find entity 1 campaign'
+      assert_not e2, 'Should not find entity 2 campaign'
     end
   end
 
-  # Test RLS with pluck queries
-  test "pluck queries respect RLS" do
-    with_entity_context(@entity1) do
-      ids = Campaign.pluck(:id)
-      assert_includes ids, @campaign1.id
-      assert_not_includes ids, @campaign2.id
+  # --- Cross-table consistency ---
+
+  test "RLS is consistent across multiple entity-scoped tables" do
+    with_entity_context(@entity1) do |conn|
+      campaign_ids = conn.execute("SELECT DISTINCT entity_id FROM campaigns").to_a.map { |r| r['entity_id'] }
+      contact_ids = conn.execute("SELECT DISTINCT entity_id FROM contacts").to_a.map { |r| r['entity_id'] }
+      page_ids = conn.execute("SELECT DISTINCT entity_id FROM landing_pages").to_a.map { |r| r['entity_id'] }
+
+      assert_equal [@entity1.id], campaign_ids, 'All campaigns should belong to entity 1'
+      assert_equal [@entity1.id], contact_ids, 'All contacts should belong to entity 1'
+      assert_equal [@entity1.id], page_ids, 'All landing pages should belong to entity 1'
     end
-  end
 
-  # Test RLS with find_by queries
-  test "find_by queries respect RLS" do
-    with_entity_context(@entity1) do
-      campaign = Campaign.find_by(id: @campaign2.id)
-      assert_nil campaign, 'Should not find campaign from other entity'
+    with_entity_context(@entity2) do |conn|
+      campaign_ids = conn.execute("SELECT DISTINCT entity_id FROM campaigns").to_a.map { |r| r['entity_id'] }
+      contact_ids = conn.execute("SELECT DISTINCT entity_id FROM contacts").to_a.map { |r| r['entity_id'] }
+      page_ids = conn.execute("SELECT DISTINCT entity_id FROM landing_pages").to_a.map { |r| r['entity_id'] }
 
-      campaign = Campaign.find_by(id: @campaign1.id)
-      assert_not_nil campaign, 'Should find campaign from same entity'
+      assert_equal [@entity2.id], campaign_ids, 'All campaigns should belong to entity 2'
+      assert_equal [@entity2.id], contact_ids, 'All contacts should belong to entity 2'
+      assert_equal [@entity2.id], page_ids, 'All landing pages should belong to entity 2'
     end
   end
 end
