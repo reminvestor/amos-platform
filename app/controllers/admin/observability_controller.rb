@@ -42,6 +42,9 @@ class Admin::ObservabilityController < Admin::BaseController
     # Average execution time
     @avg_execution_time = calculate_avg_workflow_time(all_workflows)
 
+    # Template analytics (detailed stats by template)
+    @template_stats = compute_template_stats(@time_range)
+
     # Workflow trend chart
     @workflow_trend_chart = generate_workflow_trend_chart(all_workflows)
 
@@ -518,5 +521,75 @@ class Admin::ObservabilityController < Admin::BaseController
         }
       ]
     }
+  end
+
+  def compute_template_stats(time_range)
+    executions = WorkflowExecution
+      .where.not(workflow_template_id: [nil, ""])
+      .where("workflow_executions.created_at > ?", time_range.ago)
+
+    # Group by template and compute aggregates
+    grouped = executions.group(:workflow_template_id).select(
+      "workflow_template_id",
+      "COUNT(*) as total_runs",
+      "COUNT(CASE WHEN status = 'completed' THEN 1 END) as successful_runs",
+      "COUNT(DISTINCT entity_id) as unique_entities"
+    )
+
+    # Calculate average duration separately (only for completed executions with timestamps)
+    avg_durations = executions
+      .where(status: "completed")
+      .where.not(started_at: nil, completed_at: nil)
+      .group(:workflow_template_id)
+      .pluck(
+        :workflow_template_id,
+        Arel.sql("AVG(EXTRACT(EPOCH FROM (completed_at - started_at)))")
+      ).to_h
+
+    # Look up template metadata from DB and file-based templates
+    template_slugs = grouped.map(&:workflow_template_id)
+
+    # Try to find categories from WorkflowTemplate DB records
+    db_templates = WorkflowTemplate.where(slug: template_slugs).or(
+      WorkflowTemplate.where(name: template_slugs)
+    ).index_by { |t| t.slug.presence || t.name }
+
+    # Also check file-based templates for category info
+    file_templates = WorkflowTemplateLoader.list_all_templates.index_by { |t| t[:slug] }
+
+    grouped.map do |stat|
+      template_id = stat.workflow_template_id
+      db_template = db_templates[template_id]
+      file_template = file_templates[template_id]
+
+      category = db_template&.category || file_template&.dig(:category) || "uncategorized"
+      display_name = db_template&.name || file_template&.dig(:name) || template_id.to_s.titleize
+
+      total = stat.total_runs.to_i
+      successful = stat.successful_runs.to_i
+      success_rate = total > 0 ? (successful.to_f / total * 100).round(1) : 0.0
+
+      {
+        name: display_name,
+        template_id: template_id,
+        category: category.to_s.titleize,
+        total_runs: total,
+        success_rate: success_rate,
+        avg_duration: format_duration(avg_durations[template_id]),
+        unique_entities: stat.unique_entities.to_i
+      }
+    end.compact.sort_by { |s| -s[:total_runs] }
+  end
+
+  def format_duration(seconds)
+    return "N/A" unless seconds
+    seconds = seconds.to_f
+    if seconds < 60
+      "#{seconds.round(1)}s"
+    elsif seconds < 3600
+      "#{(seconds / 60).round(1)}m"
+    else
+      "#{(seconds / 3600).round(1)}h"
+    end
   end
 end

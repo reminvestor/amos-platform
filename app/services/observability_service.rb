@@ -303,16 +303,15 @@ class ObservabilityService
   def flush_events_buffer
     return if @events_buffer.empty?
 
-    # In a production system, this would send events to:
-    # - OpenTelemetry
-    # - DataDog
-    # - New Relic
-    # - Custom analytics service
-
-    Rails.logger.info "📊 OBSERVABILITY: Flushing #{@events_buffer.length} events"
-
-    # For now, just clear the buffer
+    events_to_persist = @events_buffer.dup
     @events_buffer.clear
+
+    Rails.logger.info "📊 OBSERVABILITY: Flushing #{events_to_persist.length} events to database"
+
+    # Persist to database asynchronously
+    PersistObservabilityEventsJob.perform_later(events_to_persist)
+  rescue => e
+    Rails.logger.error "📊 OBSERVABILITY: Flush failed: #{e.message}"
   end
 
   def should_log_event?(event_type)

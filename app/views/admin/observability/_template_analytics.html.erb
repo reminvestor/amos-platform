@@ -1,0 +1,43 @@
+<div class="admin-card admin-mb-xl">
+  <h3 class="card-title m-0 admin-mb-lg">
+    <i data-lucide="bar-chart-3" class="admin-icon-md d-inline-block align-middle me-2" aria-hidden="true"></i>
+    Workflow Template Analytics
+  </h3>
+
+  <% if @template_stats.present? %>
+    <div class="admin-overflow-auto">
+      <table class="admin-table">
+        <%= admin_table_caption("Workflow template analytics showing name, category, total runs, success rate, average duration, and unique entities") %>
+        <thead>
+          <tr>
+            <th>Template</th>
+            <th>Category</th>
+            <th class="admin-text-right">Total Runs</th>
+            <th class="admin-text-right">Success Rate</th>
+            <th class="admin-text-right">Avg Duration</th>
+            <th class="admin-text-right">Unique Entities</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @template_stats.each do |stat| %>
+            <tr>
+              <td class="text-white"><%= stat[:name] %></td>
+              <td><span class="badge bg-secondary"><%= stat[:category] %></span></td>
+              <td class="admin-text-right admin-text-cyan"><%= number_with_delimiter(stat[:total_runs]) %></td>
+              <td class="admin-text-right">
+                <% rate = stat[:success_rate] %>
+                <span class="badge bg-<%= rate >= 80 ? 'success' : rate >= 50 ? 'warning' : 'danger' %>">
+                  <%= rate %>%
+                </span>
+              </td>
+              <td class="admin-text-right admin-text-secondary"><%= stat[:avg_duration] %></td>
+              <td class="admin-text-right admin-text-secondary"><%= stat[:unique_entities] %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <p class="admin-text-muted admin-text-center admin-p-xl m-0">No workflow execution data available yet.</p>
+  <% end %>
+</div>

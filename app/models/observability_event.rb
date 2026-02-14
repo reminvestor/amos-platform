@@ -1,130 +1,36 @@
-# Stub model for observability tracking
-# TODO: Create proper migration and implement event tracking
-#
-# This is a temporary stub that returns empty results for all queries
-# to prevent errors while the ObservabilityEvent table doesn't exist yet.
-class ObservabilityEvent
-  # Mimic ActiveRecord interface without actually inheriting from it
-  def self.where(*args)
-    EmptyRelation.new
+class ObservabilityEvent < ApplicationRecord
+  belongs_to :entity, optional: true
+  belongs_to :user, optional: true
+
+  validates :event_type, presence: true
+
+  scope :by_type, ->(type) { where(event_type: type) }
+  scope :recent, ->(limit = 100) { order(created_at: :desc).limit(limit) }
+  scope :for_entity, ->(entity_id) { where(entity_id: entity_id) }
+  scope :in_period, ->(start_date, end_date) { where(created_at: start_date..end_date) }
+
+  # Batch insert events from the service buffer
+  def self.batch_insert(events)
+    return if events.empty?
+
+    records = events.map do |event|
+      {
+        event_type: event[:event_type],
+        entity_id: event.dig(:data, :entity_id),
+        user_id: event.dig(:data, :user_id),
+        resource_type: event.dig(:data, :resource_type) || "ObservabilityEvent",
+        resource_id: event.dig(:data, :task_session_id) || event.dig(:data, :workflow_execution_id),
+        metadata: event[:data] || {},
+        duration_ms: event.dig(:data, :duration_ms),
+        status: event.dig(:data, :success) == false ? "error" : "success",
+        error_message: event.dig(:data, :error),
+        created_at: event[:timestamp] || Time.current,
+        updated_at: Time.current
+      }
+    end
+
+    insert_all(records)
+  rescue => e
+    Rails.logger.error "[ObservabilityEvent] Batch insert failed: #{e.message}"
   end
-
-  def self.count
-    0
-  end
-
-  def self.sum(*args)
-    0
-  end
-
-  def self.all
-    EmptyRelation.new
-  end
-
-  def self.joins(*args)
-    EmptyRelation.new
-  end
-
-  def self.includes(*args)
-    EmptyRelation.new
-  end
-
-  def self.group(*args)
-    EmptyRelation.new
-  end
-
-  def self.order(*args)
-    EmptyRelation.new
-  end
-
-  def self.limit(n)
-    EmptyRelation.new
-  end
-
-  def self.select(*args)
-    EmptyRelation.new
-  end
-
-  # Empty relation that chains methods and returns empty arrays
-  class EmptyRelation
-    def where(*args)
-      self
-    end
-
-    def not(*args)
-      self
-    end
-
-    def or(*args)
-      self
-    end
-
-    def includes(*args)
-      self
-    end
-
-    def joins(*args)
-      self
-    end
-
-    def group(*args)
-      self
-    end
-
-    def order(*args)
-      self
-    end
-
-    def limit(n)
-      self
-    end
-
-    def select(*args)
-      self
-    end
-
-    def count
-      0
-    end
-
-    def sum(*args)
-      0
-    end
-
-    def each
-      [].each
-    end
-
-    def any?
-      false
-    end
-
-    def empty?
-      true
-    end
-
-    def to_a
-      []
-    end
-
-    def as_json(*args)
-      []
-    end
-
-    def group_by
-      {}
-    end
-
-    def pluck(*args)
-      []
-    end
-  end
-
-  # When ready to implement, create migration:
-  # rails g migration CreateObservabilityEvents event_type:string entity:references user:references metadata:jsonb
-  # - event_type: string (ai_request, ai_response, tool_call, error, performance)
-  # - entity_id: bigint
-  # - user_id: bigint
-  # - metadata: jsonb
-  # - created_at: datetime
 end
