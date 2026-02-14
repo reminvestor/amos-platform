@@ -1,7 +1,7 @@
 <%# Email Sequence Manager Canvas - Visual UI for managing email sequences %>
 <%
   # Get sequences data from locals or fetch
-  sequences ||= current_user.entity.email_sequences.includes(:sequence_steps, :contact_group).order(created_at: :desc)
+  sequences ||= current_user.entity.email_sequences.includes(sequence_steps: :email_template).includes(:contact_group).order(created_at: :desc)
   
   # Group by status
   draft_sequences = sequences.select { |s| s.status == 'draft' }
@@ -13,6 +13,46 @@
   total_enrolled = sequences.sum(&:enrolled_count)
   total_active = sequences.sum(&:active_count)
   total_completed = sequences.sum(&:completed_count)
+
+  # Build sequence data hash for JavaScript access
+  sequences_json = sequences.map do |seq|
+    {
+      id: seq.id,
+      name: seq.name,
+      goal: seq.goal,
+      status: seq.status,
+      enrolled_count: seq.enrolled_count,
+      active_count: seq.active_count,
+      completed_count: seq.completed_count,
+      step_count: seq.step_count,
+      total_sent: seq.total_sent,
+      total_opened: seq.total_opened,
+      total_clicked: seq.total_clicked,
+      open_rate: seq.open_rate,
+      click_rate: seq.click_rate,
+      completion_rate: seq.completion_rate,
+      contact_group_name: seq.contact_group&.name || 'No group assigned',
+      contact_group_count: (seq.contact_group&.contacts&.count rescue 0),
+      created_at: seq.created_at&.strftime('%b %d, %Y'),
+      steps: seq.sequence_steps.ordered.map do |step|
+        {
+          step_number: step.step_number,
+          subject: step.effective_subject,
+          delay_hours: step.delay_hours,
+          delay_days: step.delay_in_days,
+          sent_count: step.sent_count,
+          opened_count: step.opened_count,
+          clicked_count: step.clicked_count,
+          open_rate: step.open_rate,
+          click_rate: step.click_rate,
+          has_template: step.has_template?,
+          template_name: step.email_template&.name,
+          template_id: step.email_template_id,
+          body_preview: (step.effective_body.to_s.gsub(/<[^>]*>/, '').strip.truncate(120) rescue '')
+        }
+      end
+    }
+  end
 %>
 
 <div class="scout-canvas canvas-container sequence-manager">
@@ -179,6 +219,9 @@
             <div class="sequence-contact-group">
               <i data-lucide="users"></i>
               <%= sequence.contact_group&.name || 'No group assigned' %>
+              <% if sequence.contact_group %>
+                <span class="sequence-contact-count">(<%= sequence.contact_group.contacts.count rescue 0 %> contacts)</span>
+              <% end %>
             </div>
           </div>
           
@@ -532,29 +575,128 @@
   padding: 1.5rem;
 }
 
-.sequence-detail-panel h2 {
-  color: var(--sm-text);
-  margin: 0 0 0.25rem 0;
+.detail-panel-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
 }
 
-.sequence-detail-panel .detail-meta {
+.detail-panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sequence-detail-panel h2 {
+  color: var(--sm-text);
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.detail-goal {
   color: var(--sm-text-muted);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0.5rem 0;
+  line-height: 1.5;
+}
+
+.detail-created-date {
+  font-size: 0.75rem;
+  color: var(--sm-text-muted);
+  margin-bottom: 1rem;
+}
+
+/* Contact Group Section */
+.detail-contact-group-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--sm-timeline-bg);
+  border-radius: 10px;
+  margin-bottom: 1.25rem;
+}
+
+.detail-contact-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.15);
+  color: #8B5CF6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.detail-contact-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--sm-text);
+  font-size: 0.9rem;
+}
+
+.detail-contact-count {
+  color: var(--sm-text-muted);
+  font-size: 0.8rem;
+  background: rgba(139, 92, 246, 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
+/* Metrics Grid */
+.detail-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
 
-.sequence-step-row {
+.detail-metric-card {
+  text-align: center;
+  padding: 0.75rem 0.5rem;
   background: var(--sm-timeline-bg);
-  border: 1px solid var(--sm-border);
   border-radius: 10px;
-  padding: 1rem 1.25rem;
-  margin-bottom: 0.75rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
 }
 
-.sequence-step-row .step-number {
+.detail-metric-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--sm-text);
+}
+
+.detail-metric-label {
+  font-size: 0.65rem;
+  color: var(--sm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.15rem;
+}
+
+/* Detail section headings */
+.detail-section-title {
+  color: var(--sm-text);
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Step Detail Cards */
+.sequence-steps-detail-list {
+  position: relative;
+}
+
+.sequence-step-detail {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 0;
+  position: relative;
+}
+
+.sequence-step-detail .step-number {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -566,42 +708,149 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  z-index: 1;
+  margin-top: 1rem;
 }
 
-.sequence-step-row .step-content {
+.sequence-step-detail .step-connector {
+  position: absolute;
+  left: 15px;
+  top: 44px;
+  bottom: 0;
+  width: 2px;
+  background: var(--sm-border);
+}
+
+.sequence-step-detail:last-child .step-connector {
+  display: none;
+}
+
+.step-detail-content {
   flex: 1;
-  min-width: 0;
+  margin-left: 0.75rem;
+  background: var(--sm-timeline-bg);
+  border: 1px solid var(--sm-border);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
 }
 
-.sequence-step-row .step-subject {
+.step-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.step-detail-content .step-subject {
   font-weight: 600;
   color: var(--sm-text);
-  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
 }
 
-.sequence-step-row .step-delay {
-  font-size: 0.8rem;
+.step-delay-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
   color: var(--sm-text-muted);
-}
-
-.sequence-step-row .step-preview {
-  font-size: 0.8rem;
-  color: var(--sm-text-muted);
-  margin-top: 0.25rem;
+  background: rgba(59, 130, 246, 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.step-body-preview {
+  font-size: 0.8rem;
+  color: var(--sm-text-muted);
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0,0,0,0.03);
+  border-radius: 6px;
+  border-left: 3px solid var(--sm-border);
+}
+
+[data-theme="dark"] .step-body-preview,
+[data-bs-theme="dark"] .step-body-preview {
+  background: rgba(255,255,255,0.03);
+}
+
+.step-detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.step-template-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  color: #10B981;
+  background: rgba(16, 185, 129, 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
+.step-template-badge.inline-content {
+  color: var(--sm-text-muted);
+  background: rgba(107, 114, 128, 0.1);
+}
+
+.step-metrics-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.step-metric {
+  font-size: 0.7rem;
+  color: var(--sm-text-muted);
+}
+
+.step-metric strong {
+  color: var(--sm-text);
+}
+
+.step-metric.muted {
+  font-style: italic;
+}
+
+.step-empty-state {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--sm-text-muted);
+  font-size: 0.85rem;
+  padding: 1.5rem;
+  text-align: center;
+  justify-content: center;
+}
+
+/* Contact count on cards */
+.sequence-contact-count {
+  color: var(--sm-text-muted);
+  font-size: 0.7rem;
 }
 
 .detail-actions-row {
   display: flex;
   gap: 0.5rem;
   margin-top: 1.5rem;
+  flex-wrap: wrap;
 }
 </style>
 
 <script>
 // Sequence Manager JavaScript
+
+// Full sequence data from server
+const SEQUENCE_DATA = <%= raw sequences_json.to_json %>;
 
 // Helper: send a chat message via the scout controller
 function sendToAmos(message) {
@@ -627,54 +876,110 @@ function sequenceCreate() {
   sendToAmos('Create a new email sequence for me');
 }
 
+function formatDelay(hours) {
+  if (hours === 0) return 'Immediately';
+  if (hours < 24) return hours + 'h after previous';
+  const days = Math.round(hours / 24);
+  return days === 1 ? '1 day after previous' : days + ' days after previous';
+}
+
 function sequenceView(id) {
-  // Show inline detail view for this sequence
-  const card = document.querySelector(`.sequence-card[data-sequence-id="${id}"]`);
-  if (!card) return;
+  // Find sequence data from server-rendered JSON
+  const seq = SEQUENCE_DATA.find(s => s.id === id);
+  if (!seq) return;
 
   // If already showing detail, collapse
   const existingDetail = document.getElementById('sequence-detail-panel');
   if (existingDetail) {
     const previousId = existingDetail.dataset.sequenceId;
     existingDetail.remove();
-    // If clicking same sequence, just collapse
     if (previousId == id) return;
   }
 
-  // Gather data from the card
-  const title = card.querySelector('.sequence-card-title')?.textContent?.trim() || 'Untitled';
-  const status = card.dataset.status || 'draft';
-  const goal = card.querySelector('.sequence-card-goal')?.textContent?.trim() || '';
-  const contactGroup = card.querySelector('.sequence-contact-group')?.textContent?.trim() || 'No group';
-
-  // Gather metrics
-  const metrics = card.querySelectorAll('.sequence-metric');
-  let metricsHtml = '';
-  metrics.forEach(m => {
-    const val = m.querySelector('.sequence-metric-value')?.textContent?.trim() || '0';
-    const label = m.querySelector('.sequence-metric-label')?.textContent?.trim() || '';
-    metricsHtml += `<span style="margin-right: 1.5rem;"><strong>${val}</strong> ${label}</span>`;
-  });
-
-  // Gather steps
-  const steps = card.querySelectorAll('.sequence-step-dot');
+  // Build steps HTML with full detail
   let stepsHtml = '';
-  if (steps.length > 0) {
-    steps.forEach(dot => {
-      const num = dot.textContent.trim();
-      const tipText = dot.getAttribute('title') || `Step ${num}`;
+  if (seq.steps && seq.steps.length > 0) {
+    seq.steps.forEach((step, idx) => {
+      const templateBadge = step.has_template
+        ? `<span class="step-template-badge"><i data-lucide="file-text" style="width:12px;height:12px;"></i> ${step.template_name || 'Template #' + step.template_id}</span>`
+        : `<span class="step-template-badge inline-content"><i data-lucide="pen-line" style="width:12px;height:12px;"></i> Inline content</span>`;
+
+      const delayLabel = idx === 0 ? 'Starts immediately' : formatDelay(step.delay_hours);
+
+      const stepMetrics = (step.sent_count > 0)
+        ? `<div class="step-metrics-row">
+             <span class="step-metric"><strong>${step.sent_count}</strong> sent</span>
+             <span class="step-metric"><strong>${step.opened_count}</strong> opened (${step.open_rate}%)</span>
+             <span class="step-metric"><strong>${step.clicked_count}</strong> clicked (${step.click_rate}%)</span>
+           </div>`
+        : `<div class="step-metrics-row"><span class="step-metric muted">Not sent yet</span></div>`;
+
+      const bodyPreview = step.body_preview
+        ? `<div class="step-body-preview">${step.body_preview}</div>`
+        : '';
+
       stepsHtml += `
-        <div class="sequence-step-row">
-          <div class="step-number">${num}</div>
-          <div class="step-content">
-            <div class="step-subject">${tipText}</div>
+        <div class="sequence-step-detail">
+          <div class="step-number">${step.step_number}</div>
+          <div class="step-connector"></div>
+          <div class="step-detail-content">
+            <div class="step-detail-header">
+              <div class="step-subject">${step.subject || 'No subject'}</div>
+              <div class="step-delay-badge"><i data-lucide="clock" style="width:12px;height:12px;"></i> ${delayLabel}</div>
+            </div>
+            ${bodyPreview}
+            <div class="step-detail-footer">
+              ${templateBadge}
+              ${stepMetrics}
+            </div>
           </div>
         </div>
       `;
     });
   } else {
-    stepsHtml = '<p style="color: var(--sm-text-muted);">No steps defined yet.</p>';
+    stepsHtml = '<div class="step-empty-state"><i data-lucide="mail-plus" style="width:20px;height:20px;"></i> No steps defined yet. Ask AMOS to add steps to this sequence.</div>';
   }
+
+  // Overall metrics row
+  const overallMetrics = `
+    <div class="detail-metrics-grid">
+      <div class="detail-metric-card">
+        <div class="detail-metric-value">${seq.step_count}</div>
+        <div class="detail-metric-label">Steps</div>
+      </div>
+      <div class="detail-metric-card">
+        <div class="detail-metric-value">${seq.enrolled_count}</div>
+        <div class="detail-metric-label">Enrolled</div>
+      </div>
+      <div class="detail-metric-card">
+        <div class="detail-metric-value">${seq.total_sent}</div>
+        <div class="detail-metric-label">Emails Sent</div>
+      </div>
+      <div class="detail-metric-card">
+        <div class="detail-metric-value">${seq.open_rate}%</div>
+        <div class="detail-metric-label">Open Rate</div>
+      </div>
+      <div class="detail-metric-card">
+        <div class="detail-metric-value">${seq.click_rate}%</div>
+        <div class="detail-metric-label">Click Rate</div>
+      </div>
+      <div class="detail-metric-card">
+        <div class="detail-metric-value">${seq.completion_rate}%</div>
+        <div class="detail-metric-label">Completion</div>
+      </div>
+    </div>
+  `;
+
+  // Contact group section
+  const contactGroupHtml = `
+    <div class="detail-contact-group-section">
+      <div class="detail-contact-icon"><i data-lucide="users" style="width:18px;height:18px;"></i></div>
+      <div class="detail-contact-info">
+        <strong>${seq.contact_group_name}</strong>
+        ${seq.contact_group_count > 0 ? `<span class="detail-contact-count">${seq.contact_group_count} contacts</span>` : ''}
+      </div>
+    </div>
+  `;
 
   // Build detail panel
   const panel = document.createElement('div');
@@ -683,32 +988,39 @@ function sequenceView(id) {
   panel.className = 'sequence-detail-panel';
   panel.style.marginBottom = '1.5rem';
   panel.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-      <div>
-        <h2>${title}</h2>
-        <div class="detail-meta">
-          <span class="sequence-status-badge ${status}" style="margin-right: 0.75rem;">
-            ${status.charAt(0).toUpperCase() + status.slice(1)}
-          </span>
-          ${contactGroup}
-        </div>
-        ${goal ? `<p style="color: var(--sm-text-muted); margin: 0.5rem 0;">${goal}</p>` : ''}
-        <div style="color: var(--sm-text-muted); font-size: 0.85rem;">${metricsHtml}</div>
+    <div class="detail-panel-top-row" onclick="document.getElementById('sequence-detail-panel')?.remove()" style="cursor:pointer;">
+      <div class="detail-panel-title-row">
+        <h2>${seq.name}</h2>
+        <span class="sequence-status-badge ${seq.status}">
+          ${seq.status.charAt(0).toUpperCase() + seq.status.slice(1)}
+        </span>
       </div>
-      <button onclick="document.getElementById('sequence-detail-panel')?.remove()" class="canvas-btn outline sm" style="flex-shrink: 0;">
+      <button class="canvas-btn outline sm" style="flex-shrink: 0;">
         <i data-lucide="x" style="width:14px;height:14px;"></i> Close
       </button>
     </div>
-    <h5 style="color: var(--sm-text); margin-bottom: 0.75rem;">Sequence Steps</h5>
-    ${stepsHtml}
+    ${seq.goal ? `<p class="detail-goal">${seq.goal}</p>` : ''}
+    <div class="detail-created-date">Created ${seq.created_at}</div>
+
+    ${contactGroupHtml}
+    ${overallMetrics}
+
+    <h5 class="detail-section-title">Email Steps</h5>
+    <div class="sequence-steps-detail-list">
+      ${stepsHtml}
+    </div>
+
     <div class="detail-actions-row">
-      <button onclick="sendToAmos('Show me the full details and emails for email sequence #${id}')" class="canvas-btn primary sm">
-        <i data-lucide="message-circle" style="width:14px;height:14px;"></i> Ask AMOS for Details
+      <button onclick="event.stopPropagation(); sendToAmos('Show me the complete email content for sequence \\'${seq.name}\\'')" class="canvas-btn primary sm">
+        <i data-lucide="mail-open" style="width:14px;height:14px;"></i> View Full Emails
       </button>
-      <button onclick="sendToAmos('Edit email sequence #${id}')" class="canvas-btn outline sm">
+      <button onclick="event.stopPropagation(); sendToAmos('Edit email sequence #${id} - ${seq.name}')" class="canvas-btn outline sm">
         <i data-lucide="pencil" style="width:14px;height:14px;"></i> Edit
       </button>
-      <button onclick="sendToAmos('Delete email sequence #${id}')" class="canvas-btn outline sm" style="color: #EF4444; border-color: #EF4444;">
+      <button onclick="event.stopPropagation(); sendToAmos('Modify the email templates in sequence \\'${seq.name}\\'')" class="canvas-btn outline sm">
+        <i data-lucide="file-edit" style="width:14px;height:14px;"></i> Edit Templates
+      </button>
+      <button onclick="event.stopPropagation(); if(confirm('Delete this sequence?')) sendToAmos('Delete email sequence #${id}')" class="canvas-btn outline sm" style="color: #EF4444; border-color: #EF4444;">
         <i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete
       </button>
     </div>
