@@ -568,7 +568,7 @@ export default class extends Controller {
     
     if (table) {
       try {
-        const response = await fetch(`/api/modules/${this.moduleValue}/models/${model}?filter=${filter}&limit=50`)
+        const response = await fetch(`/api/modules/${this.moduleValue}/models/${model}?filter=${encodeURIComponent(filter)}&limit=50`)
         if (response.ok) {
           const data = await response.json()
           this.renderTableRows(table, data.records || [])

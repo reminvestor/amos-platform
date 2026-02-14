@@ -218,24 +218,52 @@ module Api
     def apply_filter(records, filter)
       case filter.to_s.downcase
       when 'active'
-        records.where(active: true) if @model_class.column_names.include?('active')
+        if @model_class.column_names.include?('active')
+          records = records.where(active: true)
+        end
       when 'inactive'
-        records.where(active: false) if @model_class.column_names.include?('active')
+        if @model_class.column_names.include?('active')
+          records = records.where(active: false)
+        end
       when 'recent'
-        records.where('created_at > ?', 7.days.ago)
+        records = records.where("created_at > ?", 7.days.ago)
+      when 'all'
+        # No filter - return all records
       else
-        records
+        # Support column:value format (e.g., "city:Miami", "fish_type:Marlin")
+        if filter.to_s.include?(":")
+          column, value = filter.to_s.split(":", 2)
+          column = column.strip.downcase
+          value = value.strip
+          if @model_class.column_names.include?(column) && value.present?
+            records = records.where(column => value)
+          end
+        else
+          # Try as a text search across all string/text columns
+          text_columns = @model_class.columns
+            .select { |c| [:string, :text].include?(c.type) }
+            .map(&:name) - %w[entity_id id]
+
+          if text_columns.any?
+            conditions = text_columns.map { |col| "#{col} ILIKE ?" }.join(" OR ")
+            values = text_columns.map { "%#{filter}%" }
+            records = records.where(conditions, *values)
+          end
+        end
       end
       records
     end
 
     def apply_search(records, query)
-      searchable = @model_class.column_names & %w[name title description sku email]
+      # Search across all string/text columns of the dynamic model
+      searchable = @model_class.columns
+        .select { |c| [:string, :text].include?(c.type) }
+        .map(&:name) - %w[entity_id id]
       return records if searchable.empty?
 
-      conditions = searchable.map { |col| "#{col} ILIKE ?" }.join(' OR ')
+      conditions = searchable.map { |col| "#{col} ILIKE ?" }.join(" OR ")
       values = searchable.map { "%#{query}%" }
-      
+
       records.where(conditions, *values)
     end
 
