@@ -74,6 +74,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/login';
       }
       if (isLoggedIn && isAuthRoute) {
+        // Don't auto-redirect from MFA screen - let it handle navigation
+        // after the device trust dialog completes (Face ID/biometric setup).
+        // Without this, the router redirect races with the dialog and
+        // device trust is never offered, forcing MFA on every login.
+        if (state.matchedLocation == '/mfa-verification') {
+          return null;
+        }
         return '/chat';  // Chat-first architecture
       }
       return null;

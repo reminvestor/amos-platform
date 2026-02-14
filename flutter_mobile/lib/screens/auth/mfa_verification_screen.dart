@@ -68,6 +68,7 @@ class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
             token: newDeviceToken,
             email: deviceCreds.email,
           );
+          context.go('/chat');
           return;
         } else if (mounted) {
           // Device token was invalid/expired - clear it
@@ -99,10 +100,13 @@ class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
       );
 
       // If still requires MFA after biometric login, show error
+      // If authenticated without MFA, navigate to chat
       if (mounted) {
         final state = ref.read(authStateProvider);
         if (state.mfaRequired) {
           _showError('Please enter the verification code');
+        } else if (state.isAuthenticated) {
+          context.go('/chat');
         }
       }
     } catch (e) {
@@ -134,9 +138,16 @@ class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
       // Check if verification was successful
       if (mounted) {
         final state = ref.read(authStateProvider);
-        if (state.isAuthenticated && _biometricAvailable && !_hasTrustedDevice) {
-          // Offer to trust this device for future logins
-          await _offerDeviceTrust();
+        if (state.isAuthenticated) {
+          // Offer to trust this device for future biometric logins
+          // (skips MFA on subsequent logins via Face ID/fingerprint)
+          if (_biometricAvailable && !_hasTrustedDevice) {
+            await _offerDeviceTrust();
+          }
+          // Navigate to chat after device trust flow completes (or is skipped)
+          if (mounted) {
+            context.go('/chat');
+          }
         }
       }
     } catch (e) {
