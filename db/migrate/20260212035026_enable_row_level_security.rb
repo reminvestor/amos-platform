@@ -44,10 +44,7 @@ class EnableRowLevelSecurity < ActiveRecord::Migration[8.0]
     resource_usages rewards rulesets schemas
     scratch_pads search_indices segments site_settings
     skills sms_messages social_media_accounts social_posts
-    solid_queue_blocked_executions solid_queue_claimed_executions solid_queue_failed_executions
-    solid_queue_jobs solid_queue_pauses solid_queue_processes
-    solid_queue_ready_executions solid_queue_recurring_executions solid_queue_recurring_tasks
-    solid_queue_scheduled_executions solid_queue_semaphores status_updates
+    status_updates
     stories stripe_events subscription_change_requests subscription_changes
     subscription_events subscriptions subscriber_tokens table_rulesets
     tags task_attachments task_categories task_comments

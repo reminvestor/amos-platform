@@ -4,6 +4,7 @@ module EntityScoped
   included do
     before_action :set_current_entity
     before_action :set_rls_context
+    after_action :reset_rls_context
     helper_method :current_entity if respond_to?(:helper_method)
     helper_method :current_entity_user if respond_to?(:helper_method)
   end
@@ -72,18 +73,22 @@ module EntityScoped
   end
 
   # Set RLS context for PostgreSQL Row-Level Security (Story 0.7)
+  # Uses session-scoped SET (not SET LOCAL) so context persists across queries
   def set_rls_context
-    # Store entity ID in thread-local variable for middleware to read
-    Thread.current[:current_entity_id] = current_entity&.id
-
-    # Also set PostgreSQL session variable directly for immediate effect
     if current_entity
       ActiveRecord::Base.connection.execute(
-        "SET LOCAL app.current_entity_id = #{current_entity.id.to_i}"
+        "SET app.current_entity_id = '#{current_entity.id.to_i}'"
       )
     end
   rescue => e
-    # Log but don't fail if RLS context setting fails
-    Rails.logger.warn "Failed to set RLS context: #{e.message}"
+    Rails.logger.error "SECURITY: Failed to set RLS context: #{e.message}"
+    raise e if Rails.env.production?
+  end
+
+  # Clean up RLS context after each request to prevent leaking between requests
+  def reset_rls_context
+    ActiveRecord::Base.connection.execute("RESET app.current_entity_id")
+  rescue => e
+    Rails.logger.error "SECURITY: Failed to reset RLS context: #{e.message}"
   end
 end

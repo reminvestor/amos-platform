@@ -3,8 +3,16 @@
 module Api
   module V1
     class BaseController < Api::BaseController
+      # Skip EntityScoped callbacks inherited from ApplicationController
+      # API auth flow is different: authenticate_api_user! must run first
+      skip_before_action :set_current_entity, raise: false
+      skip_before_action :set_rls_context, raise: false
+      skip_after_action :reset_rls_context, raise: false
+
       before_action :authenticate_api_user!
       before_action :require_entity!
+      before_action :set_api_rls_context
+      after_action :reset_api_rls_context
 
       private
 
@@ -48,6 +56,26 @@ module Api
 
       def current_entity
         @current_user&.entity
+      end
+
+      # Set RLS context for PostgreSQL Row-Level Security
+      # Runs after authenticate_api_user! so current_entity is available
+      def set_api_rls_context
+        return unless current_entity
+
+        ActiveRecord::Base.connection.execute(
+          "SET app.current_entity_id = '#{current_entity.id.to_i}'"
+        )
+      rescue => e
+        Rails.logger.error "SECURITY: Failed to set RLS context: #{e.message}"
+        raise e if Rails.env.production?
+      end
+
+      # Clean up RLS context after each request
+      def reset_api_rls_context
+        ActiveRecord::Base.connection.execute("RESET app.current_entity_id")
+      rescue => e
+        Rails.logger.error "SECURITY: Failed to reset RLS context: #{e.message}"
       end
 
       # Shared pagination helper
