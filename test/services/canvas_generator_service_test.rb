@@ -31,7 +31,7 @@ class CanvasGeneratorServiceTest < ActiveSupport::TestCase
   end
 
   test 'SUPPORTED_VIEW_TYPES includes all expected types' do
-    expected = %w[list kanban form detail dashboard calendar]
+    expected = %w[list kanban form detail dashboard calendar freeform]
     expected.each do |type|
       assert_includes CanvasGeneratorService::SUPPORTED_VIEW_TYPES, type
     end
@@ -253,6 +253,96 @@ class CanvasGeneratorServiceTest < ActiveSupport::TestCase
     result = @service.send(:generate_static, @app_module, 'calendar', @fields, [])
     assert_includes result[:js], 'renderCalendar'
     assert_includes result[:js], 'daysInMonth'
+  end
+
+  # ══════════════════════════════════════════════════════════════
+  # STATIC FALLBACK — FREEFORM VIEW
+  # ══════════════════════════════════════════════════════════════
+
+  test 'static freeform canvas generates html js and css' do
+    result = @service.send(:generate_static, @app_module, 'freeform', @fields, [])
+    assert result[:html].present?, 'HTML should be generated'
+    assert result[:js].present?, 'JS should be generated'
+    assert result[:css].present?, 'CSS should be generated'
+  end
+
+  test 'static freeform canvas html contains module slug' do
+    result = @service.send(:generate_static, @app_module, 'freeform', @fields, [])
+    assert_includes result[:html], @app_module.slug
+  end
+
+  test 'static freeform canvas html contains data-controller stimulus attribute' do
+    result = @service.send(:generate_static, @app_module, 'freeform', @fields, [])
+    assert_includes result[:html], 'data-controller="module-canvas"'
+  end
+
+  test 'static freeform canvas html contains stat cards' do
+    result = @service.send(:generate_static, @app_module, 'freeform', @fields, [])
+    assert_includes result[:html], 'stat-total'
+    assert_includes result[:html], 'stat-week'
+  end
+
+  test 'static freeform canvas html contains add new button' do
+    result = @service.send(:generate_static, @app_module, 'freeform', @fields, [])
+    assert_includes result[:html], 'Add New'
+  end
+
+  test 'static freeform canvas js contains api base path' do
+    result = @service.send(:generate_static, @app_module, 'freeform', @fields, [])
+    assert_includes result[:js], '/api/modules/'
+    assert_includes result[:js], @app_module.slug
+  end
+
+  test 'static freeform canvas js contains fetch and loadData' do
+    result = @service.send(:generate_static, @app_module, 'freeform', @fields, [])
+    assert_includes result[:js], 'fetch('
+    assert_includes result[:js], 'loadData'
+  end
+
+  test 'static freeform canvas uses card-based layout for records' do
+    result = @service.send(:generate_static, @app_module, 'freeform', @fields, [])
+    assert_includes result[:html], 'record-cards'
+    assert_includes result[:js], 'record-card'
+  end
+
+  test 'static freeform canvas includes search functionality' do
+    result = @service.send(:generate_static, @app_module, 'freeform', @fields, [])
+    assert_includes result[:js], 'search'
+    assert_includes result[:html], 'search-input'
+  end
+
+  test 'static freeform canvas passes quality validation' do
+    result = @service.send(:generate_static, @app_module, 'freeform', @fields, [])
+    issues = @service.send(:analyze_canvas_quality, result[:html], result[:js])
+    assert_empty issues, "Static freeform template should have 0 quality issues but found: #{issues.inspect}"
+  end
+
+  # ══════════════════════════════════════════════════════════════
+  # FREEFORM — DESCRIPTION PARAMETER
+  # ══════════════════════════════════════════════════════════════
+
+  test 'generate accepts optional description parameter' do
+    result = @service.generate(
+      app_module: @app_module,
+      view_type: 'freeform',
+      fields: @fields,
+      description: 'modern card-based dashboard with charts'
+    )
+    assert result[:html].present?
+  end
+
+  test 'freeform view_type_instructions includes user description when provided' do
+    @service.instance_variable_set(:@description, 'sleek timeline layout')
+    instructions = @service.send(:view_type_instructions, 'freeform', @fields)
+    assert_includes instructions, 'sleek timeline layout'
+    assert_includes instructions, "User's design intent"
+  end
+
+  test 'freeform view_type_instructions works without description' do
+    @service.instance_variable_set(:@description, nil)
+    instructions = @service.send(:view_type_instructions, 'freeform', @fields)
+    assert_includes instructions, 'FULL creative freedom'
+    refute_includes instructions, "User's design intent"
   end
 
   # ══════════════════════════════════════════════════════════════

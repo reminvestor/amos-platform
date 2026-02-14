@@ -23,7 +23,7 @@ class CanvasGeneratorService
   MAX_TOKENS = 8192
 
   # View types that we can generate
-  SUPPORTED_VIEW_TYPES = %w[list kanban form detail dashboard calendar].freeze
+  SUPPORTED_VIEW_TYPES = %w[list kanban form detail dashboard calendar freeform].freeze
 
   # Fallback: use static templates when AI generation fails or is unavailable
   STATIC_FALLBACK = true
@@ -40,12 +40,14 @@ class CanvasGeneratorService
   # Generate canvas HTML/JS/CSS for a given module and view type
   #
   # @param app_module [AppModule] The module to generate for
-  # @param view_type [String] One of: list, kanban, form, detail, dashboard, calendar
+  # @param view_type [String] One of: list, kanban, form, detail, dashboard, calendar, freeform
   # @param fields [Array<Hash>] Field definitions from the plan spec
   # @param related_models [Array<Hash>] Related models for parent/child display
+  # @param description [String] Optional style/design hint from the user (used by freeform view type)
   # @return [Hash] { html: String, js: String, css: String }
-  def generate(app_module:, view_type:, fields:, related_models: [])
+  def generate(app_module:, view_type:, fields:, related_models: [], description: nil)
     view_type = view_type.to_s.downcase
+    @description = description
     unless SUPPORTED_VIEW_TYPES.include?(view_type)
       Rails.logger.warn "[CanvasGenerator] Unsupported view type: #{view_type}, falling back to 'list'"
       view_type = 'list'
@@ -252,6 +254,22 @@ class CanvasGeneratorService
         - Navigation: previous/next month
         - Today highlighted
         - Use the first date-type field as the calendar date
+      INST
+    when 'freeform'
+      desc = @description.present? ? "\n\nUser's design intent: #{@description}" : ""
+      <<~INST
+        Create a custom, visually rich canvas for this module. You have FULL creative freedom
+        over the layout, styling, and interaction design. Choose whatever UI pattern best fits
+        the data — cards, grids, charts, timelines, split panels, or any combination.
+
+        REQUIREMENTS:
+        - Must include working CRUD operations (create, read, update, delete) via the API
+        - All buttons and interactive elements must be wired to real actions
+        - Use modals or inline forms for creating/editing records
+        - Include search or filtering if appropriate for the data
+        - Make it beautiful, modern, and highly functional
+        - Include empty states, loading indicators, and error handling
+        - Feel free to include Chart.js charts (via CDN script tag) if the data benefits from visualization#{desc}
       INST
     else
       "Create an appropriate view for this data."
@@ -533,6 +551,8 @@ class CanvasGeneratorService
       static_dashboard_canvas(app_module, fields)
     when 'calendar'
       static_calendar_canvas(app_module, fields)
+    when 'freeform'
+      static_freeform_canvas(app_module, fields)
     else
       static_list_canvas(app_module, fields)
     end
@@ -1090,6 +1110,125 @@ class CanvasGeneratorService
       css: <<~CSS
         #calendar-grid td { height: 90px; font-size: 0.8rem; }
         #calendar-grid .badge { font-size: 0.7rem; font-weight: 500; }
+      CSS
+    }
+  end
+
+  def static_freeform_canvas(app_module, fields)
+    model_name = app_module.slug.classify
+    display_fields = fields.first(6)
+    title_field = fields.find { |f| %w[title name subject].include?((f['name'] || f[:name]).to_s) }
+    title_name = title_field ? (title_field['name'] || title_field[:name]) : 'name'
+    status_field = fields.find { |f| (f['name'] || f[:name]) == 'status' }
+    has_status = status_field.present?
+
+    field_cards_html = display_fields.map do |f|
+      name = (f['name'] || f[:name]).to_s
+      "<div class=\"col-md-4 col-sm-6 mb-3\"><div class=\"card border-0 shadow-sm h-100\"><div class=\"card-body p-3\"><div class=\"text-muted small text-uppercase mb-1\">#{name.titleize}</div><div class=\"fw-semibold\" id=\"detail-#{name}\">--</div></div></div></div>"
+    end.join("\n              ")
+
+    {
+      html: <<~HTML,
+        <div class="module-canvas p-4" data-controller="module-canvas" data-module-canvas-module-value="#{app_module.slug}" data-module-canvas-model-value="#{model_name}">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h4 class="mb-1">#{app_module.name}</h4>
+              <small class="text-muted" id="record-count">Loading...</small>
+            </div>
+            <div class="d-flex gap-2">
+              <div class="input-group" style="width: 220px;">
+                <input type="text" class="form-control form-control-sm" placeholder="Search..." id="search-input">
+                <button class="btn btn-outline-secondary btn-sm" id="search-btn"><i data-lucide="search" style="width:14px;height:14px"></i></button>
+              </div>
+              <button class="btn btn-primary btn-sm" data-action="click->module-canvas#performAction" data-action-name="add">
+                <i data-lucide="plus" class="me-1" style="width:14px;height:14px"></i>Add New
+              </button>
+            </div>
+          </div>
+
+          <div class="row mb-4" id="stat-cards">
+            <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body text-center py-3"><div class="text-muted small text-uppercase">Total</div><h3 class="mb-0 fw-bold" id="stat-total">--</h3></div></div></div>
+            <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body text-center py-3"><div class="text-muted small text-uppercase">This Week</div><h3 class="mb-0 fw-bold" id="stat-week">--</h3></div></div></div>
+            <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body text-center py-3"><div class="text-muted small text-uppercase">This Month</div><h3 class="mb-0 fw-bold" id="stat-month">--</h3></div></div></div>
+            <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body text-center py-3"><div class="text-muted small text-uppercase">Today</div><h3 class="mb-0 fw-bold" id="stat-today">--</h3></div></div></div>
+          </div>
+
+          <div class="row" id="record-cards"></div>
+        </div>
+      HTML
+      js: <<~JS,
+        (function() {
+          const moduleSlug = '#{app_module.slug}';
+          const modelName = '#{model_name}';
+          const apiBase = `/api/modules/${moduleSlug}/models/${modelName}`;
+          const titleField = '#{title_name}';
+          const displayFields = #{display_fields.map { |f| f['name'] || f[:name] }.to_json};
+
+          function getHeaders() {
+            return { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content };
+          }
+
+          async function loadStats() {
+            try {
+              const resp = await fetch(`/api/modules/${moduleSlug}/stats`, { headers: getHeaders() });
+              const stats = await resp.json();
+              document.getElementById('stat-total').textContent = stats.total ?? '--';
+              document.getElementById('stat-week').textContent = stats.this_week ?? '--';
+              document.getElementById('stat-month').textContent = stats.this_month ?? '--';
+              document.getElementById('stat-today').textContent = stats.today ?? '--';
+            } catch(e) { console.error('Stats load failed:', e); }
+          }
+
+          async function loadData(search) {
+            const container = document.getElementById('record-cards');
+            const countEl = document.getElementById('record-count');
+            try {
+              let url = apiBase + '?limit=50';
+              if (search) url += '&search=' + encodeURIComponent(search);
+              const resp = await fetch(url, { headers: getHeaders() });
+              const data = await resp.json();
+              const records = data.records || data.data || [];
+              countEl.textContent = records.length + ' record(s)';
+              if (!records.length) {
+                container.innerHTML = '<div class="col-12 text-center py-5 text-muted"><i data-lucide="inbox" style="width:32px;height:32px" class="mb-2 d-block mx-auto"></i><p>No records yet. Click "Add New" to get started.</p></div>';
+                if (window.lucide) lucide.createIcons();
+                return;
+              }
+              container.innerHTML = records.map(r => {
+                const title = r[titleField] || r.name || r.title || 'Record #' + r.id;
+                const status = r.status ? '<span class="badge bg-' + statusColor(r.status) + '">' + r.status + '</span>' : '';
+                const fields = displayFields.filter(f => f !== titleField && f !== 'status').slice(0, 3).map(f => {
+                  const val = r[f] ?? '';
+                  return '<div class="text-muted small text-truncate"><span class="fw-semibold">' + f.replace(/_/g, ' ') + ':</span> ' + String(val).substring(0, 40) + '</div>';
+                }).join('');
+                return '<div class="col-md-4 col-sm-6 mb-3"><div class="card border-0 shadow-sm h-100 record-card" data-id="' + r.id + '" style="cursor:pointer">' +
+                  '<div class="card-body p-3"><div class="d-flex justify-content-between align-items-start mb-2"><h6 class="mb-0 fw-semibold">' + title + '</h6>' + status + '</div>' + fields +
+                  '<div class="mt-2 pt-2 border-top d-flex gap-1"><button class="btn btn-sm btn-outline-primary flex-fill edit-btn" data-action="click->module-canvas#performAction" data-action-name="edit" data-record-id="' + r.id + '"><i data-lucide="pencil" style="width:12px;height:12px"></i> Edit</button>' +
+                  '<button class="btn btn-sm btn-outline-danger delete-btn" data-action="click->module-canvas#performAction" data-action-name="delete" data-record-id="' + r.id + '"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button></div></div></div></div>';
+              }).join('');
+              if (window.lucide) lucide.createIcons();
+            } catch(e) {
+              container.innerHTML = '<div class="col-12 text-center py-4 text-danger">Failed to load data</div>';
+            }
+          }
+
+          function statusColor(s) {
+            const map = { active:'success', completed:'success', done:'success', published:'success', open:'primary', in_progress:'warning', pending:'warning', todo:'secondary', draft:'secondary', closed:'dark', cancelled:'danger', blocked:'danger', urgent:'danger', high:'warning', medium:'info', low:'secondary' };
+            return map[String(s).toLowerCase()] || 'secondary';
+          }
+
+          document.getElementById('search-btn')?.addEventListener('click', () => loadData(document.getElementById('search-input')?.value));
+          document.getElementById('search-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadData(e.target.value); });
+
+          loadStats();
+          loadData();
+        })();
+      JS
+      css: <<~CSS
+        .module-canvas .record-card { transition: box-shadow 0.15s, transform 0.15s; }
+        .module-canvas .record-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+        .module-canvas .badge { font-weight: 500; font-size: 0.7rem; }
+        .module-canvas h3 { font-size: 1.75rem; }
       CSS
     }
   end
