@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_13_175334) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -6129,6 +6129,25 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
     t.index ["user_id"], name: "index_user_communication_preferences_on_user_id", unique: true
   end
 
+  create_table "user_events", force: :cascade do |t|
+    t.bigint "entity_id"
+    t.bigint "user_id"
+    t.string "event_name", null: false
+    t.string "event_category", null: false
+    t.jsonb "properties", default: {}
+    t.string "session_id"
+    t.string "referrer"
+    t.string "user_agent"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "event_name", "created_at"], name: "index_user_events_on_entity_id_and_event_name_and_created_at"
+    t.index ["entity_id"], name: "index_user_events_on_entity_id"
+    t.index ["event_category"], name: "index_user_events_on_event_category"
+    t.index ["event_name", "created_at"], name: "index_user_events_on_event_name_and_created_at"
+    t.index ["user_id", "event_name", "created_at"], name: "index_user_events_on_user_id_and_event_name_and_created_at"
+    t.index ["user_id"], name: "index_user_events_on_user_id"
+  end
+
   create_table "user_favorites", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "entity_id", null: false
@@ -6389,6 +6408,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
     t.datetime "api_key_last_used_at"
     t.text "refresh_token"
     t.datetime "refresh_token_expires_at"
+    t.string "onboarding_step"
+    t.datetime "onboarding_started_at"
+    t.datetime "onboarding_completed_at"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["api_key_expires_at"], name: "index_users_on_api_key_expires_at"
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -6777,9 +6799,17 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
     t.boolean "is_system", default: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "entity_id"
+    t.jsonb "tags", default: []
+    t.string "industry"
+    t.boolean "shared", default: false
     t.index ["category"], name: "index_workflow_templates_on_category"
+    t.index ["entity_id"], name: "index_workflow_templates_on_entity_id"
+    t.index ["industry"], name: "index_workflow_templates_on_industry"
     t.index ["is_active"], name: "index_workflow_templates_on_is_active"
+    t.index ["shared"], name: "index_workflow_templates_on_shared"
     t.index ["slug"], name: "index_workflow_templates_on_slug", unique: true
+    t.index ["tags"], name: "index_workflow_templates_on_tags", using: :gin
   end
 
   create_table "workflow_triggers", force: :cascade do |t|
@@ -7380,6 +7410,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
   add_foreign_key "tts_usage_logs", "users"
   add_foreign_key "user_billing_accounts", "users"
   add_foreign_key "user_communication_preferences", "users"
+  add_foreign_key "user_events", "entities"
+  add_foreign_key "user_events", "users"
   add_foreign_key "user_favorites", "entities"
   add_foreign_key "user_favorites", "users"
   add_foreign_key "user_feedbacks", "entities"
@@ -7436,6 +7468,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
   add_foreign_key "workflow_executions", "task_sessions"
   add_foreign_key "workflow_executions", "users"
   add_foreign_key "workflow_step_executions", "workflow_executions"
+  add_foreign_key "workflow_templates", "entities"
   add_foreign_key "workflow_triggers", "automation_codes"
   add_foreign_key "workflow_triggers", "entities"
   add_foreign_key "workflow_variables", "workflow_executions"
