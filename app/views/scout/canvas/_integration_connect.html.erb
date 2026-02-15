@@ -55,30 +55,39 @@
           <%# Database-configured dynamic auth fields %>
           <% canvas_data[:integration][:auth_configs].sort_by { |ac| ac[:position] }.each do |auth_config| %>
             <%
-              # Extract placeholder names from auth_value like {api_key}, {token}, etc.
+              # Extract ALL placeholder names from auth_value like {api_key}, {api_secret}, etc.
               placeholders = auth_config[:auth_value].to_s.scan(/\{(\w+)\}/).flatten
-              # Use first placeholder as field name, or fall back to auth_key
-              field_name = placeholders.first || auth_config[:auth_key]
+              # If no placeholders, use auth_key as the single field
+              placeholders = [auth_config[:auth_key]] if placeholders.empty?
             %>
-            <div style="margin-bottom: 1.5rem;">
-              <label for="<%= field_name %>" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">
-                <%= field_name.gsub('_', ' ').titleize %>
-              </label>
-              <input type="password"
-                     id="<%= field_name %>"
-                     name="<%= field_name %>"
-                     placeholder="Enter your <%= field_name.gsub('_', ' ').downcase %>"
-                     required
-                     class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
-              <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0.25rem 0 0 0;">
-                <% if auth_config[:auth_value].present? && auth_config[:auth_value] != "{#{field_name}}" %>
-                  Will be sent as: <code style="background: var(--accent-glow); color: var(--accent-purple-end); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;"><%= auth_config[:auth_key] %>: <%= auth_config[:auth_value].gsub(/\{(\w+)\}/, '[your value]') %></code>
-                  via <%= auth_config[:auth_placement].humanize %>
-                <% else %>
-                  Sent as <%= auth_config[:auth_key] %> via <%= auth_config[:auth_placement].humanize %>
+            <% placeholders.each do |field_name| %>
+              <div style="margin-bottom: 1.5rem;">
+                <label for="<%= field_name %>" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">
+                  <%= field_name.gsub('_', ' ').titleize %>
+                </label>
+                <input type="password"
+                       id="<%= field_name %>"
+                       name="<%= field_name %>"
+                       placeholder="Enter your <%= field_name.gsub('_', ' ').downcase %>"
+                       required
+                       class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
+                <% if placeholders.length > 1 && field_name == placeholders.last %>
+                  <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0.25rem 0 0 0;">
+                    Will be sent as: <code style="background: var(--accent-glow); color: var(--accent-purple-end); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;"><%= auth_config[:auth_key] %>: <%= auth_config[:auth_value].gsub(/\{(\w+)\}/, '[your value]') %></code>
+                    via <%= auth_config[:auth_placement].humanize %>
+                  </p>
+                <% elsif placeholders.length == 1 %>
+                  <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0.25rem 0 0 0;">
+                    <% if auth_config[:auth_value].present? && auth_config[:auth_value] != "{#{field_name}}" %>
+                      Will be sent as: <code style="background: var(--accent-glow); color: var(--accent-purple-end); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;"><%= auth_config[:auth_key] %>: <%= auth_config[:auth_value].gsub(/\{(\w+)\}/, '[your value]') %></code>
+                      via <%= auth_config[:auth_placement].humanize %>
+                    <% else %>
+                      Sent as <%= auth_config[:auth_key] %> via <%= auth_config[:auth_placement].humanize %>
+                    <% end %>
+                  </p>
                 <% end %>
-              </p>
-            </div>
+              </div>
+            <% end %>
           <% end %>
         <% else %>
           <%# No auth config found - needs admin setup %>
@@ -205,42 +214,28 @@ function submitConnection(event) {
 }
 
 function showNotification(type, message) {
-  // Create a simple notification
-  const notification = document.createElement('div');
-  notification.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-    min-width: 300px;
-    background: ${type === 'success' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(248, 113, 113, 0.2)'};
-    border: 1px solid ${type === 'success' ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'};
-    border-radius: 0.375rem;
-    color: ${type === 'success' ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'};
-    padding: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  `;
-
-  notification.innerHTML = `
-    <i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" style="width: 1rem; height: 1rem;"></i>
-    <span>${message}</span>
-  `;
-
-  document.body.appendChild(notification);
-
-  // Initialize Lucide icon
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
+  // Use global toast system if available, otherwise fallback
+  if (type === 'success' && window.showSuccess) {
+    window.showSuccess(message);
+  } else if (type === 'error' && window.showError) {
+    window.showError(message);
+  } else if (window.showToast) {
+    window.showToast(message, { type: type === 'success' ? 'success' : 'error' });
+  } else {
+    // Fallback inline notification
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;
+      background: ${type === 'success' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(248, 113, 113, 0.2)'};
+      border: 1px solid ${type === 'success' ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'};
+      border-radius: 0.375rem; color: ${type === 'success' ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'};
+      padding: 1rem; display: flex; align-items: center; gap: 0.75rem;
+    `;
+    notification.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" style="width: 1rem; height: 1rem;"></i><span>${message}</span>`;
+    document.body.appendChild(notification);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    setTimeout(() => { if (notification.parentNode) notification.parentNode.removeChild(notification); }, 5000);
   }
-
-  // Remove after 5 seconds
-  setTimeout(() => {
-    if (notification.parentNode) {
-      notification.parentNode.removeChild(notification);
-    }
-  }, 5000);
 }
 
 // Lucide icon initialization

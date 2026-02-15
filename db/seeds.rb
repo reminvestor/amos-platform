@@ -68,30 +68,42 @@ VoiceAssistantSetting.seed_defaults!
 puts "Voice Assistant settings seeded!"
 puts ""
 
-# Load additional seeds
-load Rails.root.join('db', 'seeds', 'tool_definitions.rb')
-load Rails.root.join('db', 'seeds', 'agent_plugins.rb')
-load Rails.root.join('db', 'seeds', 'ai_rulesets.rb')
+# Helper: load a seed file with error isolation so one failure doesn't block the rest
+def safe_load_seed(file, critical: false)
+  path = Rails.root.join('db', 'seeds', file)
+  load path
+rescue => e
+  puts "⚠️  Seed '#{file}' failed: #{e.message}"
+  puts "   #{e.backtrace&.first}"
+  raise if critical  # Re-raise if this seed is required for subsequent seeds
+end
+
+# Load additional seeds — each wrapped so failures don't cascade
+safe_load_seed 'tool_definitions.rb'
+safe_load_seed 'agent_plugins.rb'
+safe_load_seed 'ai_rulesets.rb'
 # Temporarily disabled - has invalid attributes for current schema
-# load Rails.root.join('db', 'seeds', 'integration_repair_agent.rb')
-load Rails.root.join('db', 'seeds', 'analytics_agent.rb')
-load Rails.root.join('db', 'seeds', 'document_export_agent.rb')
-load Rails.root.join('db', 'seeds', 'document_import_agent.rb')
-load Rails.root.join('db', 'seeds', 'space_definitions.rb')
-load Rails.root.join('db', 'seeds', 'platform_factory.rb')
-load Rails.root.join('db', 'seeds', 'application_planner.rb')
-load Rails.root.join('db', 'seeds', 'frontend_design_expert.rb')
-load Rails.root.join('db', 'seeds', 'integrations.rb')
-load Rails.root.join('db', 'seeds', 'integration_actions.rb')
-load Rails.root.join('db', 'seeds', 'godaddy_integration.rb')
+# safe_load_seed 'integration_repair_agent.rb'
+safe_load_seed 'analytics_agent.rb'
+safe_load_seed 'document_export_agent.rb'
+safe_load_seed 'document_import_agent.rb'
+safe_load_seed 'space_definitions.rb'
+safe_load_seed 'platform_factory.rb'
+safe_load_seed 'application_planner.rb'
+safe_load_seed 'frontend_design_expert.rb'
+
+# Integration seeds — integrations.rb must succeed for the cleanup to work
+safe_load_seed 'integrations.rb', critical: true
+safe_load_seed 'integration_actions.rb'
+safe_load_seed 'godaddy_integration.rb'
 
 # Clean up integration operations: remove duplicates, add proper schemas
 # This must run AFTER integrations.rb and integration_actions.rb
-load Rails.root.join('db', 'seeds', 'integration_operations_cleanup.rb')
+safe_load_seed 'integration_operations_cleanup.rb'
 
 if Rails.env.development?
-  load Rails.root.join('db', 'seeds', 'demo_users.rb')
+  safe_load_seed 'demo_users.rb'
 end
 
 # Load policy rules (after entities exist)
-load Rails.root.join('db', 'seeds', 'policy_rules.rb')
+safe_load_seed 'policy_rules.rb'
