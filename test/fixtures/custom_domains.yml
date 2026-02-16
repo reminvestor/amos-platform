@@ -17,3 +17,38 @@ help_domain:
   is_primary: true
   redirect_www: true
   metadata: {}
+
+verified_email_domain:
+  entity: one
+  user: one
+  domain_name: "nuvolanetworks.com"
+  cname_target: "abc123.custom.amoslabs.com"
+  verification_token: "verify-nuvola-456"
+  web_status: "verified"
+  web_verified_at: <%= 1.week.ago %>
+  ssl_status: "active"
+  ssl_provisioned_at: <%= 1.week.ago %>
+  email_status: "verified"
+  email_verified_at: <%= 1.day.ago %>
+  dns_records: {}
+  auto_dns_configured: false
+  is_primary: true
+  redirect_www: true
+  metadata: {}
+
+unverified_email_domain:
+  entity: default
+  user: one
+  domain_name: "pending-domain.com"
+  cname_target: "def456.custom.amoslabs.com"
+  verification_token: "verify-pending-789"
+  web_status: "verified"
+  web_verified_at: <%= 1.week.ago %>
+  ssl_status: "active"
+  ssl_provisioned_at: <%= 1.week.ago %>
+  email_status: "pending"
+  dns_records: {}
+  auto_dns_configured: false
+  is_primary: true
+  redirect_www: true
+  metadata: {}

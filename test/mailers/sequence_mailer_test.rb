@@ -147,4 +147,45 @@ class SequenceMailerTest < ActionMailer::TestCase
     from = email[:from].to_s
     assert_includes from, @entity.name
   end
+
+  test "sequence_email sends from verified custom domain when available" do
+    # Create a verified email domain for the entity
+    CustomDomain.create!(
+      entity: @entity,
+      user: users(:one),
+      domain_name: "sequence-test-domain.com",
+      cname_target: "seq123.custom.amoslabs.com",
+      web_status: "verified",
+      ssl_status: "active",
+      email_status: "verified",
+      email_verified_at: 1.day.ago,
+      is_primary: true
+    )
+
+    email = SequenceMailer.sequence_email(@delivery)
+
+    from = email[:from].to_s
+    assert_includes from, "sequence-test-domain.com",
+      "Should send from entity's verified custom domain"
+  end
+
+  test "sequence_email sets reply_to from entity sending config" do
+    CustomDomain.create!(
+      entity: @entity,
+      user: users(:one),
+      domain_name: "reply-test-domain.com",
+      cname_target: "rep123.custom.amoslabs.com",
+      web_status: "verified",
+      ssl_status: "active",
+      email_status: "verified",
+      email_verified_at: 1.day.ago,
+      is_primary: true
+    )
+
+    email = SequenceMailer.sequence_email(@delivery)
+
+    reply_to = email[:reply_to].to_s
+    assert_includes reply_to, "reply-test-domain.com",
+      "Reply-to should use entity's verified domain"
+  end
 end
