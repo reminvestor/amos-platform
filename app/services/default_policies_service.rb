@@ -197,8 +197,6 @@ class DefaultPoliciesService
       Entity.find_each do |entity|
         create_for(entity) if entity.policy_rules.empty?
       end
-      
-      create_global_fallbacks
     end
   end
 end

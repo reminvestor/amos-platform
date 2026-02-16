@@ -97,7 +97,9 @@ module V3
 
         begin
           # Apply shared security: confirmation gate (pre) + CAMEL sanitization (post)
-          result = with_security(name, args) do
+          # Merge entity into args so PolicyEngine can check DB-driven policies
+          security_args = args.merge(entity: entity)
+          result = with_security(name, security_args) do
             tool = tool_class.new(
               user: user,
               entity: entity,

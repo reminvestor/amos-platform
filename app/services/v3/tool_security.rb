@@ -69,14 +69,55 @@ module V3
     # ═══════════════════════════════════════════════════════════════
 
     def requires_confirmation?(tool_name, args)
+      # 1. Check hardcoded destructive actions (always enforced)
       actions = DESTRUCTIVE_ACTIONS[tool_name]
-      return false unless actions
-
-      if actions.any?
+      if actions&.any?
         action = (args["action"] || args[:action]).to_s.downcase
-        actions.any? { |a| action.include?(a) }
+        return true if actions.any? { |a| action.include?(a) }
+      end
+
+      # 2. Check DB-driven PolicyRule policies (entity-configurable)
+      entity = resolve_security_entity(args)
+      if entity
+        matching_policies = PolicyRule.active
+                                       .where(entity_id: [entity.id, nil])
+                                       .where(resource_type: 'Tool')
+                                       .where(requires_confirmation: true)
+
+        # Check for tool-specific policies
+        tool_policy = matching_policies.find_by(resource_id: tool_name)
+        return true if tool_policy
+
+        # Check for action-level policies (write/delete)
+        action_type = infer_action_type(tool_name, args)
+        action_policy = matching_policies.where(resource_id: nil)
+                                          .find_by(action: action_type)
+        return true if action_policy
+      end
+
+      false
+    end
+
+    def resolve_security_entity(args)
+      args[:entity] || args["entity"]
+    rescue
+      nil
+    end
+
+    def infer_action_type(tool_name, args)
+      case tool_name
+      when /create|insert|add/i then 'write'
+      when /update|edit|modify/i then 'write'
+      when /delete|remove|destroy/i then 'delete'
+      when /send|email|campaign/i then 'execute'
+      when /export/i then 'execute'
       else
-        false
+        action = (args["action"] || args[:action]).to_s.downcase
+        case action
+        when /delete|remove|destroy/ then 'delete'
+        when /create|update|edit|send|write/ then 'write'
+        else 'execute'
+        end
       end
     end
 

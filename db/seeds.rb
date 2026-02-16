@@ -101,6 +101,10 @@ safe_load_seed 'integration_operations_cleanup.rb'
 # These are the baseline that AMOS evolves autonomously over time
 safe_load_seed 'system_skills.rb'
 
+# AI usage policies — write protection, delete confirmation, API budgets, etc.
+# Backfills any entities missing defaults + creates global fallback policies
+safe_load_seed 'policy_rules.rb'
+
 if Rails.env.development?
   safe_load_seed 'demo_users.rb'
 end
