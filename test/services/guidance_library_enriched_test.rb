@@ -36,11 +36,11 @@ class GuidanceLibraryEnrichedTest < ActiveSupport::TestCase
     guidance = GuidanceLibrary.for_task(:custom_domain_management)
     assert_not_nil guidance
 
-    assert_match /manage_custom_domain.*setup_web/im, guidance
-    assert_match /manage_custom_domain.*setup_email/im, guidance
-    assert_match /manage_custom_domain.*check_status/im, guidance
-    assert_match /manage_custom_domain.*list/im, guidance
-    assert_match /execute_integration_action.*godaddy/im, guidance
+    assert_match /platform_create.*custom_domain/im, guidance
+    assert_match /platform_execute.*verify_domain/im, guidance
+    assert_match /platform_execute.*verify_email_domain/im, guidance
+    assert_match /platform_execute.*set_primary_domain/im, guidance
+    assert_match /platform_query.*custom_domains/im, guidance
   end
 
   test "custom_domain_management guidance includes DNS details" do
