@@ -157,17 +157,20 @@ class ManageCustomDomainToolTest < ActiveSupport::TestCase
   # ============================================
 
   test "list returns all entity domains" do
+    existing_count = CustomDomain.where(entity: @entity).count
     CustomDomain.create!(entity: @entity, user: @user, domain_name: "list1.com")
     CustomDomain.create!(entity: @entity, user: @user, domain_name: "list2.com")
 
     result = @tool.execute({ action: "list" })
 
     assert result[:success]
-    assert_equal 2, result[:count]
-    assert_equal 2, result[:domains].length
+    assert_equal existing_count + 2, result[:count]
+    assert_equal existing_count + 2, result[:domains].length
   end
 
   test "list returns empty message when no domains" do
+    CustomDomain.where(entity: @entity).delete_all
+
     result = @tool.execute({ action: "list" })
 
     assert result[:success]
