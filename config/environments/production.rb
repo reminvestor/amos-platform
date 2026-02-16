@@ -180,13 +180,36 @@ Rails.application.configure do
   # Allow ALB health check IPs (AWS internal IPs)
   config.hosts << /\A\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\z/
 
-  # Skip host authorization for health checks
+  # Helper to check if a host is a verified custom domain (cached to avoid DB hits)
+  verified_custom_domain = ->(host) {
+    return false if host.blank?
+    host = host.to_s.downcase
+    # Skip platform domains — these are handled by config.hosts above
+    return false if host.include?("amoslabs.com") || host.include?("amoslabs.co")
+    return false if host.include?("localhost") || host.include?("lvh.me")
+    return false if host =~ /\A\d+\.\d+\.\d+\.\d+\z/
+
+    cache_key = "host_auth:custom_domain:#{host}"
+    begin
+      Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
+        CustomDomain.where(web_status: "verified")
+                    .where("domain_name = :host OR CONCAT(subdomain, '.', domain_name) = :host", host: host)
+                    .exists?
+      end
+    rescue => e
+      Rails.logger.error "[HostAuth] Custom domain lookup failed for #{host}: #{e.message}"
+      false
+    end
+  }
+
+  # Skip host authorization for health checks and verified custom domains
   config.host_authorization = {
     exclude: ->(request) {
       request.path == "/up" ||
       request.path == "/health" ||
       request.path == "/health_check" ||
-      request.user_agent =~ /ELB-HealthChecker/
+      request.user_agent =~ /ELB-HealthChecker/ ||
+      verified_custom_domain.call(request.host)
     }
   }
 end
