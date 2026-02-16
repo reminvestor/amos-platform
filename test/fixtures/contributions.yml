@@ -1,0 +1,41 @@
+# Contribution fixtures for testing
+
+approved_contribution:
+  user: two
+  entity: one
+  title: "Fixed login bug bounty"
+  description: "Completed the bounty to fix login issue on mobile"
+  contribution_type: bug_fix
+  status: 2  # approved enum
+  stake_value: 100
+  reviewed_by: one
+  reviewed_at: <%= 1.day.ago %>
+  external_reference: "bounty:1|pr:https://github.com/org/repo/pull/42"
+
+merged_contribution:
+  user: one
+  title: "Added OAuth feature"
+  description: "Implemented full OAuth2 provider"
+  contribution_type: feature
+  status: 4  # merged enum
+  stake_value: 500
+  reviewed_by: one
+  reviewed_at: <%= 2.days.ago %>
+
+pending_contribution:
+  user: two
+  title: "Documentation update"
+  description: "Updated getting started guide"
+  contribution_type: documentation
+  status: 0  # submitted enum
+  stake_value: 75
+
+recent_approved:
+  user: one
+  title: "Design improvement"
+  description: "Redesigned the dashboard layout"
+  contribution_type: design
+  status: 2  # approved enum
+  stake_value: 200
+  reviewed_by: one
+  reviewed_at: <%= 3.hours.ago %>

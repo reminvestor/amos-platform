@@ -137,6 +137,38 @@ class UserTest < ActiveSupport::TestCase
   
   private
   
+  # ═══════════════════════════════════════════════════════════════════════════
+  # display_name Tests
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  test "display_name returns first and last name when both present" do
+    user = users(:one)
+    assert_equal "Test User1", user.display_name
+  end
+
+  test "display_name returns first name only when last is blank" do
+    user = users(:one)
+    user.last_name = nil
+    assert_equal "Test", user.display_name
+  end
+
+  test "display_name falls back to email prefix when no name" do
+    user = users(:one)
+    user.first_name = nil
+    user.last_name = nil
+    assert_equal "user1", user.display_name
+  end
+
+  test "display_name falls back to user id when no name or email" do
+    user = users(:one)
+    user.first_name = nil
+    user.last_name = nil
+    user.email = nil
+    assert_equal "User ##{user.id}", user.display_name
+  end
+
+  private
+
   def mock_google_auth(email:, first_name: "Test", last_name: "User", name: nil, uid: "123456789")
     auth = OpenStruct.new(
       provider: "google_oauth2",

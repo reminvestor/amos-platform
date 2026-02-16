@@ -1,4 +1,6 @@
 class IntegrationLog < ApplicationRecord
+  include AmosSignalEmitter
+
   belongs_to :connection
   belongs_to :user, optional: true  # User may be nil for system/background operations
   belongs_to :scout_message, optional: true
@@ -17,6 +19,7 @@ class IntegrationLog < ApplicationRecord
   # Callbacks
   before_save :sanitize_sensitive_data
   after_create :update_connection_health
+  after_create :emit_integration_failure_signal
 
   def successful?
     response_status.present? && response_status < 400
@@ -126,5 +129,33 @@ class IntegrationLog < ApplicationRecord
   def update_connection_health
     # Update connection health status based on recent logs
     UpdateConnectionHealthJob.perform_later(connection) if failed?
+  end
+
+  def emit_integration_failure_signal
+    return unless failed?
+
+    # Only emit if there's a pattern of failures (checked via dedup)
+    entity = connection&.entity
+    return unless entity
+
+    integration_name = connection&.integration&.name || 'unknown'
+
+    emit_amos_signal!(
+      signal_type: 'integration_failure_rate',
+      source: 'integration_log',
+      strength: rate_limited? ? 0.5 : 0.4,
+      summary: "Integration failure: #{integration_name} (#{response_status})",
+      data: {
+        integration_name: integration_name,
+        connection_id: connection_id,
+        response_status: response_status,
+        endpoint: endpoint
+      }
+    )
+  end
+
+  # Override entity resolution since IntegrationLog belongs_to connection, not entity
+  def resolve_signal_entity
+    connection&.entity
   end
 end

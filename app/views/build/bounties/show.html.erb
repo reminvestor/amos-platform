@@ -2,149 +2,247 @@
 
 <nav aria-label="breadcrumb" class="mb-4">
   <ol class="breadcrumb">
-    <li class="breadcrumb-item"><%= link_to "Build", build_root_path %></li>
-    <li class="breadcrumb-item"><%= link_to "Bounties", bounties_path %></li>
-    <li class="breadcrumb-item active"><%= truncate(@bounty.title, length: 30) %></li>
+    <li class="breadcrumb-item"><%= link_to "Build", build_root_path, class: "text-decoration-none" %></li>
+    <li class="breadcrumb-item"><%= link_to "Bounties", bounties_path, class: "text-decoration-none" %></li>
+    <li class="breadcrumb-item active"><%= truncate(@bounty.title, length: 40) %></li>
   </ol>
 </nav>
 
 <div class="row g-4">
   <!-- Main Content -->
   <div class="col-lg-8">
-    <div class="card bg-dark border-secondary mb-4">
+    <div class="card mb-4">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <span class="badge bg-<%= bounty_status_color(@bounty.status) %> fs-6">
-          <%= @bounty.status.titleize %>
-        </span>
-        <span class="badge bg-warning text-dark fs-5">
-          <i class="bi bi-coin me-1"></i><%= number_with_delimiter(@bounty.token_reward) %> AMOS
-        </span>
+        <div class="d-flex align-items-center gap-2">
+          <% status_colors = { 'open' => 'success', 'claimed' => 'warning', 'in_progress' => 'info',
+               'submitted' => 'primary', 'reviewing' => 'primary', 'approved' => 'success',
+               'rejected' => 'danger', 'expired' => 'secondary', 'cancelled' => 'secondary' } %>
+          <span class="badge bg-<%= status_colors[@bounty.status] || 'secondary' %> fs-6">
+            <%= @bounty.status.titleize %>
+          </span>
+          <% type_colors = { 'bug' => 'danger', 'feature' => 'primary', 'documentation' => 'info',
+               'design' => 'warning', 'testing' => 'success', 'infrastructure' => 'secondary' } %>
+          <span class="badge bg-<%= type_colors[@bounty.bounty_type] || 'secondary' %>">
+            <%= @bounty.bounty_type %>
+          </span>
+          <% if @bounty.created_by_amos? %>
+            <span class="badge bg-primary bg-opacity-25 text-primary">AMOS generated</span>
+          <% end %>
+        </div>
+        <div>
+          <span class="fw-bold text-success fs-4"><%= number_with_delimiter(@bounty.points) %> AMOS</span>
+          <% if @bounty.demand_multiplier && @bounty.demand_multiplier > 1.0 %>
+            <span class="badge bg-success ms-1" title="Demand boosted from <%= @bounty.original_points %> points">
+              <%= @bounty.demand_multiplier %>x
+            </span>
+          <% end %>
+        </div>
       </div>
       <div class="card-body">
         <h2 class="card-title mb-4"><%= @bounty.title %></h2>
-        
+
+        <!-- Description -->
         <div class="mb-4">
           <h6 class="text-muted mb-2">Description</h6>
-          <div class="bg-secondary bg-opacity-25 rounded p-3">
+          <div class="rounded p-3" style="background: rgba(255,255,255,0.03);">
             <%= simple_format(@bounty.description) %>
           </div>
         </div>
-        
-        <% if @bounty.requirements.present? %>
+
+        <!-- Acceptance Criteria (from metadata) -->
+        <% if @acceptance_criteria.any? %>
           <div class="mb-4">
-            <h6 class="text-muted mb-2">Requirements</h6>
+            <h6 class="text-muted mb-2">Acceptance Criteria</h6>
             <ul class="list-unstyled">
-              <% Array(@bounty.requirements).each do |req| %>
-                <li class="mb-2">
-                  <i class="bi bi-check-circle text-success me-2"></i><%= req %>
+              <% @acceptance_criteria.each do |criterion| %>
+                <li class="mb-2 d-flex align-items-start">
+                  <span class="me-2 text-muted">☐</span>
+                  <span><%= criterion %></span>
                 </li>
               <% end %>
             </ul>
           </div>
         <% end %>
-        
-        <% if @bounty.acceptance_criteria.present? %>
+
+        <!-- Suggested Approach -->
+        <% if @suggested_approach.present? %>
           <div class="mb-4">
-            <h6 class="text-muted mb-2">Acceptance Criteria</h6>
-            <div class="bg-secondary bg-opacity-25 rounded p-3">
-              <%= simple_format(@bounty.acceptance_criteria) %>
+            <h6 class="text-muted mb-2">Suggested Approach</h6>
+            <div class="rounded p-3" style="background: rgba(255,255,255,0.03);">
+              <%= simple_format(@suggested_approach) %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Scope -->
+        <% if @scope.present? %>
+          <div class="mb-4">
+            <h6 class="text-muted mb-2">Scope</h6>
+            <p class="text-muted"><%= @scope %></p>
+          </div>
+        <% end %>
+
+        <!-- PR Requirements -->
+        <% if @bounty.requires_pr? %>
+          <div class="alert alert-info d-flex align-items-center mb-4">
+            <span class="me-2">📋</span>
+            <div>
+              <strong>Pull Request Required</strong><br>
+              <small>This bounty requires a PR to
+                <% if @bounty.target_repo.present? %>
+                  <a href="<%= @bounty.target_repo %>" target="_blank" class="text-info"><%= @bounty.target_repo %></a>
+                <% else %>
+                  the repository
+                <% end %>
+              </small>
             </div>
           </div>
         <% end %>
       </div>
     </div>
-    
-    <!-- Submit Work Form (only if claimed by current user) -->
-    <% if @bounty.claimed_by == current_user && @bounty.status == 'claimed' %>
-      <div class="card bg-dark border-success mb-4">
-        <div class="card-header bg-success text-white">
-          <h5 class="mb-0"><i class="bi bi-upload me-2"></i>Submit Your Work</h5>
+
+    <!-- Submit Work Form -->
+    <% if @is_claimer && @bounty.status.in?(%w[claimed in_progress]) %>
+      <div class="card border-success mb-4">
+        <div class="card-header text-white" style="background: var(--amos-success);">
+          <h5 class="mb-0">Submit Your Work</h5>
         </div>
         <div class="card-body">
           <%= form_with url: submit_work_bounty_path(@bounty), method: :post, local: true do |f| %>
+            <% if @bounty.requires_pr? %>
+              <div class="mb-3">
+                <label class="form-label">Pull Request URL *</label>
+                <input type="url" name="pr_url" class="form-control" placeholder="https://github.com/org/repo/pull/123" required>
+              </div>
+            <% end %>
             <div class="mb-3">
-              <label class="form-label">Work Evidence</label>
-              <textarea name="work_evidence" class="form-control bg-secondary" rows="5" 
-                        placeholder="Describe what you completed, include PR links, screenshots, etc."></textarea>
+              <label class="form-label">Work URL (optional)</label>
+              <input type="url" name="work_url" class="form-control" placeholder="Link to deployed work, blog post, design file, etc.">
             </div>
-            <button type="submit" class="btn btn-success btn-lg w-100">
-              <i class="bi bi-send me-2"></i>Submit for Review
-            </button>
+            <div class="mb-3">
+              <label class="form-label">Submission Notes</label>
+              <textarea name="submission_notes" class="form-control" rows="5"
+                        placeholder="Describe what you completed, any decisions made, and anything reviewers should know."></textarea>
+            </div>
+            <button type="submit" class="btn btn-success btn-lg w-100">Submit for Review</button>
           <% end %>
         </div>
       </div>
     <% end %>
   </div>
-  
+
   <!-- Sidebar -->
   <div class="col-lg-4">
-    <!-- Actions Card -->
-    <div class="card bg-dark border-secondary mb-4">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Actions</h5>
-      </div>
+    <!-- Claim Action -->
+    <div class="card mb-4">
       <div class="card-body">
         <% if @bounty.status == 'open' && @can_claim %>
-          <%= link_to claim_bounty_path(@bounty), method: :post, class: "btn btn-success btn-lg w-100 mb-3",
-              data: { confirm: "Are you sure you want to claim this bounty? You'll have 7 days to complete it." } do %>
-            <i class="bi bi-hand-index me-2"></i>Claim Bounty
+          <%= link_to claim_bounty_path(@bounty), method: :post, class: "btn btn-success btn-lg w-100",
+              data: { confirm: "Claim this bounty? You'll be expected to complete it in a reasonable timeframe." } do %>
+            Claim This Bounty
           <% end %>
-        <% elsif @bounty.status == 'claimed' && @bounty.claimed_by == current_user %>
-          <div class="alert alert-success mb-0">
-            <i class="bi bi-check-circle me-2"></i>You've claimed this bounty!
-            <br><small>Submit your work above when ready.</small>
+          <p class="text-muted small mt-2 mb-0 text-center">Start working on this task and earn <%= number_with_delimiter(@bounty.points) %> AMOS</p>
+        <% elsif @is_claimer %>
+          <div class="alert alert-success mb-0 text-center">
+            <strong>You've claimed this!</strong><br>
+            <small>Submit your work when ready.</small>
           </div>
-        <% elsif @bounty.status == 'claimed' %>
-          <div class="alert alert-warning mb-0">
-            <i class="bi bi-hourglass-split me-2"></i>Already claimed
+        <% elsif @bounty.status == 'open' && !current_user %>
+          <div class="alert alert-secondary mb-0 text-center">
+            <strong>Sign in to claim</strong><br>
+            <small>Create an account or sign in to start earning AMOS tokens.</small>
+          </div>
+        <% elsif @bounty.claimed? %>
+          <div class="alert alert-warning mb-0 text-center">
+            <strong>Already claimed</strong><br>
+            <small>by <%= @bounty.claimed_by&.display_name || 'a contributor' %></small>
           </div>
         <% else %>
-          <div class="alert alert-secondary mb-0">
-            Status: <%= @bounty.status.titleize %>
+          <div class="alert alert-secondary mb-0 text-center">
+            <strong><%= @bounty.status.titleize %></strong>
           </div>
         <% end %>
       </div>
     </div>
-    
-    <!-- Info Card -->
-    <div class="card bg-dark border-secondary mb-4">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Details</h5>
-      </div>
+
+    <!-- Details -->
+    <div class="card mb-4">
+      <div class="card-header"><h6 class="mb-0">Details</h6></div>
       <div class="card-body">
-        <dl class="row mb-0">
-          <dt class="col-5 text-muted">Category</dt>
-          <dd class="col-7"><%= @bounty.category&.titleize || 'General' %></dd>
-          
-          <dt class="col-5 text-muted">Difficulty</dt>
-          <dd class="col-7"><%= @bounty.difficulty&.titleize || 'Medium' %></dd>
-          
-          <dt class="col-5 text-muted">Deadline</dt>
-          <dd class="col-7">7 days after claim</dd>
-          
+        <dl class="row mb-0 small">
+          <dt class="col-5 text-muted">Points</dt>
+          <dd class="col-7 text-success fw-bold"><%= number_with_delimiter(@bounty.points) %> AMOS</dd>
+
+          <dt class="col-5 text-muted">Type</dt>
+          <dd class="col-7"><%= @bounty.bounty_type.titleize %></dd>
+
+          <% if @bounty.urgency_score.present? %>
+            <dt class="col-5 text-muted">Urgency</dt>
+            <dd class="col-7"><%= @bounty.urgency_score %>/10</dd>
+          <% end %>
+
+          <% if @bounty.complexity_score.present? %>
+            <dt class="col-5 text-muted">Complexity</dt>
+            <dd class="col-7"><%= @bounty.complexity_score %>/10</dd>
+          <% end %>
+
+          <% if @bounty.estimated_hours.present? %>
+            <dt class="col-5 text-muted">Est. Hours</dt>
+            <dd class="col-7">~<%= @bounty.estimated_hours.round %> hours</dd>
+          <% end %>
+
+          <% if @bounty.priority_rank.present? %>
+            <dt class="col-5 text-muted">Priority</dt>
+            <dd class="col-7">#<%= @bounty.priority_rank %></dd>
+          <% end %>
+
+          <dt class="col-5 text-muted">Source</dt>
+          <dd class="col-7"><%= @bounty.created_by_amos? ? 'AMOS (autonomous)' : @bounty.created_by&.display_name || 'User' %></dd>
+
           <dt class="col-5 text-muted">Posted</dt>
           <dd class="col-7"><%= @bounty.created_at.strftime('%b %d, %Y') %></dd>
-          
-          <% if @bounty.external_reference.present? %>
-            <dt class="col-5 text-muted">GitHub</dt>
+
+          <% if @bounty.expires_at.present? %>
+            <dt class="col-5 text-muted">Expires</dt>
+            <dd class="col-7 <%= @bounty.expires_at < 3.days.from_now ? 'text-warning' : '' %>">
+              <%= @bounty.expires_at.strftime('%b %d, %Y') %>
+            </dd>
+          <% end %>
+
+          <% if @bounty.upvotes > 0 || @bounty.downvotes > 0 %>
+            <dt class="col-5 text-muted">Community</dt>
             <dd class="col-7">
-              <%= link_to "View Issue", @bounty.external_reference, target: "_blank", class: "text-primary" %>
+              <span class="text-success">▲ <%= @bounty.upvotes %></span>
+              <span class="text-danger ms-1">▼ <%= @bounty.downvotes %></span>
             </dd>
           <% end %>
         </dl>
       </div>
     </div>
-    
-    <!-- Tags -->
-    <% if @bounty.tags.present? %>
-      <div class="card bg-dark border-secondary">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="bi bi-tags me-2"></i>Tags</h5>
-        </div>
+
+    <!-- Sprint / Tags -->
+    <% if @bounty.sprint_label.present? || (@bounty.tags || []).any? %>
+      <div class="card mb-4">
+        <div class="card-header"><h6 class="mb-0">Labels</h6></div>
         <div class="card-body">
-          <% Array(@bounty.tags).each do |tag| %>
+          <% if @bounty.sprint_label.present? %>
+            <div class="mb-2">
+              <span class="badge bg-info"><%= @bounty.sprint_label %></span>
+            </div>
+          <% end %>
+          <% (@bounty.tags || []).each do |tag| %>
             <span class="badge bg-secondary me-1 mb-1"><%= tag %></span>
           <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Scoring Rationale (transparency) -->
+    <% if @bounty.ai_scoring_rationale.present? %>
+      <div class="card">
+        <div class="card-header"><h6 class="mb-0">AI Scoring</h6></div>
+        <div class="card-body">
+          <p class="small text-muted mb-0"><%= @bounty.ai_scoring_rationale %></p>
         </div>
       </div>
     <% end %>

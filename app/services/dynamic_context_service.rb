@@ -56,13 +56,24 @@ class DynamicContextService
       end
     end
 
-    # Step 3: Get priority tools for this task type
+    # Step 3: Inject relevant skills from SkillLibraryService
+    # Skills are matched by: integration name mentions, task keywords, custom use_when conditions
+    skill_result = discover_skills_for_message(message, canvas_context)
+    if skill_result
+      guidance_block = guidance_block.to_s + "\n\n" + skill_result[:skill_block]
+      Rails.logger.info "📚 [DynamicContext] Injected skills: #{skill_result[:skill_names].join(', ')}"
+
+      # Track skill injections for the feedback loop (used by SkillEvolutionService)
+      track_skill_injections(skill_result)
+    end
+
+    # Step 4: Get priority tools for this task type
     priority_tools = GuidanceLibrary.tools_for_task(task_type)
 
-    # Step 4: Build context summary for logging/debugging
+    # Step 5: Build context summary for logging/debugging
     context_summary = build_context_summary(task_type, canvas_context)
 
-    # Step 5: Get entity's custom tools (always prioritize these)
+    # Step 6: Get entity's custom tools (always prioritize these)
     custom_tools = get_entity_custom_tools
 
     {
@@ -106,6 +117,73 @@ class DynamicContextService
   end
 
   private
+
+  # Discover relevant skills based on the user's message
+  # Detects integration names, task keywords, and matches custom uploaded skills
+  def discover_skills_for_message(message, canvas_context)
+    return nil if message.blank?
+
+    # Detect integration names mentioned in the message
+    integrations = detect_integration_names(message)
+
+    SkillLibraryService.discover_skills(
+      message: message,
+      entity: @entity,
+      integrations: integrations,
+      canvas_context: canvas_context,
+      limit: 3
+    )
+  rescue => e
+    Rails.logger.warn "[DynamicContext] Skill discovery failed: #{e.message}"
+    nil
+  end
+
+  # Extract integration names mentioned in the user's message
+  INTEGRATION_NAME_PATTERNS = {
+    'stripe'     => /\bstripe\b/i,
+    'quickbooks' => /\bquickbooks\b|\bqbo\b|\bqb\b/i,
+    'hubspot'    => /\bhubspot\b/i,
+    'mailgun'    => /\bmailgun\b/i,
+    'trello'     => /\btrello\b/i,
+    'godaddy'    => /\bgodaddy\b|\bgo\s*daddy\b/i,
+    'gmail'      => /\bgmail\b/i,
+    'google_drive' => /\bgoogle\s*drive\b|\bgdrive\b/i,
+    'google_sheets' => /\bgoogle\s*sheets?\b/i,
+    'slack'      => /\bslack\b/i,
+    'shopify'    => /\bshopify\b/i,
+    'neon_crm'   => /\bneon\s*crm\b|\bneon\b/i,
+  }.freeze
+
+  def detect_integration_names(message)
+    return [] if message.blank?
+
+    msg = message.downcase
+    INTEGRATION_NAME_PATTERNS.filter_map do |name, pattern|
+      name if msg.match?(pattern)
+    end
+  end
+
+  # Track which skills were injected for the evolution feedback loop
+  def track_skill_injections(skill_result)
+    return unless @entity.present? && @user.present?
+
+    skill_result[:skills]&.each do |skill_data|
+      skill_id = skill_data[:system_skill_id]
+      next unless skill_id
+
+      skill = SystemSkill.find_by(id: skill_id)
+      next unless skill
+
+      skill.record_injection!(
+        entity: @entity,
+        user: @user,
+        session_id: Thread.current[:scout_session_id] || SecureRandom.hex(8),
+        reason: skill_data[:type].to_s
+      )
+    end
+  rescue => e
+    Rails.logger.debug "[DynamicContext] Skill injection tracking failed: #{e.message}"
+  end
 
   def build_context_summary(task_type, canvas_context)
     return "General assistance" if task_type == :general

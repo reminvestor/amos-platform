@@ -1,0 +1,52 @@
+<div class="admin-page-header" style="margin-bottom: 2rem;">
+  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+    <%= link_to admin_skill_path(@skill), style: "color: var(--text-muted); text-decoration: none;" do %>
+      <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+    <% end %>
+    <h1 style="font-size: 1.5rem; font-weight: 700; margin: 0;">Edit: <%= @skill.name %></h1>
+  </div>
+  <p style="color: var(--text-muted); margin: 0; font-size: 0.85rem;">
+    Version <%= @skill.version %> · Last updated <%= @skill.updated_at.strftime('%b %d, %Y') %>
+  </p>
+</div>
+
+<%= form_with(model: @skill, url: admin_skill_path(@skill), method: :patch, local: true) do |f| %>
+  <div style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+    <div style="margin-bottom: 1.5rem;">
+      <%= f.label :name, "Skill Name", style: "display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem;" %>
+      <%= f.text_field :name, class: "form-control", style: "background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-primary);" %>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+      <div>
+        <%= f.label :status, "Status", style: "display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem;" %>
+        <%= f.select :status, options_for_select([['Active', 'active'], ['Inactive', 'inactive'], ['Archived', 'archived']], @skill.status),
+            {}, class: "form-select", style: "background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-primary);" %>
+      </div>
+      <div>
+        <%= f.label :skill_type, "Type", style: "display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem;" %>
+        <%= f.select :skill_type, options_for_select([['Integration', 'integration'], ['Task', 'task'], ['Custom', 'custom']], @skill.skill_type),
+            {}, class: "form-select", style: "background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-primary);" %>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 1.5rem;">
+      <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem;">Skill Content</label>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 0 0.5rem;">
+        This is the knowledge that gets injected into AMOS's context. Use Markdown formatting.
+      </p>
+      <%= f.text_area :content, rows: 25, class: "form-control", style: "background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-primary); font-family: 'SF Mono', 'Monaco', 'Menlo', monospace; font-size: 0.8rem;" %>
+    </div>
+
+    <div style="margin-bottom: 1.5rem;">
+      <label for="change_reason" style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem;">Change Reason <span style="color: var(--text-muted); font-weight: 400;">(optional)</span></label>
+      <input type="text" name="change_reason" id="change_reason" class="form-control" placeholder="e.g., Added missing parameter documentation"
+             style="background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-primary);">
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 0.5rem;">
+    <%= f.submit "Save Changes", class: "btn btn-primary" %>
+    <%= link_to "Cancel", admin_skill_path(@skill), class: "btn btn-outline-secondary" %>
+  </div>
+<% end %>

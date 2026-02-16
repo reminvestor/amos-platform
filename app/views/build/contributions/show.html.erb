@@ -1,0 +1,80 @@
+<% content_for :title, "#{@contribution.title} - AMOS Build" %>
+
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><%= link_to "Build", build_root_path, class: "text-decoration-none" %></li>
+    <li class="breadcrumb-item"><%= link_to "Contributions", contributions_path, class: "text-decoration-none" %></li>
+    <li class="breadcrumb-item active"><%= @contribution.title.truncate(40) %></li>
+  </ol>
+</nav>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="badge bg-<%= @contribution.accepted? ? 'success' : @contribution.rejected? ? 'danger' : 'warning' %>">
+          <%= @contribution.status.titleize %>
+        </span>
+        <span class="badge bg-secondary"><%= @contribution.contribution_type %></span>
+      </div>
+      <div class="card-body">
+        <h3 class="mb-3"><%= @contribution.title %></h3>
+        <div class="rounded p-3 mb-4" style="background: rgba(255,255,255,0.03);">
+          <%= simple_format(@contribution.description) %>
+        </div>
+
+        <% if @contribution.has_code_evidence? %>
+          <h6 class="text-muted mb-2">Evidence</h6>
+          <div class="small">
+            <% if @contribution.pr_url.present? %>
+              <div class="mb-1">
+                PR: <%= link_to @contribution.pr_url, @contribution.pr_url, target: "_blank", class: "text-primary" %>
+              </div>
+            <% end %>
+            <% if @contribution.commit_sha.present? %>
+              <div class="mb-1">Commit: <code><%= @contribution.commit_sha[0..7] %></code></div>
+            <% end %>
+            <% if @contribution.work_url.present? %>
+              <div class="mb-1">
+                Work: <%= link_to @contribution.work_url, @contribution.work_url, target: "_blank", class: "text-primary" %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Details</h6></div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-5 text-muted">Contributor</dt>
+          <dd class="col-7"><%= @contribution.user&.display_name || 'Anonymous' %></dd>
+
+          <dt class="col-5 text-muted">Type</dt>
+          <dd class="col-7"><%= @contribution.contribution_type %></dd>
+
+          <dt class="col-5 text-muted">AMOS Earned</dt>
+          <dd class="col-7 text-success fw-bold"><%= number_with_delimiter(@contribution.stake_value) %></dd>
+
+          <dt class="col-5 text-muted">Date</dt>
+          <dd class="col-7"><%= @contribution.created_at.strftime('%b %d, %Y') %></dd>
+
+          <% if @contribution.reviewed_at.present? %>
+            <dt class="col-5 text-muted">Reviewed</dt>
+            <dd class="col-7"><%= @contribution.reviewed_at.strftime('%b %d, %Y') %></dd>
+          <% end %>
+
+          <% if @contribution.bounty_id.present? %>
+            <dt class="col-5 text-muted">Bounty</dt>
+            <dd class="col-7">
+              <%= link_to "##{@contribution.bounty_id}", bounty_path(@contribution.bounty_id), class: "text-primary" %>
+            </dd>
+          <% end %>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>

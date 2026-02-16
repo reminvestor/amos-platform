@@ -1,0 +1,106 @@
+<div class="admin-page-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
+  <div>
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+      <%= link_to admin_skills_path, style: "color: var(--text-muted); text-decoration: none;" do %>
+        <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+      <% end %>
+      <h1 style="font-size: 1.5rem; font-weight: 700; margin: 0;"><%= @skill.name %></h1>
+      <% if @skill.version > 1 %>
+        <span style="background: #8b5cf620; color: #8b5cf6; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">v<%= @skill.version %></span>
+      <% end %>
+    </div>
+    <p style="color: var(--text-muted); margin: 0; font-size: 0.85rem;">
+      <%= @skill.skill_type.titleize %> skill
+      <% if @skill.integration_name.present? %> · <%= @skill.integration_name %><% end %>
+      · Source: <%= @skill.source %>
+    </p>
+  </div>
+  <div style="display: flex; gap: 0.5rem;">
+    <%= link_to "Edit", edit_admin_skill_path(@skill), class: "btn btn-primary btn-sm" %>
+  </div>
+</div>
+
+<%# Stats Row %>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+  <div style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; padding: 1rem; text-align: center;">
+    <div style="font-size: 1.5rem; font-weight: 700;"><%= @injection_stats[:total] %></div>
+    <div style="font-size: 0.75rem; color: var(--text-muted);">Total Injections</div>
+  </div>
+  <div style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; padding: 1rem; text-align: center;">
+    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;"><%= @injection_stats[:positive] %></div>
+    <div style="font-size: 0.75rem; color: var(--text-muted);">Positive Outcomes</div>
+  </div>
+  <div style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; padding: 1rem; text-align: center;">
+    <div style="font-size: 1.5rem; font-weight: 700; color: #ef4444;"><%= @injection_stats[:negative] %></div>
+    <div style="font-size: 0.75rem; color: var(--text-muted);">Negative Outcomes</div>
+  </div>
+  <div style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; padding: 1rem; text-align: center;">
+    <% if @injection_stats[:effectiveness] %>
+      <% eff_color = @injection_stats[:effectiveness] >= 70 ? '#10b981' : @injection_stats[:effectiveness] >= 40 ? '#f59e0b' : '#ef4444' %>
+      <div style="font-size: 1.5rem; font-weight: 700; color: <%= eff_color %>;"><%= @injection_stats[:effectiveness] %>%</div>
+    <% else %>
+      <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-muted);">—</div>
+    <% end %>
+    <div style="font-size: 0.75rem; color: var(--text-muted);">Effectiveness</div>
+  </div>
+  <div style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; padding: 1rem; text-align: center;">
+    <div style="font-size: 1.5rem; font-weight: 700;"><%= @injection_stats[:last_7_days] %></div>
+    <div style="font-size: 0.75rem; color: var(--text-muted);">Last 7 Days</div>
+  </div>
+</div>
+
+<%# Current Content %>
+<div style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
+  <h3 style="font-size: 1rem; font-weight: 600; margin: 0 0 1rem;">Current Content</h3>
+  <pre style="background: rgba(0,0,0,0.05); padding: 1rem; border-radius: 8px; font-size: 0.8rem; white-space: pre-wrap; word-wrap: break-word; max-height: 500px; overflow-y: auto; margin: 0;"><%= @skill.content %></pre>
+</div>
+
+<%# Version History %>
+<div style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
+  <h3 style="font-size: 1rem; font-weight: 600; margin: 0 0 1rem;">Version History</h3>
+
+  <% if @revisions.any? %>
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr style="border-bottom: 1px solid var(--border-primary);">
+          <th style="padding: 0.5rem; text-align: left; font-size: 0.75rem; color: var(--text-muted);">Version</th>
+          <th style="padding: 0.5rem; text-align: left; font-size: 0.75rem; color: var(--text-muted);">Source</th>
+          <th style="padding: 0.5rem; text-align: left; font-size: 0.75rem; color: var(--text-muted);">Reason</th>
+          <th style="padding: 0.5rem; text-align: left; font-size: 0.75rem; color: var(--text-muted);">Date</th>
+          <th style="padding: 0.5rem; text-align: right; font-size: 0.75rem; color: var(--text-muted);">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @revisions.each do |rev| %>
+          <tr style="border-bottom: 1px solid var(--border-primary);">
+            <td style="padding: 0.5rem; font-weight: 600;">v<%= rev.version %></td>
+            <td style="padding: 0.5rem;">
+              <% src_color = case rev.change_source
+                   when 'evolution' then '#8b5cf6'
+                   when 'admin' then '#3b82f6'
+                   when 'seed' then '#6b7280'
+                   else '#f59e0b'
+                   end %>
+              <span style="background: <%= src_color %>20; color: <%= src_color %>; padding: 1px 6px; border-radius: 4px; font-size: 0.7rem;">
+                <%= rev.change_source %>
+              </span>
+            </td>
+            <td style="padding: 0.5rem; font-size: 0.85rem; color: var(--text-muted);"><%= rev.change_reason&.truncate(80) %></td>
+            <td style="padding: 0.5rem; font-size: 0.8rem; color: var(--text-muted);"><%= rev.created_at.strftime('%b %d, %Y %H:%M') %></td>
+            <td style="padding: 0.5rem; text-align: right;">
+              <% if rev.version != @skill.version %>
+                <%= button_to "Revert", revert_admin_skill_path(@skill, version: rev.version),
+                    method: :post, class: "btn btn-sm btn-outline-warning", style: "padding: 1px 6px; font-size: 0.7rem;",
+                    data: { confirm: "Revert to version #{rev.version}?" } %>
+              <% else %>
+                <span style="font-size: 0.7rem; color: var(--text-muted);">current</span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p style="color: var(--text-muted); font-size: 0.85rem;">No revisions yet (version 1)</p>
+  <% end %>
+</div>

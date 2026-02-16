@@ -1,0 +1,120 @@
+<div class="admin-page-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
+  <div>
+    <h1 style="font-size: 1.75rem; font-weight: 700; margin: 0;">
+      <i data-lucide="book-open" style="width: 28px; height: 28px; vertical-align: -4px;"></i>
+      System Skills
+    </h1>
+    <p style="color: var(--text-muted); margin: 0.25rem 0 0;">
+      Knowledge that AMOS uses and evolves autonomously
+    </p>
+  </div>
+  <div style="display: flex; gap: 0.5rem;">
+    <%= button_to "Trigger Evolution Now", evolve_now_admin_skills_path, method: :post,
+        class: "btn btn-outline-primary btn-sm",
+        data: { confirm: "Run skill evolution? AMOS will analyze execution logs and improve skills." } %>
+  </div>
+</div>
+
+<%# Stats Cards %>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+  <div class="admin-stat-card" style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; padding: 1rem; text-align: center;">
+    <div style="font-size: 1.5rem; font-weight: 700;"><%= @stats[:total] %></div>
+    <div style="font-size: 0.75rem; color: var(--text-muted);">Total Skills</div>
+  </div>
+  <div class="admin-stat-card" style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; padding: 1rem; text-align: center;">
+    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;"><%= @stats[:active] %></div>
+    <div style="font-size: 0.75rem; color: var(--text-muted);">Active</div>
+  </div>
+  <div class="admin-stat-card" style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; padding: 1rem; text-align: center;">
+    <div style="font-size: 1.5rem; font-weight: 700; color: #8b5cf6;"><%= @stats[:evolved] %></div>
+    <div style="font-size: 0.75rem; color: var(--text-muted);">Evolved (v2+)</div>
+  </div>
+  <div class="admin-stat-card" style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; padding: 1rem; text-align: center;">
+    <div style="font-size: 1.5rem; font-weight: 700;"><%= @stats[:avg_effectiveness] || '—' %>%</div>
+    <div style="font-size: 0.75rem; color: var(--text-muted);">Avg Effectiveness</div>
+  </div>
+</div>
+
+<%# Filter Tabs %>
+<div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+  <%= link_to "All", admin_skills_path, class: "btn btn-sm #{params[:type].blank? ? 'btn-primary' : 'btn-outline-secondary'}" %>
+  <%= link_to "Integration (#{@stats[:integration]})", admin_skills_path(type: 'integration'), class: "btn btn-sm #{params[:type] == 'integration' ? 'btn-primary' : 'btn-outline-secondary'}" %>
+  <%= link_to "Task (#{@stats[:task]})", admin_skills_path(type: 'task'), class: "btn btn-sm #{params[:type] == 'task' ? 'btn-primary' : 'btn-outline-secondary'}" %>
+  <%= link_to "Custom (#{@stats[:custom]})", admin_skills_path(type: 'custom'), class: "btn btn-sm #{params[:type] == 'custom' ? 'btn-primary' : 'btn-outline-secondary'}" %>
+</div>
+
+<%# Skills Table %>
+<div style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; overflow: hidden;">
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr style="border-bottom: 1px solid var(--border-primary); background: rgba(0,0,0,0.03);">
+        <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">Skill</th>
+        <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">Type</th>
+        <th style="padding: 0.75rem 1rem; text-align: center; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">Version</th>
+        <th style="padding: 0.75rem 1rem; text-align: center; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">Injections</th>
+        <th style="padding: 0.75rem 1rem; text-align: center; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">Effectiveness</th>
+        <th style="padding: 0.75rem 1rem; text-align: center; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">Last Evolved</th>
+        <th style="padding: 0.75rem 1rem; text-align: right; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @skills.each do |skill| %>
+        <tr style="border-bottom: 1px solid var(--border-primary);">
+          <td style="padding: 0.75rem 1rem;">
+            <div style="font-weight: 600;"><%= link_to skill.name, admin_skill_path(skill), style: "color: var(--text-primary); text-decoration: none;" %></div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);"><%= skill.slug %></div>
+          </td>
+          <td style="padding: 0.75rem 1rem;">
+            <% badge_color = case skill.skill_type
+                 when 'integration' then '#3b82f6'
+                 when 'task' then '#8b5cf6'
+                 when 'custom' then '#f59e0b'
+                 end %>
+            <span style="background: <%= badge_color %>20; color: <%= badge_color %>; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 500;">
+              <%= skill.skill_type.titleize %>
+            </span>
+            <% if skill.integration_name.present? %>
+              <span style="font-size: 0.7rem; color: var(--text-muted); margin-left: 4px;"><%= skill.integration_name %></span>
+            <% end %>
+          </td>
+          <td style="padding: 0.75rem 1rem; text-align: center;">
+            <% if skill.version > 1 %>
+              <span style="background: #8b5cf620; color: #8b5cf6; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                v<%= skill.version %>
+              </span>
+            <% else %>
+              <span style="color: var(--text-muted); font-size: 0.85rem;">v1</span>
+            <% end %>
+          </td>
+          <td style="padding: 0.75rem 1rem; text-align: center; font-variant-numeric: tabular-nums;">
+            <%= skill.injection_count %>
+          </td>
+          <td style="padding: 0.75rem 1rem; text-align: center;">
+            <% if skill.effectiveness_score.present? %>
+              <% eff_color = skill.effectiveness_score >= 70 ? '#10b981' : skill.effectiveness_score >= 40 ? '#f59e0b' : '#ef4444' %>
+              <span style="color: <%= eff_color %>; font-weight: 600;"><%= skill.effectiveness_score %>%</span>
+            <% else %>
+              <span style="color: var(--text-muted); font-size: 0.75rem;">—</span>
+            <% end %>
+          </td>
+          <td style="padding: 0.75rem 1rem; text-align: center; font-size: 0.8rem; color: var(--text-muted);">
+            <% if skill.last_evolved_at %>
+              <%= time_ago_in_words(skill.last_evolved_at) %> ago
+              <div style="font-size: 0.7rem;">by <%= skill.last_evolved_by %></div>
+            <% else %>
+              —
+            <% end %>
+          </td>
+          <td style="padding: 0.75rem 1rem; text-align: right;">
+            <%= link_to admin_skill_path(skill), class: "btn btn-sm btn-outline-secondary", style: "padding: 2px 8px;" do %>
+              <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+            <% end %>
+            <%= link_to edit_admin_skill_path(skill), class: "btn btn-sm btn-outline-primary", style: "padding: 2px 8px;" do %>
+              <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

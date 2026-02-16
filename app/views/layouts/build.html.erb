@@ -98,33 +98,36 @@
             <a class="nav-link<%= ' active' if controller_name == 'dashboard' %>" href="<%= build_root_path %>">Dashboard</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link<%= ' active' if controller_name == 'bounties' %>" href="<%= bounties_path %>">Bounties</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link<%= ' active' if controller_name == 'external_agents' %>" href="<%= external_agents_path %>">
-              <i class="bi bi-robot me-1"></i>AI Agents
+            <a class="nav-link<%= ' active' if controller_name == 'bounties' %>" href="<%= bounties_path %>">
+              Bounties
+              <% open_count = Bounty.open_bounties.count rescue 0 %>
+              <% if open_count > 0 %>
+                <span class="badge bg-success rounded-pill ms-1" style="font-size: 0.65rem;"><%= open_count %></span>
+              <% end %>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link<%= ' active' if controller_name == 'proposals' %>" href="<%= proposals_path %>">Proposals</a>
+            <a class="nav-link<%= ' active' if controller_name == 'contributions' %>" href="<%= contributions_path %>">Contributions</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link<%= ' active' if controller_name == 'external_agents' %>" href="<%= external_agents_path %>">AI Agents</a>
           </li>
           <li class="nav-item">
             <a class="nav-link<%= ' active' if controller_name == 'leaderboard' %>" href="/leaderboard">Leaderboard</a>
           </li>
         </ul>
         
-        <div class="d-flex align-items-center gap-3">
-          <a href="https://gov.amoslabs.com" class="btn btn-outline-light btn-sm">
-            <i class="bi bi-bank me-1"></i>Governance
-          </a>
-          <% if wallet_connected? %>
-            <span class="badge bg-success">
-              <i class="bi bi-wallet2 me-1"></i><%= current_wallet[0..4] %>...<%= current_wallet[-4..] %>
-            </span>
+        <div class="d-flex align-items-center gap-2">
+          <% if current_user %>
+            <a href="<%= my_contributions_path %>" class="btn btn-outline-light btn-sm">My Work</a>
+            <a href="<%= my_rewards_path %>" class="btn btn-outline-light btn-sm">
+              <i class="bi bi-coin me-1"></i>Rewards
+            </a>
+            <span class="badge bg-secondary"><%= current_user.display_name %></span>
           <% else %>
-            <button class="btn wallet-btn btn-sm" id="connect-wallet">
-              <i class="bi bi-wallet2 me-1"></i>Connect Wallet
-            </button>
+            <a href="/users/sign_in" class="btn wallet-btn btn-sm">
+              <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+            </a>
           <% end %>
         </div>
       </div>
@@ -161,11 +164,5 @@
   </footer>
   
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    // Wallet connection placeholder
-    document.getElementById('connect-wallet')?.addEventListener('click', async () => {
-      showInfo('Solana wallet connection coming soon! This will integrate with Phantom, Solflare, and other Solana wallets.');
-    });
-  </script>
 </body>
 </html>

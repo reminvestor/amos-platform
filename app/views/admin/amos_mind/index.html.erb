@@ -1,0 +1,311 @@
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-1">AMOS Mind</h2>
+      <p class="text-muted mb-0">Autonomous cognitive loop — perception, attention, memory, and meta-cognition</p>
+    </div>
+    <div class="d-flex gap-2">
+      <%= link_to admin_amos_mind_trigger_session_path(mode: 'autonomous'), method: :post, class: "btn btn-primary btn-sm" do %>
+        <i data-lucide="brain" style="width: 14px; height: 14px;"></i> Run Autonomous Session
+      <% end %>
+      <%= link_to admin_amos_mind_trigger_session_path(mode: 'legacy'), method: :post, class: "btn btn-outline-secondary btn-sm" do %>
+        <i data-lucide="play" style="width: 14px; height: 14px;"></i> Run Legacy Session
+      <% end %>
+      <%= link_to admin_amos_mind_trigger_grooming_path, method: :post, class: "btn btn-outline-secondary btn-sm" do %>
+        <i data-lucide="list-checks" style="width: 14px; height: 14px;"></i> Groom Bounties
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="row g-3 mb-4">
+    <!-- Working Memory -->
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted small">Active Thoughts</div>
+              <div class="fs-3 fw-bold"><%= @thought_stats[:active] %></div>
+            </div>
+            <div class="bg-primary bg-opacity-10 rounded-circle p-2">
+              <i data-lucide="lightbulb" style="width: 20px; height: 20px; color: var(--bs-primary);"></i>
+            </div>
+          </div>
+          <div class="small text-muted mt-1">
+            <span class="text-danger"><%= @thought_stats[:concerns] %> concerns</span> ·
+            <span class="text-warning"><%= @thought_stats[:high_salience] %> high salience</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Attention -->
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted small">Attention Decisions (7d)</div>
+              <div class="fs-3 fw-bold"><%= @attention_stats[:total_decisions] %></div>
+            </div>
+            <div class="bg-info bg-opacity-10 rounded-circle p-2">
+              <i data-lucide="target" style="width: 20px; height: 20px; color: var(--bs-info);"></i>
+            </div>
+          </div>
+          <div class="small text-muted mt-1">
+            <span class="text-success"><%= @attention_stats[:acted_on] %> acted</span> ·
+            <span class="text-secondary"><%= @attention_stats[:deferred] %> deferred</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bounty Health -->
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted small">Open Bounties</div>
+              <div class="fs-3 fw-bold"><%= @grooming_stats[:total_open] %></div>
+            </div>
+            <div class="bg-warning bg-opacity-10 rounded-circle p-2">
+              <i data-lucide="ticket" style="width: 20px; height: 20px; color: var(--bs-warning);"></i>
+            </div>
+          </div>
+          <div class="small text-muted mt-1">
+            <span class="text-warning"><%= @grooming_stats[:stale] %> stale</span> ·
+            <span class="text-info"><%= @grooming_stats[:demand_boosted] %> boosted</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Token Cost -->
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted small">Token Cost (7d)</div>
+              <div class="fs-3 fw-bold"><%= number_with_delimiter(@attention_stats[:total_tokens]) %></div>
+            </div>
+            <div class="bg-success bg-opacity-10 rounded-circle p-2">
+              <i data-lucide="coins" style="width: 20px; height: 20px; color: var(--bs-success);"></i>
+            </div>
+          </div>
+          <div class="small text-muted mt-1">
+            ~$<%= (@attention_stats[:total_tokens].to_f / 1_000_000 * 3.0).round(2) %> estimated
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Signal Queue (Stage 2: Event-Driven) -->
+  <% if @signal_stats[:pending] > 0 || @signal_stats[:total_24h] > 0 %>
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+          <i data-lucide="radio" style="width: 16px; height: 16px;" class="text-warning me-1"></i>
+          Signal Queue
+          <% if @signal_stats[:pending] > 0 %>
+            <span class="badge bg-warning ms-2"><%= @signal_stats[:pending] %> pending</span>
+          <% end %>
+        </h5>
+        <div class="d-flex gap-3 small text-muted">
+          <span>24h: <%= @signal_stats[:total_24h] %> signals</span>
+          <span class="text-success"><%= @signal_stats[:acted_on_24h] %> acted on</span>
+          <span><%= @signal_stats[:reactive_sessions_24h] %> reactive sessions</span>
+          <% if @signal_stats[:strongest] %>
+            <span class="text-<%= @signal_stats[:strongest] >= 0.7 ? 'danger' : 'warning' %>">
+              strongest: <%= @signal_stats[:strongest] %>
+            </span>
+          <% end %>
+        </div>
+      </div>
+      <% if @pending_signals.any? %>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead>
+                <tr class="small text-muted">
+                  <th>Strength</th>
+                  <th>Type</th>
+                  <th>Summary</th>
+                  <th>Source</th>
+                  <th>Occurrences</th>
+                  <th>Age</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @pending_signals.each do |signal| %>
+                  <tr>
+                    <td>
+                      <div class="progress" style="width: 60px; height: 6px;">
+                        <% bar_class = signal.strength >= 0.8 ? 'bg-danger' : signal.strength >= 0.5 ? 'bg-warning' : 'bg-info' %>
+                        <div class="progress-bar <%= bar_class %>" style="width: <%= (signal.strength * 100).round %>%"></div>
+                      </div>
+                      <small class="text-muted"><%= signal.strength.round(2) %></small>
+                    </td>
+                    <td><span class="badge bg-secondary" style="font-size: 0.65rem;"><%= signal.signal_type.gsub('_', ' ') %></span></td>
+                    <td class="small"><%= signal.summary&.truncate(80) %></td>
+                    <td class="small text-muted"><%= signal.source %></td>
+                    <td class="text-center"><%= signal.occurrence_count > 1 ? "#{signal.occurrence_count}x" : '-' %></td>
+                    <td class="small text-muted"><%= time_ago_in_words(signal.created_at) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div class="row g-4">
+    <!-- Working Memory (Left Column) -->
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Working Memory</h5>
+          <span class="badge bg-secondary"><%= @thought_stats[:active] %> active · <%= @thought_stats[:resolved] %> resolved · <%= @thought_stats[:archived] %> archived</span>
+        </div>
+        <div class="card-body p-0">
+          <% if @active_thoughts.any? %>
+            <div class="list-group list-group-flush">
+              <% @active_thoughts.each do |thought| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                      <div class="d-flex align-items-center gap-2 mb-1">
+                        <% badge_class = case thought.thought_type
+                             when 'concern' then 'bg-danger'
+                             when 'insight' then 'bg-success'
+                             when 'hypothesis' then 'bg-info'
+                             when 'goal', 'plan' then 'bg-primary'
+                             when 'curiosity', 'question' then 'bg-warning'
+                             else 'bg-secondary'
+                           end %>
+                        <span class="badge <%= badge_class %> rounded-pill" style="font-size: 0.65rem;"><%= thought.thought_type %></span>
+                        <strong class="small"><%= thought.topic.gsub('_', ' ').titleize %></strong>
+                        <% if thought.times_revisited > 0 %>
+                          <span class="badge bg-light text-dark" style="font-size: 0.6rem;" title="Revisited <%= thought.times_revisited %> times">
+                            ↻ <%= thought.times_revisited %>
+                          </span>
+                        <% end %>
+                      </div>
+                      <p class="mb-1 small text-muted"><%= thought.content.truncate(200) %></p>
+                      <div class="d-flex gap-3" style="font-size: 0.7rem;">
+                        <span title="Salience" class="text-<%= thought.salience >= 0.7 ? 'danger' : thought.salience >= 0.4 ? 'warning' : 'muted' %>">
+                          ● salience: <%= thought.salience %>
+                        </span>
+                        <span class="text-muted">confidence: <%= thought.confidence %></span>
+                        <span class="text-muted">age: <%= distance_of_time_in_words_to_now(thought.created_at) %></span>
+                        <% if thought.evidence.any? %>
+                          <span class="text-info"><%= thought.evidence.count %> evidence</span>
+                        <% end %>
+                      </div>
+                    </div>
+                    <div class="ms-2">
+                      <%= link_to admin_amos_mind_resolve_thought_path(thought), method: :post,
+                            class: "btn btn-outline-success btn-sm",
+                            title: "Mark as resolved",
+                            data: { confirm: "Resolve this thought?" } do %>
+                        <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-4 text-center text-muted">
+              <i data-lucide="brain" style="width: 40px; height: 40px;" class="mb-2 opacity-25"></i>
+              <p class="mb-0">No active thoughts. Run an autonomous session to start building working memory.</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="col-lg-5">
+      <!-- Recent Sessions -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-bottom">
+          <h5 class="mb-0">Recent Sessions</h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @recent_sessions.any? %>
+            <div class="list-group list-group-flush">
+              <% @recent_sessions.each do |session| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <span class="badge <%= session.status == 'completed' ? 'bg-success' : session.status == 'running' ? 'bg-warning' : 'bg-danger' %>" style="font-size: 0.65rem;">
+                        <%= session.status %>
+                      </span>
+                      <span class="small ms-1"><%= session.session_type %></span>
+                    </div>
+                    <small class="text-muted"><%= time_ago_in_words(session.created_at) %> ago</small>
+                  </div>
+                  <% if session.reflection_summary.present? %>
+                    <p class="small text-muted mb-0 mt-1"><%= session.reflection_summary.truncate(150) %></p>
+                  <% end %>
+                  <div class="d-flex gap-2 mt-1" style="font-size: 0.7rem;">
+                    <% if session.bounties_created.to_i > 0 %>
+                      <span class="text-primary"><%= session.bounties_created %> bounties</span>
+                    <% end %>
+                    <% if session.duration_seconds.to_i > 0 %>
+                      <span class="text-muted"><%= session.duration_seconds %>s</span>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-3 text-center text-muted small">No sessions yet</div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Attention Log -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-bottom">
+          <h5 class="mb-0">Attention Log</h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @recent_attention.any? %>
+            <div class="list-group list-group-flush">
+              <% @recent_attention.each do |log| %>
+                <div class="list-group-item py-2">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                      <% icon = case log.outcome
+                           when 'acted' then '🎯'
+                           when 'deferred' then '⏳'
+                           when 'delegated' then '📤'
+                           else '📝'
+                         end %>
+                      <span><%= icon %></span>
+                      <span class="small"><%= log.focus_area.truncate(60) %></span>
+                    </div>
+                    <small class="text-muted"><%= time_ago_in_words(log.created_at) %></small>
+                  </div>
+                  <% if log.reasoning.present? %>
+                    <p class="small text-muted mb-0 mt-1" style="font-size: 0.7rem;"><%= log.reasoning.truncate(120) %></p>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-3 text-center text-muted small">No attention decisions logged yet</div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

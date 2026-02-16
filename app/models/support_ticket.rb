@@ -10,6 +10,8 @@
 # 5. Agent execution failures
 #
 class SupportTicket < ApplicationRecord
+  include AmosSignalEmitter
+
   belongs_to :entity
   belongs_to :user, optional: true
   belongs_to :scout_conversation, optional: true
@@ -66,6 +68,8 @@ class SupportTicket < ApplicationRecord
   validates :priority, inclusion: { in: PRIORITIES }
 
   before_validation :generate_ticket_number, on: :create
+  before_create :check_for_duplicate
+  after_create :emit_ticket_created_signal
 
   scope :open_tickets, -> { where(status: %w[open investigating debugging fixing testing]) }
   scope :awaiting_pr, -> { where(status: %w[pr_submitted pr_approved]) }
@@ -81,11 +85,21 @@ class SupportTicket < ApplicationRecord
   scope :approved_features, -> { where(category: 'feature_request', admin_approved: true) }
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # CREATION HELPERS
+  # CREATION HELPERS (all paths go through dedup)
   # ═══════════════════════════════════════════════════════════════════════════
 
   # Create a ticket from a user report (via AMOS chat)
+  # Returns existing ticket if a similar one already exists (adds user to affected list)
   def self.create_from_user_report!(entity:, user:, title:, description:, conversation: nil)
+    fingerprint = generate_content_fingerprint(title, description)
+
+    # Check for existing similar ticket
+    existing = find_similar_open_ticket(entity: entity, fingerprint: fingerprint, title: title)
+    if existing
+      existing.add_affected_user!(user)
+      return existing
+    end
+
     create!(
       entity: entity,
       user: user,
@@ -94,7 +108,10 @@ class SupportTicket < ApplicationRecord
       description: description,
       source: 'user_reported',
       priority: 'medium',
-      category: 'bug'
+      category: 'bug',
+      content_fingerprint: fingerprint,
+      affected_user_ids: user ? [user.id] : [],
+      affected_user_count: 1
     )
   end
 
@@ -103,9 +120,10 @@ class SupportTicket < ApplicationRecord
     signature = generate_error_signature(error_class, error_message, stack_trace)
 
     # Check for existing ticket with same signature
-    existing = where(entity: entity, error_signature: signature, status: open_tickets.pluck(:status)).first
+    existing = where(entity: entity, error_signature: signature).open_tickets.first
     if existing
       existing.increment!(:debug_session_count)
+      existing.increment!(:affected_user_count)
       return existing
     end
 
@@ -120,12 +138,29 @@ class SupportTicket < ApplicationRecord
       error_message: error_message,
       stack_trace: stack_trace,
       error_signature: signature,
-      error_context: context
+      error_context: context,
+      content_fingerprint: signature
     )
   end
 
   # Create a ticket from agent failure
   def self.create_from_agent_failure!(entity:, agent_plugin:, execution:, error_message:)
+    fingerprint = generate_content_fingerprint("Agent #{agent_plugin.name} failed", error_message)
+
+    # Check for existing similar agent failure
+    existing = find_similar_open_ticket(entity: entity, fingerprint: fingerprint)
+    if existing
+      existing.increment!(:affected_user_count)
+      # Append this execution to context
+      existing_execs = existing.error_context&.dig('execution_ids') || []
+      existing.update!(error_context: existing.error_context.merge(
+        'execution_ids' => existing_execs + [execution.id],
+        'latest_error' => error_message,
+        'latest_at' => Time.current.iso8601
+      ))
+      return existing
+    end
+
     create!(
       entity: entity,
       title: "Agent '#{agent_plugin.name}' execution failed",
@@ -134,13 +169,65 @@ class SupportTicket < ApplicationRecord
       priority: 'medium',
       category: 'agent_error',
       error_message: error_message,
+      content_fingerprint: fingerprint,
       error_context: {
         agent_plugin_id: agent_plugin.id,
         agent_name: agent_plugin.name,
         execution_id: execution.id,
+        execution_ids: [execution.id],
         input_context: execution.input_context
       }
     )
+  end
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DEDUP & AFFECTED USERS
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # Add a user to the affected list of an existing ticket
+  def add_affected_user!(user)
+    return unless user
+
+    current_ids = affected_user_ids || []
+    return if current_ids.include?(user.id)
+
+    update!(
+      affected_user_ids: current_ids + [user.id],
+      affected_user_count: current_ids.length + 1
+    )
+
+    # Escalate priority if many users affected
+    escalate_by_user_count!
+
+    Rails.logger.info "[SupportTicket] Added user #{user.id} to ticket #{ticket_number} " \
+                      "(now #{affected_user_count} affected)"
+  end
+
+  # Find a similar open ticket by fingerprint or fuzzy title match
+  def self.find_similar_open_ticket(entity:, fingerprint: nil, title: nil)
+    # Priority 1: Exact fingerprint match
+    if fingerprint.present?
+      match = where(entity: entity, content_fingerprint: fingerprint).open_tickets.first
+      return match if match
+    end
+
+    # Priority 2: Same error_signature
+    # (already handled in create_from_error!)
+
+    # Priority 3: Fuzzy title match (for user reports)
+    if title.present?
+      normalized = normalize_for_comparison(title)
+      # Check recent open tickets with similar titles
+      where(entity: entity).open_tickets.where('created_at > ?', 30.days.ago).find_each do |ticket|
+        ticket_normalized = normalize_for_comparison(ticket.title)
+        # Simple word overlap similarity
+        if word_similarity(normalized, ticket_normalized) >= 0.7
+          return ticket
+        end
+      end
+    end
+
+    nil
   end
 
   # ═══════════════════════════════════════════════════════════════════════════
@@ -322,11 +409,85 @@ class SupportTicket < ApplicationRecord
     ((Time.current - created_at) / 60).round
   end
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DEDUP (before_create)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  def check_for_duplicate
+    return if content_fingerprint.blank? && error_signature.blank?
+
+    # Check fingerprint match
+    fp = content_fingerprint || error_signature
+    existing = self.class.where(entity: entity)
+                         .open_tickets
+                         .where('content_fingerprint = ? OR error_signature = ?', fp, fp)
+                         .where.not(id: id)
+                         .first
+
+    if existing
+      # Merge into existing: add user, bump count, DON'T create new record
+      existing.add_affected_user!(user) if user.present?
+      existing.increment!(:affected_user_count) unless user.present?
+
+      Rails.logger.info "[SupportTicket] Dedup: merged into #{existing.ticket_number} " \
+                        "(#{existing.affected_user_count} affected)"
+
+      # Halt the create — throw :abort to prevent save
+      throw :abort
+    end
+  end
+
+  # Auto-escalate priority when many users are affected
+  def escalate_by_user_count!
+    new_priority = case affected_user_count
+                   when 5..9 then 'high'
+                   when 10.. then 'critical'
+                   else nil
+                   end
+
+    if new_priority && PRIORITIES.index(new_priority) > PRIORITIES.index(priority)
+      update!(priority: new_priority)
+      Rails.logger.info "[SupportTicket] Auto-escalated #{ticket_number} to #{new_priority} " \
+                        "(#{affected_user_count} users affected)"
+    end
+  end
+
   def self.generate_error_signature(error_class, error_message, stack_trace)
     # Create a signature from the first meaningful stack frame
     first_app_frame = stack_trace&.lines&.find { |l| l.include?('app/') || l.include?('lib/') }
     content = "#{error_class}|#{error_message&.gsub(/\d+/, 'N')}|#{first_app_frame}"
     Digest::SHA256.hexdigest(content)[0..16]
+  end
+
+  # Generate fingerprint from title+description for non-error tickets
+  def self.generate_content_fingerprint(title, description = nil)
+    normalized = normalize_for_comparison("#{title} #{description}")
+    Digest::SHA256.hexdigest(normalized)[0..16]
+  end
+
+  # Normalize text for comparison (remove noise, lowercase, strip numbers)
+  def self.normalize_for_comparison(text)
+    return '' if text.blank?
+
+    text.downcase
+        .gsub(/[^a-z\s]/, '')  # Remove non-alpha
+        .gsub(/\s+/, ' ')      # Collapse whitespace
+        .strip
+  end
+
+  # Word-level similarity (Jaccard index)
+  def self.word_similarity(a, b)
+    return 0.0 if a.blank? || b.blank?
+
+    words_a = a.split.reject { |w| w.length < 3 }.to_set
+    words_b = b.split.reject { |w| w.length < 3 }.to_set
+
+    return 0.0 if words_a.empty? || words_b.empty?
+
+    intersection = words_a & words_b
+    union = words_a | words_b
+
+    intersection.size.to_f / union.size
   end
 
   def self.determine_priority_from_error(error_class)
@@ -340,6 +501,35 @@ class SupportTicket < ApplicationRecord
     else
       'medium'
     end
+  end
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # AMOS SIGNAL EMISSION
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  def emit_ticket_created_signal
+    signal_type = is_critical? ? 'critical_ticket' : 'error_spike'
+    strength = case priority
+               when 'critical' then 0.95
+               when 'high' then 0.7
+               when 'medium' then 0.4
+               else 0.3
+               end
+
+    emit_amos_signal!(
+      signal_type: signal_type,
+      source: 'support_ticket',
+      strength: strength,
+      summary: "[#{priority.upcase}] #{title}",
+      data: {
+        ticket_id: id,
+        ticket_number: ticket_number,
+        priority: priority,
+        category: category,
+        source: source,
+        error_class: error_class
+      }
+    )
   end
 end
 

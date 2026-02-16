@@ -1,40 +1,51 @@
-<% content_for :title, "Dashboard - Amos Build" %>
+<% content_for :title, "Dashboard - AMOS Build" %>
 
-<div class="row mb-4">
-  <div class="col">
-    <h1 class="display-5 fw-bold mb-2">
-      <i class="bi bi-hammer me-2 text-primary"></i>Build with Amos
-    </h1>
-    <p class="text-muted lead">
-      Contribute code, ideas, and improvements. Earn AMOS tokens for your work.
-    </p>
+<!-- Hero -->
+<div class="text-center mb-5">
+  <h1 class="display-5 fw-bold mb-3">Build with AMOS</h1>
+  <p class="lead text-muted mx-auto" style="max-width: 600px;">
+    Contribute to the AMOS platform and earn tokens. Every contribution — code, docs, design, content — makes AMOS better for everyone.
+  </p>
+  <div class="d-flex justify-content-center gap-3 mt-4">
+    <%= link_to bounties_path, class: "btn btn-primary btn-lg px-4" do %>
+      Browse Bounties
+    <% end %>
+    <%= link_to "/leaderboard", class: "btn btn-outline-light btn-lg px-4" do %>
+      Leaderboard
+    <% end %>
   </div>
 </div>
 
-<!-- Stats Row -->
-<div class="row g-4 mb-5">
-  <div class="col-md-3">
+<!-- Stats -->
+<div class="row g-3 mb-5">
+  <div class="col-6 col-md">
     <div class="card stat-card">
       <div class="stat-value"><%= @stats[:open_bounties] %></div>
       <div class="stat-label">Open Bounties</div>
     </div>
   </div>
-  <div class="col-md-3">
+  <div class="col-6 col-md">
     <div class="card stat-card">
       <div class="stat-value"><%= number_with_delimiter(@stats[:total_rewards]) %></div>
-      <div class="stat-label">AMOS Rewards Available</div>
+      <div class="stat-label">AMOS Available</div>
     </div>
   </div>
-  <div class="col-md-3">
+  <div class="col-6 col-md">
     <div class="card stat-card">
-      <div class="stat-value"><%= @stats[:active_proposals] %></div>
-      <div class="stat-label">Active Proposals</div>
+      <div class="stat-value"><%= @stats[:completed_bounties] %></div>
+      <div class="stat-label">Bounties Completed</div>
     </div>
   </div>
-  <div class="col-md-3">
+  <div class="col-6 col-md">
     <div class="card stat-card">
       <div class="stat-value"><%= @stats[:contributors] %></div>
       <div class="stat-label">Contributors</div>
+    </div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card stat-card">
+      <div class="stat-value"><%= number_with_delimiter(@stats[:total_paid]) %></div>
+      <div class="stat-label">AMOS Paid Out</div>
     </div>
   </div>
 </div>
@@ -42,74 +53,107 @@
 <div class="row g-4">
   <!-- Featured Bounties -->
   <div class="col-lg-8">
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-trophy me-2"></i>Featured Bounties</h5>
-        <a href="#" class="btn btn-sm btn-outline-primary">View All</a>
-      </div>
-      <div class="card-body">
-        <div class="text-center py-5 text-muted">
-          <i class="bi bi-inbox display-4 d-block mb-3"></i>
-          <h5>Coming Soon</h5>
-          <p class="mb-0">
-            Bounties will be populated from the on-chain governance program.
-            <br>
-            <a href="https://github.com/amoslabs/amos-governance" class="text-primary">View the Solana program →</a>
-          </p>
-        </div>
-      </div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h4 class="mb-0">Top Priority Bounties</h4>
+      <%= link_to "View All →", bounties_path, class: "text-decoration-none" %>
     </div>
-  </div>
-  
-  <!-- Quick Actions -->
-  <div class="col-lg-4">
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
-      </div>
-      <div class="card-body">
-        <div class="d-grid gap-2">
-          <a href="#" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-2"></i>Submit Proposal
-          </a>
-          <a href="#" class="btn btn-outline-secondary">
-            <i class="bi bi-search me-2"></i>Browse Bounties
-          </a>
-          <a href="#" class="btn btn-outline-secondary">
-            <i class="bi bi-bar-chart me-2"></i>View Leaderboard
-          </a>
-        </div>
-      </div>
-    </div>
-    
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>How It Works</h5>
-      </div>
-      <div class="card-body">
-        <ol class="ps-3 mb-0">
-          <li class="mb-2">Connect your Solana wallet</li>
-          <li class="mb-2">Browse open bounties or submit proposals</li>
-          <li class="mb-2">Claim a bounty and submit your work</li>
-          <li class="mb-2">Pass quality gates (benchmarks, A/B tests)</li>
-          <li class="mb-0">Earn AMOS tokens on successful merge</li>
-        </ol>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- Recent Contributions -->
-<div class="row mt-4">
-  <div class="col">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-activity me-2"></i>Recent Contributions</h5>
+    <% if @featured_bounties.any? %>
+      <div class="row g-3">
+        <% @featured_bounties.each do |bounty| %>
+          <div class="col-md-6">
+            <div class="card h-100" style="transition: transform 0.15s; cursor: pointer;"
+                 onmouseover="this.style.transform='translateY(-2px)'"
+                 onmouseout="this.style.transform='translateY(0)'"
+                 onclick="window.location='<%= bounty_path(bounty) %>'">
+              <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <% type_colors = { 'bug' => 'danger', 'feature' => 'primary', 'documentation' => 'info',
+                       'design' => 'warning', 'testing' => 'success' } %>
+                  <span class="badge bg-<%= type_colors[bounty.bounty_type] || 'secondary' %>" style="font-size: 0.65rem;">
+                    <%= bounty.bounty_type %>
+                  </span>
+                  <span class="fw-bold text-success small"><%= number_with_delimiter(bounty.points) %> AMOS</span>
+                </div>
+                <h6 class="card-title mb-1" style="font-size: 0.9rem;"><%= bounty.title.truncate(60) %></h6>
+                <p class="card-text text-muted mb-0" style="font-size: 0.75rem;">
+                  <%= truncate(bounty.description&.gsub(/[#*_\[\]]/, ''), length: 80) %>
+                </p>
+              </div>
+            </div>
+          </div>
+        <% end %>
       </div>
-      <div class="card-body">
-        <div class="text-center py-4 text-muted">
-          <p class="mb-0">No contributions yet. Be the first to contribute!</p>
+    <% else %>
+      <div class="card">
+        <div class="card-body text-center py-4">
+          <p class="text-muted mb-0">AMOS is generating bounties during nightly thinking sessions. Check back soon!</p>
         </div>
+      </div>
+    <% end %>
+
+    <!-- Active Sprints -->
+    <% if @sprint_labels.any? %>
+      <h4 class="mt-4 mb-3">Active Sprints</h4>
+      <div class="d-flex flex-wrap gap-2">
+        <% @sprint_labels.each do |label, count| %>
+          <%= link_to bounties_path(sprint: label), class: "btn btn-outline-info btn-sm" do %>
+            <%= label %> <span class="badge bg-info ms-1"><%= count %></span>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="col-lg-4">
+    <!-- Recent Completions -->
+    <div class="card mb-4">
+      <div class="card-header"><h6 class="mb-0">Recent Completions</h6></div>
+      <div class="card-body p-0">
+        <% if @recent_completions.any? %>
+          <div class="list-group list-group-flush">
+            <% @recent_completions.each do |bounty| %>
+              <div class="list-group-item" style="background: transparent;">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <div class="small"><%= bounty.title.truncate(40) %></div>
+                    <div class="text-muted" style="font-size: 0.7rem;">
+                      by <%= bounty.claimed_by&.display_name || 'contributor' %>
+                      · <%= time_ago_in_words(bounty.approved_at) %> ago
+                    </div>
+                  </div>
+                  <span class="text-success small fw-bold"><%= bounty.effective_points %></span>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="p-3 text-muted text-center small">No completions yet</div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Top Contributors -->
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Top Contributors (90d)</h6></div>
+      <div class="card-body p-0">
+        <% if @top_contributors.any? %>
+          <div class="list-group list-group-flush">
+            <% @top_contributors.each_with_index do |contributor, idx| %>
+              <div class="list-group-item d-flex justify-content-between align-items-center" style="background: transparent;">
+                <div>
+                  <span class="text-muted me-2">#<%= idx + 1 %></span>
+                  <span class="small"><%= contributor[:name] %></span>
+                  <span class="text-muted" style="font-size: 0.7rem;">(<%= contributor[:bounties_completed] %> bounties)</span>
+                </div>
+                <span class="text-success small fw-bold"><%= number_with_delimiter(contributor[:total_earned]) %> AMOS</span>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="p-3 text-muted text-center small">Be the first contributor!</div>
+        <% end %>
       </div>
     </div>
   </div>

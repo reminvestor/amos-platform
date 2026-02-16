@@ -72,7 +72,7 @@
           <% end %>
 
           <%# AI & Agents Category %>
-          <div class="nav-group #{'active' if request.path.start_with?('/admin/agent') || request.path.start_with?('/admin/living_platform') || request.path.start_with?('/admin/context_graph') || request.path.start_with?('/admin/experience_learning') || request.path.start_with?('/admin/ai_rulesets')}">
+          <div class="nav-group #{'active' if request.path.start_with?('/admin/agent') || request.path.start_with?('/admin/living_platform') || request.path.start_with?('/admin/context_graph') || request.path.start_with?('/admin/experience_learning') || request.path.start_with?('/admin/ai_rulesets') || request.path.start_with?('/admin/skills') || request.path.start_with?('/admin/amos_mind')}">
             <div class="nav-item nav-group-header" style="cursor: pointer;">
               <i data-lucide="brain"></i>
               <span>AI & Agents</span>
@@ -104,6 +104,12 @@
               <% end %>
               <%= link_to admin_ai_rulesets_path, class: "nav-subitem #{'active' if controller_name == 'ai_rulesets'}" do %>
                 <span>AI Rulesets</span>
+              <% end %>
+              <%= link_to admin_skills_path, class: "nav-subitem #{'active' if controller_name == 'skills'}" do %>
+                <span>Skills</span>
+              <% end %>
+              <%= link_to admin_amos_mind_path, class: "nav-subitem #{'active' if controller_name == 'amos_mind'}" do %>
+                <span>AMOS Mind</span>
               <% end %>
             </div>
           </div>

@@ -208,6 +208,319 @@ class SkillLibraryService
         - Opens and clicks tracked automatically
         - Use `o:tracking` to disable
       SKILL
+    },
+
+    'trello' => {
+      name: 'Trello API Expert',
+      source: 'built-in',
+      content: <<~SKILL.strip
+        ## Trello Integration Skill
+
+        ### Authentication
+        - Uses API Key + Token as query parameters: `?key={apiKey}&token={token}`
+        - Generate key at https://trello.com/power-ups/admin (API Key tab)
+        - Token is user-specific and grants access to that user's boards
+
+        ### Rate Limits
+        - 300 requests per 10 seconds per API key
+        - 100 requests per 10 seconds per token
+        - Exceeding returns HTTP 429
+
+        ### Available Operations
+        - `List My Boards` — GET /1/members/me/boards
+        - `Get Board` — GET /1/boards/{id} (includes name, desc, url)
+        - `Get Board Members` — GET /1/boards/{id}/members
+        - `Get Lists On Board` — GET /1/boards/{id}/lists
+        - `Get Cards On List` — GET /1/lists/{id}/cards
+        - `Get Card` — GET /1/cards/{id}
+        - `Get Checklists On Card` — GET /1/cards/{id}/checklists
+        - `Create Board` — POST /1/boards (name required)
+        - `Create Card` — POST /1/cards (name, idList required)
+        - `Create List` — POST /1/lists (name, idBoard required)
+        - `Create Checklist` — POST /1/checklists (idCard required)
+        - `Create Checklist Item` — POST /1/checklists/{id}/checkItems
+        - `Update Card` — PUT /1/cards/{id} (name, desc, due, idList, closed)
+        - `Update Board` — PUT /1/boards/{id}
+        - `Update List` — PUT /1/lists/{id} (name, closed, pos)
+        - `Delete Card` — DELETE /1/cards/{id}
+        - `Delete Board` — DELETE /1/boards/{id}
+
+        ### Common Patterns
+        - To move a card: Update Card with new `idList`
+        - To archive a card: Update Card with `closed: true`
+        - To find a specific board's cards: List My Boards → Get Lists On Board → Get Cards On List
+        - Card fields: name, desc, due, dueComplete, idList, idBoard, labels, closed, pos, url
+
+        ### Example: Create a card
+        ```
+        execute_integration_action(
+          integration: "trello",
+          action: "Create Card",
+          inputs: { name: "New task", idList: "LIST_ID", desc: "Description" }
+        )
+        ```
+      SKILL
+    },
+
+    'godaddy' => {
+      name: 'GoDaddy API Expert',
+      source: 'built-in',
+      content: <<~SKILL.strip
+        ## GoDaddy Integration Skill
+
+        ### Authentication
+        - Uses `sso-key {api_key}:{api_secret}` in Authorization header
+        - Production: https://api.godaddy.com
+        - Keys generated at https://developer.godaddy.com/keys
+        - IMPORTANT: DNS API requires 10+ domains on the account (GoDaddy restriction since April 2024)
+
+        ### Available Operations
+        - `List Domains` — GET /v1/domains (returns all domains on account)
+        - `Verify Domain Ownership` — GET /v1/domains/{domain} (domain details, status, expiry)
+        - `Get DNS Records` — GET /v1/domains/{domain}/records (all DNS records)
+        - `Add DNS Record` — PATCH /v1/domains/{domain}/records (append records)
+        - `Replace DNS Records` — PUT /v1/domains/{domain}/records/{type} (replace all records of a type)
+        - `Delete DNS Record` — DELETE /v1/domains/{domain}/records/{type}/{name}
+
+        ### DNS Record Format
+        Records are JSON objects: `{ type: "A", name: "@", data: "1.2.3.4", ttl: 600 }`
+        - `type`: A, AAAA, CNAME, MX, TXT, NS, SRV, SOA
+        - `name`: "@" for root, or subdomain name
+        - `data`: record value (IP address, domain, text)
+        - `ttl`: time-to-live in seconds (min 600)
+
+        ### Common Tasks
+        - Point domain to IP: Add/Replace A record with `name: "@"`, `data: "IP_ADDRESS"`
+        - Add subdomain: Add CNAME record with `name: "subdomain"`, `data: "target.domain.com"`
+        - Verify domain (email): Add TXT record for SPF/DKIM/DMARC
+        - Add MX records: `{ type: "MX", name: "@", data: "mail.provider.com", priority: 10 }`
+
+        ### Example: Add a CNAME record
+        ```
+        execute_integration_action(
+          integration: "godaddy",
+          action: "Add DNS Record",
+          inputs: { domain: "example.com", records: [{ type: "CNAME", name: "www", data: "example.com", ttl: 600 }] }
+        )
+        ```
+
+        ### DO NOT:
+        ❌ Use `Replace DNS Records` unless you intend to overwrite ALL records of that type
+        ❌ Forget the domain path parameter (it's the actual domain name, e.g., "example.com")
+      SKILL
+    },
+
+    'gmail' => {
+      name: 'Gmail API Expert',
+      source: 'built-in',
+      content: <<~SKILL.strip
+        ## Gmail Integration Skill
+
+        ### Authentication
+        - OAuth 2.0 with Google scopes
+        - Base URL: https://gmail.googleapis.com/gmail/v1
+        - Use `me` as userId for the authenticated user
+
+        ### Available Operations
+        - `List Messages` — GET /users/me/messages (returns id + threadId only)
+        - `Get Message` — GET /users/me/messages/{id} (full message with body)
+        - `Send Email` — POST /users/me/messages/send (requires base64url-encoded RFC 2822 message)
+        - `Test Connection` — GET /users/me/profile
+
+        ### Key Patterns
+        - **List Messages returns ONLY IDs** — you must call Get Message for each message to read content
+        - Use `q` parameter for Gmail search syntax: `q: "from:user@example.com after:2024/01/01"`
+        - `maxResults` defaults to 100, max 500
+        - Pagination via `pageToken` (returned in response as `nextPageToken`)
+        - Message format options: `full` (default), `metadata`, `minimal`, `raw`
+
+        ### Gmail Search Syntax (q parameter)
+        - `from:user@example.com` — from specific sender
+        - `to:user@example.com` — to specific recipient
+        - `subject:invoice` — subject contains word
+        - `after:2024/01/01` — after date
+        - `before:2024/12/31` — before date
+        - `has:attachment` — has attachments
+        - `is:unread` — unread messages
+        - `label:important` — specific label
+
+        ### Sending Email
+        The message body must be a base64url-encoded RFC 2822 email string:
+        ```
+        From: sender@gmail.com
+        To: recipient@example.com
+        Subject: Hello
+
+        Email body here
+        ```
+
+        ### DO NOT:
+        ❌ Try to read message bodies from list results (only IDs returned)
+        ❌ Send raw text as email body (must be base64url-encoded RFC 2822)
+      SKILL
+    },
+
+    'slack' => {
+      name: 'Slack API Expert',
+      source: 'built-in',
+      content: <<~SKILL.strip
+        ## Slack Integration Skill
+
+        ### Authentication
+        Our Slack integration uses **Incoming Webhooks** (simplest approach):
+        - Each webhook URL is tied to a specific channel
+        - The webhook URL is the connection credential
+        - No OAuth flow needed — just the webhook URL
+
+        ### Available Operations
+        - `Post Message (Webhook)` — POST to webhook URL with JSON payload
+        - `Test Connection` — GET /api/auth.test (if using bot token)
+
+        ### Posting Messages via Webhook
+        ```
+        execute_integration_action(
+          integration: "slack",
+          action: "Post Message (Webhook)",
+          inputs: {
+            text: "Hello from AMOS! 🤖"
+          }
+        )
+        ```
+
+        ### Rich Message Formatting (Block Kit)
+        Slack supports rich formatting with blocks:
+        ```json
+        {
+          "blocks": [
+            { "type": "header", "text": { "type": "plain_text", "text": "New Lead!" } },
+            { "type": "section", "text": { "type": "mrkdwn", "text": "*Name:* John Smith\\n*Email:* john@example.com" } }
+          ]
+        }
+        ```
+
+        ### Slack Markdown (mrkdwn)
+        - `*bold*`, `_italic_`, `~strikethrough~`, `` `code` ``
+        - `<https://example.com|Link text>` for links
+        - `<@U12345>` to mention a user
+        - `<!channel>` to notify everyone
+
+        ### Webhook Limitations
+        - One webhook = one channel
+        - Cannot read messages (send only)
+        - Cannot list channels or users
+        - For advanced features, upgrade to Bot Token auth
+
+        ### DO NOT:
+        ❌ Try to read messages or list channels via webhook (send-only)
+        ❌ Include the full webhook URL in tool inputs (it's stored in the connection)
+      SKILL
+    },
+
+    'shopify' => {
+      name: 'Shopify API Expert',
+      source: 'built-in',
+      content: <<~SKILL.strip
+        ## Shopify Integration Skill
+
+        ### Authentication
+        - OAuth 2.0 with access token in `X-Shopify-Access-Token` header
+        - Base URL pattern: `https://{store}.myshopify.com/admin/api/2024-10`
+        - REST Admin API is legacy; Shopify recommends GraphQL for new apps
+
+        ### Available Operations
+        - `List Products` — GET /products.json (returns array of products)
+        - `Test Connection` — GET /shop.json (returns shop details)
+
+        ### Product Fields
+        - `id`, `title`, `body_html`, `vendor`, `product_type`, `status`
+        - `variants[]` — each has `price`, `sku`, `inventory_quantity`, `title`
+        - `images[]` — product images with `src` URLs
+        - `tags` — comma-separated string
+
+        ### Pagination
+        - Use `limit` parameter (max 250, default 50)
+        - Cursor-based pagination via `Link` header
+        - Response includes `page_info` parameter for next/prev
+
+        ### Filtering Products
+        - `status`: active, archived, draft
+        - `product_type`: filter by type
+        - `vendor`: filter by vendor
+        - `collection_id`: products in a collection
+        - `created_at_min` / `updated_at_min`: date filters (ISO 8601)
+
+        ### Example: List active products
+        ```
+        execute_integration_action(
+          integration: "shopify",
+          action: "List Products",
+          inputs: { limit: 50, status: "active" }
+        )
+        ```
+
+        ### Important Notes
+        - Prices are strings (e.g., "29.99"), NOT cents like Stripe
+        - Inventory is per-variant, not per-product
+        - Only last 60 days of orders by default (need `read_all_orders` scope)
+      SKILL
+    },
+
+    'neon_crm' => {
+      name: 'Neon CRM API Expert',
+      source: 'built-in',
+      content: <<~SKILL.strip
+        ## Neon CRM Integration Skill
+
+        ### Authentication
+        - HTTP Basic Auth: username = Organization ID, password = API Key
+        - Base URL: https://api.neoncrm.com/v2
+        - Include header: `NEON-API-VERSION: 2.8`
+        - Trial instances use: https://trial.z2systems.com/v2
+
+        ### Available Operations
+        - `List Accounts` — POST /accounts/search (search, NOT GET)
+        - `Get Account` — GET /accounts/{id}
+        - `Create Account` — POST /accounts
+        - `Update Account` — PATCH /accounts/{id}
+        - `List Donations` — POST /donations/search (search, NOT GET)
+        - `Get Donation` — GET /donations/{id}
+        - `List Events` — POST /events/search
+        - `List Memberships` — GET /memberships
+        - `List Custom Fields` — GET /customFields
+
+        ### CRITICAL: Search Endpoints Use POST, Not GET
+        Neon CRM uses POST requests with JSON body for searching:
+        ```
+        execute_integration_action(
+          integration: "neon_crm",
+          action: "List Accounts",
+          inputs: {
+            searchFields: [{ field: "Email", operator: "EQUAL", value: "john@example.com" }],
+            outputFields: ["Account ID", "First Name", "Last Name", "Email 1"],
+            pagination: { currentPage: 0, pageSize: 50 }
+          }
+        )
+        ```
+
+        ### Search Operators
+        - `EQUAL`, `NOT_EQUAL`, `CONTAIN`, `NOT_CONTAIN`
+        - `GREATER_THAN`, `LESS_THAN`, `GREATER_AND_EQUAL`, `LESS_AND_EQUAL`
+        - `BLANK`, `NOT_BLANK`
+
+        ### Common Search Fields
+        - Accounts: "First Name", "Last Name", "Email", "Account Type", "Account ID"
+        - Donations: "Amount", "Date", "Fund", "Campaign", "Account ID"
+        - Events: "Event Name", "Event Start Date", "Event Status"
+
+        ### Account Types
+        - Individual, Organization, Household
+        - Each has different required fields
+
+        ### DO NOT:
+        ❌ Use GET for list/search operations (they're POST with search body)
+        ❌ Forget `outputFields` in search requests (controls which fields are returned)
+        ❌ Use page numbers starting at 1 (pagination is 0-based)
+      SKILL
     }
   }.freeze
 
@@ -397,42 +710,76 @@ class SkillLibraryService
   # ═══════════════════════════════════════════════════════════════
 
   private_class_method def self.get_integration_skill(integration_name)
-    skill_data = INTEGRATION_SKILLS[integration_name.to_s.downcase]
+    name_lower = integration_name.to_s.downcase
+
+    # DB first: check for a SystemSkill record (AMOS can evolve these)
+    db_skill = SystemSkill.active.find_integration_skill(name_lower) rescue nil
+    if db_skill
+      return {
+        name: db_skill.name,
+        content: db_skill.content,
+        source: db_skill.source,
+        type: :integration,
+        integration: name_lower,
+        system_skill_id: db_skill.id
+      }
+    end
+
+    # Fallback: hardcoded constant (used before skills are seeded)
+    skill_data = INTEGRATION_SKILLS[name_lower]
     return nil unless skill_data
-    
+
     {
       name: skill_data[:name],
       content: skill_data[:content],
       source: skill_data[:source],
       type: :integration,
-      integration: integration_name
+      integration: name_lower
     }
   end
 
   private_class_method def self.get_canvas_skill(canvas_context)
-    # Canvas-specific skills are handled by GuidanceLibrary
-    # This is a hook for future canvas-specific skill additions
     nil
   end
 
   private_class_method def self.detect_skills_from_message(message)
     return [] if message.blank?
-    
+
     msg_lower = message.downcase
     skills = []
-    
-    TASK_SKILLS.each do |_key, skill_data|
-      # Check if any keywords match
-      if skill_data[:keywords].any? { |kw| msg_lower.include?(kw) }
-        skills << {
-          name: skill_data[:name],
-          content: skill_data[:content],
-          source: skill_data[:source],
-          type: :task
-        }
+
+    # DB first: check SystemSkill task skills
+    begin
+      db_task_skills = SystemSkill.active.task_skills.global
+      db_task_skills.each do |db_skill|
+        if db_skill.keywords.any? { |kw| msg_lower.include?(kw.downcase) }
+          skills << {
+            name: db_skill.name,
+            content: db_skill.content,
+            source: db_skill.source,
+            type: :task,
+            system_skill_id: db_skill.id
+          }
+        end
+      end
+    rescue => e
+      Rails.logger.debug "[SkillLibrary] DB task skill lookup failed (#{e.message}), using constants"
+    end
+
+    # If no DB skills found, fall back to constants
+    if skills.empty?
+      TASK_SKILLS.each do |_key, skill_data|
+        if skill_data[:keywords].any? { |kw| msg_lower.include?(kw) }
+          skills << {
+            name: skill_data[:name],
+            content: skill_data[:content],
+            source: skill_data[:source],
+            type: :task
+          }
+        end
       end
     end
-    
+
     skills
   end
 
@@ -442,17 +789,32 @@ class SkillLibraryService
     
     custom_skills = AgentPlugin.where(entity: entity)
                                .where("configuration->>'skill_format' = ?", 'claude_skill_md')
-                               .limit(limit)
     
     return [] if custom_skills.empty?
     
-    # Simple keyword matching for now (could use vector search later)
-    msg_words = message.downcase.split(/\W+/).reject { |w| w.length < 3 }
+    msg_lower = message.downcase
+    msg_words = msg_lower.split(/\W+/).reject { |w| w.length < 3 }
     
     custom_skills.filter_map do |plugin|
-      # Check if skill is relevant to message
+      relevance = 0
+
+      # Priority 1: Match against "use_when" conditions (highest signal)
+      # These are the "Use this skill when:" bullets extracted during import
+      use_when = plugin.configuration&.dig('use_when') || []
+      if use_when.any?
+        use_when.each do |condition|
+          condition_words = condition.downcase.split(/\W+/).reject { |w| w.length < 3 }
+          match_count = condition_words.count { |w| msg_lower.include?(w) }
+          # If >50% of a condition's words match, it's a strong signal
+          if condition_words.any? && match_count.to_f / condition_words.length > 0.5
+            relevance += 10 + match_count
+          end
+        end
+      end
+
+      # Priority 2: Match against name + description (weaker signal)
       skill_text = "#{plugin.name} #{plugin.description}".downcase
-      relevance = msg_words.count { |w| skill_text.include?(w) }
+      relevance += msg_words.count { |w| skill_text.include?(w) }
       
       next nil if relevance == 0
       
@@ -468,7 +830,7 @@ class SkillLibraryService
         plugin_id: plugin.id,
         relevance: relevance
       }
-    end.sort_by { |s| -s[:relevance] }
+    end.sort_by { |s| -s[:relevance] }.first(limit)
   end
 
   private_class_method def self.build_skill_block(skills)

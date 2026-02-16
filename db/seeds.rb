@@ -79,18 +79,14 @@ rescue => e
 end
 
 # Load additional seeds — each wrapped so failures don't cascade
-safe_load_seed 'tool_definitions.rb'
-safe_load_seed 'agent_plugins.rb'
+#
+# NOTE: V3 architecture uses GuidanceLibrary + SkillLibraryService for task-specific
+# expertise, NOT AgentPlugin records. Agent seeds (agent_plugins.rb, analytics_agent.rb,
+# document_export_agent.rb, etc.) have been removed — they were dead weight in V3.
+# See app/services/guidance_library.rb and app/services/skill_library_service.rb.
+
 safe_load_seed 'ai_rulesets.rb'
-# Temporarily disabled - has invalid attributes for current schema
-# safe_load_seed 'integration_repair_agent.rb'
-safe_load_seed 'analytics_agent.rb'
-safe_load_seed 'document_export_agent.rb'
-safe_load_seed 'document_import_agent.rb'
 safe_load_seed 'space_definitions.rb'
-safe_load_seed 'platform_factory.rb'
-safe_load_seed 'application_planner.rb'
-safe_load_seed 'frontend_design_expert.rb'
 
 # Integration seeds — integrations.rb must succeed for the cleanup to work
 safe_load_seed 'integrations.rb', critical: true
@@ -101,9 +97,10 @@ safe_load_seed 'godaddy_integration.rb'
 # This must run AFTER integrations.rb and integration_actions.rb
 safe_load_seed 'integration_operations_cleanup.rb'
 
+# System skills — seeds DB-backed skills from SkillLibraryService constants
+# These are the baseline that AMOS evolves autonomously over time
+safe_load_seed 'system_skills.rb'
+
 if Rails.env.development?
   safe_load_seed 'demo_users.rb'
 end
-
-# Load policy rules (after entities exist)
-safe_load_seed 'policy_rules.rb'

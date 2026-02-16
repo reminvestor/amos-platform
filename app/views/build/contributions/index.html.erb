@@ -1,0 +1,83 @@
+<% content_for :title, "Contributions - AMOS Build" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="display-6 fw-bold mb-1">Contributions</h1>
+    <p class="text-muted mb-0">All accepted contributions to the AMOS platform</p>
+  </div>
+  <% if current_user %>
+    <%= link_to my_contributions_path, class: "btn btn-outline-primary" do %>
+      My Contributions
+    <% end %>
+  <% end %>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 1.8rem;"><%= @stats[:total] %></div>
+      <div class="stat-label">Total Contributions</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 1.8rem;"><%= number_with_delimiter(@stats[:total_value]) %></div>
+      <div class="stat-label">AMOS Distributed</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 1.8rem;"><%= @stats[:this_month] %></div>
+      <div class="stat-label">This Month</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 1.8rem;"><%= @stats[:contributors] %></div>
+      <div class="stat-label">Contributors</div>
+    </div>
+  </div>
+</div>
+
+<!-- Contributions List -->
+<div class="card">
+  <div class="card-body p-0">
+    <% if @contributions.any? %>
+      <div class="table-responsive">
+        <table class="table table-dark table-hover mb-0">
+          <thead>
+            <tr class="text-muted small">
+              <th>Contributor</th>
+              <th>Contribution</th>
+              <th>Type</th>
+              <th class="text-end">AMOS Earned</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @contributions.each do |contribution| %>
+              <tr>
+                <td><%= contribution.user&.display_name || 'Anonymous' %></td>
+                <td>
+                  <div class="small"><%= contribution.title.truncate(60) %></div>
+                </td>
+                <td><span class="badge bg-secondary"><%= contribution.contribution_type %></span></td>
+                <td class="text-end text-success fw-bold"><%= number_with_delimiter(contribution.stake_value) %></td>
+                <td class="small text-muted"><%= contribution.created_at.strftime('%b %d') %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="p-4 text-center text-muted">No contributions yet. Be the first!</div>
+    <% end %>
+  </div>
+</div>
+
+<% if @contributions.respond_to?(:total_pages) && @contributions.total_pages > 1 %>
+  <div class="d-flex justify-content-center mt-4">
+    <%= paginate @contributions, theme: 'bootstrap-5' %>
+  </div>
+<% end %>

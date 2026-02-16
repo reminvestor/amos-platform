@@ -58,7 +58,11 @@ module LivingPlatform
         # PHASE 2.6: CONFIDENCE CALIBRATION
         # Analyze and correct AI confidence miscalibration
         confidence_calibration = run_confidence_calibration_phase
-        
+
+        # PHASE 2.7: SKILL EVOLUTION
+        # AMOS directly improves its own knowledge/skills based on execution data
+        skill_evolution = run_skill_evolution_phase
+
         # PHASE 3: HYPOTHESIS
         hypotheses = run_hypothesis_phase(analysis)
         
@@ -69,7 +73,7 @@ module LivingPlatform
         integrations = run_integration_phase
         
         # PHASE 6: DOCUMENTATION
-        run_documentation_phase(analysis, integrations, experience_learning, confidence_calibration)
+        run_documentation_phase(analysis, integrations, experience_learning, confidence_calibration, skill_evolution)
         
         # Generate goals for next cycle
         goals = @desire_engine.generate_daily_goals
@@ -242,6 +246,46 @@ module LivingPlatform
       rescue => e
         Rails.logger.error "[EvolutionCycle] Confidence calibration phase failed: #{e.message}"
         { overall_calibration_score: nil, guidance: { significant_miscalibration: false } }
+      end
+    end
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PHASE 2.7: SKILL EVOLUTION
+    # AMOS directly improves its own knowledge/skills from execution data.
+    # Skills are pure knowledge content — no bounty needed, AMOS just does it.
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def run_skill_evolution_phase
+      Rails.logger.info "[EvolutionCycle] Phase 2.7: Skill Evolution"
+
+      begin
+        evolution_service = SkillEvolutionService.new(entity)
+        results = evolution_service.evolve_skills!
+
+        # Record in cycle learnings
+        if results[:skills_evolved] > 0 || results[:proposals].any?
+          skill_data = {
+            'type' => 'skill_evolution',
+            'skills_analyzed' => results[:skills_analyzed],
+            'skills_evolved' => results[:skills_evolved],
+            'proposals_count' => results[:proposals].count,
+            'evolved_skills' => results[:proposals]
+              .select { |p| p[:confidence] >= SkillEvolutionService::AUTO_APPLY_CONFIDENCE }
+              .map { |p| { name: p[:skill_name], confidence: p[:confidence], reason: p[:reason] } },
+            'timestamp' => Time.current.iso8601
+          }
+
+          current_learnings = @cycle.learnings || []
+          @cycle.update!(learnings: current_learnings + [skill_data])
+        end
+
+        Rails.logger.info "[EvolutionCycle] Skill evolution: #{results[:skills_evolved]} evolved, " \
+                          "#{results[:proposals].count} proposals from #{results[:skills_analyzed]} analyzed"
+
+        results
+      rescue => e
+        Rails.logger.error "[EvolutionCycle] Skill evolution phase failed: #{e.message}"
+        { skills_analyzed: 0, skills_evolved: 0, proposals: [], error: e.message }
       end
     end
 
@@ -563,7 +607,7 @@ module LivingPlatform
     # PHASE 6: DOCUMENTATION
     # ═══════════════════════════════════════════════════════════════════════════
 
-    def run_documentation_phase(analysis, integrations, experience_learning = nil, confidence_calibration = nil)
+    def run_documentation_phase(analysis, integrations, experience_learning = nil, confidence_calibration = nil, skill_evolution = nil)
       Rails.logger.info "[EvolutionCycle] Phase 6: Documentation"
       
       learnings = []
@@ -620,6 +664,36 @@ module LivingPlatform
         Rails.logger.info "[EvolutionCycle] Documented confidence calibration adjustment"
       end
       
+      # Document skill evolution results
+      if skill_evolution.present? && skill_evolution[:skills_evolved].to_i > 0
+        learning = {
+          type: 'skill_evolution',
+          description: "AMOS autonomously improved #{skill_evolution[:skills_evolved]} skills " \
+                       "based on #{skill_evolution[:skills_analyzed]} analyzed " \
+                       "(#{skill_evolution[:proposals].count} total proposals)",
+          timestamp: Time.current,
+          replicable: true,
+          skills_evolved: skill_evolution[:skills_evolved]
+        }
+        learnings << learning
+
+        # Archive each evolved skill as a learning
+        skill_evolution[:proposals]&.each do |proposal|
+          next unless proposal[:confidence] >= SkillEvolutionService::AUTO_APPLY_CONFIDENCE
+
+          GlobalKnowledgeArchive.archive_learning(
+            entity: entity,
+            title: "Skill evolution: #{proposal[:skill_name]}",
+            content: "Skill '#{proposal[:skill_name]}' was auto-evolved. Reason: #{proposal[:reason]}. " \
+                     "Confidence: #{proposal[:confidence]}",
+            knowledge_type: 'lesson_learned',
+            metadata: { skill_id: proposal[:skill_id], confidence: proposal[:confidence] }
+          )
+        end
+
+        Rails.logger.info "[EvolutionCycle] Documented #{skill_evolution[:skills_evolved]} skill evolutions"
+      end
+
       # Document patterns from analysis
       if analysis[:anomaly_patterns].present?
         learning = {

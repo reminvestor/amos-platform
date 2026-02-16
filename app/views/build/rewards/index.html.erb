@@ -1,0 +1,74 @@
+<% content_for :title, "My Rewards - AMOS Build" %>
+
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><%= link_to "Build", build_root_path, class: "text-decoration-none" %></li>
+    <li class="breadcrumb-item active">My Rewards</li>
+  </ol>
+</nav>
+
+<h2 class="mb-4">My Rewards</h2>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 2rem;"><%= number_with_delimiter(@token_balance.round) %></div>
+      <div class="stat-label">AMOS Balance</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 2rem;"><%= number_with_delimiter(@total_earned.round) %></div>
+      <div class="stat-label">Total Earned</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 2rem;"><%= @bounties_completed %></div>
+      <div class="stat-label">Bounties Completed</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 2rem;"><%= @bounties_in_progress %></div>
+      <div class="stat-label">In Progress</div>
+    </div>
+  </div>
+</div>
+
+<% if @pending > 0 %>
+  <div class="alert alert-warning d-flex align-items-center mb-4">
+    <span class="me-2">⏳</span>
+    <div>
+      <strong><%= number_with_delimiter(@pending.round) %> AMOS pending</strong> — awaiting review of submitted work.
+    </div>
+  </div>
+<% end %>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h6 class="mb-0">Reward History</h6>
+  </div>
+  <div class="card-body p-0">
+    <% if @recent_rewards.any? %>
+      <div class="list-group list-group-flush">
+        <% @recent_rewards.each do |reward| %>
+          <div class="list-group-item d-flex justify-content-between align-items-center" style="background: transparent;">
+            <div>
+              <div class="small"><%= reward.title.truncate(60) %></div>
+              <div class="text-muted" style="font-size: 0.7rem;">
+                <%= reward.contribution_type %> · <%= reward.created_at.strftime('%b %d, %Y') %>
+              </div>
+            </div>
+            <span class="text-success fw-bold">+<%= number_with_delimiter(reward.stake_value) %> AMOS</span>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="p-4 text-center text-muted">
+        <p class="mb-2">No rewards yet.</p>
+        <%= link_to "Browse Bounties →", bounties_path, class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>

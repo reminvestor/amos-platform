@@ -138,6 +138,11 @@ class User < ApplicationRecord
     "#{first_name} #{last_name}"
   end
 
+  def display_name
+    name = [first_name, last_name].compact_blank.join(' ')
+    name.present? ? name : email&.split('@')&.first || "User ##{id}"
+  end
+
   def marketer?
     role == "marketer"
   end

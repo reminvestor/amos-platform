@@ -1,89 +1,169 @@
 <% content_for :title, "Bounties - AMOS Build" %>
 
+<!-- Header -->
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h1 class="display-6 fw-bold mb-1">
-      <i class="bi bi-trophy me-2 text-warning"></i>Bounty Board
-    </h1>
-    <p class="text-muted mb-0">
-      Earn AMOS tokens by completing development tasks
-    </p>
+    <h1 class="display-6 fw-bold mb-1">Bounty Board</h1>
+    <p class="text-muted mb-0">Earn AMOS tokens by completing development tasks. Built by the community, for the community.</p>
   </div>
   <div class="text-end">
-    <div class="display-6 text-success fw-bold"><%= number_with_delimiter(@total_rewards) %></div>
-    <small class="text-muted">AMOS Available</small>
+    <div class="stat-value"><%= number_with_delimiter(@total_points) %></div>
+    <div class="stat-label">AMOS Available</div>
+  </div>
+</div>
+
+<!-- Stats Bar -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 1.8rem;"><%= @stats[:open] %></div>
+      <div class="stat-label">Open</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 1.8rem;"><%= @stats[:claimed] %></div>
+      <div class="stat-label">In Progress</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 1.8rem;"><%= @stats[:completed_30d] %></div>
+      <div class="stat-label">Completed (30d)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 1.8rem;"><%= number_with_delimiter(@stats[:total_paid_30d]) %></div>
+      <div class="stat-label">AMOS Paid (30d)</div>
+    </div>
   </div>
 </div>
 
 <!-- Filters -->
-<div class="card bg-dark border-secondary mb-4">
+<div class="card mb-4">
   <div class="card-body py-2">
     <div class="d-flex flex-wrap gap-2 align-items-center">
-      <span class="text-muted me-2">Filter:</span>
-      <%= link_to "All", bounties_path, class: "btn btn-sm #{params[:category].blank? ? 'btn-primary' : 'btn-outline-secondary'}" %>
-      <% @categories.each do |category| %>
-        <%= link_to category.titleize, bounties_path(category: category), 
-            class: "btn btn-sm #{params[:category] == category ? 'btn-primary' : 'btn-outline-secondary'}" %>
+      <span class="text-muted me-2">Type:</span>
+      <%= link_to "All", bounties_path(sort: params[:sort], sprint: params[:sprint]),
+          class: "btn btn-sm #{params[:type].blank? ? 'btn-primary' : 'btn-outline-secondary'}" %>
+      <% @types.each do |type| %>
+        <%= link_to type.titleize, bounties_path(type: type, sort: params[:sort], sprint: params[:sprint]),
+            class: "btn btn-sm #{params[:type] == type ? 'btn-primary' : 'btn-outline-secondary'}" %>
       <% end %>
+
+      <% if @sprints.any? %>
+        <span class="text-muted ms-3 me-2">Sprint:</span>
+        <% @sprints.each do |sprint| %>
+          <%= link_to sprint, bounties_path(sprint: sprint, type: params[:type], sort: params[:sort]),
+              class: "btn btn-sm #{params[:sprint] == sprint ? 'btn-info' : 'btn-outline-secondary'}" %>
+        <% end %>
+      <% end %>
+
+      <span class="text-muted ms-3 me-2">Sort:</span>
+      <%= link_to "Priority", bounties_path(sort: 'priority', type: params[:type], sprint: params[:sprint]),
+          class: "btn btn-sm #{params[:sort] == 'priority' || params[:sort].blank? ? 'btn-primary' : 'btn-outline-secondary'}" %>
+      <%= link_to "Points", bounties_path(sort: 'points', type: params[:type], sprint: params[:sprint]),
+          class: "btn btn-sm #{params[:sort] == 'points' ? 'btn-primary' : 'btn-outline-secondary'}" %>
+      <%= link_to "Newest", bounties_path(sort: 'newest', type: params[:type], sprint: params[:sprint]),
+          class: "btn btn-sm #{params[:sort] == 'newest' ? 'btn-primary' : 'btn-outline-secondary'}" %>
     </div>
   </div>
 </div>
 
 <!-- Bounty List -->
-<div class="row g-4">
-  <% if @bounties.respond_to?(:any?) && @bounties.any? %>
+<% if @bounties.any? %>
+  <div class="row g-3">
     <% @bounties.each do |bounty| %>
       <div class="col-lg-6">
-        <div class="card bg-dark border-secondary h-100 hover-shadow">
+        <div class="card h-100" style="transition: transform 0.15s; cursor: pointer;"
+             onmouseover="this.style.transform='translateY(-2px)'"
+             onmouseout="this.style.transform='translateY(0)'"
+             onclick="window.location='<%= bounty_path(bounty) %>'">
           <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-              <span class="badge bg-<%= bounty_status_color(bounty.status) %>">
-                <%= bounty.status.titleize %>
-              </span>
-              <span class="badge bg-warning text-dark fs-6">
-                <%= number_with_delimiter(bounty.token_reward) %> AMOS
-              </span>
+            <!-- Top row: priority + type + points -->
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div class="d-flex align-items-center gap-2">
+                <% if bounty.priority_rank.present? && bounty.priority_rank <= 5 %>
+                  <span class="badge bg-danger" style="font-size: 0.65rem;" title="Priority #<%= bounty.priority_rank %>">
+                    #<%= bounty.priority_rank %>
+                  </span>
+                <% end %>
+                <% type_colors = { 'bug' => 'danger', 'feature' => 'primary', 'documentation' => 'info',
+                     'design' => 'warning', 'testing' => 'success', 'infrastructure' => 'secondary',
+                     'content' => 'info', 'marketing' => 'warning' } %>
+                <span class="badge bg-<%= type_colors[bounty.bounty_type] || 'secondary' %>" style="font-size: 0.7rem;">
+                  <%= bounty.bounty_type %>
+                </span>
+                <% if bounty.status != 'open' %>
+                  <span class="badge bg-warning text-dark" style="font-size: 0.65rem;"><%= bounty.status %></span>
+                <% end %>
+              </div>
+              <div class="text-end">
+                <span class="fw-bold text-success"><%= number_with_delimiter(bounty.points) %> AMOS</span>
+                <% if bounty.demand_multiplier && bounty.demand_multiplier > 1.0 %>
+                  <br><span class="badge bg-success bg-opacity-25 text-success" style="font-size: 0.6rem;">
+                    <%= bounty.demand_multiplier %>x boost
+                  </span>
+                <% end %>
+              </div>
             </div>
-            
-            <h5 class="card-title mb-2"><%= bounty.title %></h5>
-            <p class="card-text text-muted small mb-3">
-              <%= truncate(bounty.description, length: 150) %>
+
+            <!-- Title -->
+            <h6 class="card-title mb-2"><%= bounty.title %></h6>
+
+            <!-- Description preview -->
+            <p class="card-text text-muted small mb-2" style="line-height: 1.4;">
+              <%= truncate(bounty.description&.gsub(/[#*_\[\]]/, ''), length: 120) %>
             </p>
-            
-            <div class="d-flex flex-wrap gap-2 mb-3">
-              <% Array(bounty.tags).first(3).each do |tag| %>
-                <span class="badge bg-secondary"><%= tag %></span>
+
+            <!-- Tags + Sprint -->
+            <div class="d-flex flex-wrap gap-1 mb-2">
+              <% if bounty.sprint_label.present? %>
+                <span class="badge bg-info bg-opacity-25 text-info" style="font-size: 0.6rem;">
+                  <%= bounty.sprint_label %>
+                </span>
+              <% end %>
+              <% (bounty.tags || []).first(3).each do |tag| %>
+                <span class="badge bg-secondary bg-opacity-50" style="font-size: 0.6rem;"><%= tag %></span>
               <% end %>
             </div>
-            
-            <div class="d-flex justify-content-between align-items-center">
-              <small class="text-muted">
-                <i class="bi bi-clock me-1"></i>
-                Posted <%= time_ago_in_words(bounty.created_at) %> ago
-              </small>
-              <%= link_to bounty_path(bounty), class: "btn btn-sm btn-outline-primary" do %>
-                View Details <i class="bi bi-arrow-right ms-1"></i>
+
+            <!-- Footer: metadata -->
+            <div class="d-flex justify-content-between align-items-center" style="font-size: 0.75rem;">
+              <div class="text-muted">
+                <% if bounty.urgency_score.present? %>
+                  <span class="me-2" title="Urgency">
+                    <% urgency_color = bounty.urgency_score >= 8 ? 'text-danger' : bounty.urgency_score >= 5 ? 'text-warning' : 'text-muted' %>
+                    <span class="<%= urgency_color %>">● urgency: <%= bounty.urgency_score %>/10</span>
+                  </span>
+                <% end %>
+                <% if bounty.estimated_hours.present? %>
+                  <span class="me-2">~<%= bounty.estimated_hours.round %>h</span>
+                <% end %>
+                <span><%= time_ago_in_words(bounty.created_at) %> ago</span>
+              </div>
+              <% if bounty.created_by_amos? %>
+                <span class="badge bg-primary bg-opacity-25 text-primary" style="font-size: 0.6rem;">AMOS generated</span>
               <% end %>
             </div>
           </div>
         </div>
       </div>
     <% end %>
-  <% else %>
-    <div class="col-12">
-      <div class="card bg-dark border-secondary">
-        <div class="card-body text-center py-5">
-          <i class="bi bi-inbox display-4 d-block mb-3 text-muted"></i>
-          <h5>No bounties available</h5>
-          <p class="text-muted mb-0">Check back soon for new opportunities!</p>
-        </div>
-      </div>
+  </div>
+
+  <% if @bounties.respond_to?(:total_pages) && @bounties.total_pages > 1 %>
+    <div class="d-flex justify-content-center mt-4">
+      <%= paginate @bounties, theme: 'bootstrap-5' %>
     </div>
   <% end %>
-</div>
-
-<% if @bounties.respond_to?(:total_pages) && @bounties.total_pages > 1 %>
-  <div class="d-flex justify-content-center mt-4">
-    <%= paginate @bounties %>
+<% else %>
+  <div class="card">
+    <div class="card-body text-center py-5">
+      <div class="display-4 mb-3 opacity-25">🔍</div>
+      <h5>No bounties available</h5>
+      <p class="text-muted mb-0">AMOS generates new bounties during nightly thinking sessions. Check back soon!</p>
+    </div>
   </div>
 <% end %>

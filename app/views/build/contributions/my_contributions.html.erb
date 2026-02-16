@@ -1,0 +1,62 @@
+<% content_for :title, "My Contributions - AMOS Build" %>
+
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><%= link_to "Build", build_root_path, class: "text-decoration-none" %></li>
+    <li class="breadcrumb-item active">My Contributions</li>
+  </ol>
+</nav>
+
+<h2 class="mb-4">My Contributions</h2>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 2rem;"><%= @stats[:total] %></div>
+      <div class="stat-label">Approved</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 2rem;"><%= number_with_delimiter(@stats[:total_earned]) %></div>
+      <div class="stat-label">AMOS Earned</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card">
+      <div class="stat-value" style="font-size: 2rem;"><%= @stats[:pending] %></div>
+      <div class="stat-label">Pending Review</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <% if @contributions.any? %>
+      <div class="list-group list-group-flush">
+        <% @contributions.each do |contribution| %>
+          <div class="list-group-item" style="background: transparent;">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="mb-1"><%= contribution.title %></h6>
+                <div class="d-flex gap-2 small">
+                  <span class="badge bg-<%= contribution.status == 'approved' ? 'success' : contribution.status == 'pending' ? 'warning' : 'secondary' %>">
+                    <%= contribution.status %>
+                  </span>
+                  <span class="badge bg-secondary"><%= contribution.contribution_type %></span>
+                  <span class="text-muted"><%= contribution.created_at.strftime('%b %d, %Y') %></span>
+                </div>
+              </div>
+              <span class="text-success fw-bold"><%= number_with_delimiter(contribution.stake_value) %> AMOS</span>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="p-4 text-center text-muted">
+        <p class="mb-2">No contributions yet.</p>
+        <%= link_to "Browse Bounties →", bounties_path, class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>

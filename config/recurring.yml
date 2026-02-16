@@ -81,6 +81,12 @@ production:
     queue: agent_lightning
     schedule: every hour
 
+  # Daily Agent Lightning training - RL-based prompt optimization
+  agent_lightning_training:
+    class: RunAgentLightningTrainingJob
+    queue: agent_lightning
+    schedule: at 5am every day
+
   # ========================================
   # Scheduled Agent Tasks
   # ========================================
@@ -138,15 +144,15 @@ production:
     schedule: at 1am every day
 
   # ========================================
-  # AMOS Thinking Time Jobs - Autonomous Bounty Generation
+  # AMOS Autonomous Cognition Jobs
   # ========================================
   
-  # Nightly thinking time - AMOS reflects and creates bounties
+  # Nightly autonomous session - AMOS perceives, attends, thinks, acts
   amos_thinking_time:
     class: AmosThinkingTimeJob
     queue: living_platform
     schedule: at 2am every day
-  
+
   # Weekly deep reflection - more comprehensive analysis
   amos_weekly_reflection:
     class: AmosThinkingTimeJob
@@ -154,6 +160,12 @@ production:
     schedule: at 3am every sunday
     args:
       - entity_id: null
+
+  # Signal cleanup + memory decay - every 2 hours
+  amos_signal_cleanup:
+    class: AmosSignalCleanupJob
+    queue: living_platform
+    schedule: every 2 hours
 
   # ========================================
   # Tool Embeddings Jobs

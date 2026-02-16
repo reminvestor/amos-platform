@@ -15,6 +15,8 @@
 # - Complexity (technical difficulty)
 #
 class Bounty < ApplicationRecord
+  include AmosSignalEmitter
+
   belongs_to :entity
   belongs_to :created_by, class_name: 'User', optional: true  # nil = AMOS created
   belongs_to :claimed_by, class_name: 'User', optional: true
@@ -119,6 +121,7 @@ class Bounty < ApplicationRecord
   # Callbacks
   before_validation :set_defaults, on: :create
   after_update :sync_completion_to_source, if: :just_approved?
+  after_update :emit_bounty_status_signal, if: :saved_change_to_status?
 
   # ═══════════════════════════════════════════════════════════════════════════
   # CREATION HELPERS
@@ -633,6 +636,40 @@ class Bounty < ApplicationRecord
   def pr_required_has_repo
     if requires_pr? && target_repo.blank?
       errors.add(:target_repo, "is required when PR is required")
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # AMOS SIGNAL EMISSION
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  def emit_bounty_status_signal
+    case status
+    when 'approved'
+      emit_amos_signal!(
+        signal_type: 'bounty_completed',
+        source: 'bounty',
+        strength: 0.3,
+        summary: "Bounty completed: #{title} (#{effective_points} pts)",
+        data: { bounty_id: id, points: effective_points, bounty_type: bounty_type }
+      )
+    when 'rejected'
+      emit_amos_signal!(
+        signal_type: 'bounty_completed',
+        source: 'bounty',
+        strength: 0.4,
+        summary: "Bounty rejected: #{title}",
+        data: { bounty_id: id, status: 'rejected', bounty_type: bounty_type }
+      )
+    when 'expired', 'cancelled'
+      # Stale bounty signal — may trigger grooming
+      emit_amos_signal!(
+        signal_type: 'bounty_unclaimed_surge',
+        source: 'bounty',
+        strength: 0.35,
+        summary: "Bounty #{status}: #{title} (#{points} pts, #{((Time.current - created_at) / 1.day).round}d old)",
+        data: { bounty_id: id, status: status, age_days: ((Time.current - created_at) / 1.day).round }
+      )
     end
   end
 end

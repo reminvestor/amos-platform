@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_16_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1199,6 +1199,24 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
     t.index ["user_id"], name: "index_ai_usage_logs_on_user_id"
   end
 
+  create_table "amos_attention_logs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "amos_thinking_session_id"
+    t.string "focus_area", null: false
+    t.text "reasoning"
+    t.jsonb "alternatives_considered", default: []
+    t.jsonb "signals", default: []
+    t.string "outcome"
+    t.text "outcome_notes"
+    t.integer "token_cost", default: 0
+    t.integer "duration_ms", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["amos_thinking_session_id"], name: "index_amos_attention_logs_on_amos_thinking_session_id"
+    t.index ["entity_id", "created_at"], name: "index_amos_attention_logs_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_amos_attention_logs_on_entity_id"
+  end
+
   create_table "amos_jobs", force: :cascade do |t|
     t.string "job_id", null: false
     t.string "agent_type", null: false
@@ -1219,6 +1237,32 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
     t.index ["session_id", "status"], name: "index_amos_jobs_on_session_id_and_status"
     t.index ["session_id"], name: "index_amos_jobs_on_session_id"
     t.index ["status"], name: "index_amos_jobs_on_status"
+  end
+
+  create_table "amos_signals", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "signal_type", null: false
+    t.string "source", null: false
+    t.float "strength", default: 0.5
+    t.string "status", default: "pending"
+    t.text "summary"
+    t.jsonb "data", default: {}
+    t.jsonb "context", default: {}
+    t.string "fingerprint"
+    t.datetime "first_seen_at"
+    t.integer "occurrence_count", default: 1
+    t.datetime "acknowledged_at"
+    t.datetime "acted_on_at"
+    t.bigint "thinking_session_id"
+    t.bigint "working_memory_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "created_at"], name: "index_amos_signals_on_entity_id_and_created_at"
+    t.index ["entity_id", "signal_type"], name: "index_amos_signals_on_entity_id_and_signal_type"
+    t.index ["entity_id", "status"], name: "index_amos_signals_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_amos_signals_on_entity_id"
+    t.index ["fingerprint"], name: "index_amos_signals_on_fingerprint"
+    t.index ["strength"], name: "index_amos_signals_on_strength"
   end
 
   create_table "amos_thinking_sessions", force: :cascade do |t|
@@ -1245,6 +1289,32 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
     t.index ["entity_id"], name: "index_amos_thinking_sessions_on_entity_id"
     t.index ["session_type"], name: "index_amos_thinking_sessions_on_session_type"
     t.index ["status"], name: "index_amos_thinking_sessions_on_status"
+  end
+
+  create_table "amos_working_memories", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "thought_type", null: false
+    t.string "topic", null: false
+    t.text "content", null: false
+    t.float "salience", default: 0.5
+    t.float "confidence", default: 0.5
+    t.string "status", default: "active"
+    t.integer "times_revisited", default: 0
+    t.datetime "first_thought_at"
+    t.datetime "last_revisited_at"
+    t.datetime "resolved_at"
+    t.bigint "parent_thought_id"
+    t.jsonb "related_thought_ids", default: []
+    t.jsonb "evidence", default: []
+    t.jsonb "actions_taken", default: []
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "salience"], name: "index_amos_working_memories_on_entity_id_and_salience"
+    t.index ["entity_id", "status"], name: "index_amos_working_memories_on_entity_id_and_status"
+    t.index ["entity_id", "thought_type"], name: "index_amos_working_memories_on_entity_id_and_thought_type"
+    t.index ["entity_id"], name: "index_amos_working_memories_on_entity_id"
+    t.index ["topic"], name: "index_amos_working_memories_on_topic"
   end
 
   create_table "analytics_connections", force: :cascade do |t|
@@ -1613,6 +1683,15 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
     t.bigint "designated_reviewer_id"
     t.decimal "review_reward_percentage", precision: 5, scale: 2, default: "10.0"
     t.decimal "review_reward_points", precision: 10, scale: 2
+    t.integer "priority_rank"
+    t.integer "strategic_score"
+    t.decimal "demand_multiplier", precision: 4, scale: 2, default: "1.0"
+    t.integer "original_points"
+    t.datetime "last_groomed_at"
+    t.text "grooming_notes"
+    t.string "sprint_label"
+    t.jsonb "blocked_by_ids", default: []
+    t.jsonb "tags", default: []
     t.index ["bounty_type"], name: "index_bounties_on_bounty_type"
     t.index ["claimed_by_id"], name: "index_bounties_on_claimed_by_id"
     t.index ["commit_sha"], name: "index_bounties_on_commit_sha"
@@ -1624,12 +1703,15 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
     t.index ["funded_by_id", "status"], name: "index_bounties_on_funded_by_id_and_status"
     t.index ["funded_by_id"], name: "index_bounties_on_funded_by_id"
     t.index ["funding_source"], name: "index_bounties_on_funding_source"
+    t.index ["last_groomed_at"], name: "index_bounties_on_last_groomed_at"
     t.index ["points"], name: "index_bounties_on_points"
     t.index ["pr_number"], name: "index_bounties_on_pr_number"
+    t.index ["priority_rank"], name: "index_bounties_on_priority_rank"
     t.index ["pull_request_submission_id"], name: "index_bounties_on_pull_request_submission_id"
     t.index ["requires_pr"], name: "index_bounties_on_requires_pr"
     t.index ["reviewed_by_id"], name: "index_bounties_on_reviewed_by_id"
     t.index ["source"], name: "index_bounties_on_source"
+    t.index ["sprint_label"], name: "index_bounties_on_sprint_label"
     t.index ["status", "bounty_type"], name: "index_bounties_on_status_and_bounty_type"
     t.index ["status"], name: "index_bounties_on_status"
     t.index ["support_ticket_id"], name: "index_bounties_on_support_ticket_id"
@@ -5272,6 +5354,48 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
     t.index ["user_id"], name: "index_shared_plugins_on_user_id"
   end
 
+  create_table "skill_injection_logs", force: :cascade do |t|
+    t.bigint "system_skill_id", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "session_id"
+    t.string "injection_reason"
+    t.boolean "outcome_positive"
+    t.integer "tool_calls_count", default: 0
+    t.integer "tool_calls_succeeded", default: 0
+    t.integer "tool_calls_failed", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_skill_injection_logs_on_created_at"
+    t.index ["entity_id"], name: "index_skill_injection_logs_on_entity_id"
+    t.index ["session_id"], name: "index_skill_injection_logs_on_session_id"
+    t.index ["system_skill_id", "outcome_positive"], name: "idx_on_system_skill_id_outcome_positive_43666eede4"
+    t.index ["system_skill_id"], name: "index_skill_injection_logs_on_system_skill_id"
+    t.index ["user_id"], name: "index_skill_injection_logs_on_user_id"
+  end
+
+  create_table "skill_revisions", force: :cascade do |t|
+    t.bigint "system_skill_id", null: false
+    t.integer "version", null: false
+    t.text "content", null: false
+    t.text "previous_content"
+    t.string "change_source", null: false
+    t.text "change_reason"
+    t.jsonb "change_details", default: {}
+    t.string "author_type"
+    t.bigint "author_id"
+    t.string "status", default: "applied", null: false
+    t.datetime "reviewed_at"
+    t.bigint "reviewed_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["change_source"], name: "index_skill_revisions_on_change_source"
+    t.index ["reviewed_by_id"], name: "index_skill_revisions_on_reviewed_by_id"
+    t.index ["status"], name: "index_skill_revisions_on_status"
+    t.index ["system_skill_id", "version"], name: "index_skill_revisions_on_system_skill_id_and_version", unique: true
+    t.index ["system_skill_id"], name: "index_skill_revisions_on_system_skill_id"
+  end
+
   create_table "sms_campaigns", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "name", null: false
@@ -5615,9 +5739,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
     t.text "business_value"
     t.boolean "bounty_eligible", default: false
     t.string "bounty_blocked_reason"
+    t.jsonb "affected_user_ids", default: []
+    t.integer "affected_user_count", default: 1
+    t.string "content_fingerprint"
     t.index ["admin_approved"], name: "index_support_tickets_on_admin_approved"
+    t.index ["affected_user_count"], name: "index_support_tickets_on_affected_user_count"
     t.index ["bounty_eligible"], name: "index_support_tickets_on_bounty_eligible"
     t.index ["category", "admin_approved"], name: "idx_tickets_feature_approval"
+    t.index ["content_fingerprint"], name: "index_support_tickets_on_content_fingerprint"
     t.index ["entity_id", "created_at"], name: "index_support_tickets_on_entity_id_and_created_at"
     t.index ["entity_id", "status"], name: "index_support_tickets_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_support_tickets_on_entity_id"
@@ -5692,6 +5821,32 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["key"], name: "index_system_settings_on_key", unique: true
+  end
+
+  create_table "system_skills", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.string "skill_type", default: "integration", null: false
+    t.text "content", null: false
+    t.string "source", default: "built-in", null: false
+    t.string "status", default: "active", null: false
+    t.string "integration_name"
+    t.string "keywords", default: [], array: true
+    t.integer "injection_count", default: 0
+    t.integer "positive_outcomes", default: 0
+    t.integer "negative_outcomes", default: 0
+    t.float "effectiveness_score"
+    t.integer "version", default: 1
+    t.datetime "last_evolved_at"
+    t.string "last_evolved_by"
+    t.bigint "entity_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_system_skills_on_entity_id"
+    t.index ["integration_name"], name: "index_system_skills_on_integration_name"
+    t.index ["skill_type"], name: "index_system_skills_on_skill_type"
+    t.index ["slug"], name: "index_system_skills_on_slug", unique: true
+    t.index ["status"], name: "index_system_skills_on_status"
   end
 
   create_table "task_dependencies", force: :cascade do |t|
@@ -6951,7 +7106,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
   add_foreign_key "ai_usage_logs", "entities"
   add_foreign_key "ai_usage_logs", "scout_messages"
   add_foreign_key "ai_usage_logs", "users"
+  add_foreign_key "amos_attention_logs", "amos_thinking_sessions"
+  add_foreign_key "amos_attention_logs", "entities"
+  add_foreign_key "amos_signals", "entities"
   add_foreign_key "amos_thinking_sessions", "entities"
+  add_foreign_key "amos_working_memories", "entities"
   add_foreign_key "analytics_connections", "entities"
   add_foreign_key "analytics_query_logs", "entities"
   add_foreign_key "analytics_query_logs", "metric_definitions"
@@ -7322,6 +7481,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
   add_foreign_key "shared_models", "entities"
   add_foreign_key "shared_plugins", "custom_plugins"
   add_foreign_key "shared_plugins", "users"
+  add_foreign_key "skill_injection_logs", "entities"
+  add_foreign_key "skill_injection_logs", "system_skills"
+  add_foreign_key "skill_injection_logs", "users"
+  add_foreign_key "skill_revisions", "system_skills"
+  add_foreign_key "skill_revisions", "users", column: "reviewed_by_id"
   add_foreign_key "sms_campaigns", "entities"
   add_foreign_key "sms_deliveries", "contacts"
   add_foreign_key "sms_deliveries", "sms_campaigns"
@@ -7346,6 +7510,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
   add_foreign_key "system_documents", "users", column: "uploaded_by_id"
   add_foreign_key "system_notifications", "entities"
   add_foreign_key "system_notifications", "users"
+  add_foreign_key "system_skills", "entities"
   add_foreign_key "task_dependencies", "task_sessions"
   add_foreign_key "task_dependencies", "task_sessions", column: "depends_on_task_id"
   add_foreign_key "task_events", "task_sessions"

@@ -1083,8 +1083,8 @@ Rails.application.routes.draw do
       post 'external_agents/reviews/:id/reject', to: 'external_agents#reject_review', as: :external_agents_reject_review
       
       get 'leaderboard', to: 'leaderboard#index'
-      get 'my-contributions', to: 'contributions#my_contributions'
-      get 'my-rewards', to: 'rewards#index'
+      get 'my-contributions', to: 'contributions#my_contributions', as: :my_contributions
+      get 'my-rewards', to: 'rewards#index', as: :my_rewards
     end
   end
   
@@ -1667,6 +1667,23 @@ Rails.application.routes.draw do
         post :clone
       end
     end
+
+    # System Skills management (AMOS knowledge that evolves autonomously)
+    resources :skills, controller: 'skills' do
+      member do
+        post :revert
+      end
+      collection do
+        post :evolve_now
+      end
+    end
+
+    # AMOS Mind — autonomous cognitive loop dashboard
+    get 'amos_mind', to: 'amos_mind#index', as: :amos_mind
+    post 'amos_mind/trigger_session', to: 'amos_mind#trigger_session', as: :amos_mind_trigger_session
+    post 'amos_mind/trigger_grooming', to: 'amos_mind#trigger_grooming', as: :amos_mind_trigger_grooming
+    get 'amos_mind/thoughts/:id', to: 'amos_mind#thought_detail', as: :amos_mind_thought
+    post 'amos_mind/thoughts/:id/resolve', to: 'amos_mind#resolve_thought', as: :amos_mind_resolve_thought
 
     # User management
     resources :users do
