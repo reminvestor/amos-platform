@@ -85,6 +85,11 @@ module V3
           return update_app_module(id, data)
         end
 
+        # Custom domain update — update the CustomDomain record directly
+        if %w[custom_domain custom_domains].include?(type)
+          return update_custom_domain(id, data)
+        end
+
         # Check if type matches a dynamic module model
         module_result = find_and_update_module_record(type, id, data)
         return module_result if module_result
@@ -295,6 +300,41 @@ module V3
       rescue => e
         Rails.logger.error "[V3::PlatformUpdate] Landing page regeneration failed: #{e.message}"
         error_response("Failed to regenerate landing page: #{e.message}")
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # CUSTOM DOMAIN UPDATES
+      # ═══════════════════════════════════════════════════════════════
+
+      def update_custom_domain(id, data)
+        domain = entity.custom_domains.find_by(id: id)
+        return error_response("Custom domain ##{id} not found") unless domain
+
+        Rails.logger.info "[V3::PlatformUpdate] Updating custom domain: #{domain.full_domain} (##{domain.id})"
+
+        # Allow updating specific safe fields
+        updatable_fields = %w[cname_target subdomain is_primary]
+        update_data = data.select { |k, _| updatable_fields.include?(k.to_s) }
+
+        return error_response("No valid fields to update. Updatable fields: #{updatable_fields.join(', ')}") if update_data.empty?
+
+        domain.update!(update_data)
+
+        success_response(
+          id: domain.id,
+          type: "custom_domain",
+          domain_name: domain.domain_name,
+          full_domain: domain.full_domain,
+          cname_target: domain.cname_target,
+          updated_fields: update_data.keys,
+          message: "Updated domain '#{domain.full_domain}' (#{update_data.keys.join(', ')})",
+          canvas_type: "custom_domains"
+        )
+      rescue ActiveRecord::RecordInvalid => e
+        error_response("Validation failed: #{e.message}")
+      rescue => e
+        Rails.logger.error "[V3::PlatformUpdate] Custom domain update failed: #{e.message}"
+        error_response("Failed to update custom domain: #{e.message}")
       end
 
       # ═══════════════════════════════════════════════════════════════

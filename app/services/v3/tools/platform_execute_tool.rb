@@ -742,8 +742,10 @@ module V3
       # ═══════════════════════════════════════════════════════════════
 
       def execute_delete(args)
-        type = get_arg(args, :type)&.to_s&.downcase&.singularize
-        id = get_arg(args, :id)
+        # Extract type/id from top-level or from nested inputs hash
+        inputs = get_arg(args, :inputs, {})
+        type = (get_arg(args, :type) || get_arg(inputs, :type))&.to_s&.downcase&.singularize
+        id = get_arg(args, :id) || get_arg(inputs, :id)
 
         return error_response("Missing: type (e.g., 'contact', 'campaign', 'landing_page')") if type.blank?
         return error_response("Missing: id") if id.blank?
@@ -760,8 +762,9 @@ module V3
         when "activity" then Activity
         when "support_ticket" then SupportTicket
         when "automation", "automation_code" then AutomationCode
+        when "custom_domain" then CustomDomain
         else
-          return error_response("Cannot delete type: #{type}. Supported: contact, contact_group, campaign, email_template, landing_page, opportunity, activity, support_ticket, automation")
+          return error_response("Cannot delete type: #{type}. Supported: contact, contact_group, campaign, email_template, landing_page, opportunity, activity, support_ticket, automation, custom_domain")
         end
 
         record = model_class.where(entity: entity).find_by(id: id)

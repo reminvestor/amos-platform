@@ -69,6 +69,15 @@ module V3
     # ═══════════════════════════════════════════════════════════════
 
     def requires_confirmation?(tool_name, args)
+      # 0. If the AI indicates the user already confirmed (e.g., user said "yes" in chat),
+      #    allow the action through. Check both top-level and nested inputs.
+      confirmed = args["confirmed"] || args[:confirmed] ||
+                  args.dig("inputs", "confirmed") || args.dig(:inputs, :confirmed)
+      if confirmed
+        Rails.logger.info "[V3::ToolSecurity] User confirmation acknowledged via 'confirmed' flag"
+        return false
+      end
+
       # 1. Check hardcoded destructive actions (always enforced)
       actions = DESTRUCTIVE_ACTIONS[tool_name]
       if actions&.any?

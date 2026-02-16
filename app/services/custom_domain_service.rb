@@ -9,7 +9,7 @@
 # - Integration with GoDaddy for auto-DNS configuration
 #
 class CustomDomainService
-  CNAME_BASE_DOMAIN = 'custom.amoslabs.co'
+  CNAME_BASE_DOMAIN = 'custom.amoslabs.com'
   
   attr_reader :custom_domain, :entity, :user
   
