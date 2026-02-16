@@ -26,7 +26,7 @@ class Connection < ApplicationRecord
   after_initialize :set_defaults, if: :new_record?
 
   def active_credential
-    integration_credentials.active.first
+    integration_credentials.active.order(created_at: :desc).first
   end
 
   def can_execute?(operation_id, agent_role = nil)
