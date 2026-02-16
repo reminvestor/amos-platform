@@ -96,32 +96,9 @@ export default class extends Controller {
   }
   
   maybeLoadDefaultCanvas() {
-    const mode = this.element.dataset.hubSidebarModeValue
-    const sessionKey = `hubDefaultCanvasLoaded_${mode}`
-    
-    // Only auto-load once per session
-    if (sessionStorage.getItem(sessionKey)) return
-    
-    // Check if already in work mode (canvas already loaded)
-    const workspace = document.getElementById('workspace')
-    if (workspace?.classList.contains('work-mode')) return
-    
-    // Set default canvas per mode
-    const defaultCanvases = {
-      'operations': 'operations_command_center',
-      'design': 'my_creations'  // Show created assets in design mode
-    }
-    
-    const defaultCanvas = defaultCanvases[mode]
-    if (defaultCanvas) {
-      console.log("🌐 Auto-loading default canvas:", defaultCanvas)
-      sessionStorage.setItem(sessionKey, 'true')
-      
-      // Delay slightly to let page finish loading
-      setTimeout(() => {
-        this.loadCanvasViaAjax(defaultCanvas)
-      }, 500)
-    }
+    // No auto-loading of canvas on initial page load.
+    // Users start in pure conversation mode and can open canvases on demand.
+    console.log("🌐 Skipping default canvas — starting in conversation mode")
   }
   
   // Toggle sidebar collapsed state
@@ -139,6 +116,9 @@ export default class extends Controller {
     this.collapsedValue = true
     this.element.classList.add('collapsed')
     
+    // On mobile, also close the mobile sidebar overlay
+    this.element.classList.remove('mobile-open')
+    
     // Add class to workspace for layout adjustment
     const workspace = document.getElementById('workspace')
     if (workspace) {
@@ -147,6 +127,10 @@ export default class extends Controller {
     
     // Hide backdrop
     this._hideBackdrop()
+    
+    // Also hide mobile sidebar backdrop if present
+    const mobileBackdrop = document.querySelector('.mobile-sidebar-backdrop')
+    if (mobileBackdrop) mobileBackdrop.classList.remove('active')
     
     // Save state
     localStorage.setItem('hubSidebarCollapsed', 'true')

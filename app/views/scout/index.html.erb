@@ -18,6 +18,25 @@
     <%= render 'scout/sidebar' %>
   <% end %>
 
+  <%# Mobile: Hamburger button for hub sidebar (shown only on mobile in collab-sidebar-mode) %>
+  <% if @show_collab_sidebar || @current_space&.slug == 'design' %>
+    <button class="mobile-hub-menu-btn" data-action="click->scout#toggleHubSidebar" aria-label="Open menu">
+      <i data-lucide="menu" aria-hidden="true"></i>
+    </button>
+  <% end %>
+
+  <%# Mobile: Toggle bar for switching between Chat and Canvas views %>
+  <div class="mobile-view-toggle" id="mobile-view-toggle" data-scout-target="mobileViewToggle">
+    <button class="mobile-toggle-tab active" data-view="chat" data-action="click->scout#mobileShowChat">
+      <i data-lucide="message-circle" aria-hidden="true"></i>
+      <span>Chat</span>
+    </button>
+    <button class="mobile-toggle-tab" data-view="canvas" data-action="click->scout#mobileShowCanvas">
+      <i data-lucide="layout-dashboard" aria-hidden="true"></i>
+      <span>Canvas</span>
+    </button>
+  </div>
+
   <!-- Main Content Area -->
   <main class="main-content">
     <!-- Chat Area (Full screen in conversation mode, sidebar in work mode) -->

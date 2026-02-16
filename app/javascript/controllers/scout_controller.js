@@ -18,7 +18,8 @@ export default class extends Controller {
     "resizeHandle",
     "voiceMode",
     "canvasCloseBtn",
-    "canvasToggleBtn"
+    "canvasToggleBtn",
+    "mobileViewToggle"
   ]
 
   connect() {
@@ -242,27 +243,30 @@ export default class extends Controller {
         console.log(`🔄 Found saved canvas state for ${currentSpace}:`, canvasState.type, "mode:", canvasState.mode)
 
         // If user was in conversation mode (no canvas), stay there on refresh
-        // They can click the canvas view button when they want to see it
         if (canvasState.mode === 'conversation' || !canvasState.type) {
           console.log("💬 Staying in conversation mode - user can load canvas when ready")
-          // Don't auto-load any canvas, just stay in chat view
           return
         }
 
-        // Only restore canvas if user was in work mode with a canvas visible
+        // On mobile, never auto-restore canvases — they take over the screen.
+        // Store the last canvas info so user can access it via toggle, but start in chat.
+        if (this.isMobileViewport()) {
+          console.log("📱 Mobile: skipping canvas auto-restore, starting in conversation mode")
+          this.lastClosedCanvas = { type: canvasState.type, data: canvasState.data || {} }
+          return
+        }
+
+        // Desktop: restore canvas if user was in work mode with a canvas visible
         console.log("🔄 Restoring canvas:", canvasState.type)
         setTimeout(() => {
           this.loadScoutCanvas(canvasState.type, canvasState.data || {})
         }, 500)
       } else {
-        // No saved state — all spaces default to conversation mode (no canvas)
-        // Users can open canvases on demand via nav or by asking Amos
         console.log(`💬 No saved state for ${currentSpace} - starting in conversation mode (no canvas)`)
       }
     } catch (e) {
       console.log("Could not restore canvas state:", e.message)
       localStorage.removeItem(storageKey)
-      // Stay in conversation mode on error
       console.log("💬 Staying in conversation mode due to error")
     }
   }
@@ -1855,9 +1859,11 @@ export default class extends Controller {
       
     } else if (mode === "conversation" && this.currentMode === "work") {
       workspace.classList.remove("work-mode")
-      workspace.classList.remove("mobile-canvas-overlay") // Remove mobile overlay if present
+      workspace.classList.remove("mobile-canvas-overlay")
+      workspace.classList.remove("mobile-chat-active")
       workspace.classList.add("conversation-mode")
       this.currentMode = "conversation"
+      this._hideMobileViewToggle()
 
       // Store current canvas before clearing so we can restore it
       if (this.currentCanvas && this.currentCanvas.type) {
@@ -1936,6 +1942,101 @@ export default class extends Controller {
       // In work mode - close canvas and go to conversation
       console.log("❌ Closing canvas from toggle button")
       this.goToConversation()
+    }
+  }
+
+  // ========== MOBILE VIEW TOGGLING ==========
+  
+  // Toggle hub sidebar on mobile (opens/closes the sidebar overlay)
+  toggleHubSidebar(event) {
+    if (event) event.preventDefault()
+    const hubSidebar = document.querySelector('.hub-sidebar')
+    if (!hubSidebar) return
+    
+    if (hubSidebar.classList.contains('mobile-open')) {
+      hubSidebar.classList.remove('mobile-open')
+      this._hideMobileSidebarBackdrop()
+    } else {
+      // Open sidebar fully expanded (not in collapsed icon-strip mode)
+      hubSidebar.classList.remove('collapsed')
+      hubSidebar.classList.add('mobile-open')
+      this._showMobileSidebarBackdrop()
+    }
+  }
+  
+  _showMobileSidebarBackdrop() {
+    if (!this._mobileSidebarBackdrop) {
+      this._mobileSidebarBackdrop = document.createElement('div')
+      this._mobileSidebarBackdrop.className = 'mobile-sidebar-backdrop'
+      this._mobileSidebarBackdrop.addEventListener('click', () => {
+        const hubSidebar = document.querySelector('.hub-sidebar')
+        if (hubSidebar) hubSidebar.classList.remove('mobile-open')
+        this._hideMobileSidebarBackdrop()
+      })
+      this.element.appendChild(this._mobileSidebarBackdrop)
+    }
+    requestAnimationFrame(() => {
+      this._mobileSidebarBackdrop.classList.add('active')
+    })
+  }
+  
+  _hideMobileSidebarBackdrop() {
+    if (this._mobileSidebarBackdrop) {
+      this._mobileSidebarBackdrop.classList.remove('active')
+    }
+  }
+  
+  // Mobile: Show chat view (hide canvas overlay)
+  mobileShowChat(event) {
+    if (event) event.preventDefault()
+    console.log("📱 Mobile: switching to chat view")
+    
+    this.element.classList.remove('mobile-canvas-overlay')
+    this.element.classList.add('mobile-chat-active')
+    
+    this._updateMobileToggleTabs('chat')
+  }
+  
+  // Mobile: Show canvas view (show canvas overlay)
+  mobileShowCanvas(event) {
+    if (event) event.preventDefault()
+    console.log("📱 Mobile: switching to canvas view")
+    
+    this.element.classList.add('mobile-canvas-overlay')
+    this.element.classList.remove('mobile-chat-active')
+    
+    this._updateMobileToggleTabs('canvas')
+  }
+  
+  // Update the active state of mobile toggle tabs
+  _updateMobileToggleTabs(activeView) {
+    const toggle = this.hasMobileViewToggleTarget ? this.mobileViewToggleTarget : document.getElementById('mobile-view-toggle')
+    if (!toggle) return
+    
+    toggle.querySelectorAll('.mobile-toggle-tab').forEach(tab => {
+      if (tab.dataset.view === activeView) {
+        tab.classList.add('active')
+      } else {
+        tab.classList.remove('active')
+      }
+    })
+  }
+  
+  // Show/hide the mobile view toggle bar
+  _showMobileViewToggle() {
+    if (!this.isMobileViewport()) return
+    const toggle = this.hasMobileViewToggleTarget ? this.mobileViewToggleTarget : document.getElementById('mobile-view-toggle')
+    if (toggle) {
+      toggle.classList.add('visible')
+      // Default to canvas view when a canvas first loads
+      this._updateMobileToggleTabs('canvas')
+    }
+  }
+  
+  _hideMobileViewToggle() {
+    const toggle = this.hasMobileViewToggleTarget ? this.mobileViewToggleTarget : document.getElementById('mobile-view-toggle')
+    if (toggle) {
+      toggle.classList.remove('visible')
     }
   }
 
@@ -2235,8 +2336,10 @@ export default class extends Controller {
 
   // Close current template
   closeTemplate() {
-    // Remove mobile overlay class if present
+    // Remove mobile classes
     this.element.classList.remove('mobile-canvas-overlay')
+    this.element.classList.remove('mobile-chat-active')
+    this._hideMobileViewToggle()
     
     // Switch back to conversation mode
     this.switchToMode("conversation")
@@ -2312,13 +2415,15 @@ export default class extends Controller {
       if (data.success) {
         console.log("✅ Canvas loading successful")
         
-        // On mobile, show canvas as overlay; on desktop, use split work mode
+        // On mobile, show canvas as overlay with toggle; on desktop, use split work mode
         if (this.isMobileViewport()) {
           console.log("📱 Mobile viewport detected - showing canvas as overlay")
           this.element.classList.add('mobile-canvas-overlay')
+          this.element.classList.remove('mobile-chat-active')
           this.element.classList.remove('conversation-mode')
           this.element.classList.add('work-mode')
           this.currentMode = 'work'
+          this._showMobileViewToggle()
         } else {
           console.log("🖥️ Desktop viewport - switching to work mode")
           this.switchToMode("work")

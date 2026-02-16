@@ -14,7 +14,7 @@
   <%= form_with url: onboarding_path(step: 'features'), method: :patch, data: { turbo: false } do %>
     <div class="row g-3 mb-4">
       <% @feature_categories.each do |category| %>
-        <div class="col-6">
+        <div class="col-12 col-sm-6">
           <label class="feature-card p-3 h-100 <%= 'selected' if (@selected_features & category[:features]).any? %>"
                  for="feature_<%= category[:slug] %>">
             <div class="d-flex align-items-start gap-3">
