@@ -4936,11 +4936,13 @@ html[data-theme="dark"] .space-btn-adaptive.active {
     box-sizing: border-box;
   }
   
-  /* Adjust chat messages to account for fixed input area + safe area */
+  /* Adjust chat messages to account for fixed input area + safe area.
+     The input area on mobile is ~130px tall (stacked layout) + safe-area-inset. 
+     We need generous padding so the last message is clearly visible above it. */
   .workspace.conversation-mode .chat-messages,
   .chat-area .chat-messages,
   .chat-messages {
-    padding-bottom: calc(200px + env(safe-area-inset-bottom, 20px)) !important;
+    padding-bottom: calc(250px + env(safe-area-inset-bottom, 34px)) !important;
   }
   
   /* Mobile input container - stacked layout */
