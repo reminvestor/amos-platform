@@ -451,18 +451,34 @@ class GuidanceLibrary
         2. **Verify Web DNS**: `platform_execute(action: "verify_domain", custom_domain_id: ID)`
         3. **Setup Email Sending**: `platform_execute(action: "verify_email_domain", custom_domain_id: ID)`
            - Creates SES identity, generates DKIM/SPF/DMARC/MX records
+           - For GoDaddy users: DNS records are auto-configured (no user action needed)
+           - For non-GoDaddy users: Returns DNS records the user must add manually
         4. **Set Primary Domain**: `platform_execute(action: "set_primary_domain", custom_domain_id: ID)`
         5. **List/Query Domains**: `platform_query(type: "custom_domains")`
         6. **Single Domain Detail**: `platform_query(type: "custom_domains", id: DOMAIN_ID)`
 
-        ## GoDaddy as Regular Integration
-        GoDaddy is a standard integration. For general operations (list domains, check DNS records,
-        manage records directly), use `platform_execute(action: "invoke_operation", ...)`.
+        ## Email Domain Setup Flow
+        When a user wants to send emails from their own domain (not noreply@amoslabs.com):
+        1. Register their domain via `platform_create(type: "custom_domain", ...)`
+        2. Call `platform_execute(action: "verify_email_domain", custom_domain_id: ID)` to start SES verification
+        3. **GoDaddy connected**: DKIM, SPF, DMARC records are auto-pushed. Tell the user it's being configured automatically.
+        4. **No GoDaddy / other DNS provider**: Show the user the DNS records they need to add (DKIM CNAMEs, SPF TXT, DMARC TXT).
+           If the user has another DNS integration, offer to use it. Otherwise, give clear manual instructions.
+        5. Verification happens automatically in the background (polling every 10 minutes)
+        6. Once verified, all campaign/sequence/workflow emails automatically send from their domain
+        7. The entity's from_email is auto-set to `hello@{domain}` on successful verification
 
         ## Key Points
         - DNS setup is fully automated when GoDaddy is connected -- users don't need to understand records
+        - For non-GoDaddy: the user can either set up their DNS provider as an integration, or manually add records
         - DNS changes can take up to 48 hours to propagate (usually 15 min)
         - SSL is auto-provisioned after web DNS verification succeeds
+        - External emails (campaigns, sequences, automations) use the customer's verified domain
+        - Internal platform emails (notifications, etc.) continue to use amoslabs.com
+
+        ## GoDaddy as Regular Integration
+        GoDaddy is a standard integration. For general operations (list domains, check DNS records,
+        manage records directly), use `platform_execute(action: "invoke_operation", ...)`.
 
         ## Visual Manager — ALWAYS open the canvas
         When the user asks to see/view/open domain settings, ALWAYS call:

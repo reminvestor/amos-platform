@@ -134,8 +134,42 @@ class Entity < ApplicationRecord
   # JSONB settings accessor
   store_accessor :settings, :timezone, :currency, :date_format, :logo_url, :primary_color,
                  :slack_notifications_enabled, :slack_webhook_url, :email_notifications_enabled,
-                 :default_ai_model, :canvas_theme
-  
+                 :default_ai_model, :canvas_theme,
+                 :from_email, :sender_name, :reply_to_email
+
+  # =========================================
+  # Email Sending Configuration
+  # =========================================
+
+  # Resolve the best sending email address for external emails.
+  # Priority: explicit from_email (if SES-verified) > primary verified custom domain > platform default
+  def sending_email_address
+    if from_email.present? && ses_verified_domain?(from_email)
+      return from_email
+    end
+
+    primary = custom_domains.where(is_primary: true, email_status: 'verified').first
+    primary ||= custom_domains.where(email_status: 'verified').first
+    if primary
+      prefix = from_email&.split('@')&.first || 'hello'
+      return "#{prefix}@#{primary.domain_name}"
+    end
+
+    ENV['MAILER_SENDER'] || 'noreply@amoslabs.com'
+  end
+
+  def sending_display_name
+    sender_name.presence || name.presence || 'AMOS'
+  end
+
+  def sending_from_header
+    "#{sending_display_name} <#{sending_email_address}>"
+  end
+
+  def sending_reply_to
+    reply_to_email.presence || sending_email_address
+  end
+
   # Notification settings helpers
   def slack_notifications_enabled?
     slack_notifications_enabled == true || slack_notifications_enabled == 'true'
@@ -214,6 +248,12 @@ class Entity < ApplicationRecord
   end
 
   private
+
+  def ses_verified_domain?(email)
+    domain = email.to_s.split('@').last
+    return false if domain.blank?
+    custom_domains.where(domain_name: domain, email_status: 'verified').exists?
+  end
 
   def generate_slug
     base_slug = name.parameterize

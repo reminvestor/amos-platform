@@ -53,7 +53,17 @@ class CustomDomainVerificationJob < ApplicationJob
     
     if result[:verified]
       Rails.logger.info "✅ Email domain verified: #{custom_domain.domain_name}"
-      
+
+      # Auto-configure entity email settings if not already set
+      entity = custom_domain.entity
+      if entity.from_email.blank?
+        entity.update(
+          from_email: "hello@#{custom_domain.domain_name}",
+          sender_name: entity.sender_name.presence || entity.name
+        )
+        Rails.logger.info "✅ Auto-configured entity #{entity.id} from_email to hello@#{custom_domain.domain_name}"
+      end
+
       # Notify user
       notify_user(custom_domain, :email_verified)
     else

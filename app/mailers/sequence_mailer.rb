@@ -24,15 +24,6 @@ class SequenceMailer < ApplicationMailer
     # Generate unsubscribe URL
     @unsubscribe_url = generate_unsubscribe_url(@contact)
 
-    # Determine from address (same pattern as CampaignMailer)
-    # Entity may have from_email or default_email - check what's available
-    from_email = @entity.try(:from_email) || 
-                 @entity.try(:default_from_email) ||
-                 ENV['DEFAULT_FROM_EMAIL'] || 
-                 Rails.application.config.action_mailer.default_options&.dig(:from) ||
-                 'noreply@amoslabs.com'
-    from_name = @entity.name.presence || 'AMOS'
-
     # Set SES tracking headers (same as CampaignMailer)
     headers['X-SES-CONFIGURATION-SET'] = ENV['SES_CONFIGURATION_SET'] || 'agent-marketing'
     headers['X-SES-MESSAGE-TAGS'] = "type=sequence,sequence_id=#{@sequence.id},step_id=#{@step.id},contact_id=#{@contact.id},delivery_id=#{@delivery.id}"
@@ -43,11 +34,12 @@ class SequenceMailer < ApplicationMailer
     headers['X-Contact-ID'] = @contact.id.to_s
     headers['X-Delivery-ID'] = @delivery.id.to_s
 
+    # Use the entity's verified custom domain for from/reply-to when available
     mail(
       to: @contact.email,
       subject: @subject,
-      from: "#{from_name} <#{from_email}>",
-      reply_to: from_email
+      from: @entity.sending_from_header,
+      reply_to: @entity.sending_reply_to
     ) do |format|
       format.html { render html: render_html_body.html_safe }
       format.text { render plain: strip_html(@body) }

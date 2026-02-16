@@ -38,15 +38,16 @@ class CampaignMailer < ApplicationMailer
     # Add tags for SES event filtering
     headers["X-SES-MESSAGE-TAGS"] = "campaign_id=#{@campaign.id},contact_id=#{@contact.id}"
 
+    # Use the entity's verified custom domain for from/reply-to when available
+    @entity = @campaign.entity
+
     mail(
       to: @contact.email,
       subject: @email_template.subject,
+      from: @entity.sending_from_header,
+      reply_to: @entity.sending_reply_to,
       template_name: "campaign_email"
     )
-    
-    # Note: We don't set the Message-ID manually for SES usually, 
-    # SES assigns one and returns it. We need to capture it from the delivery response
-    # in the code that calls this mailer.
   end
 
   # Send a test email for a campaign
@@ -71,9 +72,14 @@ class CampaignMailer < ApplicationMailer
     headers["X-SES-CONFIGURATION-SET"] = ENV["SES_CONFIGURATION_SET"] || "agent-marketing"
     headers["X-SES-MESSAGE-TAGS"] = "type=test,campaign_id=#{@campaign.id}"
 
+    # Use the entity's verified custom domain for from/reply-to when available
+    @entity = @campaign.entity
+
     mail(
       to: email,
       subject: "[TEST] #{@email_template.subject}",
+      from: @entity.sending_from_header,
+      reply_to: @entity.sending_reply_to,
       template_name: "campaign_email"
     )
   end

@@ -20,14 +20,6 @@ class WorkflowMailer < ApplicationMailer
     @entity = Entity.find_by(id: entity_id)
     @contact = Contact.find_by(id: contact_id) if contact_id
 
-    # Determine from address
-    from_email = @entity&.try(:from_email) ||
-                 @entity&.try(:default_from_email) ||
-                 ENV['DEFAULT_FROM_EMAIL'] ||
-                 ENV['MAILER_SENDER'] ||
-                 'noreply@amoslabs.com'
-    from_name = @entity&.name.presence || 'AMOS'
-
     # SES tracking headers
     headers['X-SES-CONFIGURATION-SET'] = ENV['SES_CONFIGURATION_SET'] || 'agent-marketing'
     
@@ -39,10 +31,14 @@ class WorkflowMailer < ApplicationMailer
     # Debug headers
     headers['X-Automation-ID'] = automation_id.to_s if automation_id
 
+    # Use the entity's verified custom domain for from/reply-to when available
+    default_from = "AMOS <#{ENV['MAILER_SENDER'] || 'noreply@amoslabs.com'}>"
+
     mail(
       to: to,
       subject: subject,
-      from: "#{from_name} <#{from_email}>"
+      from: @entity&.sending_from_header || default_from,
+      reply_to: @entity&.sending_reply_to
     ) do |format|
       if html
         format.html { render html: render_html_body.html_safe }
