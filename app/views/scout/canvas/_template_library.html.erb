@@ -817,63 +817,21 @@
       
       const designType = designTypeMap[category] || 'landing_page';
       
-      // For landing pages, websites, and apps - use Design Studio Plan → Build workflow
-      if (['landing_pages', 'websites', 'apps'].includes(category)) {
-        // Load Design Studio canvas first
-        window.scoutLoadCanvas?.('design_studio', { 
-          create_type: designType,
-          template_name: templateName,
-          template_id: templateId
-        });
-        
-        // After a brief delay, send message to Amos to create the plan
-        setTimeout(() => {
-          const chatInput = document.querySelector('.chat-input') || document.getElementById('chat-input');
-          const chatForm = document.querySelector('.chat-form') || document.getElementById('message-form');
-          if (chatInput && chatForm) {
-            // Tell Amos to create a design plan based on the template
-            chatInput.value = `Create a design plan for a ${designType.replace('_', ' ')} based on the "${templateName}" template.`;
-            chatForm.dispatchEvent(new Event('submit', { bubbles: true }));
-          }
-        }, 500);
-        
-        // Reset button state
-        btn.innerHTML = '<i data-lucide="rocket"></i> Use';
-        btn.disabled = false;
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-        return;
-      }
-      
-      // For workflows - open Workflow Designer and create workflow
-      if (category === 'workflows') {
-        // Load Workflow Designer canvas
-        window.scoutLoadCanvas?.('workflow_designer', { 
-          template_name: templateName,
-          template_id: templateId
-        });
-        
-        // After a brief delay, send message to Amos to create the workflow
-        setTimeout(() => {
-          const chatInput = document.querySelector('.chat-input') || document.getElementById('chat-input');
-          const chatForm = document.querySelector('.chat-form') || document.getElementById('message-form');
-          if (chatInput && chatForm) {
-            chatInput.value = `Create a workflow based on the "${templateName}" template.`;
-            chatForm.dispatchEvent(new Event('submit', { bubbles: true }));
-          }
-        }, 500);
-        
-        // Reset button state
-        btn.innerHTML = '<i data-lucide="rocket"></i> Use';
-        btn.disabled = false;
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-        return;
-      }
-      
-      // For email templates and campaigns, use chat to create directly
+      // All categories: send a chat message to AMOS to create the asset.
+      // AMOS will use platform_create and then show the correct editor canvas
+      // (landing_page_editor, module_manager, etc.) automatically.
       const chatInput = document.querySelector('.chat-input') || document.getElementById('chat-input');
       const chatForm = document.querySelector('.chat-form') || document.getElementById('message-form');
       if (chatInput && chatForm) {
-        chatInput.value = `Create a new ${category.replace('_', ' ').slice(0, -1)} based on the "${templateName}" template.`;
+        let message;
+        if (['landing_pages', 'websites', 'apps'].includes(category)) {
+          message = `Create a ${designType.replace('_', ' ')} based on the "${templateName}" template. Build it and show me the result.`;
+        } else if (category === 'workflows') {
+          message = `Create an automation based on the "${templateName}" template. Build it and show me the result.`;
+        } else {
+          message = `Create a new ${category.replace('_', ' ').slice(0, -1)} based on the "${templateName}" template.`;
+        }
+        chatInput.value = message;
         chatForm.dispatchEvent(new Event('submit', { bubbles: true }));
       }
       

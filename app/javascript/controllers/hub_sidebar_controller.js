@@ -109,7 +109,7 @@ export default class extends Controller {
     // Set default canvas per mode
     const defaultCanvases = {
       'operations': 'operations_command_center',
-      'design': 'template_library'  // Start with template library in design mode
+      'design': 'my_creations'  // Show created assets in design mode
     }
     
     const defaultCanvas = defaultCanvases[mode]

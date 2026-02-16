@@ -127,11 +127,10 @@ class AiSettings::MenuController < ApplicationController
       { slug: 'bookmarks', name: 'Bookmarks', icon: 'bookmark', category: 'Productivity', spaces: ['work'] },
       
       # Design - Creation tools
+      # Users describe what they want → AMOS builds it. No template browsing needed.
       { slug: 'my_creations', name: 'Created Assets', icon: 'folder-open', category: 'Design', spaces: ['work'] },
-      # design_studio removed — use my_creations + landing_page_editor
-      { slug: 'workflow_designer', name: 'Workflow Designer', icon: 'git-branch', category: 'Design', spaces: ['work'] },
-      { slug: 'template_library', name: 'Templates', icon: 'sparkles', category: 'Design', spaces: ['work'] },
-      { slug: 'component_gallery', name: 'Components', icon: 'grid-3x3', category: 'Design', spaces: ['work'] },
+      # design_studio, workflow_designer, template_library, app_designer removed
+      # — users just tell AMOS what to build and it creates + shows the right editor
       
       # Platform - Apps and modules
       { slug: 'module_manager', name: 'Installed Apps', icon: 'box', category: 'Apps', spaces: ['work'] },
