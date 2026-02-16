@@ -287,7 +287,8 @@ module V3
           return success_response(
             domain: format_domain(domain),
             dns_records: domain.dns_records,
-            message: "Domain: #{domain.full_domain} — Web: #{domain.web_status}, Email: #{domain.email_status}, SSL: #{domain.ssl_status}"
+            message: "Domain: #{domain.full_domain} — Web: #{domain.web_status}, Email: #{domain.email_status}, SSL: #{domain.ssl_status}",
+            canvas_type: "custom_domains"
           )
         end
 
@@ -299,7 +300,8 @@ module V3
           count: domains.count,
           message: domains.any? ?
             "#{domains.count} custom domain(s) configured." :
-            "No custom domains configured yet. Use platform_create(type: 'custom_domain') to add one."
+            "No custom domains configured yet. Use platform_create(type: 'custom_domain') to add one.",
+          canvas_type: "custom_domains"
         )
       end
 

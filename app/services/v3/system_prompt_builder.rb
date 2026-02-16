@@ -233,6 +233,18 @@ module V3
         - App/module → load_canvas(canvas_name: "module_manager", canvas_data: { app_module_id: MODULE_ID })
         - Website/web app → load_canvas(canvas_name: "my_creations", canvas_data: { type: "website" })
         
+        ## Open Settings/Views on User Request
+        
+        When the user asks to "open", "show", "view", or "go to" a settings page or view, ALWAYS call `load_canvas`:
+        - Domain settings → load_canvas(canvas_name: "custom_domains")
+        - Integrations → load_canvas(canvas_name: "integrations_manager")
+        - Contacts → load_canvas(canvas_name: "contact_viewer")
+        - Campaigns → load_canvas(canvas_name: "email_campaign_viewer")
+        - Documents → load_canvas(canvas_name: "document_store")
+        - Dashboard → load_canvas(canvas_name: "operations_dashboard")
+        - Profile settings → load_canvas(canvas_name: "user_profile")
+        Do NOT just describe settings in text — the user expects the visual canvas to open.
+        
         ## Custom Visualizations with Freeform Canvas
         
         Freeform canvas is for EPHEMERAL displays only (charts, infographics, styled summaries, one-off visualizations).

@@ -441,32 +441,33 @@ class GuidanceLibrary
     custom_domain_management: {
       title: "Custom Domain Management",
       expertise: <<~GUIDANCE.strip,
-        ## Domain Setup Tool (platform handles all DNS automatically)
-        Use `manage_custom_domain` for DNS setup flows. The platform orchestrates everything.
+        ## Domain Management via Platform Tools
+        Use the platform tools for all domain operations:
 
-        1. **Web Publishing**: `manage_custom_domain(action: "setup_web", domain_name: "example.com")`
+        1. **Register Domain**: `platform_create(type: "custom_domain", domain_name: "example.com")`
            - Creates domain, generates CNAME target
-           - If GoDaddy is connected: auto-pushes CNAME record + schedules verification
+           - If GoDaddy connection_id provided: auto-pushes CNAME record + schedules verification
            - If no GoDaddy: returns manual DNS instructions for the user
-        2. **Email Sending**: `manage_custom_domain(action: "setup_email", domain_id: ID)`
+        2. **Verify Web DNS**: `platform_execute(action: "verify_domain", custom_domain_id: ID)`
+        3. **Setup Email Sending**: `platform_execute(action: "verify_email_domain", custom_domain_id: ID)`
            - Creates SES identity, generates DKIM/SPF/DMARC/MX records
-           - If GoDaddy connected: auto-pushes all email DNS records
-        3. **Check Status**: `manage_custom_domain(action: "check_status", domain_id: ID)`
-        4. **List Domains**: `manage_custom_domain(action: "list")`
+        4. **Set Primary Domain**: `platform_execute(action: "set_primary_domain", custom_domain_id: ID)`
+        5. **List/Query Domains**: `platform_query(type: "custom_domains")`
+        6. **Single Domain Detail**: `platform_query(type: "custom_domains", id: DOMAIN_ID)`
 
         ## GoDaddy as Regular Integration
         GoDaddy is a standard integration. For general operations (list domains, check DNS records,
-        manage records directly), use `execute_integration_action(integration: "godaddy", ...)`.
-        The `manage_custom_domain` tool is only for the automated setup flows.
+        manage records directly), use `platform_execute(action: "invoke_operation", ...)`.
 
         ## Key Points
         - DNS setup is fully automated when GoDaddy is connected -- users don't need to understand records
         - DNS changes can take up to 48 hours to propagate (usually 15 min)
-        - Always check status with `manage_custom_domain(action: "check_status")` before assuming ready
         - SSL is auto-provisioned after web DNS verification succeeds
 
-        ## Visual Manager
+        ## Visual Manager — ALWAYS open the canvas
+        When the user asks to see/view/open domain settings, ALWAYS call:
         `load_canvas(canvas_name: "custom_domains")`
+        Do NOT just describe domain info in text — show the canvas.
       GUIDANCE
       anti_hallucination: nil
     },
@@ -556,8 +557,10 @@ class GuidanceLibrary
     ],
 
     custom_domain_management: %w[
-      manage_custom_domain
-      execute_integration_action
+      platform_create
+      platform_execute
+      platform_query
+      load_canvas
     ],
 
     general: []  # No specific tools - use standard set
