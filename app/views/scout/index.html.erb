@@ -25,17 +25,13 @@
     </button>
   <% end %>
 
-  <%# Mobile: Toggle bar for switching between Chat and Canvas views %>
-  <div class="mobile-view-toggle" id="mobile-view-toggle" data-scout-target="mobileViewToggle">
-    <button class="mobile-toggle-tab active" data-view="chat" data-action="click->scout#mobileShowChat">
-      <i data-lucide="message-circle" aria-hidden="true"></i>
-      <span>Chat</span>
-    </button>
-    <button class="mobile-toggle-tab" data-view="canvas" data-action="click->scout#mobileShowCanvas">
-      <i data-lucide="layout-dashboard" aria-hidden="true"></i>
-      <span>Canvas</span>
-    </button>
-  </div>
+  <%# Mobile: Close button overlay on canvas (returns to chat) %>
+  <button class="mobile-canvas-close-btn" id="mobile-canvas-close" 
+          data-scout-target="mobileCanvasClose"
+          data-action="click->scout#mobileCloseCanvas" 
+          aria-label="Close canvas">
+    <i data-lucide="x" aria-hidden="true"></i>
+  </button>
 
   <!-- Main Content Area -->
   <main class="main-content">

@@ -19,7 +19,7 @@ export default class extends Controller {
     "voiceMode",
     "canvasCloseBtn",
     "canvasToggleBtn",
-    "mobileViewToggle"
+    "mobileCanvasClose"
   ]
 
   connect() {
@@ -1863,7 +1863,7 @@ export default class extends Controller {
       workspace.classList.remove("mobile-chat-active")
       workspace.classList.add("conversation-mode")
       this.currentMode = "conversation"
-      this._hideMobileViewToggle()
+      this._hideMobileCanvasClose()
 
       // Store current canvas before clearing so we can restore it
       if (this.currentCanvas && this.currentCanvas.type) {
@@ -1986,58 +1986,28 @@ export default class extends Controller {
     }
   }
   
-  // Mobile: Show chat view (hide canvas overlay)
-  mobileShowChat(event) {
+  // Mobile: Close canvas and return to chat
+  mobileCloseCanvas(event) {
     if (event) event.preventDefault()
-    console.log("📱 Mobile: switching to chat view")
+    console.log("📱 Mobile: closing canvas, returning to chat")
     
     this.element.classList.remove('mobile-canvas-overlay')
-    this.element.classList.add('mobile-chat-active')
-    
-    this._updateMobileToggleTabs('chat')
-  }
-  
-  // Mobile: Show canvas view (show canvas overlay)
-  mobileShowCanvas(event) {
-    if (event) event.preventDefault()
-    console.log("📱 Mobile: switching to canvas view")
-    
-    this.element.classList.add('mobile-canvas-overlay')
     this.element.classList.remove('mobile-chat-active')
-    
-    this._updateMobileToggleTabs('canvas')
+    this._hideMobileCanvasClose()
+    this.switchToMode("conversation")
+    this.saveCanvasState()
   }
   
-  // Update the active state of mobile toggle tabs
-  _updateMobileToggleTabs(activeView) {
-    const toggle = this.hasMobileViewToggleTarget ? this.mobileViewToggleTarget : document.getElementById('mobile-view-toggle')
-    if (!toggle) return
-    
-    toggle.querySelectorAll('.mobile-toggle-tab').forEach(tab => {
-      if (tab.dataset.view === activeView) {
-        tab.classList.add('active')
-      } else {
-        tab.classList.remove('active')
-      }
-    })
-  }
-  
-  // Show/hide the mobile view toggle bar
-  _showMobileViewToggle() {
+  // Show the mobile close button when canvas is visible
+  _showMobileCanvasClose() {
     if (!this.isMobileViewport()) return
-    const toggle = this.hasMobileViewToggleTarget ? this.mobileViewToggleTarget : document.getElementById('mobile-view-toggle')
-    if (toggle) {
-      toggle.classList.add('visible')
-      // Default to canvas view when a canvas first loads
-      this._updateMobileToggleTabs('canvas')
-    }
+    const btn = this.hasMobileCanvasCloseTarget ? this.mobileCanvasCloseTarget : document.getElementById('mobile-canvas-close')
+    if (btn) btn.classList.add('visible')
   }
   
-  _hideMobileViewToggle() {
-    const toggle = this.hasMobileViewToggleTarget ? this.mobileViewToggleTarget : document.getElementById('mobile-view-toggle')
-    if (toggle) {
-      toggle.classList.remove('visible')
-    }
+  _hideMobileCanvasClose() {
+    const btn = this.hasMobileCanvasCloseTarget ? this.mobileCanvasCloseTarget : document.getElementById('mobile-canvas-close')
+    if (btn) btn.classList.remove('visible')
   }
 
   updateCanvasToggleButtons() {
@@ -2339,7 +2309,7 @@ export default class extends Controller {
     // Remove mobile classes
     this.element.classList.remove('mobile-canvas-overlay')
     this.element.classList.remove('mobile-chat-active')
-    this._hideMobileViewToggle()
+    this._hideMobileCanvasClose()
     
     // Switch back to conversation mode
     this.switchToMode("conversation")
@@ -2423,7 +2393,7 @@ export default class extends Controller {
           this.element.classList.remove('conversation-mode')
           this.element.classList.add('work-mode')
           this.currentMode = 'work'
-          this._showMobileViewToggle()
+          this._showMobileCanvasClose()
         } else {
           console.log("🖥️ Desktop viewport - switching to work mode")
           this.switchToMode("work")
