@@ -128,7 +128,7 @@ class AiSettings::MenuController < ApplicationController
       
       # Design - Creation tools
       { slug: 'my_creations', name: 'Created Assets', icon: 'folder-open', category: 'Design', spaces: ['work'] },
-      { slug: 'design_studio', name: 'App Designer', icon: 'palette', category: 'Design', spaces: ['work'] },
+      # design_studio removed — use my_creations + landing_page_editor
       { slug: 'workflow_designer', name: 'Workflow Designer', icon: 'git-branch', category: 'Design', spaces: ['work'] },
       { slug: 'template_library', name: 'Templates', icon: 'sparkles', category: 'Design', spaces: ['work'] },
       { slug: 'component_gallery', name: 'Components', icon: 'grid-3x3', category: 'Design', spaces: ['work'] },
@@ -136,7 +136,7 @@ class AiSettings::MenuController < ApplicationController
       # Platform - Apps and modules
       { slug: 'module_manager', name: 'Installed Apps', icon: 'box', category: 'Apps', spaces: ['work'] },
       { slug: 'module_marketplace', name: 'App Store', icon: 'grid-2x2', category: 'Apps', spaces: ['work'] },
-      { slug: 'app_designer', name: 'App Builder', icon: 'layers', category: 'Apps', spaces: ['work'] },
+      # app_designer removed — use module_manager
       
       # Automation - Workflows and execution
       { slug: 'automation_dashboard', name: 'Automations', icon: 'zap', category: 'Automation', spaces: ['work'] },

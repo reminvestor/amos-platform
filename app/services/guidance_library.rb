@@ -23,8 +23,7 @@ class GuidanceLibrary
   # Detect task type from canvas context and message
   def self.detect_task_type(canvas_context: nil, message: nil)
     # Priority 1: Canvas context (user is looking at something specific)
-    # Canvas context is AUTHORITATIVE - if user is on design_studio with a plan,
-    # they're working on that plan, even if their message mentions "sections"
+    # Canvas context is AUTHORITATIVE - the current canvas determines task type
     if canvas_context.present?
       canvas_type = canvas_context[:type] || canvas_context['type']
       canvas_data = canvas_context[:data] || canvas_context['data'] || {}
@@ -34,9 +33,7 @@ class GuidanceLibrary
         return :landing_page_edit
       when 'workflow_designer'
         return :workflow_design
-      when 'app_designer', 'design_studio'
-        # CRITICAL: If on design_studio with a plan_id, stay in app_design mode
-        # This prevents switching to landing_page_edit when user says "change the section"
+      when 'module_manager', 'module_marketplace'
         return :app_design
       when 'integrations_manager'
         return :integration_setup
@@ -79,8 +76,8 @@ class GuidanceLibrary
       # Website creation (multi-page sites)
       return :website_create if msg_lower.match?(/website|multi.?page|company\s*site|portfolio\s*site/)
       
-      # Edit existing sections - BUT only if not on design_studio
-      # (canvas check above already returned if on design_studio)
+      # Edit existing sections - only if not already on an editor canvas
+      # (canvas check above already returned if on landing_page_editor)
       return :landing_page_edit if msg_lower.match?(/hero|cta|section|change the|update the|edit the/)
       
       # Email sequence detection - must check BEFORE workflow/automation
@@ -409,7 +406,7 @@ class GuidanceLibrary
         After create/update, refresh the UI by re-fetching data with amosAPI.list().
         
         ## Context
-        If on design_studio with a plan_id, the user is working on a design draft.
+        After creating an app, show the module_manager canvas so the user can see and manage it.
       GUIDANCE
       anti_hallucination: nil
     },

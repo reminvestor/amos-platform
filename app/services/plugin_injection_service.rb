@@ -48,7 +48,7 @@ class PluginInjectionService
     'landing_page_editor' => 'landing_page_manager',
     'website_editor' => 'website_manager',
     'workflow_designer' => 'workflow_architect',
-    'app_designer' => 'app_architect',
+    'module_manager' => 'app_architect',
     'crm_dashboard' => 'crm_agent',
     'integrations_manager' => nil, # Amos handles integrations directly
     'document_viewer' => nil,

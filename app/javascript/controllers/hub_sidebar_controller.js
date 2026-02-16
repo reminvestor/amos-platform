@@ -712,7 +712,7 @@ export default class extends Controller {
       'work_inbox': 'work_inbox',                     // Deliveries from agents
       'analytics': 'analytics_dashboard',             // Analytics
       'analytics_dashboard': 'analytics_dashboard',
-      'design_studio': 'design_studio',               // Design workspace  
+      'design_studio': 'my_creations',                 // Legacy redirect → creations view  
       'media_library': 'media_library',               // Image/media library
       'my_creations': 'my_creations',                 // Unified creations view
       'template_library': 'template_library',         // Template library (design mode default)

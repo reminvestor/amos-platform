@@ -90,18 +90,18 @@ module Tools
       
       tools << {
         name: "load_canvas",
-        description: "Load a specific canvas view. IMPORTANT: For DRAFT design plans use 'design_studio' with plan_id. For BUILT landing pages use 'landing_page_editor' with landing_page_id. For viewing all creations use 'my_creations'.",
+        description: "Load a specific canvas view. Use 'landing_page_editor' with landing_page_id to edit pages, 'module_manager' for apps, 'my_creations' to list all assets, 'settings' for account settings.",
         parameters: {
           type: "object",
           properties: {
             canvas_name: {
               type: "string",
-              description: "The canvas to load. Use 'design_studio' for draft plans (plan_id), 'landing_page_editor' for built pages (landing_page_id), 'my_creations' to list all assets.",
+              description: "The canvas to load. Use 'landing_page_editor' with landing_page_id for pages, 'module_manager' for apps, 'my_creations' to list all assets.",
               enum: canvas_enum
             },
             canvas_data: {
               type: "object",
-              description: "Data to pass: plan_id for design_studio, landing_page_id for landing_page_editor, campaign_id for campaign_viewer, etc.",
+              description: "Data to pass: landing_page_id for landing_page_editor, app_module_id for module_manager, campaign_id for campaign_viewer, etc.",
               properties: {},
               additionalProperties: true
             }

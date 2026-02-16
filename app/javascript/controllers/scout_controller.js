@@ -2044,8 +2044,8 @@ export default class extends Controller {
 
   loadAppDesignerCanvas(event) {
     this.setActiveNavItem(event)
-    console.log("🎨 Loading app designer canvas")
-    this.loadScoutCanvas("app_designer", {})
+    console.log("🎨 Loading module manager canvas")
+    this.loadScoutCanvas("module_manager", {})
   }
 
   loadSavedVisualizationsCanvas(event) {

@@ -15,8 +15,8 @@ Applications (or modules) are custom data-driven apps built on the platform. The
 - `CustomObject` — Actual data records
 
 ## Canvases
-- `app_designer` — Visual builder for creating/editing applications
 - `module_manager` — List and manage all custom modules
+- `module_marketplace` — Discover pre-built modules
 
 ## Key Fields for AppModule
 - `name`: Module name (e.g., "Inventory Tracker")
@@ -57,9 +57,9 @@ Use the platform_update tool with type: "app_module", id: 42, and data containin
 - Change icon: data: { icon: "clipboard" }
 IMPORTANT: When the user wants to modify an existing app, always use platform_update — never create a new one.
 
-### Open app designer
-Use the load_canvas tool with canvas_name: "app_designer"
-Or with canvas_name: "app_designer", canvas_data: { app_module_id: 42 }
+### View modules
+Use the load_canvas tool with canvas_name: "module_manager"
+Or with canvas_name: "module_manager", canvas_data: { app_module_id: 42 }
 
 ### Create a record in a custom app
 Use the platform_create tool with type: "custom_object" and data: { app_module_id: 42, data: { project_name: "Website Redesign", status: "planning", due_date: "2026-03-15", budget: 5000 } }

@@ -70,14 +70,11 @@ class V3::SystemPromptBuilderTest < ActiveSupport::TestCase
   test "does not reference deprecated concepts" do
     prompt = @builder.build(message: "help me build something")
 
-    # These are genuinely deprecated workflow concepts that should not appear
+    assert_no_match /design_studio/, prompt
     assert_no_match /plan_design/, prompt
     assert_no_match /build_design/, prompt
     assert_no_match /workflow_designer/, prompt
-
-    # NOTE: design_studio and app_designer are ACTIVE canvases referenced by
-    # the SkillLibraryService. They are intentionally included in the prompt
-    # when skills are injected for landing page building and app building.
+    assert_no_match /app_designer/, prompt
   end
 
   test "mentions automation not workflow for creation" do

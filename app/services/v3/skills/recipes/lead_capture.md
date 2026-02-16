@@ -8,7 +8,7 @@ Create a complete lead capture system: Landing Page → Form → Contact → Ema
 ### 1. Create the Landing Page
 Use the platform_create tool with type: "landing_page", data: { title: "Free Guide: [Topic]", description: "Lead capture page for [product/service]" }
 
-Then use the load_canvas tool with canvas_name: "design_studio" to design it visually.
+Then use the load_canvas tool with canvas_name: "landing_page_editor" and canvas_data: { landing_page_id: ID } to edit it visually.
 
 ### 2. Create a Contact Group for leads
 Use the platform_create tool with type: "contact_group", data: { name: "Guide Downloads", description: "People who downloaded the free guide" }

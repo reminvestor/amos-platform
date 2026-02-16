@@ -645,19 +645,14 @@ class SkillLibraryService
         Custom apps extend the platform with domain-specific data and views.
         
         ### Key Canvases
-        - `app_designer` — Visual app builder
-        - `module_manager` — List all custom modules
+        - `module_manager` — List and manage all custom modules
+        - `module_marketplace` — Discover pre-built modules
         
         ### Schema Field Types
         text, textarea, number, currency, date, datetime, select, 
         multi_select, boolean, reference, file, json
         
         ### Quick Start
-        ```
-        load_canvas(canvas_name: "app_designer")
-        ```
-        
-        Or create programmatically:
         ```
         platform_create(type: "app_module", data: {
           name: "Project Tracker",
@@ -669,6 +664,11 @@ class SkillLibraryService
             ]
           }
         })
+        ```
+        
+        After creation, view with:
+        ```
+        load_canvas(canvas_name: "module_manager")
         ```
         
         Reference fields create relationships between objects.
@@ -683,13 +683,17 @@ class SkillLibraryService
         ## Landing Page Building Skill
         
         ### Key Canvases
-        - `design_studio` — Create new landing pages and websites
-        - `landing_page_editor` — Edit existing landing pages
+        - `landing_page_editor` — Create and edit landing pages
         - `my_creations` — View all created assets
         
-        ### Quick Start
+        ### Quick Start — Create a new page
         ```
-        load_canvas(canvas_name: "design_studio")
+        platform_create(type: "landing_page", data: { title: "My Page", description: "..." })
+        ```
+        
+        Then show the editor:
+        ```
+        load_canvas(canvas_name: "landing_page_editor", canvas_data: { landing_page_id: ID })
         ```
         
         ### Edit Existing
