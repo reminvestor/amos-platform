@@ -35,6 +35,13 @@ class IntegrationsController < ApplicationController
       connection.status = :connected
 
       if connection.save
+        # Revoke any existing credentials before creating new ones
+        # This prevents stale credentials from being used on reconnect
+        connection.integration_credentials.active.update_all(
+          status: :revoked,
+          updated_at: Time.current
+        )
+
         # Create credentials (store as JSON)
         credential = connection.integration_credentials.build(
           name: params[:credential_name] || "API Credentials",
