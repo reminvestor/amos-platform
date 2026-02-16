@@ -4,7 +4,7 @@
 # Middleware to route landing page subdomain requests to the appropriate controller
 # Handles:
 #   1. Built-in subdomains: mypage.lp.amoslabs.com -> /lp/mypage
-#   2. Custom domains: example.com -> /lp/custom/:domain_id (via CNAME to *.custom.amoslabs.co)
+#   2. Custom domains: example.com -> /lp/custom/:domain_id (via CNAME to *.custom.amoslabs.com)
 #
 # This middleware intercepts requests and rewrites the path
 # to route through the LpController for subdomain-based landing page serving.

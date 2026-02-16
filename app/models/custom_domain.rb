@@ -216,9 +216,9 @@ class CustomDomain < ApplicationRecord
     return if cname_target.present?
     
     # Generate a unique subdomain for this customer
-    # Format: abc123.custom.amoslabs.co
+    # Format: abc123.custom.amoslabs.com
     unique_id = SecureRandom.alphanumeric(8).downcase
-    self.cname_target = "#{unique_id}.custom.amoslabs.co"
+    self.cname_target = "#{unique_id}.custom.amoslabs.com"
   end
   
   def normalize_domain_name

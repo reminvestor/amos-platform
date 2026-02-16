@@ -56,7 +56,7 @@ class CustomDomainTest < ActiveSupport::TestCase
   test "generates cname_target on create" do
     domain = CustomDomain.create!(entity: @entity, user: @user, domain_name: 'auto-cname.com')
     assert domain.cname_target.present?
-    assert domain.cname_target.ends_with?('.custom.amoslabs.co')
+    assert domain.cname_target.ends_with?('.custom.amoslabs.com')
   end
 
   test "does not overwrite existing cname_target" do
@@ -64,10 +64,10 @@ class CustomDomainTest < ActiveSupport::TestCase
       entity: @entity, 
       user: @user, 
       domain_name: 'preset-cname.com',
-      cname_target: 'existing.custom.amoslabs.co'
+      cname_target: 'existing.custom.amoslabs.com'
     )
     domain.save!
-    assert_equal 'existing.custom.amoslabs.co', domain.cname_target
+    assert_equal 'existing.custom.amoslabs.com', domain.cname_target
   end
 
   # ============================================
@@ -128,13 +128,13 @@ class CustomDomainTest < ActiveSupport::TestCase
   test "cname_record returns correct structure" do
     domain = CustomDomain.new(
       domain_name: 'example.com',
-      cname_target: 'abc123.custom.amoslabs.co'
+      cname_target: 'abc123.custom.amoslabs.com'
     )
 
     record = domain.cname_record
     assert_equal 'CNAME', record[:type]
     assert_equal '@', record[:name]
-    assert_equal 'abc123.custom.amoslabs.co', record[:value]
+    assert_equal 'abc123.custom.amoslabs.com', record[:value]
     assert_equal 3600, record[:ttl]
   end
 
@@ -142,7 +142,7 @@ class CustomDomainTest < ActiveSupport::TestCase
     domain = CustomDomain.new(
       domain_name: 'example.com',
       subdomain: 'app',
-      cname_target: 'abc123.custom.amoslabs.co'
+      cname_target: 'abc123.custom.amoslabs.com'
     )
 
     record = domain.cname_record
@@ -157,12 +157,12 @@ class CustomDomainTest < ActiveSupport::TestCase
   test "www_cname_record returns record for root domains" do
     domain = CustomDomain.new(
       domain_name: 'example.com',
-      cname_target: 'abc123.custom.amoslabs.co'
+      cname_target: 'abc123.custom.amoslabs.com'
     )
 
     record = domain.www_cname_record
     assert_equal 'www', record[:name]
-    assert_equal 'abc123.custom.amoslabs.co', record[:value]
+    assert_equal 'abc123.custom.amoslabs.com', record[:value]
   end
 
   # ============================================
