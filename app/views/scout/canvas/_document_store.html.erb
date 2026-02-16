@@ -944,6 +944,73 @@
     border-color: #e0e0e0;
     color: #1a1a2e;
   }
+
+  /* Mobile responsive layout */
+  @media (max-width: 768px) {
+    .document-store-canvas {
+      height: 100%;
+    }
+    
+    .ds-header {
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 12px;
+    }
+    
+    .ds-search {
+      order: 3;
+      width: 100%;
+    }
+
+    .ds-main {
+      flex-direction: column;
+    }
+
+    .ds-sidebar {
+      width: 100%;
+      min-width: 100%;
+      max-height: 140px;
+      border-right: none;
+      border-bottom: 1px solid var(--border-primary, #2d2d44);
+    }
+
+    .ds-store-list {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      gap: 6px;
+      padding: 6px 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .ds-store-item {
+      flex-shrink: 0;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      border-radius: 999px;
+      border: 1px solid var(--border-primary, rgba(255,255,255,0.1));
+      white-space: nowrap;
+    }
+    
+    .ds-store-item .ds-store-item-actions {
+      display: none;
+    }
+
+    .ds-sidebar-header {
+      padding: 8px 12px;
+      font-size: 0.7rem;
+    }
+
+    .ds-content {
+      flex: 1;
+      min-height: 0;
+    }
+
+    .ds-doc-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
 </style>
 
 <script>

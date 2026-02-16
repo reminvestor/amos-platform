@@ -4936,11 +4936,11 @@ html[data-theme="dark"] .space-btn-adaptive.active {
     box-sizing: border-box;
   }
   
-  /* Adjust chat messages to account for fixed input area */
+  /* Adjust chat messages to account for fixed input area + safe area */
   .workspace.conversation-mode .chat-messages,
   .chat-area .chat-messages,
   .chat-messages {
-    padding-bottom: 180px !important;
+    padding-bottom: calc(200px + env(safe-area-inset-bottom, 20px)) !important;
   }
   
   /* Mobile input container - stacked layout */
@@ -5369,7 +5369,7 @@ html[data-theme="dark"] .space-btn-adaptive.active {
   
   /* Adjust chat messages padding when toggle is visible */
   .workspace.mobile-chat-active .chat-messages {
-    padding-bottom: 220px !important; /* Extra space for toggle + input */
+    padding-bottom: calc(260px + env(safe-area-inset-bottom, 20px)) !important;
   }
   
   /* Adjust canvas overlay bottom for mobile toggle */
