@@ -4,7 +4,7 @@ class ScoutController < ApplicationController
   include ActionView::Helpers::DateHelper  # For time_ago_in_words
   include Scout::Streaming  # Streaming helpers
   include Scout::StreamingKeepalive  # Keep-alive for long operations
-  include EventTrackable
+  # include EventTrackable  # TODO: This will be available after merging PR #39
 
   skip_before_action :verify_authenticity_token, only: [:chat_stream, :chat]
   before_action :authenticate_user_or_api!
@@ -3707,8 +3707,9 @@ class ScoutController < ApplicationController
 
   # Check if user just completed onboarding and is essentially brand new
   def newly_onboarded?
-    return false unless current_user.onboarding_completed_at.present?
-    return false unless current_user.onboarding_completed_at > 24.hours.ago
+    # TODO: Add onboarding_completed_at timestamp field to users table
+    # For now, just check if user is onboarded and has few messages
+    return false unless current_user.onboarded?
 
     # Only show personalized cards if user has very few conversations (new user)
     user_message_count = current_user.scout_conversations.user_messages.count
