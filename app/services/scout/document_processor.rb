@@ -31,7 +31,7 @@ module Scout
         # Process with dual-mode OCR service
         processing_result = if dual_mode_ocr_available?
           # Use new dual-mode OCR service (Textract + Docling)
-          ocr_service = Ocr::DualModeService.new(@entity)
+          ocr_service = Ocr::DualModeService.instance
           ocr_result = ocr_service.process_document(temp_path, {
             provider: ocr_provider,
             document_type: detect_document_type(file.original_filename),

@@ -87,15 +87,14 @@ class SidebarTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     expected_items = [
-      "Home",
       "Command Center",
+      "Apps & Automations",
       "Work Inbox",
       "Tasks",
       "Contacts",
       "Pipeline",
       "Documents",
-      "Integrations",
-      "Apps & Automations"
+      "Integrations"
     ]
 
     expected_items.each do |item|
