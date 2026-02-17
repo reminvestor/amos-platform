@@ -36,7 +36,9 @@ class AgentTool < ApplicationRecord
     return if tool_name.blank?
 
     unless Tools::ToolCatalog.instance.tool_exists?(tool_name)
-      errors.add(:tool_name, "Tool '#{tool_name}' not found in ToolCatalog")
+      # Log a warning but don't block creation — tools may be dynamic,
+      # entity-scoped, or registered in V3::ToolRegistry
+      Rails.logger.warn "[AgentTool] Tool '#{tool_name}' not found in ToolCatalog (may be dynamic or V3 tool)"
     end
   rescue => e
     # If ToolCatalog isn't available (e.g., during migrations), skip validation

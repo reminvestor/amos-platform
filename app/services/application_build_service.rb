@@ -130,11 +130,14 @@ class ApplicationBuildService
   
   def create_parent_app!
     # Create a top-level App record to group all modules built from this plan
+    base_slug = plan.name.parameterize.underscore
+    slug = unique_slug(App, base_slug, plan.entity_id)
+
     @app = App.create!(
       entity_id: plan.entity_id,
       created_by: plan.created_by,
       name: plan.name,
-      slug: plan.name.parameterize.underscore,
+      slug: slug,
       description: plan.plan_spec['description'] || "App built from plan: #{plan.name}",
       status: 'building',
       blueprint: plan.plan_spec,
@@ -740,12 +743,15 @@ class ApplicationBuildService
       metadata[:relationship_spec] = module_spec['relationship']
     end
     
+    base_slug = module_spec['slug'] || module_spec['name'].parameterize.underscore
+    slug = unique_slug(AppModule, base_slug, plan.entity_id)
+    
     AppModule.create!(
       entity_id: plan.entity_id,
       created_by: plan.created_by,
       app_id: @app&.id,
       name: module_spec['name'],
-      slug: module_spec['slug'] || module_spec['name'].parameterize.underscore,
+      slug: slug,
       description: module_spec['description'],
       is_primary: module_spec['is_primary'] != false,
       status: 'generating',
@@ -966,7 +972,9 @@ class ApplicationBuildService
     end
     
     # Also add standard tools the agent might need
-    %w[ask_user get_data get_schema web_search].each do |tool_name|
+    # Only reference tools that exist in the current ToolCatalog
+    %w[ask_user web_search create_object update_object].each do |tool_name|
+      next unless Tools::ToolCatalog.instance.tool_exists?(tool_name)
       AgentTool.find_or_create_by!(
         agent_plugin: agent,
         tool_name: tool_name
@@ -1258,6 +1266,17 @@ class ApplicationBuildService
   # UTILITIES
   # ============================================
   
+  # Generate a unique slug by appending a numeric suffix if needed
+  def unique_slug(model_class, base_slug, entity_id)
+    slug = base_slug
+    counter = 1
+    while model_class.exists?(slug: slug, entity_id: entity_id)
+      counter += 1
+      slug = "#{base_slug}_#{counter}"
+    end
+    slug
+  end
+
   def convert_field_type(field_type)
     case field_type.to_s.downcase
     when 'text' then :text
