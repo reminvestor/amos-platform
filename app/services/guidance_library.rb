@@ -73,7 +73,8 @@ class GuidanceLibrary
         return :web_app_create
       end
       
-      # Website creation (multi-page sites)
+      # Website editing or creation (multi-page sites)
+      return :website_edit if msg_lower.match?(/edit\s*(my\s*)?website|update\s*(my\s*)?website|open\s*(my\s*)?website|change\s*(my\s*)?website/)
       return :website_create if msg_lower.match?(/website|multi.?page|company\s*site|portfolio\s*site/)
       
       # Edit existing sections - only if not already on an editor canvas
@@ -205,6 +206,35 @@ class GuidanceLibrary
         - Common pages: Home, About, Services, Contact
         - Functional pages get app-like UI (tables, forms, dashboards)
         - Marketing pages get conversion-focused layouts (hero, testimonials, CTAs)
+      GUIDANCE
+      anti_hallucination: nil
+    },
+
+    website_edit: {
+      title: "Website Editing",
+      expertise: <<~GUIDANCE.strip,
+        ## How to Edit an Existing Website
+        
+        STEP 1: Find the website
+        `platform_query(type: "websites", filters: { slug: "the-slug" })`
+        Or by name: `platform_query(type: "websites", filters: { name: "Website Name" })`
+        If unsure, list all: `platform_query(type: "websites")`
+        
+        STEP 2: Get the website pages
+        `platform_query(type: "website_pages", filters: { website_id: WEBSITE_ID })`
+        This returns all pages with their IDs, names, slugs, and templates.
+        
+        STEP 3: Open the page editor
+        `load_canvas(canvas_name: "website_page_editor", canvas_data: { website_page_id: PAGE_ID })`
+        Or by slug: `load_canvas(canvas_name: "website_page_editor", canvas_data: { website_id: SITE_ID, page_slug: "home" })`
+        
+        ## IMPORTANT
+        - Websites are edited PAGE BY PAGE, not all at once
+        - Always ask which page the user wants to edit if they haven't specified
+        - Show the list of pages so user can choose
+        - The editor canvas handles inline editing — just load it and let the user work
+        - If the user says "edit my website X", find the website first, then ask which page to edit
+        - NEVER say you're opening the editor without actually calling load_canvas
       GUIDANCE
       anti_hallucination: nil
     },
@@ -508,6 +538,11 @@ class GuidanceLibrary
 
     website_create: %w[
       platform_create
+      load_canvas
+    ],
+
+    website_edit: %w[
+      platform_query
       load_canvas
     ],
 

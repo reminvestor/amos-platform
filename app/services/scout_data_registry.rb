@@ -158,6 +158,42 @@ class ScoutDataRegistry
       creatable: false  # These are created automatically by campaigns
     },
 
+    "websites" => {
+      model: "Website",
+      description: "Multi-page websites with shared layout, navigation, and theme",
+      queryable_fields: [
+        "id", "name", "slug", "status", "theme", "subdomain",
+        "created_at", "updated_at"
+      ],
+      filterable_fields: [
+        "status", "slug", "name", "created_at", "updated_at"
+      ],
+      metrics: [],
+      relationships: [
+        "website_pages", "entity", "created_by", "custom_domain"
+      ],
+      scoped_by: "entity_id",
+      creatable: false
+    },
+
+    "website_pages" => {
+      model: "WebsitePage",
+      description: "Individual pages within a multi-page website",
+      queryable_fields: [
+        "id", "name", "slug", "template", "status", "is_homepage",
+        "website_id", "created_at", "updated_at"
+      ],
+      filterable_fields: [
+        "website_id", "status", "slug", "is_homepage", "template", "created_at"
+      ],
+      metrics: [],
+      relationships: [
+        "website", "entity"
+      ],
+      scoped_by: "entity_id",
+      creatable: false
+    },
+
     'email_sequences' => {
       model: 'EmailSequence',
       description: 'Automated email sequences (drip campaigns) with time-based delays',

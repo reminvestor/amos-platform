@@ -881,7 +881,7 @@ export default class extends Controller {
       'app_module': 'module_manager',
       'workflow': 'workflow_designer',
       'email_sequence': 'email_template_editor',
-      'website': 'landing_page_editor'  // Websites use the same editor
+      'website': 'website_page_editor'  // Websites use the multi-page editor
     }
     
     const canvasType = canvasMap[workType] || 'freeform_canvas'
