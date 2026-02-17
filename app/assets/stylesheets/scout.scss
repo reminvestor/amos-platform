@@ -557,14 +557,13 @@ html[data-theme="light"] .space-tab.active {
 
 /* Base workspace layout */
 .workspace {
-  height: 100vh;
+  height: 100%;
   display: flex;
   position: relative;
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  overflow-x: hidden; /* keep layout stable horizontally */
-  overflow-y: hidden;
+  overflow: hidden;
 }
 
 /* ============================================================================
@@ -578,14 +577,14 @@ html[data-theme="light"] .space-tab.active {
 .workspace.collab-sidebar-mode {
   display: flex;
   flex-direction: row;
-  height: 100vh;
+  height: 100%;
   width: 100%;
   overflow: hidden;
   
   .hub-sidebar {
     flex-shrink: 0;
     width: 280px;
-    height: 100vh;
+    height: 100%;
     overflow-y: auto;
     transition: width 0.2s ease;
   }
@@ -600,7 +599,7 @@ html[data-theme="light"] .space-tab.active {
     display: flex;
     flex-direction: column;
     min-width: 0; /* Prevent flex overflow */
-    height: 100vh;
+    height: 100%;
     overflow: hidden;
   }
   
@@ -685,7 +684,7 @@ html[data-theme="light"] .space-tab.active {
 .workspace.personal-mode {
   display: flex;
   flex-direction: row;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   
   .main-content {
@@ -969,7 +968,7 @@ html[data-theme="light"] .space-tab.active {
 .workspace.team-space-mode {
   display: flex;
   flex-direction: row;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   
   .hub-sidebar {
@@ -4873,8 +4872,8 @@ html[data-theme="dark"] .space-btn-adaptive.active {
       position: fixed;
       top: 0;
       left: 0;
+      bottom: 0;
       width: 280px;
-      height: 100vh;
       z-index: 1200;
       background: var(--bg-secondary);
       border-right: 1px solid var(--border-primary);
@@ -4921,7 +4920,7 @@ html[data-theme="dark"] .space-btn-adaptive.active {
   .workspace.conversation-mode .chat-input-area,
   .chat-input-area {
     padding: 0.5rem;
-    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
     position: relative;
     flex-shrink: 0;
@@ -5211,8 +5210,8 @@ html[data-theme="dark"] .space-btn-adaptive.active {
     position: fixed;
     top: 0;
     left: 0;
+    bottom: 0;
     width: 280px;
-    height: 100vh;
     z-index: 1300;
     background: var(--bg-secondary, #0f1117);
     border-right: 1px solid var(--border-primary, #2a2d35);
