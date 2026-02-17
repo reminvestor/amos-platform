@@ -971,20 +971,6 @@ export default class extends Controller {
     }
   }
   
-  // Execute inline scripts in dynamically loaded content
-  executeInlineScripts(container) {
-    const scripts = container.querySelectorAll('script')
-    scripts.forEach(script => {
-      const newScript = document.createElement('script')
-      if (script.src) {
-        newScript.src = script.src
-      } else {
-        newScript.textContent = script.textContent
-      }
-      script.parentNode.replaceChild(newScript, script)
-    })
-  }
-
   // Toggle dark/light theme
   toggleTheme(event) {
     event?.preventDefault()
