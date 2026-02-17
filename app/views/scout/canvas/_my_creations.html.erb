@@ -1409,13 +1409,8 @@
       const editBtn = e.target.closest('.website-edit-btn');
       if (!editBtn) return;
       e.preventDefault(); e.stopPropagation();
-      const slug = editBtn.dataset.slug;
-      // No dedicated website editor canvas yet - ask AMOS to help edit
-      if (window.scoutController?.sendScoutMessage) {
-        window.scoutController.sendScoutMessage('Edit my website "' + slug + '"');
-      } else if (window.scoutSendMessage) {
-        window.scoutSendMessage('Edit my website "' + slug + '"');
-      }
+      const id = editBtn.dataset.id;
+      loadCanvas('website_page_editor', { website_id: id });
     });
 
     // Website card body click = edit

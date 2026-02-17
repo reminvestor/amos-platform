@@ -3781,9 +3781,13 @@ class ScoutController < ApplicationController
     if data["website_page_id"]
       website_page = WebsitePage.find_by(id: data["website_page_id"])
       website = website_page&.website
-    elsif data["website_id"] && data["page_slug"]
+    elsif data["website_id"]
       website = current_entity.websites.find_by(id: data["website_id"])
-      website_page = website&.website_pages&.find_by(slug: data["page_slug"])
+      if website && data["page_slug"].present?
+        website_page = website.website_pages.find_by(slug: data["page_slug"])
+      elsif website
+        website_page = website.homepage || website.website_pages.order(:nav_order, :created_at).first
+      end
     end
 
     if website_page.nil? || website.nil?
