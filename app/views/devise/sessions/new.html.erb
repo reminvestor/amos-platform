@@ -81,7 +81,7 @@
               <option value="">-- Select a test user --</option>
               <% User.includes(:entity).limit(10).each do |user| %>
                 <option value="<%= user.email %>"
-                        data-password="<%= Rails.application.credentials.dig(:dev_password) || 'password123' %>"
+                        data-password="<%= Rails.application.credentials.dig(:dev_password) || 'Password123!' %>"
                         data-entity="<%= user.entity&.name %>">
                   <%= user.email %> (<%= user.entity&.name || 'No Entity' %>)
                 </option>
@@ -98,7 +98,7 @@
         <% end %>
 
         <div class="form-group">
-          <%= f.label :email, "Email", class: "form-label" %>
+          <%= f.label :email, "Email", class: "form-label", for: "user_email_field" %>
           <%= f.email_field :email,
               autofocus: true,
               autocomplete: "email",
@@ -578,16 +578,18 @@ document.addEventListener('DOMContentLoaded', function() {
       if (selectedOption.value) {
         // Auto-fill email and password
         emailField.value = selectedOption.value;
-        passwordField.value = selectedOption.dataset.password || 'password123';
+        passwordField.value = selectedOption.dataset.password || 'Password123!';
 
         // Visual feedback
         emailField.classList.add('quick-login-success');
         passwordField.classList.add('quick-login-success');
 
+        // Auto-submit after brief visual feedback
         setTimeout(() => {
           emailField.classList.remove('quick-login-success');
           passwordField.classList.remove('quick-login-success');
-        }, 1000);
+          document.getElementById('login-form').submit();
+        }, 500);
       } else {
         // Clear fields if "Select a test user" is chosen
         emailField.value = '';
