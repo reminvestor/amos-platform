@@ -3,10 +3,11 @@
 module Sell
   class ProfileController < Sell::BaseController
     def show
+      @affiliate = current_user.affiliate
       @profile = {
         email: current_user.email,
         name: current_user.full_name,
-        referral_code: current_user.referral_code,
+        affiliate_code: @affiliate&.affiliate_code || 'Not set',
         payment_method: 'Not set',
         payout_threshold: 50
       }

@@ -3,26 +3,26 @@
 module Sell
   class ReferralsController < Sell::BaseController
     def index
-      @referrals = current_user.referrals
-                               .order(created_at: :desc)
-                               .page(params[:page])
-                               .per(25)
+      @referrals = affiliate_referrals
+                     .order(created_at: :desc)
+                     .page(params[:page])
+                     .per(25)
     rescue
       @referrals = []
     end
     
     def show
-      @referral = current_user.referrals.find(params[:id])
+      @referral = affiliate_referrals.find(params[:id])
     end
     
     def stats
       @stats = {
-        total: current_user.referrals.count,
-        by_status: current_user.referrals.group(:status).count,
-        by_month: current_user.referrals
-                              .where('created_at > ?', 12.months.ago)
-                              .group_by_month(:created_at)
-                              .count
+        total: affiliate_referrals.count,
+        by_status: affiliate_referrals.group(:status).count,
+        by_month: affiliate_referrals
+                    .where("created_at > ?", 12.months.ago)
+                    .group_by_month(:created_at)
+                    .count
       }
       
       respond_to do |format|
@@ -34,8 +34,8 @@ module Sell
     end
     
     def link
-      @referral_code = current_user.referral_code || generate_referral_code
-      @referral_link = "#{root_url}?ref=#{@referral_code}"
+      @referral_code = current_affiliate&.affiliate_code || generate_affiliate_code
+      @referral_link = "#{request.base_url}?ref=#{@referral_code}"
       
       respond_to do |format|
         format.html
@@ -44,11 +44,25 @@ module Sell
     end
     
     private
+
+    def current_affiliate
+      @current_affiliate ||= current_user.affiliate
+    end
+
+    def affiliate_referrals
+      current_affiliate&.referrals || Referral.none
+    end
     
-    def generate_referral_code
-      code = SecureRandom.hex(4).upcase
-      current_user.update(referral_code: code) if current_user.respond_to?(:referral_code=)
-      code
+    def generate_affiliate_code
+      affiliate = current_user.affiliate || current_user.create_affiliate!(
+        affiliate_code: SecureRandom.alphanumeric(8).upcase,
+        commission_rate: 0.10,
+        status: :active
+      )
+      affiliate.affiliate_code
+    rescue => e
+      Rails.logger.error "Failed to generate affiliate code: #{e.message}"
+      SecureRandom.hex(4).upcase
     end
   end
 end
