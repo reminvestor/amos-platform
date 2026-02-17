@@ -149,7 +149,7 @@
             <div class="fw-semibold"><%= current_user.email.split('@').first %></div>
             <div class="text-success-emphasis">Affiliate</div>
           </div>
-          <%= link_to root_path, class: "text-white" do %>
+          <%= link_to "//#{request.domain}", class: "text-white", title: "Back to main app" do %>
             <i class="bi bi-box-arrow-right"></i>
           <% end %>
         </div>
