@@ -579,7 +579,7 @@ html[data-theme="light"] .space-tab.active {
   display: flex;
   flex-direction: row;
   height: 100vh;
-  width: 100vw;
+  width: 100%;
   overflow: hidden;
   
   .hub-sidebar {
@@ -4843,12 +4843,15 @@ html[data-theme="dark"] .space-btn-adaptive.active {
     order: -1;
   }
   
-  /* Mobile layout - full width */
+  /* Mobile layout - full width, flex column for proper chat layout */
   .main-content {
-    width: 100vw !important;
-    max-width: 100vw !important;
+    width: 100% !important;
+    max-width: 100% !important;
     margin-left: 0 !important;
-    overflow-x: hidden;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
   }
   
   /* Add left padding to chat header to clear hamburger */
@@ -4892,40 +4895,42 @@ html[data-theme="dark"] .space-btn-adaptive.active {
     }
   }
   
-  /* Mobile layout - full width since sidebar is minimal */
-  .main-content {
-    width: calc(100vw - 50px);
-    max-width: calc(100vw - 50px);
-    margin-left: 50px;
-    overflow-x: hidden;
-  }
-  
-  /* Mobile chat area - prevent horizontal overflow */
   .chat-area {
-    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     width: 100%;
     max-width: 100%;
+    min-height: 0;
+    height: 100%;
+    flex: 1;
   }
   
-  /* Mobile chat input area improvements */
+  /* Mobile chat messages - scrollable flex area */
   .workspace.conversation-mode .chat-messages {
     padding: 1rem;
     padding-right: 0.5rem;
     max-width: 100%;
     overflow-x: hidden;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
   }
   
+  /* Input area stays in flex flow (not fixed) so layout sizes naturally */
   .workspace.conversation-mode .chat-input-area,
   .chat-input-area {
-    padding: 0.5rem 1rem;
-    padding-bottom: max(1.5rem, calc(1rem + env(safe-area-inset-bottom, 20px)));
+    padding: 0.5rem;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
-    position: fixed;
-    bottom: 0;
-    left: 0; /* Full width - hamburger floats over */
-    right: 0;
+    position: relative;
+    flex-shrink: 0;
+    width: 100%;
+    max-width: 100% !important;
+    margin: 0 !important;
     background: var(--bg-primary);
-    z-index: 200;
+    border-top: 1px solid var(--border-primary);
+    z-index: 10;
   }
   
   .workspace.conversation-mode .chat-input-area .input-container,
@@ -4936,12 +4941,13 @@ html[data-theme="dark"] .space-btn-adaptive.active {
     box-sizing: border-box;
   }
   
-  /* Adjust chat messages to account for fixed input area + safe area.
-     Input area is ~120px on mobile. Add buffer so last message clears it. */
+  /* Chat messages - input is in flex flow, minimal bottom padding needed */
   .workspace.conversation-mode .chat-messages,
   .chat-area .chat-messages,
   .chat-messages {
-    padding-bottom: calc(140px + env(safe-area-inset-bottom, 20px)) !important;
+    padding-bottom: 0.5rem !important;
+    min-height: 0;
+    flex: 1;
   }
   
   /* Mobile input container - stacked layout */
@@ -4968,15 +4974,16 @@ html[data-theme="dark"] .space-btn-adaptive.active {
     justify-content: flex-start;
   }
   
-  /* Chat input - full width on mobile */
+  /* Chat input - compact on mobile */
   .chat-input {
     width: 100%;
     font-size: 16px;
-    min-height: 40px;
-    min-height: 110px;
+    min-height: 44px;
+    max-height: 120px;
     min-width: 0;
     padding: 0.5rem;
     align-self: stretch;
+    resize: none;
   }
   
   /* Mobile button sizes - compact */
@@ -5283,9 +5290,20 @@ html[data-theme="dark"] .space-btn-adaptive.active {
   
   /* Make main-content full width on mobile when sidebar is hidden */
   .workspace.collab-sidebar-mode .main-content {
-    width: 100vw !important;
-    max-width: 100vw !important;
+    width: 100% !important;
+    max-width: 100% !important;
     margin-left: 0 !important;
+  }
+
+  /* Ensure input stays in flex flow for collab-sidebar-mode on mobile */
+  .workspace.collab-sidebar-mode .chat-input-area {
+    position: relative !important;
+    flex-shrink: 0;
+  }
+
+  .workspace.collab-sidebar-mode .chat-messages {
+    padding-bottom: 0.5rem !important;
+    min-height: 0;
   }
 }
 
