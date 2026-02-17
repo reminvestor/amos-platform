@@ -73,8 +73,8 @@ class GuidanceLibrary
         return :web_app_create
       end
       
-      # Website editing or creation (multi-page sites)
-      return :website_edit if msg_lower.match?(/edit\s*(my\s*)?website|update\s*(my\s*)?website|open\s*(my\s*)?website|change\s*(my\s*)?website/)
+      # Website editing → unified page editor; website creation stays separate
+      return :landing_page_edit if msg_lower.match?(/edit\s*(my\s*)?website|update\s*(my\s*)?website|open\s*(my\s*)?website|change\s*(my\s*)?website/)
       return :website_create if msg_lower.match?(/website|multi.?page|company\s*site|portfolio\s*site/)
       
       # Edit existing sections - only if not already on an editor canvas
@@ -196,45 +196,15 @@ class GuidanceLibrary
         Each page auto-detects purpose from description, or set page_purpose: "functional" or "marketing".
         After creation → load_canvas(canvas_name: "my_creations", canvas_data: { type: "website" })
         
-        ## Editing Individual Pages
-        To edit a specific website page inline:
-        load_canvas(canvas_name: "website_page_editor", canvas_data: { website_page_id: PAGE_ID })
-        or: load_canvas(canvas_name: "website_page_editor", canvas_data: { website_id: SITE_ID, page_slug: "about" })
+        ## Editing Individual Pages (same editor as landing pages)
+        `load_canvas(canvas_name: "website_page_editor", canvas_data: { website_page_id: PAGE_ID })`
+        or: `load_canvas(canvas_name: "website_page_editor", canvas_data: { website_id: SITE_ID, page_slug: "about" })`
         
         ## Context
         - Shared navigation across pages
         - Common pages: Home, About, Services, Contact
         - Functional pages get app-like UI (tables, forms, dashboards)
         - Marketing pages get conversion-focused layouts (hero, testimonials, CTAs)
-      GUIDANCE
-      anti_hallucination: nil
-    },
-
-    website_edit: {
-      title: "Website Editing",
-      expertise: <<~GUIDANCE.strip,
-        ## How to Edit an Existing Website
-        
-        STEP 1: Find the website
-        `platform_query(type: "websites", filters: { slug: "the-slug" })`
-        Or by name: `platform_query(type: "websites", filters: { name: "Website Name" })`
-        If unsure, list all: `platform_query(type: "websites")`
-        
-        STEP 2: Get the website pages
-        `platform_query(type: "website_pages", filters: { website_id: WEBSITE_ID })`
-        This returns all pages with their IDs, names, slugs, and templates.
-        
-        STEP 3: Open the page editor
-        `load_canvas(canvas_name: "website_page_editor", canvas_data: { website_page_id: PAGE_ID })`
-        Or by slug: `load_canvas(canvas_name: "website_page_editor", canvas_data: { website_id: SITE_ID, page_slug: "home" })`
-        
-        ## IMPORTANT
-        - Websites are edited PAGE BY PAGE, not all at once
-        - Always ask which page the user wants to edit if they haven't specified
-        - Show the list of pages so user can choose
-        - The editor canvas handles inline editing — just load it and let the user work
-        - If the user says "edit my website X", find the website first, then ask which page to edit
-        - NEVER say you're opening the editor without actually calling load_canvas
       GUIDANCE
       anti_hallucination: nil
     },
@@ -266,18 +236,32 @@ class GuidanceLibrary
     },
 
     landing_page_edit: {
-      title: "Landing Page Editing",
+      title: "Page Editing (Landing Pages & Website Pages)",
       expertise: <<~GUIDANCE.strip,
-        ## Context Check
+        ## Unified Page Editor
+        Both landing pages and website pages use the same visual editor.
         
-        Look at canvas_data to understand what's being edited:
-        - `landing_page_id` present → This is a built page
-        - `plan_id` only → This is a draft design
+        ### Landing Pages
+        `load_canvas(canvas_name: "landing_page_editor", canvas_data: { landing_page_id: X })`
         
-        ## Available Tools
-        - `read_landing_page_sections` — Get current structure of built pages
-        - `edit_landing_page_section` — Modify specific sections
-        - `load_canvas(canvas_name: "landing_page_editor", canvas_data: { landing_page_id: X })` — Open visual editor
+        ### Website Pages
+        STEP 1: Find the website
+        `platform_query(type: "websites", filters: { slug: "the-slug" })` or by name
+        STEP 2: List pages
+        `platform_query(type: "website_pages", filters: { website_id: WEBSITE_ID })`
+        STEP 3: Open editor
+        `load_canvas(canvas_name: "website_page_editor", canvas_data: { website_page_id: PAGE_ID })`
+        Or: `load_canvas(canvas_name: "website_page_editor", canvas_data: { website_id: SITE_ID, page_slug: "home" })`
+        
+        ### Tools
+        - `read_landing_page_sections` — Get current structure of built landing pages
+        - `edit_landing_page_section` — Modify specific sections of landing pages
+        - `load_canvas` — Open the visual editor for any page type
+        
+        ### IMPORTANT
+        - Websites are edited PAGE BY PAGE — ask which page if not specified
+        - NEVER say you're opening the editor without actually calling load_canvas
+        - The editor handles inline editing — just load it and let the user work
       GUIDANCE
       anti_hallucination: nil
     },
@@ -538,11 +522,6 @@ class GuidanceLibrary
 
     website_create: %w[
       platform_create
-      load_canvas
-    ],
-
-    website_edit: %w[
-      platform_query
       load_canvas
     ],
 

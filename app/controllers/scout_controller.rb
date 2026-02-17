@@ -1047,7 +1047,10 @@ class ScoutController < ApplicationController
       return
     end
 
-    page.update!(html_content: params[:html_content])
+    updates = {}
+    updates[:html_content] = params[:html_content] if params[:html_content].present?
+    updates[:name] = params[:name] if params[:name].present?
+    page.update!(updates) if updates.any?
     render json: { success: true }
   rescue => e
     render json: { success: false, error: e.message }, status: :unprocessable_entity
@@ -3795,10 +3798,11 @@ class ScoutController < ApplicationController
     end
 
     render_to_string(
-      partial: "scout/canvas/website_page_editor",
+      partial: "scout/canvas/landing_page_editor",
       locals: {
         website: website,
         website_page: website_page,
+        landing_page: nil,
         entity: current_entity,
         user: current_user
       },

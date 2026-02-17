@@ -1,9 +1,46 @@
-<%# Landing Page Editor - Iframe with Embedded Component Panel %>
-<%# Perfect CSS isolation + native drag-and-drop %>
+<%# Unified Page Editor - Works for both LandingPage and WebsitePage %>
+<%# Iframe with CSS isolation + inline editing %>
+
+<%
+  # ── Unified config: normalize LandingPage vs WebsitePage ──
+  is_website_page = defined?(website_page) && website_page.present?
+
+  if is_website_page
+    editor_page_id    = website_page.id
+    editor_page_slug  = website_page.slug
+    editor_page_title = website_page.name
+    editor_page_status = website_page.status || 'draft'
+    editor_page_content = website_page.html_content || ''
+    editor_page_metadata = {}
+    editor_save_mode  = 'website_page'
+    editor_website_id = website.id
+    editor_preview_url = website_page.url rescue '#'
+    editor_live_url    = website_page.url rescue '#'
+    editor_breadcrumb  = "#{website.name} / #{website_page.name}"
+    editor_has_versions = false
+    editor_has_publish  = false
+  else
+    editor_page_id    = landing_page.id
+    editor_page_slug  = landing_page.slug
+    editor_page_title = landing_page.title
+    editor_page_status = landing_page.status
+    editor_page_content = landing_page.html_content || ''
+    editor_page_metadata = landing_page.metadata || {}
+    editor_save_mode  = 'landing_page'
+    editor_website_id = nil
+    editor_preview_url = preview_landing_page_path(landing_page)
+    editor_live_url    = landing_page.full_url rescue '#'
+    editor_breadcrumb  = nil
+    editor_has_versions = true
+    editor_has_publish  = true
+  end
+%>
 
 <div class="landing-page-editor canvas-container" 
-     data-page-id="<%= landing_page.id %>" 
-     data-page-slug="<%= landing_page.slug %>"
+     data-page-id="<%= editor_page_id %>" 
+     data-page-slug="<%= editor_page_slug %>"
+     data-save-mode="<%= editor_save_mode %>"
+     <% if editor_website_id %>data-website-id="<%= editor_website_id %>"<% end %>
      id="lpEditorContainer">
   
   <!-- Toolbar (in parent) -->
@@ -12,13 +49,16 @@
       <button type="button" class="editor-btn back-btn" id="backToAssetsBtn" title="Back to Created Assets">
         <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
       </button>
+      <% if editor_breadcrumb %>
+        <span class="text-muted" style="font-size: 0.75rem; margin-right: 4px;"><%= editor_breadcrumb.split(' / ').first %> /</span>
+      <% end %>
       <span id="editablePageTitle" 
             contenteditable="true" 
             spellcheck="false"
             class="editable-title"
-            data-original="<%= landing_page.title %>"><%= landing_page.title %></span>
+            data-original="<%= editor_page_title %>"><%= editor_page_title %></span>
       <span class="editor-status" id="editorStatus">
-        <% if landing_page.status == 'published' %>
+        <% if editor_page_status == 'published' %>
           <span class="status-badge status-published">Published</span>
         <% else %>
           <span class="status-badge status-draft">Draft</span>
@@ -29,21 +69,23 @@
       <button type="button" id="toggleHtmlView" class="editor-btn" title="View HTML">
         <i data-lucide="code"></i>
       </button>
+      <% if editor_has_versions %>
       <button type="button" id="versionHistoryBtn" class="editor-btn" title="Version History">
         <i data-lucide="history"></i>
       </button>
+      <% end %>
       <button type="button" id="saveChangesBtn" class="editor-btn editor-btn-save" disabled title="Save Changes">
         <i data-lucide="save"></i>
         <span>Save</span>
       </button>
-      <a href="<%= preview_landing_page_path(landing_page) %>" target="_blank" class="editor-btn" title="Preview">
+      <a href="<%= editor_preview_url %>" target="_blank" class="editor-btn" title="Preview">
         <i data-lucide="eye"></i>
       </a>
-      <% if landing_page.status == 'published' %>
-        <a href="<%= landing_page.full_url %>" target="_blank" class="editor-btn" title="View Live">
+      <% if editor_page_status == 'published' %>
+        <a href="<%= editor_live_url %>" target="_blank" class="editor-btn" title="View Live">
           <i data-lucide="external-link"></i>
         </a>
-      <% else %>
+      <% elsif editor_has_publish %>
         <button type="button" id="publishBtn" class="editor-btn editor-btn-publish" title="Publish">
           <i data-lucide="globe"></i>
           <span>Publish</span>
@@ -59,7 +101,7 @@
   
   <!-- Code View (hidden by default) -->
   <div class="editor-code" id="editorCode" style="display: none;">
-    <textarea id="htmlCodeEditor" spellcheck="false"><%= landing_page.html_content %></textarea>
+    <textarea id="htmlCodeEditor" spellcheck="false"><%= editor_page_content %></textarea>
   </div>
 </div>
 
@@ -320,7 +362,7 @@
   // Step 2: JavaScript escapes for template literal use
   <%
     default_content = '<section style="padding: 4rem 2rem; text-align: center; background: linear-gradient(135deg, #1a1a2e, #16213e);"><h1 style="color: white; font-size: 2.5rem;">Your Landing Page</h1><p style="color: rgba(255,255,255,0.7);">Start adding components from the left panel</p></section>'
-    page_html = landing_page.html_content.presence || default_content
+    page_html = editor_page_content.presence || default_content
     
     # Extract external script URLs from the content (we'll add them to iframe head)
     external_scripts = page_html.scan(/<script[^>]+src=["']([^"']+)["'][^>]*>/i).flatten
@@ -4134,27 +4176,38 @@
     const fontSelector = document.getElementById('pageFontSelector');
     const selectedFont = fontSelector ? fontSelector.value : '';
     
-    // Build save data including font metadata
-    const saveData = { 
-      landing_page: { 
-        html_content: html 
-      } 
-    };
-    
-    // Add font to metadata if selected
-    if (selectedFont) {
-      saveData.landing_page.metadata = { page_font: selectedFont };
+    // Build save request based on page type
+    const saveMode = container.dataset.saveMode || 'landing_page';
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    let saveUrl, saveMethod, saveBody;
+
+    if (saveMode === 'website_page') {
+      saveUrl = '/scout/update_website_page';
+      saveMethod = 'POST';
+      saveBody = JSON.stringify({
+        website_id: container.dataset.websiteId,
+        page_id: pageId,
+        html_content: html
+      });
+    } else {
+      const saveData = { landing_page: { html_content: html } };
+      if (selectedFont) {
+        saveData.landing_page.metadata = { page_font: selectedFont };
+      }
+      saveUrl = `/landing_pages/${pageSlug}`;
+      saveMethod = 'PATCH';
+      saveBody = JSON.stringify(saveData);
     }
-    
+
     try {
-      const response = await fetch(`/landing_pages/${pageSlug}`, {
-        method: 'PATCH',
+      const response = await fetch(saveUrl, {
+        method: saveMethod,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+          'X-CSRF-Token': csrfToken
         },
-        body: JSON.stringify(saveData)
+        body: saveBody
       });
       
       if (response.ok) {
@@ -4251,16 +4304,28 @@
   if (titleEl) {
     titleEl.addEventListener('blur', async () => {
       const newTitle = titleEl.textContent.trim();
+      const titleSaveMode = container.dataset.saveMode || 'landing_page';
       if (newTitle && newTitle !== titleEl.dataset.original) {
         try {
-          await fetch(`/landing_pages/${pageSlug}`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
-            },
-            body: JSON.stringify({ landing_page: { title: newTitle } })
-          });
+          if (titleSaveMode === 'website_page') {
+            await fetch('/scout/update_website_page', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+              },
+              body: JSON.stringify({ website_id: container.dataset.websiteId, page_id: pageId, name: newTitle })
+            });
+          } else {
+            await fetch(`/landing_pages/${pageSlug}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+              },
+              body: JSON.stringify({ landing_page: { title: newTitle } })
+            });
+          }
           titleEl.dataset.original = newTitle;
         } catch (err) {
           console.error('Title save error:', err);
@@ -4294,7 +4359,7 @@
   const fontSelector = document.getElementById('pageFontSelector');
   if (fontSelector) {
     // Initialize from saved metadata (if exists)
-    const pageFont = '<%= landing_page.metadata&.dig("page_font") || "" %>';
+    const pageFont = '<%= editor_page_metadata.dig("page_font") rescue "" %>';
     if (pageFont) {
       fontSelector.value = pageFont;
       // Load the font immediately
