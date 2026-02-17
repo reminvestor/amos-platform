@@ -7,31 +7,15 @@ class WorkflowTemplatesControllerTest < ActionDispatch::IntegrationTest
     # Set host for subdomain constraint matching
     host! "app.example.com"
 
+    # Use fixture entities and users (avoids Devise class mapping issues)
+    @entity1 = entities(:one)
+    @entity2 = entities(:another_entity)
+    @user1 = users(:one)
+    @user2 = users(:another_user)
 
-    # Create entities
-    @entity1 = Entity.create!(name: "Test Entity 1", subdomain: "test1-#{SecureRandom.hex(4)}")
-    @entity2 = Entity.create!(name: "Test Entity 2", subdomain: "test2-#{SecureRandom.hex(4)}")
-
-    # Create users
-    @user1 = User.create!(
-      email: "user1-#{SecureRandom.hex(4)}@example.com",
-      password: "Password123!",
-      first_name: "Test",
-      last_name: "User",
-      role: "admin",
-      onboarded: true,
-      entity: @entity1
-    )
-
-    @user2 = User.create!(
-      email: "user2-#{SecureRandom.hex(4)}@example.com",
-      password: "Password123!",
-      first_name: "Test",
-      last_name: "User",
-      role: "admin",
-      onboarded: true,
-      entity: @entity2
-    )
+    # Ensure users belong to expected entities
+    @user1.update_column(:entity_id, @entity1.id) unless @user1.entity_id == @entity1.id
+    @user2.update_column(:entity_id, @entity2.id) unless @user2.entity_id == @entity2.id
 
     # Create templates
     @system_template = WorkflowTemplate.create!(
@@ -191,9 +175,8 @@ class WorkflowTemplatesControllerTest < ActionDispatch::IntegrationTest
   test "show should return 404 for non-existent template" do
     sign_in @user1
 
-    assert_raises(ActiveRecord::RecordNotFound) do
-      get workflow_template_path(id: 999999)
-    end
+    get workflow_template_path(id: 999999)
+    assert_response :not_found
   end
 
   test "show should return JSON" do
@@ -409,16 +392,15 @@ class WorkflowTemplatesControllerTest < ActionDispatch::IntegrationTest
   test "should handle invalid template ID gracefully" do
     sign_in @user1
 
-    assert_raises(ActiveRecord::RecordNotFound) do
-      get workflow_template_path(id: "invalid")
-    end
+    get workflow_template_path(id: "invalid")
+    assert_response :not_found
   end
 
   test "should handle missing parameters in update" do
     sign_in @user1
 
     put workflow_template_path(@entity1_template), params: {}
-    # Should not raise an error, just not update anything
-    assert_response :unprocessable_entity
+    # Rails returns 400 for missing required parameter (ActionController::ParameterMissing)
+    assert_response :bad_request
   end
 end
