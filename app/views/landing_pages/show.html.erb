@@ -1,0 +1,32 @@
+<div class="container-fluid py-4">
+  <div class="admin-page-header">
+    <div class="header-left">
+      <h1><%= @landing_page.title %></h1>
+      <p class="text-muted">
+        Status: <span class="badge bg-<%= @landing_page.status == 'published' ? 'success' : 'secondary' %>"><%= @landing_page.status %></span>
+        <% if @landing_page.slug.present? %>
+          &middot; Slug: <code><%= @landing_page.slug %></code>
+        <% end %>
+      </p>
+    </div>
+    <div class="header-actions">
+      <%= link_to "Edit", edit_landing_page_path(@landing_page), class: "btn btn-primary" %>
+      <%= link_to "Preview", preview_landing_page_path(@landing_page), class: "btn btn-outline-secondary", target: "_blank" %>
+      <%= link_to "Back to Landing Pages", landing_pages_path, class: "btn btn-outline-secondary" %>
+    </div>
+  </div>
+
+  <div class="card mt-4">
+    <div class="card-body">
+      <% if @landing_page.html_content.present? %>
+        <div class="landing-page-preview-frame" style="border: 1px solid #dee2e6; border-radius: 4px; overflow: hidden; min-height: 400px;">
+          <%= @landing_page.html_content.html_safe %>
+        </div>
+      <% else %>
+        <div class="text-center py-5 text-muted">
+          <p>No content yet. <strong><%= link_to "Edit this page", edit_landing_page_path(@landing_page) %></strong> to add content.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

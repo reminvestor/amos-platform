@@ -136,6 +136,11 @@ security_report*.txt
 # Web page screenshots
 /public/web_captures/
 
+# Playwright
+/e2e/test-results/
+/e2e/playwright-report/
+/e2e/.auth/
+
 # Invoice config (contains secrets)
 .claude/invoice-config.local.json
 config/solana_token.yml
