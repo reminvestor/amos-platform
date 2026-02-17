@@ -94,9 +94,6 @@
 
       <!-- Template Version Info -->
       <div class="mt-4 text-muted small">
-        <% if @template.template_version.present? %>
-          <p class="mb-1"><strong>Template Version:</strong> <%= @template.template_version %></p>
-        <% end %>
         <p class="mb-1"><strong>Created:</strong> <%= @template.created_at.strftime('%B %d, %Y at %I:%M %p') %></p>
         <p class="mb-0"><strong>Last Updated:</strong> <%= @template.updated_at.strftime('%B %d, %Y at %I:%M %p') %></p>
       </div>

@@ -16,12 +16,20 @@ class WorkflowTemplatesControllerTest < ActionDispatch::IntegrationTest
     @user1 = User.create!(
       email: "user1-#{SecureRandom.hex(4)}@example.com",
       password: "Password123!",
+      first_name: "Test",
+      last_name: "User",
+      role: "admin",
+      onboarded: true,
       entity: @entity1
     )
 
     @user2 = User.create!(
       email: "user2-#{SecureRandom.hex(4)}@example.com",
       password: "Password123!",
+      first_name: "Test",
+      last_name: "User",
+      role: "admin",
+      onboarded: true,
       entity: @entity2
     )
 
