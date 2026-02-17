@@ -1130,8 +1130,8 @@ Rails.application.routes.draw do
   # For affiliates: dashboard, earnings, marketing materials
   # ========================================
   constraints(lambda { |req| SubdomainConfig.sell_subdomain?(req.subdomain) }) do
-    scope module: 'sell' do
-      root to: 'dashboard#index', as: :sell_root
+    scope module: 'sell', as: 'sell' do
+      root to: 'dashboard#index'
       
       get 'dashboard', to: 'dashboard#index'
       
@@ -1172,11 +1172,11 @@ Rails.application.routes.draw do
   # Wiki-style documentation - AI-maintained, queryable
   # ========================================
   constraints(lambda { |req| SubdomainConfig.docs_subdomain?(req.subdomain) }) do
-    scope module: 'docs' do
-      root to: 'pages#index', as: :docs_root
+    scope module: 'docs', as: 'docs' do
+      root to: 'pages#index'
       
       # Search across all docs
-      get 'search', to: 'search#index', as: :docs_search
+      get 'search', to: 'search#index', as: :search
       
       # API for AMOS to query capabilities
       namespace :api do

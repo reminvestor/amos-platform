@@ -4,20 +4,28 @@ module Sell
   class DashboardController < Sell::BaseController
     def index
       @stats = calculate_stats
-      @recent_referrals = current_user.referrals.order(created_at: :desc).limit(5) rescue []
+      @recent_referrals = affiliate_referrals.order(created_at: :desc).limit(5)
       @pending_earnings = calculate_pending_earnings
     end
     
     private
+
+    def current_affiliate
+      @current_affiliate ||= current_user.affiliate
+    end
+
+    def affiliate_referrals
+      current_affiliate&.referrals || Referral.none
+    end
     
     def calculate_stats
       {
-        total_referrals: current_user.referrals.count,
-        active_referrals: current_user.referrals.where(status: 'active').count,
-        total_earnings: current_user.affiliate_earnings_total || 0,
-        pending_payout: current_user.affiliate_pending_payout || 0,
+        total_referrals: affiliate_referrals.count,
+        active_referrals: affiliate_referrals.where(status: :active).count,
+        total_earnings: current_affiliate&.total_earned || 0,
+        pending_payout: current_affiliate&.pending_commissions_amount || 0,
         conversion_rate: calculate_conversion_rate,
-        this_month_referrals: current_user.referrals.where('created_at > ?', Time.current.beginning_of_month).count
+        this_month_referrals: affiliate_referrals.where("created_at > ?", Time.current.beginning_of_month).count
       }
     rescue => e
       Rails.logger.error "Error calculating affiliate stats: #{e.message}"
@@ -32,18 +40,17 @@ module Sell
     end
     
     def calculate_conversion_rate
-      total = current_user.referrals.count
+      total = affiliate_referrals.count
       return 0 if total.zero?
       
-      active = current_user.referrals.where(status: 'active').count
+      active = affiliate_referrals.where(status: :active).count
       ((active.to_f / total) * 100).round(1)
     rescue
       0
     end
     
     def calculate_pending_earnings
-      # Calculate earnings not yet paid out
-      0 # Placeholder
+      current_affiliate&.pending_commissions_amount || 0
     end
   end
 end

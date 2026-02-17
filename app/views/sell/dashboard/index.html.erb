@@ -61,7 +61,7 @@
       <div class="card-body">
         <div class="input-group mb-3">
           <input type="text" class="form-control" id="referral-link" 
-                 value="<%= "#{request.base_url}?ref=#{current_user.referral_code || 'YOURCODE'}" %>" readonly>
+                 value="<%= "#{request.base_url}?ref=#{current_user.affiliate&.affiliate_code || 'YOURCODE'}" %>" readonly>
           <button class="btn btn-success" onclick="copyReferralLink()">
             <i class="bi bi-clipboard"></i> Copy
           </button>
