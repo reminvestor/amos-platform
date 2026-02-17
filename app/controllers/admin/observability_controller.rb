@@ -20,7 +20,7 @@ class Admin::ObservabilityController < Admin::BaseController
     @total_workflows = all_workflows.count
     @completed_workflows = all_workflows.where(status: "completed").count
     @failed_workflows = all_workflows.where(status: "failed").count
-    @in_progress_workflows = all_workflows.where(status: "in_progress").count
+    @in_progress_workflows = all_workflows.where(status: "running").count
     @success_rate = @total_workflows > 0 ? ((@completed_workflows.to_f / @total_workflows) * 100).round(2) : 0
 
     # Workflows by template (workflow_template_id is a string containing the template name)
@@ -515,7 +515,7 @@ class Admin::ObservabilityController < Admin::BaseController
           label: "In Progress",
           data: time_groups.reverse.map do |time|
             wfs = data_by_time[time] || []
-            wfs.count { |wf| wf.status == "in_progress" }
+            wfs.count { |wf| wf.status == "running" }
           end,
           backgroundColor: "rgba(59, 130, 246, 0.5)"
         }
