@@ -6,13 +6,13 @@
       <p class="text-muted mb-0">Autonomous cognitive loop — perception, attention, memory, and meta-cognition</p>
     </div>
     <div class="d-flex gap-2">
-      <%= link_to admin_amos_mind_trigger_session_path(mode: 'autonomous'), method: :post, class: "btn btn-primary btn-sm" do %>
+      <%= button_to admin_amos_mind_trigger_session_path(mode: 'autonomous'), method: :post, class: "btn btn-primary btn-sm", form: { style: "display:inline" } do %>
         <i data-lucide="brain" style="width: 14px; height: 14px;"></i> Run Autonomous Session
       <% end %>
-      <%= link_to admin_amos_mind_trigger_session_path(mode: 'legacy'), method: :post, class: "btn btn-outline-secondary btn-sm" do %>
+      <%= button_to admin_amos_mind_trigger_session_path(mode: 'legacy'), method: :post, class: "btn btn-outline-secondary btn-sm", form: { style: "display:inline" } do %>
         <i data-lucide="play" style="width: 14px; height: 14px;"></i> Run Legacy Session
       <% end %>
-      <%= link_to admin_amos_mind_trigger_grooming_path, method: :post, class: "btn btn-outline-secondary btn-sm" do %>
+      <%= button_to admin_amos_mind_trigger_grooming_path, method: :post, class: "btn btn-outline-secondary btn-sm", form: { style: "display:inline" } do %>
         <i data-lucide="list-checks" style="width: 14px; height: 14px;"></i> Groom Bounties
       <% end %>
     </div>
@@ -210,10 +210,10 @@
                       </div>
                     </div>
                     <div class="ms-2">
-                      <%= link_to admin_amos_mind_resolve_thought_path(thought), method: :post,
+                      <%= button_to admin_amos_mind_resolve_thought_path(thought), method: :post,
                             class: "btn btn-outline-success btn-sm",
                             title: "Mark as resolved",
-                            data: { confirm: "Resolve this thought?" } do %>
+                            form: { style: "display:inline", data: { turbo_confirm: "Resolve this thought?" } } do %>
                         <i data-lucide="check" style="width: 12px; height: 12px;"></i>
                       <% end %>
                     </div>
