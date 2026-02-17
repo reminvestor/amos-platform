@@ -1081,7 +1081,6 @@ Rails.application.routes.draw do
       post 'external_agents/reviews/:id/reject', to: 'external_agents#reject_review', as: :external_agents_reject_review
       
       get 'leaderboard', to: 'leaderboard#index'
-      get 'my-contributions', to: 'contributions#my_contributions', as: :my_contributions
       get 'my-rewards', to: 'rewards#index', as: :my_rewards
     end
   end
