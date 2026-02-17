@@ -4,8 +4,6 @@ class Admin::BaseController < ApplicationController
 
   layout "admin"
 
-  ##test commit
-
   private
 
   def authenticate_admin!

@@ -1067,8 +1067,6 @@ Rails.application.routes.draw do
         end
       end
       
-      resources :contributions, only: [:index, :show]
-      
       # External Agent Protocol (EAP) - AI agent management
       resources :external_agents, only: [:index, :show, :destroy] do
         member do

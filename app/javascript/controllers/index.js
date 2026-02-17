@@ -22,9 +22,6 @@ application.register("feedback", FeedbackController)
 import FilterTableController from "./filter_table_controller"
 application.register("filter-table", FilterTableController)
 
-import HelloController from "./hello_controller"
-application.register("hello", HelloController)
-
 import PayoutCalculatorController from "./payout_calculator_controller"
 application.register("payout-calculator", PayoutCalculatorController)
 
