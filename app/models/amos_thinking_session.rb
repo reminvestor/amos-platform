@@ -12,7 +12,7 @@ class AmosThinkingSession < ApplicationRecord
   belongs_to :entity
 
   # Session types
-  SESSION_TYPES = %w[nightly triggered weekly_review monthly_review].freeze
+  SESSION_TYPES = %w[nightly triggered autonomous reactive weekly_review monthly_review].freeze
 
   # Statuses
   STATUSES = %w[running completed failed].freeze

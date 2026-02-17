@@ -107,6 +107,11 @@ class AmosAutonomousLoop
         think_about(focus)
       end.compact
 
+      # ── PHASE 3.5: SYNC TICKETS → BOUNTIES ──
+      sync_results = sync_tickets_to_bounties!
+      bounties_from_sync = sync_results[:total_created] || 0
+      log "🔄 Ticket sync: #{bounties_from_sync} bounties created from qualified tickets"
+
       # ── PHASE 4: META-COGNITION ──
       meta = reflect_on_session(focus_areas, results)
 
@@ -114,9 +119,10 @@ class AmosAutonomousLoop
       maintain_memory!
 
       # Complete session
+      total_bounties = results.sum { |r| r[:bounties_created] || 0 } + bounties_from_sync
       @session.complete!(
         summary: meta[:session_summary],
-        bounties_created: results.sum { |r| r[:bounties_created] || 0 },
+        bounties_created: total_bounties,
         total_points: results.sum { |r| r[:points_allocated] || 0 },
         thinking_log: build_session_log(focus_areas, results, meta)
       )
@@ -677,6 +683,28 @@ class AmosAutonomousLoop
   # ═══════════════════════════════════════════════════════════════════════════
   # HELPERS
   # ═══════════════════════════════════════════════════════════════════════════
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PHASE 3.5: TICKET → BOUNTY SYNC
+  # Ensure qualified tickets are always converted to bounties
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  def sync_tickets_to_bounties!
+    integration = BountyIntegrationService.new(entity)
+    results = integration.sync_all!
+
+    total = results.values.flatten.compact.count
+    {
+      total_created: total,
+      from_tickets: results[:from_tickets]&.count || 0,
+      from_goals: results[:from_goals]&.count || 0,
+      from_anomalies: results[:from_anomalies]&.count || 0,
+      from_features: results[:from_features]&.count || 0
+    }
+  rescue => e
+    log "⚠️ Ticket-to-bounty sync failed: #{e.message}"
+    { total_created: 0 }
+  end
 
   def create_thought!(type:, topic:, content:, salience: 0.5)
     thought = AmosWorkingMemory.create!(
