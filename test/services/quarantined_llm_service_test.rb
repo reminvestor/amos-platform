@@ -81,7 +81,8 @@ class QuarantinedLlmServiceTest < ActiveSupport::TestCase
   private
 
   def can_test_llm?
-    # Check if we have AWS credentials
+    # Check if we have real AWS credentials and stub_responses is not enabled
+    return false if Aws.config[:stub_responses]
     ENV['AWS_ACCESS_KEY_ID'].present? || ENV['AWS_PROFILE'].present?
   rescue
     false

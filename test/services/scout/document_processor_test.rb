@@ -16,6 +16,9 @@ module Scout
         session_id: @session_id,
         url_generator: @url_generator
       )
+
+      # Ensure tests use DocumentProcessorService path, not Ocr::DualModeService
+      @processor.stubs(:dual_mode_ocr_available?).returns(false)
     end
 
     # Class method tests
