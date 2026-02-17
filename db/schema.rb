@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_17_010633) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -6777,9 +6777,17 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
     t.boolean "is_system", default: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "entity_id"
+    t.jsonb "tags", default: []
+    t.string "industry"
+    t.boolean "shared", default: false
     t.index ["category"], name: "index_workflow_templates_on_category"
+    t.index ["entity_id"], name: "index_workflow_templates_on_entity_id"
+    t.index ["industry"], name: "index_workflow_templates_on_industry"
     t.index ["is_active"], name: "index_workflow_templates_on_is_active"
+    t.index ["shared"], name: "index_workflow_templates_on_shared"
     t.index ["slug"], name: "index_workflow_templates_on_slug", unique: true
+    t.index ["tags"], name: "index_workflow_templates_on_tags", using: :gin
   end
 
   create_table "workflow_triggers", force: :cascade do |t|
@@ -7436,6 +7444,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_13_000001) do
   add_foreign_key "workflow_executions", "task_sessions"
   add_foreign_key "workflow_executions", "users"
   add_foreign_key "workflow_step_executions", "workflow_executions"
+  add_foreign_key "workflow_templates", "entities"
   add_foreign_key "workflow_triggers", "automation_codes"
   add_foreign_key "workflow_triggers", "entities"
   add_foreign_key "workflow_variables", "workflow_executions"

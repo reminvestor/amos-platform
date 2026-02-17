@@ -36,7 +36,7 @@ class UserFeedback < ApplicationRecord
     ScheduledTaskRun
     ScoutMessage
     WorkflowExecution
-    ToolExecution
+    AgentToolExecution
   ].freeze
   VALID_FEEDBACK_TYPES = %w[accuracy helpfulness speed overall].freeze
 
@@ -309,7 +309,7 @@ class UserFeedback < ApplicationRecord
                                        message.created_at + 5.minutes)
         end
       end
-    when "ToolExecution"
+    when "AgentToolExecution"
       # Find trace for this specific tool execution
       if metadata['decision_trace_id'].present?
         trace = DecisionTrace.find_by(id: metadata['decision_trace_id'], entity: entity)

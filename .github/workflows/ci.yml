@@ -72,11 +72,11 @@ jobs:
             echo "⚠️ No solana/package.json"
           fi
 
-  # Full test suite (optional - runs but doesn't block)
+  # Full test suite (BLOCKS PR on failure)
   test:
     name: Test Suite
     runs-on: ubuntu-latest
-    continue-on-error: true  # Don't block PR on test failures for now
+    continue-on-error: false  # Block PR on test failures
     
     services:
       postgres:
@@ -135,5 +135,14 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/amos_test
           REDIS_URL: redis://localhost:6379
           SECRET_KEY_BASE: test-secret-key-base-for-ci
+          COVERAGE: true
+          CI: true
         run: |
-          bundle exec rails test || echo "Some tests failed - see logs"
+          bundle exec rails test
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
