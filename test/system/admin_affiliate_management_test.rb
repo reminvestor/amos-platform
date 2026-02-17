@@ -199,6 +199,6 @@ class AdminAffiliateManagementTest < ApplicationSystemTestCase
     visit admin_login_path
     fill_in "Email", with: admin.email
     fill_in "Password", with: "password"
-    click_button "Sign in"
+    click_button "Sign In"
   end
 end

@@ -137,7 +137,7 @@ class BusinessProfileTest < ApplicationSystemTestCase
     # Update profile with known values
     profile = @user.ensure_business_profile
     profile.update!(
-      company_name: "Test Company ABC",
+      name: "Test Company ABC",
       description: "Test description for system test"
     )
 

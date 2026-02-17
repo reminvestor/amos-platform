@@ -73,7 +73,7 @@ class MfaAuthenticationTest < ApplicationSystemTestCase
 
     fill_in "Email", with: @user.email
     fill_in "Password", with: "password"
-    click_button "Sign in"
+    click_button "Sign In"
 
     # Should be redirected to MFA verification page
     assert_text /verification|code|authenticator/i, wait: 5
@@ -104,7 +104,7 @@ class MfaAuthenticationTest < ApplicationSystemTestCase
 
     fill_in "Email", with: @user.email
     fill_in "Password", with: "password"
-    click_button "Sign in"
+    click_button "Sign In"
 
     # Should show masked email hint (e.g., "ad***@demo.com")
     assert_text /@/, wait: 5 # Email hint should contain @
@@ -117,7 +117,7 @@ class MfaAuthenticationTest < ApplicationSystemTestCase
     visit new_user_session_path
     fill_in "Email", with: user.email
     fill_in "Password", with: "password"
-    click_button "Sign in"
+    click_button "Sign In"
 
     # Enter valid OTP
     otp = user.current_otp

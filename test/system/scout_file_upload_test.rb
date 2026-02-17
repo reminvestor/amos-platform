@@ -61,10 +61,8 @@ class ScoutFileUploadTest < ApplicationSystemTestCase
     assert_no_selector ".alert-danger"
 
   ensure
-    # Clean up test file
-    if File.exist?(test_file)
-      File.delete(test_file)
-    end
+    # Clean up test file (test_file may be nil if test failed before assignment)
+    File.delete(test_file) if test_file && File.exist?(test_file)
   end
 
   test "file upload fails gracefully when no message provided" do
@@ -98,7 +96,7 @@ class ScoutFileUploadTest < ApplicationSystemTestCase
     assert_selector ".chat-message.user-message"
 
   ensure
-    File.delete(test_file) if File.exist?(test_file)
+    File.delete(test_file) if test_file && File.exist?(test_file)
   end
 
   test "multiple files can be attached and uploaded" do
@@ -109,10 +107,7 @@ class ScoutFileUploadTest < ApplicationSystemTestCase
     assert_selector ".chat-input", visible: true
 
     # Create multiple test files
-    test_files = []
-    2.times do |i|
-      test_files << create_test_image("test_#{i}")
-    end
+    test_files = 2.times.map { |i| create_test_image("test_#{i}") }
 
     # Attach first file
     input_file = find("input#file-input", visible: false)
@@ -144,7 +139,7 @@ class ScoutFileUploadTest < ApplicationSystemTestCase
     assert_selector ".chat-message.user-message", text: "Process these files"
 
   ensure
-    test_files.each { |f| File.delete(f) if File.exist?(f) }
+    Array(test_files).each { |f| File.delete(f) if f && File.exist?(f) }
   end
 
   test "file can be removed from attachments" do
@@ -174,7 +169,7 @@ class ScoutFileUploadTest < ApplicationSystemTestCase
     assert_no_selector ".attached-files", visible: true
 
   ensure
-    File.delete(test_file) if File.exist?(test_file)
+    File.delete(test_file) if test_file && File.exist?(test_file)
   end
 
   private
@@ -183,7 +178,7 @@ class ScoutFileUploadTest < ApplicationSystemTestCase
     visit new_user_session_path
     fill_in "Email", with: user.email
     fill_in "Password", with: "password"
-    click_button "Sign in"
+    click_button "Sign In"
 
     # Wait for Scout link to appear
     assert_selector "a[href='/scout']"

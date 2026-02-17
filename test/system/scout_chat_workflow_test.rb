@@ -14,8 +14,8 @@ class ScoutChatWorkflowTest < ApplicationSystemTestCase
 
     # Verify chat interface loads
     assert_selector ".chat-input", visible: true
-    assert_selector "input#message-input", visible: true
-    assert_selector "button#send-button", visible: true
+    assert_selector "#message-input", visible: true
+    assert_selector "#send-button", visible: true
   end
 
   test "user can send a message and see it in chat" do
@@ -29,7 +29,7 @@ class ScoutChatWorkflowTest < ApplicationSystemTestCase
     click_button "send-button"
 
     # Verify user message appears in chat
-    assert_selector ".chat-message.user-message", text: "Hello, what can you help me with?", wait: 5
+    assert_selector ".message.user-message", text: "Hello, what can you help me with?", wait: 5
   end
 
   test "chat shows streaming indicator while processing" do
@@ -42,12 +42,12 @@ class ScoutChatWorkflowTest < ApplicationSystemTestCase
     click_button "send-button"
 
     # User message should appear
-    assert_selector ".chat-message.user-message", text: "Tell me about email campaigns", wait: 5
+    assert_selector ".message.user-message", text: "Tell me about email campaigns", wait: 5
 
     # Should see some kind of loading/streaming state or assistant response
     # Either streaming indicator appears OR response starts immediately
     has_streaming = page.has_selector?(".streaming-indicator", wait: 2)
-    has_response = page.has_selector?(".chat-message.assistant-message", wait: 10)
+    has_response = page.has_selector?(".message.ai-message", wait: 10)
 
     assert has_streaming || has_response, "Expected streaming indicator or assistant response"
   end
@@ -61,7 +61,7 @@ class ScoutChatWorkflowTest < ApplicationSystemTestCase
     # Send a message
     fill_in "message-input", with: "First message in session"
     click_button "send-button"
-    assert_selector ".chat-message.user-message", text: "First message in session", wait: 5
+    assert_selector ".message.user-message", text: "First message in session", wait: 5
 
     # Click new session button
     find("[data-action*='new-session']", visible: true).click rescue find("button", text: /new/i, visible: true).click
@@ -70,7 +70,7 @@ class ScoutChatWorkflowTest < ApplicationSystemTestCase
     sleep 1
 
     # Old message should be gone
-    assert_no_selector ".chat-message", text: "First message in session"
+    assert_no_selector ".message", text: "First message in session"
   end
 
   test "voice assistant button is present" do
