@@ -670,18 +670,24 @@
 
   // Subscribe to real-time notifications
   if (typeof App !== 'undefined' && App.cable) {
-    App.notifications = App.cable.subscriptions.create(
-      { channel: 'NotificationsChannel' },
-      {
-        received: function(data) {
-          console.log('🔔 New notification:', data);
-          if (data.type === 'new_notification') {
-            // Refresh dashboard to show new notification
-            window.refreshOperationsDashboard();
+    try {
+      App.notifications = App.cable.subscriptions.create(
+        { channel: 'NotificationsChannel' },
+        {
+          rejected: function() {
+            console.warn('🔔 Operations NotificationsChannel rejected');
+          },
+          received: function(data) {
+            console.log('🔔 New notification:', data);
+            if (data.type === 'new_notification') {
+              window.refreshOperationsDashboard();
+            }
           }
         }
-      }
-    );
+      );
+    } catch(e) {
+      console.error('🔔 Failed to subscribe to notifications:', e);
+    }
   }
 })();
 </script>

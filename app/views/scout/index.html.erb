@@ -2215,7 +2215,6 @@ document.addEventListener('turbo:load', function() {
 
   // Simple markdown parser for messages
   function parseSimpleMarkdown(text) {
-    console.log('📝 Parsing markdown:', text);
     
     // Check for rich HTML content (Bootstrap components, tables, complex layouts)
     // This indicates AMOS outputted HTML directly instead of using create_freeform_canvas
@@ -2230,7 +2229,7 @@ document.addEventListener('turbo:load', function() {
     
     if (isRichHtml) {
       // AMOS outputted complex HTML - extract text content and add note
-      console.log('⚠️ Detected rich HTML in message, extracting text content');
+      console.log('⚠️ Rich HTML detected, extracting text');
       const div = document.createElement('div');
       div.innerHTML = text;
       
@@ -2286,7 +2285,6 @@ document.addEventListener('turbo:load', function() {
       let html = div.innerHTML;
       html = html.replace(/\n/g, '<br>');
       
-      console.log('📝 Parsed HTML (with existing tags):', html);
       return html;
     } else {
       // No HTML tags, treat as markdown
@@ -2297,21 +2295,12 @@ document.addEventListener('turbo:load', function() {
       
       // Convert markdown images ![alt](url) to <img> tags
       // Do this FIRST before any other processing
-      const imageMatches = html.match(/!\[([^\]]*)\]\(([^)]+)\)/g);
-      if (imageMatches) {
-        console.log('🖼️ Found markdown images:', imageMatches);
-      }
-      
       html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
-        console.log('🖼️ Converting image markdown:', { match, alt, url });
-        // Check if it's a GIF
         const isGif = url.toLowerCase().includes('.gif');
         if (isGif) {
-          const replacement = `<div class="message-gif" style="max-width: 400px; border-radius: 0.5rem; overflow: hidden; margin: 0.5rem 0;">
+          return `<div class="message-gif" style="max-width: 400px; border-radius: 0.5rem; overflow: hidden; margin: 0.5rem 0;">
                     <img src="${url}" alt="${alt}" style="width: 100%; display: block; border-radius: 0.5rem;">
                   </div>`;
-          console.log('🖼️ Replaced with GIF div');
-          return replacement;
         } else {
           return `<img src="${url}" alt="${alt}" style="max-width: 100%; border-radius: 0.5rem; margin: 0.5rem 0;">`;
         }
@@ -2331,7 +2320,6 @@ document.addEventListener('turbo:load', function() {
       // Convert newlines to <br>
       html = html.replace(/\n/g, '<br>');
       
-      console.log('📝 Parsed markdown:', html);
       return html;
     }
   }
@@ -2415,11 +2403,7 @@ document.addEventListener('turbo:load', function() {
       // Now parse as markdown
       processedContent = parseSimpleMarkdown(processedContent);
     } else {
-      // User messages: Check for markdown images (GIFs), then convert newlines
-      console.log('👤 Processing user message:', processedContent.substring(0, 100));
-      
       if (processedContent.includes('![') && processedContent.includes('](')) {
-        console.log('🖼️ User message contains markdown image, parsing...');
         // Escape HTML first for security but keep markdown
         const div = document.createElement('div');
         div.textContent = processedContent;
@@ -2427,7 +2411,6 @@ document.addEventListener('turbo:load', function() {
         
         // Convert markdown images ![alt](url) to <img> tags
         escaped = escaped.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
-          console.log('🖼️ Found image in user message:', { alt, url });
           const isGif = url.toLowerCase().includes('.gif');
           if (isGif) {
             return `<div class="message-gif" style="max-width: 400px; border-radius: 0.5rem; overflow: hidden; margin: 0.5rem 0;">
@@ -2439,7 +2422,6 @@ document.addEventListener('turbo:load', function() {
         });
         
         processedContent = escaped;
-        console.log('🖼️ Processed user message with image:', processedContent.substring(0, 100));
       } else {
         // Just convert newlines
       processedContent = content.replace(/\n/g, '<br>');
@@ -2534,21 +2516,14 @@ document.addEventListener('turbo:load', function() {
 
   // Backward-compatible helper
   function addMessage(content, role, timestamp = null) {
-    console.log('🎯 addMessage called with:', { content: content, role: role, contentType: typeof content });
-    
-    // If content is a JSON object, extract the message
     let messageContent = content;
     if (typeof content === 'object' && content.message) {
-      console.log('📦 Content is object with message property');
       messageContent = content.message;
     } else if (typeof content === 'string' && content.trim().startsWith('{')) {
-      console.log('📦 Content is JSON string, attempting to parse');
       try {
         const parsed = JSON.parse(content);
         messageContent = parsed.message || content;
-        console.log('✅ Parsed message:', messageContent);
       } catch (e) {
-        console.log('❌ Failed to parse JSON string');
       }
     }
     
@@ -3317,20 +3292,13 @@ document.addEventListener('turbo:load', function() {
                 // Hide thinking indicator when actual content starts
                 hideThinkingIndicator();
                 
-                // Route content chunks to unified chat message
-                console.log('📝 Content chunk received:', data.content?.substring(0, 50) + '...');
                 if (streamingMessage && data.content) {
                   streamingContent += data.content;
                   const messageBubble = streamingMessage.querySelector('.message-bubble');
                   if (messageBubble) {
                     messageBubble.innerHTML = parseSimpleMarkdown(streamingContent);
                     scrollToBottom();
-                    console.log('✅ Updated streaming message with', streamingContent.length, 'chars');
-                  } else {
-                    console.error('❌ No message-bubble element found in streaming message');
                   }
-                } else {
-                  console.warn('⚠️ No streaming message element or no content:', { streamingMessage: !!streamingMessage, content: !!data.content });
                 }
               } else if (data.type === 'parallel_execution_start' || 
                          data.type === 'task_progress' || 
@@ -3482,11 +3450,7 @@ document.addEventListener('turbo:load', function() {
                     console.log('Success count:', data.data.success_count);
                   }
                   
-                  // Debug the response structure
-                  console.log('📦 Full response structure:', data);
-                  console.log('📦 data.canvas:', data.canvas);
-                  console.log('📦 data.data:', data.data);
-                  console.log('📦 data.data?.canvas:', data.data?.canvas);
+                  // Canvas detection
                   
                   // Load canvas if suggested - check both possible locations
                   const canvasName = data.data?.canvas || data.canvas;

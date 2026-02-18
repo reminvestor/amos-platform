@@ -19,38 +19,31 @@ export default class extends Controller {
   ]
 
   connect() {
-    console.log("🌐 Hub Sidebar connected for entity:", this.entityValue)
-    this.highlightActive()
-    this.threadSubscription = null
-    this.pendingTasks = new Map() // Track pending tasks
-    
-    // Always start collapsed (icon strip) — overlay mode
-    // Sidebar only expands when user clicks the expand button
-    this.collapse()
-    
-    // Restore section collapsed states
-    this.restoreSectionStates()
-    
-    // Close user menu when clicking outside
-    this.boundCloseUserMenu = this.closeUserMenuOnOutsideClick.bind(this)
-    document.addEventListener('click', this.boundCloseUserMenu)
-    
-    // Auto-load default canvas based on mode (only on first visit per session)
-    this.maybeLoadDefaultCanvas()
-    
-    // Set up global pending tasks handler
-    window.updatePendingTasksIndicator = this.updatePendingTask.bind(this)
-    window.switchToAgentChat = this.switchToAgentChat.bind(this)
-    
-    // Set up global work inbox badge handler
-    window.updateWorkInboxBadge = this.updateWorkInboxBadge.bind(this)
-    
-    // Global reference for inline event handlers (answerQuestion, skipQuestion)
-    window.hubSidebar = this
-    window.hubSidebarController = this
-    
-    // Restore selected agent on page refresh (but NOT on login - that's handled by absence of storage)
-    this.restoreSelectedAgent()
+    try {
+      console.log("🌐 Hub Sidebar connected for entity:", this.entityValue)
+      this.highlightActive()
+      this.threadSubscription = null
+      this.pendingTasks = new Map()
+      
+      this.collapse()
+      this.restoreSectionStates()
+      
+      this.boundCloseUserMenu = this.closeUserMenuOnOutsideClick.bind(this)
+      document.addEventListener('click', this.boundCloseUserMenu)
+      
+      this.maybeLoadDefaultCanvas()
+      
+      window.updatePendingTasksIndicator = this.updatePendingTask.bind(this)
+      window.switchToAgentChat = this.switchToAgentChat.bind(this)
+      window.updateWorkInboxBadge = this.updateWorkInboxBadge.bind(this)
+      
+      window.hubSidebar = this
+      window.hubSidebarController = this
+      
+      this.restoreSelectedAgent()
+    } catch(e) {
+      console.error("🌐 Hub Sidebar initialization error:", e)
+    }
   }
   
   // Restore the previously selected agent on page refresh

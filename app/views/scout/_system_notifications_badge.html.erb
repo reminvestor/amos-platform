@@ -228,26 +228,39 @@
   // Subscribe to real-time notifications via ActionCable
   document.addEventListener('DOMContentLoaded', function() {
     if (typeof App !== 'undefined' && App.cable) {
-      App.systemNotifications = App.cable.subscriptions.create(
-        { channel: 'NotificationsChannel' },
-        {
-          received: function(data) {
-            console.log('🔔 Real-time notification:', data);
-            
-            if (data.type === 'new_notification') {
-              updateNotificationBadge(
-                data.unread_count, 
-                data.notification.severity === 'critical' || data.notification.severity === 'error'
-              );
+      try {
+        App.systemNotifications = App.cable.subscriptions.create(
+          { channel: 'NotificationsChannel' },
+          {
+            connected: function() {
+              console.log('🔔 NotificationsChannel connected');
+            },
+            rejected: function() {
+              console.warn('🔔 NotificationsChannel subscription rejected');
+            },
+            disconnected: function() {
+              console.log('🔔 NotificationsChannel disconnected');
+            },
+            received: function(data) {
+              console.log('🔔 Real-time notification:', data);
               
-              // Show toast for critical/error notifications
-              if (['critical', 'error'].includes(data.notification.severity)) {
-                showNotificationToast(data.notification);
+              if (data.type === 'new_notification') {
+                updateNotificationBadge(
+                  data.unread_count, 
+                  data.notification.severity === 'critical' || data.notification.severity === 'error'
+                );
+                
+                // Show toast for critical/error notifications
+                if (['critical', 'error'].includes(data.notification.severity)) {
+                  showNotificationToast(data.notification);
+                }
               }
             }
           }
-        }
-      );
+        );
+      } catch(e) {
+        console.error('🔔 Failed to subscribe to NotificationsChannel:', e);
+      }
     }
   });
   
