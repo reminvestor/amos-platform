@@ -1429,7 +1429,7 @@ function sequenceView(id) {
                        oninput="autoSaveStep(${seq.id}, ${step.id}, 'subject', this.value)" />
               </div>
               <div class="step-email-body-edit">
-                <label>Email Body: ${step.has_template ? '<span class="step-template-edit-hint">Edits here override the linked template</span>' : ''}</label>
+                <label>Email Body: ${step.has_template ? '<span class="step-template-edit-hint"><i data-lucide="info" style="width:11px;height:11px;"></i> This is what gets sent. Edits are saved to this step only — the original template is not changed.</span>' : ''}</label>
                 <div class="step-body-editor" 
                      contenteditable="true"
                      id="step-body-editor-${step.id}"
