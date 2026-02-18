@@ -12,10 +12,14 @@ class AiSettings::MenuController < ApplicationController
     entity = current_user.entity
     return render json: { success: false, error: 'No entity' }, status: :unprocessable_entity unless entity
     
-    # Update notification settings
-    entity.slack_notifications_enabled = params[:slack_notifications_enabled] == 'true' || params[:slack_notifications_enabled] == '1'
+    # Only update settings that were actually sent in the request
+    if params.key?(:slack_notifications_enabled)
+      entity.slack_notifications_enabled = params[:slack_notifications_enabled] == 'true' || params[:slack_notifications_enabled] == '1'
+    end
     entity.slack_webhook_url = params[:slack_webhook_url] if params[:slack_webhook_url].present?
-    entity.email_notifications_enabled = params[:email_notifications_enabled] == 'true' || params[:email_notifications_enabled] == '1'
+    if params.key?(:email_notifications_enabled)
+      entity.email_notifications_enabled = params[:email_notifications_enabled] == 'true' || params[:email_notifications_enabled] == '1'
+    end
     
     # Update other platform settings
     entity.default_ai_model = params[:default_ai_model] if params[:default_ai_model].present?

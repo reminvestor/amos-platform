@@ -32,8 +32,10 @@ class ScoutController < ApplicationController
     # - Personal: No sidebar, just chat + canvas
     # - Operations: Collaboration sidebar (agents, team, channels)
     # - Design: Collaboration sidebar (design agents, current projects)
+    # Also show sidebar if entity has Member Collaboration enabled
     @in_personal_mode = @current_space&.slug == 'personal'
-    @show_collab_sidebar = @current_space&.slug.in?(['operations', 'design'])
+    collab_enabled = current_entity.slack_notifications_enabled? rescue false
+    @show_collab_sidebar = @current_space&.slug.in?(['operations', 'design']) || collab_enabled
     
     # Legacy compatibility
     @in_team_space = @show_collab_sidebar
