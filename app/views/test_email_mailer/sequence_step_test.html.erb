@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .content {
+        margin-bottom: 30px;
+      }
+      .footer {
+        margin-top: 30px;
+        font-size: 12px;
+        color: #999;
+        text-align: center;
+        border-top: 1px solid #eee;
+        padding-top: 20px;
+      }
+      .test-banner {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 10px;
+        margin-bottom: 20px;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
+        text-align: center;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="test-banner">
+        TEST — Sequence Step <%= @step.step_number %> Preview
+      </div>
+      
+      <div class="content">
+        <%= raw @body %>
+      </div>
+      
+      <div class="footer">
+        <p>
+          Test email sent to <%= @contact.email %>.<br>
+          This is exactly what contacts will receive for this step.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

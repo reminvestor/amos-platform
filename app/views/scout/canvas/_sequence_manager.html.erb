@@ -1260,6 +1260,41 @@ function describeStepLogic(step, idx, totalSteps) {
   return `Automatically sends to contacts who have not opened ${prevSteps.join(' or ')}.`;
 }
 
+// Send test email for a specific step
+async function sendStepTestEmail(sequenceId, stepId, btn) {
+  const resultEl = document.getElementById(`step-test-result-${stepId}`);
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader-2" style="width:13px;height:13px;" class="spin"></i> Sending...';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  if (resultEl) { resultEl.textContent = ''; resultEl.className = 'step-test-result small'; }
+
+  try {
+    const response = await fetch(`/email_sequences/${sequenceId}/sequence_steps/${stepId}/send_test.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      }
+    });
+    const data = await response.json();
+    if (resultEl) {
+      resultEl.textContent = data.message;
+      resultEl.className = data.success ? 'step-test-result small text-success' : 'step-test-result small text-danger';
+    }
+  } catch (err) {
+    if (resultEl) {
+      resultEl.textContent = 'Failed to send test email';
+      resultEl.className = 'step-test-result small text-danger';
+    }
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    if (resultEl) setTimeout(() => { resultEl.textContent = ''; }, 5000);
+  }
+}
+
 // Auto-save step content
 let saveTimers = {};
 async function autoSaveStep(sequenceId, stepId, field, value) {
@@ -1442,6 +1477,12 @@ function sequenceView(id) {
                 <button type="button" class="variable-pill" onclick="insertSeqVariable(${step.id}, '{{full_name}}')">{{full_name}}</button>
                 <button type="button" class="variable-pill" onclick="insertSeqVariable(${step.id}, '{{email}}')">{{email}}</button>
                 <button type="button" class="variable-pill" onclick="insertSeqVariable(${step.id}, '{{company}}')">{{company}}</button>
+              </div>
+              <div class="step-test-send mt-2 d-flex align-items-center gap-2">
+                <button type="button" class="canvas-btn outline sm" onclick="sendStepTestEmail(${seq.id}, ${step.id}, this)" style="white-space:nowrap;">
+                  <i data-lucide="send" style="width:13px;height:13px;"></i> Send Test Email
+                </button>
+                <span class="step-test-result small" id="step-test-result-${step.id}"></span>
               </div>
             </div>
             

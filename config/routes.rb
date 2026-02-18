@@ -489,7 +489,11 @@ Rails.application.routes.draw do
         collection do
           get :dashboard
         end
-        resources :sequence_steps, only: [:index, :show, :create, :update, :destroy]
+        resources :sequence_steps, only: [:index, :show, :create, :update, :destroy] do
+          member do
+            post :send_test
+          end
+        end
       end
 
       # CRM - Activities
@@ -705,7 +709,11 @@ Rails.application.routes.draw do
     end
 
     resources :email_sequences do
-      resources :sequence_steps
+      resources :sequence_steps do
+        member do
+          post :send_test
+        end
+      end
       member do
         post :activate
         post :pause

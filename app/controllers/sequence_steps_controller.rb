@@ -3,7 +3,7 @@ class SequenceStepsController < ApplicationController
   before_action :authenticate_user!
   layout 'customer_admin'
   before_action :set_sequence
-  before_action :set_step, only: [:edit, :update, :destroy]
+  before_action :set_step, only: [:edit, :update, :destroy, :send_test]
   before_action :authorize_destroy!, only: [:destroy]
 
   def new
@@ -52,6 +52,30 @@ class SequenceStepsController < ApplicationController
   def destroy
     @step.destroy
     redirect_to @sequence, notice: 'Step removed successfully.'
+  end
+
+  def send_test
+    email = params[:email].presence || current_user.email
+
+    test_contact = OpenStruct.new(
+      first_name: current_user.first_name || "Test",
+      last_name: current_user.last_name || "User",
+      full_name: current_user.full_name || "Test User",
+      email: email,
+      company: current_entity&.name || "Your Company"
+    )
+
+    TestEmailMailer.sequence_step_test(@step, test_contact, current_user).deliver_now
+
+    respond_to do |format|
+      format.json { render json: { success: true, message: "Test email for Step #{@step.step_number} sent to #{email}" } }
+      format.html { redirect_to @sequence, notice: "Test email sent to #{email}" }
+    end
+  rescue => e
+    respond_to do |format|
+      format.json { render json: { success: false, message: "Failed to send test: #{e.message}" }, status: :unprocessable_entity }
+      format.html { redirect_to @sequence, alert: "Failed to send test email: #{e.message}" }
+    end
   end
 
   private
