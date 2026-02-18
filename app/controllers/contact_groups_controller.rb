@@ -191,35 +191,60 @@ class ContactGroupsController < ApplicationController
         # Entity for scoping
         entity_id = current_entity&.id
 
-        # Process CSV file
-        CSV.foreach(params[:file].path, headers: true) do |row|
-          # Skip rows without email
-          if row["email"].blank?
+        # Read all rows, compute smart column mapping, then process
+        csv_table = CSV.read(params[:file].path, headers: true)
+        str_headers = csv_table.headers.map(&:to_s)
+        sample_rows = csv_table.first(5).map(&:to_h)
+        col_map = CsvColumnMapperService.new(
+          headers: str_headers,
+          sample_rows: sample_rows,
+          entity: current_entity
+        ).compute_mapping
+
+        csv_table.each do |row|
+          # Use mapped email column, fall back to literal "email"
+          email_header = col_map[:email] || "email"
+          email_val = row[email_header]
+          if email_val.blank?
             error_count += 1
             next
           end
 
-          # Step 1: Find or create contact
           contact = Contact.find_or_initialize_by(
-            email: row["email"].strip,
+            email: email_val.strip.downcase,
             user_id: current_user.id,
             entity_id: entity_id
           )
 
-          # Step 2: Update contact attributes
-          if row["name"].present?
-            # Handle name splitting
-            if row["name"].include?(" ")
-              parts = row["name"].rpartition(" ")
-              contact.first_name = parts.first.strip
-              contact.last_name = parts.last.strip
-            else
-              contact.first_name = row["name"].strip
-            end
+          # Apply mapped name fields
+          fn_header = col_map[:first_name]
+          ln_header = col_map[:last_name]
+          name_header = col_map[:name_column]
+
+          if fn_header && row[fn_header].present?
+            contact.first_name = row[fn_header].strip
+          end
+          if ln_header && row[ln_header].present?
+            contact.last_name = row[ln_header].strip
+          end
+          if contact.first_name.blank? && contact.last_name.blank? && name_header && row[name_header].present?
+            parts = row[name_header].strip.split(/\s+/, 2)
+            contact.first_name = parts[0]
+            contact.last_name = parts[1]
           end
 
-          # Set metadata for corporation info
+          # Apply mapped phone/company
+          phone_header = col_map[:phone]
+          company_header = col_map[:company]
           contact.metadata ||= {}
+          if phone_header && row[phone_header].present?
+            contact.metadata = contact.metadata.merge("phone" => row[phone_header].strip)
+          end
+          if company_header && row[company_header].present?
+            contact.metadata = contact.metadata.merge("company" => row[company_header].strip)
+          end
+
+          # Legacy corporation metadata
           if row["corporation_id"].present? || row["corporation_name"].present?
             contact.metadata = contact.metadata.merge({
               "corporation_id" => row["corporation_id"].to_s.strip,

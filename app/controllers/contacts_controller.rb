@@ -28,8 +28,11 @@ class ContactsController < ApplicationController
 
       if extension == '.csv'
         require 'csv'
-        CSV.foreach(file.path, headers: true, header_converters: :symbol) do |row|
-          result = import_contact_row(row.to_h)
+        rows = CSV.read(file.path, headers: true, header_converters: :symbol)
+        column_mapping = compute_column_mapping(rows)
+
+        rows.each do |row|
+          result = import_contact_row(row.to_h, column_mapping)
           if result[:success]
             imported_count += 1
           else
@@ -38,14 +41,15 @@ class ContactsController < ApplicationController
           end
         end
       else
-        # Excel file - use roo gem if available
         if defined?(Roo)
           spreadsheet = Roo::Spreadsheet.open(file.path)
           headers = spreadsheet.row(1).map { |h| h.to_s.downcase.gsub(/\s+/, '_').to_sym }
-          
-          (2..spreadsheet.last_row).each do |i|
-            row_data = Hash[headers.zip(spreadsheet.row(i))]
-            result = import_contact_row(row_data)
+
+          all_rows = (2..spreadsheet.last_row).map { |i| Hash[headers.zip(spreadsheet.row(i))] }
+          column_mapping = compute_column_mapping_from_arrays(headers, all_rows)
+
+          all_rows.each do |row_data|
+            result = import_contact_row(row_data, column_mapping)
             if result[:success]
               imported_count += 1
             else
@@ -118,39 +122,44 @@ class ContactsController < ApplicationController
     params.require(:contact).permit(:email, :first_name, :last_name, :status, :tags, contact_group_ids: [])
   end
 
-  def import_contact_row(row)
-    email = extract_email(row)
-    first_name = row[:first_name] || row[:firstname] || row[:first] || row[:given_name]
-    last_name = row[:last_name] || row[:lastname] || row[:last] || row[:family_name]
-    tags = row[:tags] || row[:tag]
-    phone = extract_phone(row)
+  def import_contact_row(row, column_mapping = {})
+    if column_mapping.present?
+      email = read_mapped_field(row, column_mapping, :email)
+      first_name = read_mapped_field(row, column_mapping, :first_name)
+      last_name = read_mapped_field(row, column_mapping, :last_name)
+      phone = read_mapped_field(row, column_mapping, :phone)
+      tags = read_mapped_field(row, column_mapping, :tags)
+      company = read_mapped_field(row, column_mapping, :company)
 
-    # If no direct name fields, try splitting a "name" column
-    if first_name.blank? && last_name.blank? && row[:name].present?
-      parts = row[:name].to_s.strip.split(/\s+/, 2)
-      first_name = parts[0]
-      last_name = parts[1]
+      if first_name.blank? && last_name.blank? && column_mapping[:name_column]
+        full_name = row[column_mapping[:name_column].to_sym]
+        if full_name.present?
+          parts = full_name.to_s.strip.split(/\s+/, 2)
+          first_name = parts[0]
+          last_name = parts[1]
+        end
+      end
+    else
+      email = extract_field_by_scan(row, /\A(email|e_mail|email_address)\z/i, /e?mail.*value/i)
+      first_name = row[:first_name] || row[:firstname] || row[:given_name]
+      last_name = row[:last_name] || row[:lastname] || row[:family_name]
+      phone = extract_field_by_scan(row, /\A(phone|mobile|cell)\z/i, /phone.*value/i)
+      tags = row[:tags] || row[:tag]
+      company = nil
     end
 
     return { success: false, error: "No email address" } unless email.present?
 
     existing = current_entity.contacts.find_by(email: email.to_s.strip.downcase)
-    if existing
-      return { success: false, error: "#{email} already exists" }
-    end
+    return { success: false, error: "#{email} already exists" } if existing
 
-    # Collect any extra columns into custom_fields
-    known_keys = %i[email email_address e_mail first_name firstname first given_name
-                     last_name lastname last family_name name tags tag phone phone_number
-                     status lifecycle_stage lead_source]
+    # Everything not in the mapping goes to custom_fields
+    mapped_headers = column_mapping.values.map { |v| v.to_s.downcase }
     extra_fields = {}
     row.each do |key, value|
       next if value.blank?
-      key_str = key.to_s
-      next if known_keys.include?(key)
-      next if key_str.match?(/e?mail.*(?:value|type|label)/i)
-      next if key_str.match?(/phone.*(?:value|type|label)/i)
-      extra_fields[key_str] = value.to_s.strip
+      next if mapped_headers.include?(key.to_s.downcase)
+      extra_fields[key.to_s] = value.to_s.strip
     end
 
     contact = current_entity.contacts.new(
@@ -165,6 +174,9 @@ class ContactsController < ApplicationController
     if phone.present?
       contact.metadata = (contact.metadata || {}).merge("phone" => phone.to_s.strip)
     end
+    if company.present?
+      contact.metadata = (contact.metadata || {}).merge("company" => company.to_s.strip)
+    end
 
     if contact.save
       { success: true, contact: contact }
@@ -173,35 +185,39 @@ class ContactsController < ApplicationController
     end
   end
 
-  def extract_email(row)
-    # Direct column matches
-    email = row[:email] || row[:email_address] || row[:e_mail]
-    return email if email.present?
+  def read_mapped_field(row, mapping, field)
+    header = mapping[field]
+    return nil unless header.present?
+    row[header.to_sym].presence
+  end
 
-    # Google Contacts / vCard format: "E-mail 1 - Value" → :email_1__value etc.
+  def extract_field_by_scan(row, *patterns)
     row.each do |key, value|
       next if value.blank?
       key_str = key.to_s
-      if key_str.match?(/e?mail.*value/i) || key_str.match?(/email_?\d/i)
-        return value
-      end
+      return value if patterns.any? { |p| key_str.match?(p) }
     end
-
     nil
   end
 
-  def extract_phone(row)
-    phone = row[:phone] || row[:phone_number] || row[:mobile]
-    return phone if phone.present?
+  def compute_column_mapping(csv_table)
+    headers = csv_table.headers.map(&:to_s)
+    sample_rows = csv_table.first(5).map(&:to_h)
 
-    row.each do |key, value|
-      next if value.blank?
-      key_str = key.to_s
-      if key_str.match?(/phone.*value/i)
-        return value
-      end
-    end
+    mapper = CsvColumnMapperService.new(
+      headers: headers,
+      sample_rows: sample_rows,
+      entity: current_entity
+    )
+    mapper.compute_mapping
+  end
 
-    nil
+  def compute_column_mapping_from_arrays(headers, rows)
+    mapper = CsvColumnMapperService.new(
+      headers: headers.map(&:to_s),
+      sample_rows: rows.first(5),
+      entity: current_entity
+    )
+    mapper.compute_mapping
   end
 end
