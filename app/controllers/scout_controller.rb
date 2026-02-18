@@ -3007,15 +3007,8 @@ class ScoutController < ApplicationController
                                .limit(20)
     
     if @hub_channels.empty?
-      # Create default general channel for the team
-      general = TeamChannel.create(
-        entity_id: current_entity.id,
-        name: 'general',
-        description: 'General discussion for the team',
-        channel_type: 'public',
-        created_by_id: current_user.id
-      )
-      @hub_channels = [general] if general.persisted?
+      defaults = TeamChannel.create_defaults_for(current_entity)
+      @hub_channels = defaults.select(&:persisted?)
     end
     
     # Load team members (other users in this entity, excluding current user)

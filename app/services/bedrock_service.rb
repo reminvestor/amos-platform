@@ -1247,6 +1247,10 @@ class BedrockService
 
       # If we exit loop without returning, return what we have
       ""
+    rescue Aws::BedrockRuntime::Errors::AccessDeniedException => e
+      Rails.logger.error "Bedrock access denied (model not enabled): #{e.message}"
+      request_id = e.context&.http_response&.headers&.[]('x-amzn-requestid') rescue nil
+      raise AmosErrors::BedrockError.new("Model access denied — please enable model access in AWS Bedrock console", context: { error_code: e.code, request_id: request_id })
     rescue Aws::BedrockRuntime::Errors::ThrottlingException => e
       retry_count += 1
       if retry_count <= max_retries
@@ -1618,6 +1622,7 @@ class BedrockService
 
       rescue Aws::BedrockRuntime::Errors::ThrottlingException,
              Aws::BedrockRuntime::Errors::ServiceUnavailableException,
+             Aws::BedrockRuntime::Errors::AccessDeniedException,
              Aws::BedrockRuntime::Errors::ValidationException,
              Timeout::Error,
              Seahorse::Client::NetworkingError => e

@@ -167,12 +167,10 @@ module Hub
     end
 
     def find_or_create_module_channel
-      # Look for an existing module-specific channel or use a general "Apps" channel
-      TeamChannel.find_or_create_by!(entity: entity, slug: 'apps') do |channel|
-        channel.name = 'Apps & Automations'
+      TeamChannel.find_or_create_by!(entity: entity, name: 'Apps & Automations') do |channel|
         channel.description = 'Activity from your installed apps'
         channel.is_default = false
-        channel.channel_type = 'public'
+        channel.channel_type = 'integration'
       end
     end
 
