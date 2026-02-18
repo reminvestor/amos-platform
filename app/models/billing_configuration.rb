@@ -223,15 +223,14 @@ class BillingConfiguration < ApplicationRecord
   end
 
   def self.default_purchase_tiers
-    # Based on 100,000 work tokens = $1 raw cost
-    # With 20% uplift: $1.20 buys 100,000 tokens, so $1 buys ~83,333 tokens
-    # NO VOLUME DISCOUNTS - margins are already slim at 20% markup
-    # All tiers use the same rate: ~83,333 tokens per dollar
+    # Rate: 100,000 work tokens per $1
+    # Margin is captured in the work token conversion (calculate_ai_work_tokens),
+    # not in the purchase price.
     [
-      { 'amount_usd' => 20, 'tokens' => 1_670_000, 'bonus_tokens' => 0 },   # 20 × 83,333
-      { 'amount_usd' => 50, 'tokens' => 4_170_000, 'bonus_tokens' => 0 },   # 50 × 83,333
-      { 'amount_usd' => 100, 'tokens' => 8_330_000, 'bonus_tokens' => 0 },  # 100 × 83,333
-      { 'amount_usd' => 200, 'tokens' => 16_670_000, 'bonus_tokens' => 0 }  # 200 × 83,333
+      { 'amount_usd' => 20, 'tokens' => 2_000_000, 'bonus_tokens' => 0 },
+      { 'amount_usd' => 50, 'tokens' => 5_000_000, 'bonus_tokens' => 0 },
+      { 'amount_usd' => 100, 'tokens' => 10_000_000, 'bonus_tokens' => 0 },
+      { 'amount_usd' => 200, 'tokens' => 20_000_000, 'bonus_tokens' => 0 }
     ]
   end
 
