@@ -22,17 +22,26 @@ class ContactsController < ApplicationController
     end
 
     begin
-      imported_count = 0
-      skipped_count = 0
-      errors = []
+      # Parse file and compute column mapping
+      mapped_contacts = parse_and_map_file(file, extension)
 
-      if extension == '.csv'
-        require 'csv'
-        rows = CSV.read(file.path, headers: true, header_converters: :symbol)
-        column_mapping = compute_column_mapping(rows)
+      if mapped_contacts.nil?
+        return render json: { success: false, error: "Excel import not supported. Please use CSV format." }, status: :unprocessable_entity
+      end
 
-        rows.each do |row|
-          result = import_contact_row(row.to_h, column_mapping)
+      if mapped_contacts.empty?
+        return render json: { success: false, error: "No contacts found in file." }, status: :unprocessable_entity
+      end
+
+      # Small imports (< 100): process inline for instant feedback
+      # Large imports (>= 100): background job to avoid timeouts
+      if mapped_contacts.size < 100
+        imported_count = 0
+        skipped_count = 0
+        errors = []
+
+        mapped_contacts.each do |contact_data|
+          result = create_contact_from_mapped(contact_data)
           if result[:success]
             imported_count += 1
           else
@@ -40,35 +49,30 @@ class ContactsController < ApplicationController
             errors << result[:error] if errors.length < 5
           end
         end
+
+        render json: {
+          success: true,
+          imported: imported_count,
+          skipped: skipped_count,
+          errors: errors,
+          message: "Successfully imported #{imported_count} contacts. #{skipped_count} skipped."
+        }
       else
-        if defined?(Roo)
-          spreadsheet = Roo::Spreadsheet.open(file.path)
-          headers = spreadsheet.row(1).map { |h| h.to_s.downcase.gsub(/\s+/, '_').to_sym }
+        # Enqueue background job
+        job = ContactImportJob.perform_later(
+          user_id: current_user.id,
+          entity_id: current_entity.id,
+          contacts: mapped_contacts
+        )
 
-          all_rows = (2..spreadsheet.last_row).map { |i| Hash[headers.zip(spreadsheet.row(i))] }
-          column_mapping = compute_column_mapping_from_arrays(headers, all_rows)
-
-          all_rows.each do |row_data|
-            result = import_contact_row(row_data, column_mapping)
-            if result[:success]
-              imported_count += 1
-            else
-              skipped_count += 1
-              errors << result[:error] if errors.length < 5
-            end
-          end
-        else
-          return render json: { success: false, error: "Excel import not supported. Please use CSV format." }, status: :unprocessable_entity
-        end
+        render json: {
+          success: true,
+          background: true,
+          job_id: job.job_id,
+          total: mapped_contacts.size,
+          message: "Importing #{mapped_contacts.size} contacts in the background. You'll be notified when complete."
+        }
       end
-
-      render json: {
-        success: true,
-        imported: imported_count,
-        skipped: skipped_count,
-        errors: errors,
-        message: "Successfully imported #{imported_count} contacts. #{skipped_count} skipped."
-      }
     rescue => e
       Rails.logger.error "Contact import error: #{e.message}"
       render json: { success: false, error: "Import failed: #{e.message}" }, status: :unprocessable_entity
@@ -120,6 +124,92 @@ class ContactsController < ApplicationController
 
   def contact_params
     params.require(:contact).permit(:email, :first_name, :last_name, :status, :tags, contact_group_ids: [])
+  end
+
+  # Parse file and use CsvColumnMapperService to produce standardized contact hashes
+  def parse_and_map_file(file, extension)
+    if extension == '.csv'
+      require 'csv'
+      rows = CSV.read(file.path, headers: true, header_converters: :symbol)
+      column_mapping = compute_column_mapping(rows)
+      rows.map { |row| map_row_to_contact(row.to_h, column_mapping) }.compact
+    elsif defined?(Roo)
+      spreadsheet = Roo::Spreadsheet.open(file.path)
+      headers = spreadsheet.row(1).map { |h| h.to_s.downcase.gsub(/\s+/, '_').to_sym }
+      all_rows = (2..spreadsheet.last_row).map { |i| Hash[headers.zip(spreadsheet.row(i))] }
+      column_mapping = compute_column_mapping_from_arrays(headers, all_rows)
+      all_rows.map { |row| map_row_to_contact(row, column_mapping) }.compact
+    end
+  end
+
+  # Convert a raw CSV row into a standardized contact hash using the column mapping
+  def map_row_to_contact(row, column_mapping)
+    email = read_mapped_field(row, column_mapping, :email)
+    email ||= extract_field_by_scan(row, /\A(email|e_mail|email_address)\z/i, /e?mail.*value/i)
+    return nil unless email.present?
+
+    first_name = read_mapped_field(row, column_mapping, :first_name)
+    last_name = read_mapped_field(row, column_mapping, :last_name)
+    phone = read_mapped_field(row, column_mapping, :phone)
+    company = read_mapped_field(row, column_mapping, :company)
+    tags = read_mapped_field(row, column_mapping, :tags)
+
+    if first_name.blank? && last_name.blank? && column_mapping[:name_column]
+      full_name = row[column_mapping[:name_column].to_sym]
+      if full_name.present?
+        parts = full_name.to_s.strip.split(/\s+/, 2)
+        first_name = parts[0]
+        last_name = parts[1]
+      end
+    end
+
+    # Collect unmapped fields as custom_fields
+    mapped_headers = column_mapping.values.map { |v| v.to_s.downcase }
+    extra_fields = {}
+    row.each do |key, value|
+      next if value.blank?
+      next if mapped_headers.include?(key.to_s.downcase)
+      extra_fields[key.to_s] = value.to_s.strip
+    end
+
+    {
+      email: email.to_s.strip.downcase,
+      first_name: first_name.to_s.strip,
+      last_name: last_name.to_s.strip,
+      phone: phone&.to_s&.strip,
+      company: company&.to_s&.strip,
+      tags: tags&.to_s&.strip,
+      custom_fields: extra_fields.presence || {},
+      status: 'active'
+    }
+  end
+
+  # Create a contact from a pre-mapped hash (used for inline small imports)
+  def create_contact_from_mapped(data)
+    return { success: false, error: "No email address" } unless data[:email].present?
+
+    existing = current_entity.contacts.find_by(email: data[:email])
+    return { success: false, error: "#{data[:email]} already exists" } if existing
+
+    contact = current_entity.contacts.new(
+      email: data[:email],
+      first_name: data[:first_name],
+      last_name: data[:last_name],
+      tags: data[:tags].to_s,
+      status: data[:status] || 'active',
+      custom_fields: data[:custom_fields] || {}
+    )
+
+    metadata = {}
+    metadata["phone"] = data[:phone] if data[:phone].present?
+    metadata["company"] = data[:company] if data[:company].present?
+    contact.metadata = metadata if metadata.any?
+
+    if contact.save
+      { success: true, contact: contact }
+    else
+      { success: false, error: "#{data[:email]}: #{contact.errors.full_messages.join(', ')}" }
+    end
   end
 
   def import_contact_row(row, column_mapping = {})

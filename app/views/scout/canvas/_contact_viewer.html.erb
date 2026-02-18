@@ -511,7 +511,21 @@ async function submitImport() {
     document.getElementById('importProgress').style.display = 'none';
 
     const resultDiv = document.getElementById('importResult');
-    if (result.success) {
+    if (result.success && result.background) {
+      resultDiv.innerHTML = `
+        <div class="import-success">
+          <i data-lucide="loader"></i>
+          <div>
+            <strong>${result.message}</strong>
+            <p class="text-muted small mt-1">${result.total} contacts are being processed in the background. This page will refresh when complete.</p>
+          </div>
+        </div>
+      `;
+      // Poll for completion then refresh
+      setTimeout(() => {
+        window.scoutLoadCanvas?.('contact_viewer');
+      }, 10000);
+    } else if (result.success) {
       resultDiv.innerHTML = `
         <div class="import-success">
           <i data-lucide="check-circle"></i>
@@ -521,7 +535,6 @@ async function submitImport() {
           </div>
         </div>
       `;
-      // Refresh the page after successful import
       setTimeout(() => {
         window.scoutLoadCanvas?.('contact_viewer');
       }, 2000);

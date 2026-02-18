@@ -93,58 +93,55 @@ class ContactImportJob < ApplicationJob
             # First pass: Find or create contacts
             batch.each do |contact_data|
               begin
-                # Find existing contact
+                contact_data = contact_data.with_indifferent_access if contact_data.is_a?(Hash)
+                email = contact_data[:email].to_s.strip.downcase
+                next if email.blank?
+
                 contact = Contact.find_by(
-                  email: contact_data[:email].to_s.strip,
+                  email: email,
                   user_id: user_id,
                   entity_id: entity_id
                 )
 
+                metadata = {}
+                metadata["phone"] = contact_data[:phone].to_s.strip if contact_data[:phone].present?
+                metadata["company"] = contact_data[:company].to_s.strip if contact_data[:company].present?
+                metadata["corporation_id"] = contact_data[:corporation_id].to_s.strip if contact_data[:corporation_id].present?
+                metadata["corporation_name"] = contact_data[:corporation_name].to_s.strip if contact_data[:corporation_name].present?
+
                 if contact
-                  # Update existing contact
                   contact.first_name = contact_data[:first_name] if contact_data[:first_name].present?
                   contact.last_name = contact_data[:last_name] if contact_data[:last_name].present?
                   contact.status = contact_data[:status] || "active"
-
-                  # Update metadata
-                  contact.metadata ||= {}
-                  contact.metadata = contact.metadata.merge({
-                    corporation_id: contact_data[:corporation_id],
-                    corporation_name: contact_data[:corporation_name]
-                  }.compact)
+                  contact.metadata = (contact.metadata || {}).merge(metadata) if metadata.any?
+                  if contact_data[:custom_fields].present?
+                    contact.custom_fields = (contact.custom_fields || {}).merge(contact_data[:custom_fields])
+                  end
 
                   if contact.save
                     updated_contacts << contact
                     updated += 1
                   else
-                    batch_errors << {
-                      email: contact_data[:email],
-                      errors: contact.errors.full_messages
-                    }
+                    batch_errors << { email: email, errors: contact.errors.full_messages }
                   end
                 else
-                  # Create new contact
                   contact = Contact.new(
-                    email: contact_data[:email].to_s.strip,
+                    email: email,
                     first_name: contact_data[:first_name],
                     last_name: contact_data[:last_name],
+                    tags: contact_data[:tags].to_s,
                     status: contact_data[:status] || "active",
                     user_id: user_id,
                     entity_id: entity_id,
-                    metadata: {
-                      corporation_id: contact_data[:corporation_id],
-                      corporation_name: contact_data[:corporation_name]
-                    }.compact
+                    metadata: metadata.presence || {},
+                    custom_fields: contact_data[:custom_fields] || {}
                   )
 
                   if contact.save
                     new_contacts << contact
                     created += 1
                   else
-                    batch_errors << {
-                      email: contact_data[:email],
-                      errors: contact.errors.full_messages
-                    }
+                    batch_errors << { email: email, errors: contact.errors.full_messages }
                   end
                 end
               rescue => e
