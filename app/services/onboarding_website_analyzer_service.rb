@@ -119,7 +119,7 @@ class OnboardingWebsiteAnalyzerService
     # Use BedrockService to analyze the content
     bedrock = BedrockService.new(
       system_prompt: build_system_prompt,
-      model_name: 'claude-haiku' # Use fast model for this
+      model_name: 'claude-haiku-4-5' # Use fast model for this
     )
 
     prompt = <<~PROMPT
@@ -150,7 +150,7 @@ class OnboardingWebsiteAnalyzerService
     response = bedrock.send_message_converse(
       build_system_prompt,
       [{ role: 'user', content: prompt }],
-      model: 'global.anthropic.claude-3-5-haiku-20241022-v1:0',
+      model: 'claude-haiku-4-5',
       max_tokens: 1000,
       temperature: 0.3
     )

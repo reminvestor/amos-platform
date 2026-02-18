@@ -129,7 +129,7 @@ class Admin::DashboardController < Admin::BaseController
       { input: 15.00, output: 75.00 }
     when /claude-3-sonnet/, /claude-sonnet/
       { input: 3.00, output: 15.00 }
-    when /claude-3-haiku/, /claude-haiku/
+    when /claude-haiku-4-5/, /claude-3-haiku/, /claude-haiku/
       { input: 0.25, output: 1.25 }
     when /claude-sonnet-4/
       { input: 3.00, output: 15.00 }

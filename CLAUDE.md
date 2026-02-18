@@ -228,7 +228,7 @@ All data is **entity-scoped** (multi-tenant):
 - `MAILGUN_API_KEY` - Email sending (optional)
 - `REDIS_URL` - Caching (optional)
 
-**AI Model**: Uses AWS Bedrock Claude Sonnet 4.5 (configured in `BedrockService`)
+**AI Model**: Uses AWS Bedrock Claude Sonnet 4.6 (configured in `BedrockService`)
 
 **Performance Optimization**:
 - **Prompt Caching**: Anthropic prompt caching is enabled by default in Scout conversations

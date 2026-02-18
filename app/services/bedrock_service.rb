@@ -35,40 +35,16 @@ class BedrockService
 
   # Available Bedrock models with their characteristics
   AVAILABLE_MODELS = {
-    'claude-sonnet-4-5' => {
-      id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0',
-      name: 'Claude Sonnet 4.5',
-      description: 'Latest model, best for complex tasks',
+    'claude-sonnet-4-6' => {
+      id: 'global.anthropic.claude-sonnet-4-6',
+      name: 'Claude Sonnet 4.6',
+      description: 'Latest Sonnet, best balance of speed and capability',
       max_tokens: 25000,
       cost_per_1m_input: 3.00,
       cost_per_1m_output: 15.00,
-      supports_vision: false,
+      supports_vision: true,
       supports_tools: true,
       supports_caching: false,  # Global endpoint limitation
-      endpoint_type: 'global'
-    },
-    'claude-opus-4-1' => {
-      id: 'us.anthropic.claude-opus-4-1-20250805-v1:0',
-      name: 'Claude Opus 4.1',
-      description: 'Most capable, includes vision',
-      max_tokens: 25000,
-      cost_per_1m_input: 15.00,
-      cost_per_1m_output: 75.00,
-      supports_vision: true,
-      supports_tools: true,
-      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
-      endpoint_type: 'regional'
-    },
-    'claude-opus-4-5' => {
-      id: 'global.anthropic.claude-opus-4-5-20251101-v1:0',
-      name: 'Claude Opus 4.5',
-      description: 'Frontier model, maximum reasoning',
-      max_tokens: 30000,
-      cost_per_1m_input: 5.00,    # Actual AWS pricing
-      cost_per_1m_output: 25.00,
-      supports_vision: true,
-      supports_tools: true,
-      supports_caching: false, # Global endpoint limitation
       endpoint_type: 'global'
     },
     'claude-opus-4-6' => {
@@ -76,12 +52,73 @@ class BedrockService
       name: 'Claude Opus 4.6',
       description: 'Latest frontier model, enhanced reasoning and coding',
       max_tokens: 30000,
-      cost_per_1m_input: 5.00,    # Same as Opus 4.5
+      cost_per_1m_input: 5.00,
       cost_per_1m_output: 25.00,
       supports_vision: true,
       supports_tools: true,
       supports_caching: false,
       endpoint_type: 'global'
+    },
+    # Legacy aliases — map old names to current models
+    'claude-opus-4-1' => {
+      id: 'global.anthropic.claude-opus-4-6-v1',
+      name: 'Claude Opus 4.6',
+      description: 'Alias for Opus 4.6 (successor to 4.1)',
+      max_tokens: 30000,
+      cost_per_1m_input: 5.00,
+      cost_per_1m_output: 25.00,
+      supports_vision: true,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'global'
+    },
+    'claude-sonnet-4-5' => {
+      id: 'global.anthropic.claude-sonnet-4-6',
+      name: 'Claude Sonnet 4.6',
+      description: 'Alias for Sonnet 4.6 (successor to 4.5)',
+      max_tokens: 25000,
+      cost_per_1m_input: 3.00,
+      cost_per_1m_output: 15.00,
+      supports_vision: true,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'global'
+    },
+    'claude-opus-4-5' => {
+      id: 'global.anthropic.claude-opus-4-6-v1',
+      name: 'Claude Opus 4.6',
+      description: 'Alias for Opus 4.6 (successor to 4.5)',
+      max_tokens: 30000,
+      cost_per_1m_input: 5.00,
+      cost_per_1m_output: 25.00,
+      supports_vision: true,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'global'
+    },
+    'claude-3-5-sonnet' => {
+      id: 'global.anthropic.claude-sonnet-4-6',
+      name: 'Claude Sonnet 4.6',
+      description: 'Alias for Sonnet 4.6 (successor to 3.5 Sonnet)',
+      max_tokens: 25000,
+      cost_per_1m_input: 3.00,
+      cost_per_1m_output: 15.00,
+      supports_vision: true,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'global'
+    },
+    'claude-3-haiku' => {
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+      name: 'Claude Haiku 4.5',
+      description: 'Alias for Haiku 4.5 (successor to 3.5 Haiku)',
+      max_tokens: 8192,
+      cost_per_1m_input: 1.00,
+      cost_per_1m_output: 5.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
     },
     'qwen-3-32b' => {
       id: 'qwen.qwen3-32b-v1:0', # ON_DEMAND direct
@@ -147,65 +184,40 @@ class BedrockService
       supports_caching: false,
       endpoint_type: 'regional'
     },
-    'claude-3-5-sonnet' => {
-      id: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
-      name: 'Claude 3.5 Sonnet',
-      description: 'Fast and capable',
-      max_tokens: 8192,
-      cost_per_1m_input: 3.00,
-      cost_per_1m_output: 15.00,
-      supports_vision: true,
-      supports_tools: true,
-      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
-      endpoint_type: 'regional'
-    },
-    'claude-3-haiku' => {
-      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
-      name: 'Claude 3.5 Haiku',
-      description: 'Fastest, most affordable',
-      max_tokens: 8192,
-      cost_per_1m_input: 0.80,
-      cost_per_1m_output: 4.00,
-      supports_vision: false,
-      supports_tools: true,
-      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
-      endpoint_type: 'regional'
-    },
-    'claude-haiku-4-5-20251001' => {
-      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
-      name: 'Claude Haiku 4.5',
-      description: 'Fast and efficient',
-      max_tokens: 8192,
-      cost_per_1m_input: 1.00,   # Actual AWS pricing
-      cost_per_1m_output: 5.00,
-      supports_vision: false,
-      supports_tools: true,
-      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
-      endpoint_type: 'regional'
-    },
-    # Aliases for Claude Haiku 4.5
     'claude-haiku-4-5' => {
       id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
       name: 'Claude Haiku 4.5',
       description: 'Fast and efficient',
       max_tokens: 8192,
-      cost_per_1m_input: 1.00,   # Actual AWS pricing
+      cost_per_1m_input: 1.00,
       cost_per_1m_output: 5.00,
       supports_vision: false,
       supports_tools: true,
-      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'claude-haiku-4-5-20251001' => {
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+      name: 'Claude Haiku 4.5',
+      description: 'Alias for Haiku 4.5',
+      max_tokens: 8192,
+      cost_per_1m_input: 1.00,
+      cost_per_1m_output: 5.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: false,
       endpoint_type: 'regional'
     },
     'claude-4-5-haiku' => {
       id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
       name: 'Claude Haiku 4.5',
-      description: 'Fast and efficient',
+      description: 'Alias for Haiku 4.5',
       max_tokens: 8192,
-      cost_per_1m_input: 1.00,   # Actual AWS pricing
+      cost_per_1m_input: 1.00,
       cost_per_1m_output: 5.00,
       supports_vision: false,
       supports_tools: true,
-      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
+      supports_caching: false,
       endpoint_type: 'regional'
     },
     # Mistral models - excellent for reasoning and tool use
@@ -382,15 +394,11 @@ class BedrockService
   # If a model fails due to throttling, timeout, or unavailability, automatically retry with the next model
   # Priority: Cost-effective models first, then progressively more capable/expensive
   MODEL_FALLBACK_CHAIN = [
-    'claude-haiku-4-5-20251001',  # User's preferred model - fast, affordable
+    'claude-haiku-4-5',           # Fast, affordable Claude
     'deepseek-v3',                # DeepSeek V3.1 - 68x cheaper than Opus, excellent quality
     'mistral-large-3',            # Mistral Large 3 - great for tool use, cost-effective
     'qwen-2-5-72b',               # Fast open model
-    'claude-3-haiku',             # Fastest Claude
-    'claude-3-5-sonnet',          # Fast, capable - good backup
-    'claude-sonnet-4-5',          # Latest, powerful - reliable fallback
-    'claude-opus-4-1',            # Most robust
-    'claude-opus-4-5',            # Maximum capability
+    'claude-sonnet-4-6',          # Latest Sonnet - reliable fallback
     'claude-opus-4-6'             # Latest frontier - last resort
   ].freeze
 
@@ -449,8 +457,7 @@ class BedrockService
     { key: 'qwen3-next-80b', context: 131_072 },   # 131K, fast
     { key: 'qwen3-vl-235b', context: 131_072 },    # 131K, multimodal
     { key: 'claude-haiku-4-5', context: 200_000 }, # 200K, fast Claude
-    { key: 'claude-sonnet-4-5', context: 200_000 },# 200K, powerful
-    { key: 'claude-opus-4-5', context: 200_000 },  # 200K, most capable
+    { key: 'claude-sonnet-4-6', context: 200_000 },# 200K, latest Sonnet
     { key: 'claude-opus-4-6', context: 200_000 },  # 200K, latest frontier
   ].freeze
 
@@ -549,9 +556,9 @@ class BedrockService
       }
     ]
 
-    # Use Opus 4.1 for vision (has "Text Vision" capability)
+    # Use Opus 4.6 for vision (has vision capability)
     # Higher token limit for large documents
-    complete(messages: messages, max_tokens: 10000, model: 'claude-opus-4-1')
+    complete(messages: messages, max_tokens: 10000, model: 'claude-opus-4-6')
   end
 
   def complete(messages:, temperature: 0.7, max_tokens: 1000, model: nil)
@@ -596,57 +603,7 @@ class BedrockService
     end
     
     # Map model names to Bedrock model IDs
-    # Using global inference profiles for Claude Sonnet 4.5
-    model_id = case model
-    when "claude-sonnet-4-5", "claude-sonnet-4.5"
-      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
-    when "claude-opus-4-1", "claude-opus-4-1-20250805"
-      "us.anthropic.claude-opus-4-1-20250805-v1:0"
-    when "claude-opus-4-5", "claude-opus-4.5"
-      "global.anthropic.claude-opus-4-5-20251101-v1:0" # Opus 4.5 inference profile
-    when "claude-opus-4-6", "claude-opus-4.6"
-      "global.anthropic.claude-opus-4-6-v1" # Opus 4.6 - cross-region inference profile
-    when "qwen-3-32b", "qwen-3.32b"
-      "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
-    when "qwen-3-coder-30b", "qwen-coder"
-      "qwen.qwen3-coder-30b-a3b-v1:0" # Qwen 3 Coder - ON_DEMAND direct
-    when "qwen3-next-80b", "qwen-3-next-80b"
-      "qwen.qwen3-next-80b-a3b" # Qwen3-Next - optimized for RAG & tool use
-    when "qwen3-vl-235b"
-      "qwen.qwen3-vl-235b-a22b" # Qwen3-VL - multimodal
-    when "meta-llama-3-3-70b", "llama-3-3-70b"
-      "us.meta.llama3-3-70b-instruct-v1:0" # Meta Llama 3.3 inference profile
-    when "meta-llama-3-2-90b", "llama-3-2-90b"
-      "us.meta.llama3-2-90b-instruct-v1:0" # Meta Llama 3.2 90B inference profile
-    when "mistral-large-3"
-      "mistral.mistral-large-3-675b-instruct" # Mistral Large 3 - latest
-    when "mistral-large-2", "mistral-large-2407"
-      "mistral.mistral-large-2407-v1:0" # Mistral Large 2
-    when "mistral-small"
-      "mistral.mistral-small-2402-v1:0" # Mistral Small
-    when "deepseek-v3", "deepseek-v3.1", "deepseek"
-      "deepseek.v3-v1:0" # DeepSeek V3.1 - fast, cost-optimized
-    when "deepseek-r1", "deepseek-reasoning"
-      "us.deepseek.r1-v1:0" # DeepSeek R1 - inference profile format
-    when "nemotron-nano-9b", "nemotron-nano"
-      "nvidia.nemotron-nano-9b-v2" # NVIDIA Nemotron Nano 9B v2
-    when "nemotron-nano-12b-vl"
-      "nvidia.nemotron-nano-12b-v2" # NVIDIA Nemotron Nano 12B VL
-    when "ministral-3b"
-      "mistral.ministral-3-3b-instruct" # Ministral 3B
-    when "ministral-8b"
-      "mistral.ministral-3-8b-instruct" # Ministral 8B
-    when "claude-3-5-sonnet", "claude-3.5-sonnet"
-      "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
-    when "claude-3-haiku"
-      "us.anthropic.claude-3-5-haiku-20241022-v1:0"
-    when "claude-haiku-4-5-20251001", "claude-haiku-4-5", "claude-haiku-4.5", "claude-4-5-haiku"
-      # Claude Haiku 4.5 - fast and efficient
-      "us.anthropic.claude-3-5-haiku-20241022-v1:0"  # Using the latest Haiku model ID
-    else
-      # Default to Claude Sonnet 4.5 (latest)
-      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
-    end
+    model_id = resolve_claude_model_id(model)
 
     # Format messages for Claude
     formatted_messages = format_messages_for_claude(messages)
@@ -998,53 +955,7 @@ class BedrockService
   def send_message_converse(system_prompt, messages, model: "qwen3-next-80b", max_tokens: 10000, temperature: 0.7, tools: [], options: {})
     @tools_called = []  # Reset tools called tracking for this request
     # Map model names to Bedrock model IDs
-    model_id = case model
-    when "claude-sonnet-4-5", "claude-sonnet-4.5"
-      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
-    when "claude-opus-4-1", "claude-opus-4-1-20250805"
-      "us.anthropic.claude-opus-4-1-20250805-v1:0"
-    when "claude-opus-4-5", "claude-opus-4.5"
-      "global.anthropic.claude-opus-4-5-20251101-v1:0" # Opus 4.5 inference profile
-    when "claude-opus-4-6", "claude-opus-4.6"
-      "global.anthropic.claude-opus-4-6-v1" # Opus 4.6 - cross-region inference profile
-    when "qwen-3-32b", "qwen-3.32b"
-      "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
-    when "qwen-3-coder-30b", "qwen-coder"
-      "qwen.qwen3-coder-30b-a3b-v1:0" # Qwen 3 Coder - ON_DEMAND direct
-    when "qwen3-next-80b", "qwen-3-next-80b"
-      "qwen.qwen3-next-80b-a3b" # Qwen3-Next - optimized for RAG & tool use
-    when "qwen3-vl-235b"
-      "qwen.qwen3-vl-235b-a22b" # Qwen3-VL - multimodal
-    when "meta-llama-3-3-70b", "llama-3-3-70b"
-      "us.meta.llama3-3-70b-instruct-v1:0" # Meta Llama 3.3 inference profile
-    when "meta-llama-3-2-90b", "llama-3-2-90b"
-      "us.meta.llama3-2-90b-instruct-v1:0" # Meta Llama 3.2 90B inference profile
-    when "mistral-large-3"
-      "mistral.mistral-large-3-675b-instruct" # Mistral Large 3 - latest
-    when "mistral-large-2", "mistral-large-2407"
-      "mistral.mistral-large-2407-v1:0" # Mistral Large 2
-    when "mistral-small"
-      "mistral.mistral-small-2402-v1:0" # Mistral Small
-    when "deepseek-v3", "deepseek-v3.1", "deepseek"
-      "deepseek.v3-v1:0" # DeepSeek V3.1 - fast, cost-optimized
-    when "deepseek-r1", "deepseek-reasoning"
-      "us.deepseek.r1-v1:0" # DeepSeek R1 - inference profile format
-    when "nemotron-nano-9b", "nemotron-nano"
-      "nvidia.nemotron-nano-9b-v2" # NVIDIA Nemotron Nano 9B v2
-    when "nemotron-nano-12b-vl"
-      "nvidia.nemotron-nano-12b-v2" # NVIDIA Nemotron Nano 12B VL
-    when "ministral-3b"
-      "mistral.ministral-3-3b-instruct" # Ministral 3B
-    when "ministral-8b"
-      "mistral.ministral-3-8b-instruct" # Ministral 8B
-    when "claude-3-5-sonnet", "claude-3.5-sonnet"
-      "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
-    when "claude-3-haiku"
-      "us.anthropic.claude-3-5-haiku-20241022-v1:0"
-    else
-      # Default to Qwen3-Next for cost efficiency
-      "qwen.qwen3-next-80b-a3b"
-    end
+    model_id = resolve_converse_model_id(model)
 
     # Messages are already in converse format from our formatting
     # Just ensure they're properly structured
@@ -1399,7 +1310,7 @@ class BedrockService
         attempted_models << normalized_model unless attempted_models.include?(normalized_model)
 
         # Get model configuration
-        model_config = AVAILABLE_MODELS[normalized_model] || AVAILABLE_MODELS['claude-sonnet-4-5']
+        model_config = AVAILABLE_MODELS[normalized_model] || AVAILABLE_MODELS['claude-sonnet-4-6']
         model_id = model_config[:id]
 
         # Cap max_tokens to the model's limit
@@ -1874,6 +1785,74 @@ class BedrockService
     
     # Convert back to regular hash with string keys (Bedrock expects this)
     sanitized.to_h.deep_stringify_keys
+  end
+
+  # Resolve a model name to its Claude-native (invoke_model) Bedrock model ID
+  def resolve_claude_model_id(model)
+    case model.to_s
+    when "claude-sonnet-4-6", "claude-sonnet-4.6"
+      "global.anthropic.claude-sonnet-4-6"
+    when "claude-sonnet-4-5", "claude-sonnet-4.5", "claude-3-5-sonnet", "claude-3.5-sonnet"
+      "global.anthropic.claude-sonnet-4-6" # Upgraded → Sonnet 4.6
+    when "claude-opus-4-6", "claude-opus-4.6"
+      "global.anthropic.claude-opus-4-6-v1"
+    when "claude-opus-4-5", "claude-opus-4.5", "claude-opus-4-1", "claude-opus-4-1-20250805"
+      "global.anthropic.claude-opus-4-6-v1" # Upgraded → Opus 4.6
+    when "claude-haiku-4-5-20251001", "claude-haiku-4-5", "claude-haiku-4.5", "claude-4-5-haiku",
+         "claude-3-haiku", "claude-3-5-haiku"
+      "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+    else
+      "global.anthropic.claude-sonnet-4-6" # Default
+    end
+  end
+
+  # Resolve a model name to its Converse API Bedrock model ID (supports all providers)
+  def resolve_converse_model_id(model)
+    case model.to_s
+    when "claude-sonnet-4-6", "claude-sonnet-4.6"
+      "global.anthropic.claude-sonnet-4-6"
+    when "claude-sonnet-4-5", "claude-sonnet-4.5", "claude-3-5-sonnet", "claude-3.5-sonnet"
+      "global.anthropic.claude-sonnet-4-6" # Upgraded → Sonnet 4.6
+    when "claude-opus-4-6", "claude-opus-4.6"
+      "global.anthropic.claude-opus-4-6-v1"
+    when "claude-opus-4-5", "claude-opus-4.5", "claude-opus-4-1", "claude-opus-4-1-20250805"
+      "global.anthropic.claude-opus-4-6-v1" # Upgraded → Opus 4.6
+    when "claude-haiku-4-5-20251001", "claude-haiku-4-5", "claude-haiku-4.5", "claude-4-5-haiku",
+         "claude-3-haiku", "claude-3-5-haiku"
+      "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+    when "qwen-3-32b", "qwen-3.32b"
+      "qwen.qwen3-32b-v1:0"
+    when "qwen-3-coder-30b", "qwen-coder"
+      "qwen.qwen3-coder-30b-a3b-v1:0"
+    when "qwen3-next-80b", "qwen-3-next-80b"
+      "qwen.qwen3-next-80b-a3b"
+    when "qwen3-vl-235b"
+      "qwen.qwen3-vl-235b-a22b"
+    when "meta-llama-3-3-70b", "llama-3-3-70b"
+      "us.meta.llama3-3-70b-instruct-v1:0"
+    when "meta-llama-3-2-90b", "llama-3-2-90b"
+      "us.meta.llama3-2-90b-instruct-v1:0"
+    when "mistral-large-3"
+      "mistral.mistral-large-3-675b-instruct"
+    when "mistral-large-2", "mistral-large-2407"
+      "mistral.mistral-large-2407-v1:0"
+    when "mistral-small"
+      "mistral.mistral-small-2402-v1:0"
+    when "deepseek-v3", "deepseek-v3.1", "deepseek"
+      "deepseek.v3-v1:0"
+    when "deepseek-r1", "deepseek-reasoning"
+      "us.deepseek.r1-v1:0"
+    when "nemotron-nano-9b", "nemotron-nano"
+      "nvidia.nemotron-nano-9b-v2"
+    when "nemotron-nano-12b-vl"
+      "nvidia.nemotron-nano-12b-v2"
+    when "ministral-3b"
+      "mistral.ministral-3-3b-instruct"
+    when "ministral-8b"
+      "mistral.ministral-3-8b-instruct"
+    else
+      "qwen.qwen3-next-80b-a3b" # Default for converse
+    end
   end
 
   def format_messages_for_claude(messages)

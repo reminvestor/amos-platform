@@ -124,7 +124,7 @@ class ApplyHtmlLandingPageChangeJob < ApplicationJob
 
     # Use Claude to modify the HTML
     # Use Claude Sonnet 4.5 for good quality edits (balanced cost)
-    response = AiServiceHelper.get_service.send_message(system_prompt, user_prompt, model: "claude-sonnet-4-5", max_tokens: 6000, temperature: 0.4)
+    response = AiServiceHelper.get_service.send_message(system_prompt, user_prompt, model: "claude-sonnet-4-6", max_tokens: 6000, temperature: 0.4)
 
     # Extract either full HTML or a partial snippet
     extracted = extract_full_or_partial_html(response)

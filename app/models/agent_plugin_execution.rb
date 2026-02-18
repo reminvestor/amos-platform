@@ -141,7 +141,7 @@ class AgentPluginExecution < ApplicationRecord
     return nil unless model_id.present?
 
     # Extract short model name from full ARN
-    # e.g., "us.anthropic.claude-sonnet-4-5-v2:0" -> "sonnet-4-5"
+    # e.g., "us.anthropic.claude-sonnet-4-6-v2:0" -> "sonnet-4-6"
     model_id.split('.').last.gsub('anthropic.claude-', '').gsub('-v2:', '').gsub(':0', '')
   end
 
@@ -150,10 +150,12 @@ class AgentPluginExecution < ApplicationRecord
 
     # Model pricing (per 1M tokens)
     pricing = case model_id
-    when /sonnet-4-5/
+    when /sonnet-4-6/, /sonnet-4-5/
       { input: 3.00, output: 15.00 }
     when /sonnet-3-5/
       { input: 3.00, output: 15.00 }
+    when /haiku-4-5/
+      { input: 1.00, output: 5.00 }
     when /haiku-3-5/
       { input: 0.80, output: 4.00 }
     when /opus-3/

@@ -326,7 +326,7 @@ module Tools
       
       # send_message expects an array of message objects, not a string
       messages = [{ role: 'user', content: user_prompt }]
-      updated_html_fragment = ai_service.send_message(system_prompt, messages, model: 'claude-sonnet-4-5', max_tokens: 8192)
+      updated_html_fragment = ai_service.send_message(system_prompt, messages, model: 'claude-sonnet-4-6', max_tokens: 8192)
       updated_html_fragment = strip_markdown_wrapper(updated_html_fragment)
       
       # Log for debugging

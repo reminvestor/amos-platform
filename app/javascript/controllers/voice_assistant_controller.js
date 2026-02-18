@@ -1331,7 +1331,7 @@ export default class extends Controller {
       // Use the global scoutSendMessage function to trigger Scout
       // Pass model override to use faster Haiku for voice responses
       if (window.scoutSendMessage && typeof window.scoutSendMessage === 'function') {
-        window.scoutSendMessage(transcript, { model: 'claude-3-haiku' })
+        window.scoutSendMessage(transcript, { model: 'claude-haiku-4-5' })
         console.log("✅ Sent to Scout via scoutSendMessage with Haiku model")
       } else {
         console.warn("⚠️ scoutSendMessage not available, trying direct method")

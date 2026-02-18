@@ -21,8 +21,8 @@ class OpenrouterService
       cost_per_1m_output: 8.00
     },
     anthropic: {
-      id: "anthropic/claude-sonnet-4.5",
-      name: "Claude Sonnet 4.5",
+      id: "anthropic/claude-sonnet-4.6",
+      name: "Claude Sonnet 4.6",
       provider: "Anthropic",
       cost_per_1m_input: 3.00,
       cost_per_1m_output: 15.00
@@ -79,8 +79,8 @@ class OpenrouterService
       cost_per_1m_output: 10.00
     },
     anthropic_fallback: {
-      id: "anthropic/claude-sonnet-4",
-      name: "Claude Sonnet 4",
+      id: "anthropic/claude-sonnet-4.6",
+      name: "Claude Sonnet 4.6",
       provider: "Anthropic",
       cost_per_1m_input: 3.00,
       cost_per_1m_output: 15.00

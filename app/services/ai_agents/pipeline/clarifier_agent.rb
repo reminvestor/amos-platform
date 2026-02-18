@@ -15,11 +15,11 @@ module AiAgents::Pipeline
       system_prompt = build_system_prompt
       user_message = build_user_message(ticket_title, ticket_description, ticket_metadata)
 
-      # Call Claude 3.5 Haiku (fast and cost-effective: ~$0.02 per ticket)
+      # Call Claude Haiku 4.5 (fast and cost-effective: ~$0.02 per ticket)
       result = call_claude(
         system_prompt,
         user_message,
-        model: 'claude-3-5-haiku-20241022',
+        model: 'claude-haiku-4-5',
         max_tokens: 4000,
         temperature: 0.7
       )

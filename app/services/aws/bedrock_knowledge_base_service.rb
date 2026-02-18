@@ -181,7 +181,7 @@ module Aws
     def retrieve_and_generate(entity, query_text, session_id = nil, options = {})
       ensure_knowledge_base(entity)
 
-      model_arn = options[:model_arn] || "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-sonnet-20241022:2"
+      model_arn = options[:model_arn] || "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-6"
       max_tokens = options[:max_tokens] || 2048
 
       request = {

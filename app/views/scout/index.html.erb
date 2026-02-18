@@ -231,15 +231,8 @@
                       <select id="premium-model-select" class="form-select form-select-sm" style="font-size: 0.875rem;">
                         <optgroup label="Claude Latest">
                           <option value="claude-opus-4-6" data-desc="Latest frontier model - enhanced reasoning, coding, and vision" data-cost="high">Claude Opus 4.6 👑</option>
-                        </optgroup>
-                        <optgroup label="Claude 4.5 Series">
-                          <option value="claude-sonnet-4-5" data-desc="Best for everyday tasks - fast, accurate, and cost-effective" data-cost="medium">Claude Sonnet 4.5 ⭐</option>
+                          <option value="claude-sonnet-4-6" data-desc="Best for everyday tasks - fast, accurate, and cost-effective" data-cost="medium">Claude Sonnet 4.6 ⭐</option>
                           <option value="claude-haiku-4-5" data-desc="Ultra-fast for quick responses - most budget-friendly premium" data-cost="low">Claude Haiku 4.5</option>
-                          <option value="claude-opus-4-5" data-desc="Maximum intelligence for complex reasoning and coding" data-cost="high">Claude Opus 4.5</option>
-                        </optgroup>
-                        <optgroup label="Claude 3.5 Series">
-                          <option value="claude-3-5-sonnet" data-desc="Reliable all-rounder for writing, research, and analysis" data-cost="medium">Claude 3.5 Sonnet</option>
-                          <option value="claude-3-5-haiku" data-desc="Fast responses for simple questions and basic tasks" data-cost="low">Claude 3.5 Haiku</option>
                         </optgroup>
                       </select>
                       <p class="premium-model-desc text-muted small mt-1" id="premium-model-desc">
@@ -725,12 +718,9 @@ document.addEventListener('turbo:load', function() {
   // NOTE: Order matters! First model is the fallback if saved model doesn't exist
   const MODELS_BY_PROVIDER = {
     anthropic: [
-      { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5', desc: 'Best for everyday tasks - fast, accurate, and cost-effective' },
+      { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6', desc: 'Best for everyday tasks - fast, accurate, and cost-effective' },
       { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', desc: 'Best for quick responses - ultra-fast and budget-friendly' },
-      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', desc: 'Reliable all-rounder for writing, research, and analysis' },
-      { id: 'claude-3-haiku', name: 'Claude 3.5 Haiku', desc: 'Fast responses for simple questions and basic tasks' },
-      { id: 'claude-opus-4-5', name: 'Claude Opus 4.5', desc: 'Best for coding, debugging, and complex reasoning tasks' },
-      { id: 'claude-opus-4-1', name: 'Claude Opus 4.1', desc: 'Premium model for detailed analysis and strategic planning' }
+      { id: 'claude-opus-4-6', name: 'Claude Opus 4.6', desc: 'Best for coding, debugging, and complex reasoning tasks' }
     ],
     meta: [
       { id: 'meta-llama-3-2-90b', name: 'Llama 3.2 90B Vision', desc: 'Best for image analysis and visual understanding' },
@@ -746,16 +736,16 @@ document.addEventListener('turbo:load', function() {
   let currentProvider = localStorage.getItem('scout_provider') || 'anthropic';
   
   // One-time migration: Reset users who had Opus as default before we changed it
-  // This ensures existing users get switched to the more cost-effective Sonnet 4.5
-  const modelMigrationVersion = 'v2_sonnet_default';
+  // This ensures existing users get switched to the more cost-effective Sonnet 4.6
+  const modelMigrationVersion = 'v3_sonnet_46_default';
   if (localStorage.getItem('scout_model_migration') !== modelMigrationVersion) {
-    console.log('🧠 Running model migration - resetting to Sonnet 4.5 default');
-    localStorage.setItem('scout_selected_model', 'claude-sonnet-4-5');
+    console.log('🧠 Running model migration - resetting to Sonnet 4.6 default');
+    localStorage.setItem('scout_selected_model', 'claude-sonnet-4-6');
     localStorage.setItem('scout_model_migration', modelMigrationVersion);
   }
   
-  // Default to Sonnet 4.5 - good balance of quality and cost
-  let currentModelId = localStorage.getItem('scout_selected_model') || 'claude-sonnet-4-5';
+  // Default to Sonnet 4.6 - good balance of quality and cost
+  let currentModelId = localStorage.getItem('scout_selected_model') || 'claude-sonnet-4-6';
 
   // Update brain fill based on model
   function updateBrainFill(modelId) {
@@ -996,7 +986,21 @@ document.addEventListener('turbo:load', function() {
 
   // Track premium mode state
   let isPremiumMode = localStorage.getItem('scout_premium_mode') === 'true';
-  let selectedPremiumModel = localStorage.getItem('scout_premium_model') || 'claude-sonnet-4-5';
+  let selectedPremiumModel = localStorage.getItem('scout_premium_model') || 'claude-sonnet-4-6';
+  
+  // Migrate deprecated premium models to new ones
+  const premiumModelMigration = {
+    'claude-sonnet-4-5': 'claude-sonnet-4-6',
+    'claude-opus-4-5': 'claude-opus-4-6',
+    'claude-opus-4-1': 'claude-opus-4-6',
+    'claude-3-5-sonnet': 'claude-sonnet-4-6',
+    'claude-3-haiku': 'claude-haiku-4-5',
+    'claude-3-5-haiku': 'claude-haiku-4-5'
+  };
+  if (premiumModelMigration[selectedPremiumModel]) {
+    selectedPremiumModel = premiumModelMigration[selectedPremiumModel];
+    localStorage.setItem('scout_premium_model', selectedPremiumModel);
+  }
 
   // Initialize premium mode UI
   function initPremiumMode() {

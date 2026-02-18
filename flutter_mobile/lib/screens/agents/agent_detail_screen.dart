@@ -26,8 +26,8 @@ class _AgentDetailScreenState extends ConsumerState<AgentDetailScreen> {
   // Model selection state
   double _modelPower = 50;
   // ignore: unused_field - Will be used when API call is implemented
-  String _selectedModel = 'claude-3-5-sonnet';
-  String _selectedModelName = 'Claude 3.5 Sonnet';
+  String _selectedModel = 'claude-sonnet-4-6';
+  String _selectedModelName = 'Claude Sonnet 4.6';
 
   @override
   void initState() {
@@ -60,17 +60,17 @@ class _AgentDetailScreenState extends ConsumerState<AgentDetailScreen> {
     setState(() {
       _modelPower = power;
       if (power <= 12.5) {
-        _selectedModel = 'claude-3-haiku';
-        _selectedModelName = 'Claude 3.5 Haiku';
-      } else if (power <= 37.5) {
         _selectedModel = 'claude-haiku-4-5';
         _selectedModelName = 'Claude Haiku 4.5';
+      } else if (power <= 37.5) {
+        _selectedModel = 'claude-sonnet-4-6';
+        _selectedModelName = 'Claude Sonnet 4.6';
       } else if (power <= 75) {
-        _selectedModel = 'claude-3-5-sonnet';
-        _selectedModelName = 'Claude 3.5 Sonnet';
+        _selectedModel = 'claude-sonnet-4-6';
+        _selectedModelName = 'Claude Sonnet 4.6';
       } else {
-        _selectedModel = 'claude-sonnet-4-5';
-        _selectedModelName = 'Claude Sonnet 4.5';
+        _selectedModel = 'claude-opus-4-6';
+        _selectedModelName = 'Claude Opus 4.6';
       }
     });
   }
@@ -601,13 +601,13 @@ class _ModelSelectorSheetState extends State<_ModelSelectorSheet> {
     setState(() {
       _power = value;
       if (value <= 12.5) {
-        _modelName = 'Claude 3.5 Haiku';
-      } else if (value <= 37.5) {
         _modelName = 'Claude Haiku 4.5';
+      } else if (value <= 37.5) {
+        _modelName = 'Claude Sonnet 4.6';
       } else if (value <= 75) {
-        _modelName = 'Claude 3.5 Sonnet';
+        _modelName = 'Claude Sonnet 4.6';
       } else {
-        _modelName = 'Claude Sonnet 4.5';
+        _modelName = 'Claude Opus 4.6';
       }
     });
     widget.onPowerChanged(value);
@@ -755,30 +755,30 @@ class _ModelSelectorSheetState extends State<_ModelSelectorSheet> {
             children: [
               _PresetButton(
                 label: 'Fastest',
-                modelName: 'Claude 3.5 Haiku',
+                modelName: 'Claude Haiku 4.5',
                 isSelected: _power == 0,
-                onTap: () => _selectPreset(0, 'claude-3-haiku', 'Claude 3.5 Haiku'),
+                onTap: () => _selectPreset(0, 'claude-haiku-4-5', 'Claude Haiku 4.5'),
               ),
               const SizedBox(height: 8),
               _PresetButton(
                 label: 'Fast',
-                modelName: 'Claude Haiku 4.5',
+                modelName: 'Claude Sonnet 4.6',
                 isSelected: _power == 25,
-                onTap: () => _selectPreset(25, 'claude-haiku-4-5', 'Claude Haiku 4.5'),
+                onTap: () => _selectPreset(25, 'claude-sonnet-4-6', 'Claude Sonnet 4.6'),
               ),
               const SizedBox(height: 8),
               _PresetButton(
                 label: 'Balanced',
-                modelName: 'Claude 3.5 Sonnet',
+                modelName: 'Claude Sonnet 4.6',
                 isSelected: _power == 50,
-                onTap: () => _selectPreset(50, 'claude-3-5-sonnet', 'Claude 3.5 Sonnet'),
+                onTap: () => _selectPreset(50, 'claude-sonnet-4-6', 'Claude Sonnet 4.6'),
               ),
               const SizedBox(height: 8),
               _PresetButton(
                 label: 'Most Robust',
-                modelName: 'Claude Sonnet 4.5',
+                modelName: 'Claude Opus 4.6',
                 isSelected: _power == 100,
-                onTap: () => _selectPreset(100, 'claude-sonnet-4-5', 'Claude Sonnet 4.5'),
+                onTap: () => _selectPreset(100, 'claude-opus-4-6', 'Claude Opus 4.6'),
               ),
             ],
           ),

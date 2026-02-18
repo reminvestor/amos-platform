@@ -26,8 +26,8 @@ module V3
   #
   class PlatformBrain
     # Use Claude Sonnet for reliable tool execution
-    BRAIN_MODEL = "claude-sonnet-4-5"
-    BRAIN_MODEL_ID = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    BRAIN_MODEL = "claude-sonnet-4-6"
+    BRAIN_MODEL_ID = "global.anthropic.claude-sonnet-4-6"
     MAX_TOOL_TURNS = 15
 
     # Security constants moved to V3::ToolSecurity (Phase 6B).

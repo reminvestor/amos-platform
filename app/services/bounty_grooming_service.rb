@@ -326,7 +326,7 @@ class BountyGroomingService
       service.converse(
         messages: [{ role: 'user', content: [{ text: prompt }] }],
         system_prompt: "You are AMOS, an autonomous AI performing sprint grooming. Respond only with valid JSON.",
-        model: 'claude-3-haiku'  # Cost optimization: use cheaper model for batch work
+        model: 'claude-haiku-4-5'  # Cost optimization: use cheaper model for batch work
       )
     elsif defined?(LlmService)
       LlmService.chat(system: "You are AMOS performing sprint grooming. Respond with JSON.", user: prompt, temperature: 0.3)

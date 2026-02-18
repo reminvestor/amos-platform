@@ -207,7 +207,7 @@ class WebsitePageGeneratorService
       messages: messages,
       max_tokens: 8192,
       temperature: 0.7,
-      model: 'claude-sonnet-4-5'
+      model: 'claude-sonnet-4-6'
     )
 
     html = if response.is_a?(Hash)

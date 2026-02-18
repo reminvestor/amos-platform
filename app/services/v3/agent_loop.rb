@@ -28,30 +28,29 @@ module V3
     DEFAULT_AUTO_MODEL = "qwen3-next-80b"
 
     # Tiered escalation: each model escalates to the next tier
-    # Qwen/cheap → Sonnet 4.5 → Opus 4.6 (terminal)
+    # Qwen/cheap → Sonnet 4.6 → Opus 4.6 (terminal)
     ESCALATION_MAP = {
-      # Default/cheap models escalate to Sonnet 4.5
-      "qwen3-next-80b"    => "claude-sonnet-4-5",
-      "qwen-3-32b"        => "claude-sonnet-4-5",
-      "qwen-coder"        => "claude-sonnet-4-5",
-      "deepseek-v3"       => "claude-sonnet-4-5",
-      "deepseek-r1"       => "claude-sonnet-4-5",
-      "mistral-large-3"   => "claude-sonnet-4-5",
-      # Sonnet 4.5 escalates to Opus 4.6
-      "claude-sonnet-4-5" => "claude-opus-4-6",
-      "claude-haiku-4-5"  => "claude-sonnet-4-5",
-      # Opus models are terminal — no further escalation
-      "claude-opus-4-1"   => nil,
-      "claude-opus-4-5"   => nil,
+      # Default/cheap models escalate to Sonnet 4.6
+      "qwen3-next-80b"    => "claude-sonnet-4-6",
+      "qwen-3-32b"        => "claude-sonnet-4-6",
+      "qwen-coder"        => "claude-sonnet-4-6",
+      "deepseek-v3"       => "claude-sonnet-4-6",
+      "deepseek-r1"       => "claude-sonnet-4-6",
+      "mistral-large-3"   => "claude-sonnet-4-6",
+      # Sonnet 4.6 escalates to Opus 4.6
+      "claude-sonnet-4-6" => "claude-opus-4-6",
+      "claude-sonnet-4-5" => "claude-opus-4-6", # Legacy alias
+      "claude-haiku-4-5"  => "claude-sonnet-4-6",
+      # Opus 4.6 is terminal — no further escalation
       "claude-opus-4-6"   => nil,
     }.freeze
 
     # Legacy constant for backward compat
-    ESCALATION_MODEL = "claude-sonnet-4-5"
+    ESCALATION_MODEL = "claude-sonnet-4-6"
 
     # Models that are truly top-tier — no further escalation possible
     TOP_TIER_MODELS = %w[
-      claude-opus-4-1 claude-opus-4-5 claude-opus-4-6
+      claude-opus-4-6
     ].freeze
 
     def initialize(user:, entity:, session_id:, model: nil, client_ip: nil)
@@ -815,7 +814,7 @@ module V3
       elsif model_name.include?("opus")
         nil  # Opus is terminal
       else
-        ESCALATION_MODEL  # Default: escalate to Sonnet 4.5
+        ESCALATION_MODEL  # Default: escalate to Sonnet 4.6
       end
     end
 

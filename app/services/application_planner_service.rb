@@ -340,7 +340,7 @@ class ApplicationPlannerService
     prompt = build_schema_design_prompt(name, description, requirements)
 
     response = bedrock_client.converse(
-      model_id: "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      model_id: "global.anthropic.claude-sonnet-4-6",
       messages: [{ role: "user", content: [{ text: prompt }] }],
       inference_config: { max_tokens: 4096, temperature: 0.3 },
       system: [{ text: schema_design_system_prompt }]

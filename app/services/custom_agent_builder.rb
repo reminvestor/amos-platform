@@ -277,7 +277,7 @@ end
 #   
 #   workflow: {
 #     type: "llm_generation",
-#     model: "claude-sonnet-4-5",
+#     model: "claude-sonnet-4-6",
 #     system_prompt: "You are an expert blog writer...",
 #     template: <<~TEMPLATE
 #       Write a blog post about {{gathered_topic}} for {{entity_name}}.

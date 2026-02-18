@@ -81,11 +81,11 @@ module AiAgents::Pipeline
       case model
       when 'qwen3-next-80b'
         (input_tokens / 1_000_000.0 * 0.15) + (output_tokens / 1_000_000.0 * 1.20)
-      when 'claude-sonnet-4-5'
-        (input_tokens / 1_000_000.0 * 7.50) + (output_tokens / 1_000_000.0 * 15.00)
-      when 'claude-3-5-sonnet'
+      when 'claude-sonnet-4-6', 'claude-sonnet-4-5', 'claude-3-5-sonnet'
         (input_tokens / 1_000_000.0 * 3.00) + (output_tokens / 1_000_000.0 * 15.00)
-      when 'claude-3-5-haiku'
+      when 'claude-opus-4-6', 'claude-opus-4-5'
+        (input_tokens / 1_000_000.0 * 5.00) + (output_tokens / 1_000_000.0 * 25.00)
+      when 'claude-haiku-4-5', 'claude-3-5-haiku', 'claude-3-haiku'
         (input_tokens / 1_000_000.0 * 1.00) + (output_tokens / 1_000_000.0 * 5.00)
       else
         0.0

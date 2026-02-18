@@ -407,7 +407,7 @@ class LightningStoreService
   # Adjust these based on current Anthropic pricing
   def calculate_token_cost(model, input_tokens, output_tokens)
     case model
-    when "claude-sonnet-4.5"
+    when "claude-sonnet-4.6", "claude-sonnet-4.5"
       input_cost = input_tokens * (3.0 / 1_000_000)  # $3 per 1M input tokens
       output_cost = output_tokens * (15.0 / 1_000_000)  # $15 per 1M output tokens
       (input_cost + output_cost).round(8)

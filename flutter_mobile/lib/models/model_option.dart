@@ -36,8 +36,8 @@ class ModelOption {
     ),
     // Backup Claude model
     ModelOption(
-      id: 'claude-haiku-4-5-20251001',
-      name: 'Claude Haiku',
+      id: 'claude-haiku-4-5',
+      name: 'Claude Haiku 4.5',
       description: 'Fast backup option',
       supportsVision: true,
     ),

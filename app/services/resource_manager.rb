@@ -361,12 +361,13 @@ class ResourceManager
     pricing = {
       "claude-3-opus" => { input: 0.015, output: 0.075 }, # per 1K tokens
       "claude-3-sonnet" => { input: 0.003, output: 0.015 },
+      "claude-haiku-4-5" => { input: 0.001, output: 0.005 },
       "claude-3-haiku" => { input: 0.0025, output: 0.0125 },
       "gpt-4-turbo" => { input: 0.01, output: 0.03 },
       "gpt-3.5-turbo" => { input: 0.0005, output: 0.0015 }
     }
 
-    model_pricing = pricing[model] || pricing["claude-3-haiku"]
+    model_pricing = pricing[model] || pricing["claude-haiku-4-5"]
 
     input_cost = (tokens[:input] || 0) / 1000.0 * model_pricing[:input]
     output_cost = (tokens[:output] || 0) / 1000.0 * model_pricing[:output]

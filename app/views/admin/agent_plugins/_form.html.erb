@@ -197,15 +197,12 @@
                 <%= f.label :ai_model, "AI Model", class: "form-label small fw-semibold" %>
                 <%= f.select :ai_model,
                   options_for_select([
-                    ['Claude Opus 4.5 (maximum reasoning)', 'claude-opus-4-5'],
-                    ['Claude Sonnet 4.5 (balanced - recommended)', 'claude-sonnet-4-5'],
+                    ['Claude Opus 4.6 (maximum reasoning)', 'claude-opus-4-6'],
+                    ['Claude Sonnet 4.6 (balanced - recommended)', 'claude-sonnet-4-6'],
                     ['Claude Haiku 4.5 (fast & cheap)', 'claude-haiku-4-5'],
                     ['Qwen 2.5 72B (open weights)', 'qwen-2-5-72b'],
-                    ['Qwen 2.5 Coder 32B', 'qwen-2-5-coder-32b'],
-                    ['Claude Opus 4.1 (legacy high quality)', 'claude-opus-4-1'],
-                    ['Claude 3.5 Sonnet', 'claude-3-5-sonnet'],
-                    ['Claude 3 Haiku', 'claude-3-haiku']
-                  ], agent_plugin.ai_model || 'claude-sonnet-4-5'),
+                    ['Qwen 2.5 Coder 32B', 'qwen-2-5-coder-32b']
+                  ], agent_plugin.ai_model || 'claude-sonnet-4-6'),
                   {},
                   class: 'form-select form-select-sm' %>
               </div>

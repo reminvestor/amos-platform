@@ -17,7 +17,7 @@ class ClaudeService
   end
 
   # Send a message to Claude 3.7 using the Messages API
-  def send_message(system_prompt, messages, model: "claude-3-5-sonnet-20241022", max_tokens: 4000, temperature: 0.7, json_mode: false)
+  def send_message(system_prompt, messages, model: "claude-sonnet-4-6", max_tokens: 4000, temperature: 0.7, json_mode: false)
     # Ensure messages is an array
     messages_array = case messages
     when Array

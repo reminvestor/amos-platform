@@ -252,7 +252,7 @@ class ScoutAwsIntegration
   def select_optimal_model(analysis, options)
     # Use cost-effective models for simple queries
     if options[:prefer_fast_model]
-      return "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-haiku-20241022:1"
+      return "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-haiku-20241022-v1:0"
     end
 
     # Check complexity indicators
@@ -261,10 +261,10 @@ class ScoutAwsIntegration
 
     # Simple queries can use Haiku
     if entities_count < 3 && key_phrases_count < 5
-      "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-haiku-20241022:1"
+      "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-haiku-20241022-v1:0"
     else
       # Complex queries use Sonnet
-      "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-sonnet-20241022:2"
+      "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-6"
     end
   end
 

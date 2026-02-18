@@ -222,15 +222,14 @@ module Agents
     def calculate_cost_score(agent, task_description, prefer_cost_efficient)
       # Model cost tiers (lower is cheaper)
       model_costs = {
-        'claude-3-5-haiku' => 1,
-        'claude-3-haiku' => 1,
+        'claude-haiku-4-5' => 1,
+        'claude-haiku-4-5' => 1,
         'gpt-4o-mini' => 1,
-        'claude-3-5-sonnet' => 3,
-        'claude-sonnet-4-20250514' => 3,
+        'claude-sonnet-4-6' => 3,
+        'claude-sonnet-4-6' => 3,
         'gpt-4o' => 3,
         'gpt-4' => 4,
-        'claude-opus-4-20250514' => 5,
-        'claude-3-opus' => 5,
+        'claude-opus-4-6' => 5,
         'o1' => 5
       }
 

@@ -30,7 +30,7 @@
           <input type="text" class="form-control fs-4 fw-bold text-center text-success" 
                  id="referral-code" value="<%= @referral_code %>" readonly>
           <button class="btn btn-outline-success" onclick="copyLink('referral-code', this)">
-            <i class="bi bi-clipboard"></i>
+            <i class="bi bi-clipboard me-1"></i> Copy
           </button>
         </div>
       </div>
@@ -68,12 +68,7 @@
       </div>
       <div class="card-body text-center py-4">
         <div class="bg-white rounded p-3 d-inline-block mb-3">
-          <div id="qr-placeholder" class="d-flex align-items-center justify-content-center text-muted" style="width: 200px; height: 200px;">
-            <div>
-              <i class="bi bi-qr-code display-1"></i>
-              <p class="small mt-2 mb-0">QR Code</p>
-            </div>
-          </div>
+          <canvas id="qr-canvas" style="width: 200px; height: 200px;"></canvas>
         </div>
         <p class="text-muted small">
           Scan this QR code to open your referral link.
@@ -110,6 +105,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <script>
 function copyLink(inputId, btn) {
   const input = document.getElementById(inputId);
@@ -119,4 +115,15 @@ function copyLink(inputId, btn) {
     setTimeout(() => { btn.innerHTML = original; }, 2000);
   });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+  const canvas = document.getElementById('qr-canvas');
+  if (canvas && typeof QRCode !== 'undefined') {
+    QRCode.toCanvas(canvas, '<%= @referral_link %>', {
+      width: 200,
+      margin: 1,
+      color: { dark: '#000000', light: '#ffffff' }
+    });
+  }
+});
 </script>

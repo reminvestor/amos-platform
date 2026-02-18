@@ -17,9 +17,11 @@ class BillingConfiguration < ApplicationRecord
   # Updated: December 2024
   MODEL_PRICING = {
     # ============================================
-    # Claude 4.5 Series (via Bedrock)
+    # Claude 4.6 Series (via Bedrock)
     # ============================================
-    # Claude Sonnet 4.5: $3.00/M input, $15.00/M output
+    # Claude Sonnet 4.6: $3.00/M input, $15.00/M output
+    'claude-sonnet-4-6' => { input: 3.00, output: 15.00 },
+    # Claude Sonnet 4.5: $3.00/M input, $15.00/M output (legacy)
     'claude-sonnet-4-5' => { input: 3.00, output: 15.00 },
     'claude-4-5-sonnet' => { input: 3.00, output: 15.00 },
     
@@ -32,14 +34,14 @@ class BillingConfiguration < ApplicationRecord
     'claude-opus-4-6' => { input: 5.00, output: 25.00 },
     'anthropic.claude-opus-4-6-v1' => { input: 5.00, output: 25.00 },
     
-    # Claude Opus 4.5: $5.00/M input, $25.00/M output (AWS Bedrock Jan 2026)
+    # Claude Opus 4.5: $5.00/M input, $25.00/M output (legacy)
     'claude-opus-4-5' => { input: 5.00, output: 25.00 },
     'claude-4-5-opus' => { input: 5.00, output: 25.00 },
     
     # ============================================
     # Claude 4 Series (via Bedrock)
     # ============================================
-    # Claude Opus 4.1: $15.00/M input, $75.00/M output
+    # Claude Opus 4.1: $15.00/M input, $75.00/M output (legacy)
     'claude-opus-4-1' => { input: 15.00, output: 75.00 },
     'claude-4-1-opus' => { input: 15.00, output: 75.00 },
     
@@ -54,7 +56,7 @@ class BillingConfiguration < ApplicationRecord
     # ============================================
     # Claude 3.5 Series (via Bedrock)
     # ============================================
-    # Claude 3.5 Sonnet: $3.00/M input, $15.00/M output
+    # Claude 3.5 Sonnet: $3.00/M input, $15.00/M output (legacy - maps to Sonnet 4.6)
     'claude-3-5-sonnet' => { input: 3.00, output: 15.00 },
     'claude-sonnet-3-5' => { input: 3.00, output: 15.00 },
     
@@ -73,7 +75,7 @@ class BillingConfiguration < ApplicationRecord
     'claude-3-sonnet' => { input: 3.00, output: 15.00 },
     'claude-sonnet-3' => { input: 3.00, output: 15.00 },
     
-    # Claude 3 Haiku: $0.25/M input, $1.25/M output
+    # Claude 3 Haiku: $0.25/M input, $1.25/M output (legacy)
     'claude-3-haiku' => { input: 0.25, output: 1.25 },
     'claude-haiku-3' => { input: 0.25, output: 1.25 },
     

@@ -29,7 +29,7 @@ module AiAgents
       response = @ai_service.send_message(
         system_prompt,
         user_prompt,
-        model: "claude-sonnet-4-5",  # Sonnet for reliable code/build output
+        model: "claude-sonnet-4-6",  # Sonnet for reliable code/build output
         max_tokens: 4000,
         temperature: 0.7
       )

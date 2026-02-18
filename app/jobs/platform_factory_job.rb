@@ -394,7 +394,7 @@ class PlatformFactoryJob < ApplicationJob
     service = BedrockConversationService.new(
       user: @user,
       entity: @entity,
-      model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
+      model_id: 'global.anthropic.claude-sonnet-4-6'
     )
 
     response = service.send_message(

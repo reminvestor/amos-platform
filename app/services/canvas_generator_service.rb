@@ -19,7 +19,7 @@
 #
 class CanvasGeneratorService
   # Use Claude for canvas generation
-  CANVAS_MODEL_ID = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+  CANVAS_MODEL_ID = "global.anthropic.claude-sonnet-4-6"
   MAX_TOKENS = 8192
 
   # View types that we can generate

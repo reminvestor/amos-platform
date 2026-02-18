@@ -389,11 +389,9 @@ class ScoutController < ApplicationController
     
     # Valid premium models (Claude only for now)
     valid_models = %w[
-      claude-sonnet-4-5
+      claude-sonnet-4-6
       claude-haiku-4-5
-      claude-opus-4-5
-      claude-3-5-sonnet
-      claude-3-5-haiku
+      claude-opus-4-6
     ]
     
     if model.nil? || model.blank?

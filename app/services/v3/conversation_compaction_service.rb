@@ -29,10 +29,12 @@ module V3
     MODEL_CONTEXT_WINDOWS = {
       "claude-sonnet-4-20250514" => 150_000,
       "claude-sonnet-4-5-20250514" => 150_000,
+      "claude-sonnet-4-6" => 150_000,
       "anthropic.claude-opus-4-6-v1" => 150_000,
       "anthropic.claude-sonnet-4-5-v1" => 150_000,
+      "anthropic.claude-sonnet-4-6-v1" => 150_000,
       "anthropic.claude-sonnet-4-v1" => 150_000,
-      "claude-3-haiku" => 150_000,
+      "claude-haiku-4-5" => 150_000,
       "default" => 100_000
     }.freeze
 
@@ -146,7 +148,7 @@ module V3
         response = ai_service.send_message(
           summary_prompt,
           [{ role: "user", content: [{ text: conversation_text.truncate(50_000) }] }],
-          model: "claude-3-haiku", # Use cheap/fast model for summarization
+          model: "claude-haiku-4-5", # Use cheap/fast model for summarization
           max_tokens: 2000,
           temperature: 0.1
         )

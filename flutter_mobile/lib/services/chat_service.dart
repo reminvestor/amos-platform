@@ -58,7 +58,7 @@ class ChatService {
   /// Parameters:
   /// - [message]: The user's message
   /// - [sessionId]: Chat session identifier
-  /// - [model]: AI model to use (e.g., 'claude-sonnet-4-5')
+  /// - [model]: AI model to use (e.g., 'claude-sonnet-4-6')
   /// - [files]: List of uploaded files to include
   Stream<ChatStreamEvent> sendMessage(
     String message, {

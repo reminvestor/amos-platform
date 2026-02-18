@@ -92,16 +92,22 @@ class AiUsageLog < ApplicationRecord
     # Claude 4.5 series
     when /claude.*haiku.*4.*5|claude-haiku-4-5/i
       { input: 100, output: 500 }  # $1.00/M input, $5.00/M output
+    # Claude 4.6 series
+    when /claude.*sonnet.*4.*6|claude-sonnet-4-6/i
+      { input: 300, output: 1500 } # $3.00/M input, $15.00/M output
+    when /claude.*opus.*4.*6|claude-opus-4-6/i
+      { input: 500, output: 2500 } # $5.00/M input, $25.00/M output
+    # Claude 4.5 series (legacy)
     when /claude.*sonnet.*4.*5|claude-sonnet-4-5/i
       { input: 300, output: 1500 } # $3.00/M input, $15.00/M output
     when /claude.*opus.*4.*5|claude-opus-4-5/i
       { input: 500, output: 2500 } # $5.00/M input, $25.00/M output
-    # Claude 3.5 series
+    # Claude 3.5 series (legacy)
     when /claude-3-5-sonnet|claude-sonnet-3.5/i
       { input: 300, output: 1500 } # $3/M input, $15/M output
     when /claude-3-5-haiku/i
       { input: 80, output: 400 }   # $0.80/M input, $4/M output
-    # Claude 3 series
+    # Claude 3 series (legacy)
     when /claude-3-opus/i
       { input: 1500, output: 7500 } # $15/M input, $75/M output
     when /claude-3-haiku/i
