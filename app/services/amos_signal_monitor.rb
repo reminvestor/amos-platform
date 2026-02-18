@@ -92,8 +92,8 @@ class AmosSignalMonitor
   def check_pattern_trigger(signals)
     recent = signals.where('created_at > ?', PATTERN_WINDOW.ago)
 
-    # Group by signal type and find patterns
-    patterns = recent.group(:signal_type).count
+    # Group by signal type and find patterns (reorder to drop default scope ordering)
+    patterns = recent.reorder('').group(:signal_type).count
     pattern_type = patterns.find { |_, count| count >= PATTERN_COUNT }
 
     return nil unless pattern_type
