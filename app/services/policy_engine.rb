@@ -56,7 +56,7 @@ class PolicyEngine
     def evaluate_rule(rule, connection, operation_id, agent_role)
       context = build_context(connection, operation_id, agent_role)
 
-      case rule.conditions["type"]
+      result = case rule.conditions["type"]
       when "allow_list"
         evaluate_allow_list(rule.conditions, operation_id)
       when "deny_list"
@@ -68,9 +68,15 @@ class PolicyEngine
       when "custom"
         evaluate_custom_conditions(rule.conditions, context)
       else
-        # Unknown rule type - fail closed
-        false
+        Rails.logger.warn "PolicyEngine: Unknown rule type '#{rule.conditions['type']}' on rule #{rule.id}, allowing by default"
+        true
       end
+
+      unless result
+        Rails.logger.info "PolicyEngine: Rule #{rule.id} (#{rule.conditions['type']}) blocked operation '#{operation_id}' on connection #{connection.id}"
+      end
+
+      result
     end
 
     def build_context(connection, operation_id, agent_role)

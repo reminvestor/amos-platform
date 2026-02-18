@@ -30,11 +30,14 @@ class Connection < ApplicationRecord
   end
 
   def can_execute?(operation_id, agent_role = nil)
-    # Check if operation is allowed for this connection
-    return false unless allowed_operations.blank? || allowed_operations.include?(operation_id)
+    unless allowed_operations.blank? || allowed_operations.include?(operation_id)
+      Rails.logger.info "🚫 Connection #{id}: operation '#{operation_id}' not in allowed_operations list"
+      return false
+    end
 
-    # Check policy rules
-    PolicyEngine.check(self, operation_id, agent_role)
+    result = PolicyEngine.check(self, operation_id, agent_role)
+    Rails.logger.info "🚫 Connection #{id}: PolicyEngine denied '#{operation_id}'" unless result
+    result
   end
 
   def within_rate_limit?

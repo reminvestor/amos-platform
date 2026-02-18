@@ -37,7 +37,12 @@ class UniversalIntegrationExecutor
       
       # 4. Check if operation is allowed
       unless connection.can_execute?(operation_record.operation_id, 'scout')
-        return error_response("Operation not allowed by policy")
+        reason = if connection.allowed_operations.present? && !connection.allowed_operations.include?(operation_record.operation_id)
+          "Operation '#{operation_record.operation_id}' is not in the connection's allowed operations list. Available: #{connection.allowed_operations.first(5).join(', ')}"
+        else
+          "A policy rule is blocking this operation. Check the policy rules for this integration."
+        end
+        return error_response("Operation not allowed: #{reason}")
       end
       
       # 5. Check rate limits
