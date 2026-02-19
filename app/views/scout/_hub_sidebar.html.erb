@@ -38,131 +38,205 @@
       </div>
     </div>
 
-    <%# Flat menu items - no categories or dropdowns %>
-    <div class="hub-items">
-      <div class="hub-item hub-canvas-shortcut" data-canvas="operations_dashboard" data-action="click->hub-sidebar#loadCanvas">
-        <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #ef4444, #f97316);">
-          <i data-lucide="radar"></i>
-        </div>
-        <div class="hub-item-content">
-          <div class="hub-item-name">Command Center</div>
-        </div>
+    <%# ═══ WORKSPACE section (collapsible) ═══ %>
+    <div class="hub-section-collapsible" data-hub-sidebar-target="canvasesSection">
+      <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="workspace">
+        <span class="hub-section-title"><i data-lucide="layout-dashboard" style="width:12px;height:12px;" class="me-1"></i> Workspace</span>
+        <i data-lucide="chevron-down" class="hub-section-chevron" style="width:12px;height:12px;"></i>
       </div>
-
-      <div class="hub-item hub-canvas-shortcut" data-canvas="my_creations" data-action="click->hub-sidebar#loadCanvas">
-        <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #8b5cf6, #a855f7);">
-          <i data-lucide="sparkles"></i>
-        </div>
-        <div class="hub-item-content">
-          <div class="hub-item-name">Apps & Automations</div>
-        </div>
-      </div>
-
-      <div class="hub-item hub-canvas-shortcut hub-work-inbox-item" data-canvas="work_inbox" data-action="click->hub-sidebar#loadCanvas">
-        <div class="hub-item-avatar hub-avatar-canvas">
-          <i data-lucide="inbox"></i>
-          <% unread_count = AgentWorkItem.unread_count_for(current_user, current_entity) rescue 0 %>
-          <% if unread_count > 0 %>
-            <span class="hub-inbox-badge" id="hub-work-inbox-badge"><%= unread_count > 99 ? '99+' : unread_count %></span>
-          <% else %>
-            <span class="hub-inbox-badge" id="hub-work-inbox-badge" style="display: none;"></span>
-          <% end %>
-        </div>
-        <div class="hub-item-content">
-          <div class="hub-item-name">Work Inbox</div>
-        </div>
-      </div>
-
-      <div class="hub-item hub-canvas-shortcut" data-canvas="scheduled_tasks" data-action="click->hub-sidebar#loadCanvas">
-        <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #0ea5e9, #38bdf8);">
-          <i data-lucide="clock"></i>
-        </div>
-        <div class="hub-item-content">
-          <div class="hub-item-name">Tasks</div>
-        </div>
-      </div>
-
-      <div class="hub-item hub-canvas-shortcut" data-canvas="contact_viewer" data-action="click->hub-sidebar#loadCanvas">
-        <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #10b981, #34d399);">
-          <i data-lucide="users"></i>
-        </div>
-        <div class="hub-item-content">
-          <div class="hub-item-name">Contacts</div>
-        </div>
-      </div>
-
-      <div class="hub-item hub-canvas-shortcut" data-canvas="pipeline_viewer" data-action="click->hub-sidebar#loadCanvas">
-        <div class="hub-item-avatar hub-avatar-canvas">
-          <i data-lucide="git-branch"></i>
-        </div>
-        <div class="hub-item-content">
-          <div class="hub-item-name">Pipeline</div>
-        </div>
-      </div>
-
-      <div class="hub-item hub-canvas-shortcut" data-canvas="document_store" data-action="click->hub-sidebar#loadCanvas">
-        <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #f59e0b, #fbbf24);">
-          <i data-lucide="folder-open"></i>
-        </div>
-        <div class="hub-item-content">
-          <div class="hub-item-name">Documents</div>
-        </div>
-      </div>
-
-      <div class="hub-item hub-canvas-shortcut" data-canvas="integrations_manager" data-action="click->hub-sidebar#loadCanvas">
-        <div class="hub-item-avatar hub-avatar-canvas">
-          <i data-lucide="plug"></i>
-        </div>
-        <div class="hub-item-content">
-          <div class="hub-item-name">Integrations</div>
-        </div>
-      </div>
-
-      <%# User-pinned items from Platform Settings %>
-      <% if @hub_pinned_canvases.present? %>
-        <% @hub_pinned_canvases.each do |canvas_slug| %>
-          <%
-            next if %w[work_inbox scheduled_tasks contact_viewer pipeline_viewer integrations_manager document_store my_creations automation_dashboard module_manager operations_command_center analytics workflow_designer template_library media_library favorites design_studio].include?(canvas_slug.to_s)
-
-            canvas_info = case canvas_slug.to_s
-            when 'landing_pages' then { name: 'Landing Pages', icon: 'layout' }
-            when 'campaigns' then { name: 'Campaigns', icon: 'mail' }
-            when 'email_templates' then { name: 'Email Templates', icon: 'file-text' }
-            when 'contacts' then { name: 'Contacts', icon: 'users' }
-            when 'contact_groups' then { name: 'Contact Groups', icon: 'user-plus' }
-            when 'saved_visualizations' then { name: 'Saved Visualizations', icon: 'bookmark' }
-            when 'pipeline_viewer', 'pipeline' then { name: 'Sales Pipeline', icon: 'git-branch' }
-            when 'documents', 'document_viewer' then { name: 'Documents', icon: 'folder' }
-            when 'support_tickets' then { name: 'Support Tickets', icon: 'life-buoy' }
-            when 'sequence_manager' then { name: 'Email Sequences', icon: 'mail' }
-            when 'notifications' then { name: 'Notifications', icon: 'bell' }
-            else { name: canvas_slug.to_s.titleize.gsub('_', ' '), icon: 'square' }
-            end
-          %>
-          <div class="hub-item hub-canvas-shortcut" data-canvas="<%= canvas_slug %>" data-action="click->hub-sidebar#loadCanvas">
-            <div class="hub-item-avatar hub-avatar-canvas">
-              <i data-lucide="<%= canvas_info[:icon] %>"></i>
+      <div class="hub-section-content">
+        <div class="hub-items">
+          <div class="hub-item hub-canvas-shortcut" data-canvas="operations_dashboard" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #ef4444, #f97316);">
+              <i data-lucide="radar"></i>
             </div>
             <div class="hub-item-content">
-              <div class="hub-item-name"><%= canvas_info[:name] %></div>
+              <div class="hub-item-name">Command Center</div>
             </div>
           </div>
-        <% end %>
-      <% end %>
+
+          <div class="hub-item hub-canvas-shortcut" data-canvas="my_creations" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #8b5cf6, #a855f7);">
+              <i data-lucide="sparkles"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Apps & Automations</div>
+            </div>
+          </div>
+
+          <div class="hub-item hub-canvas-shortcut hub-work-inbox-item" data-canvas="work_inbox" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas">
+              <i data-lucide="inbox"></i>
+              <% unread_count = AgentWorkItem.unread_count_for(current_user, current_entity) rescue 0 %>
+              <% if unread_count > 0 %>
+                <span class="hub-inbox-badge" id="hub-work-inbox-badge"><%= unread_count > 99 ? '99+' : unread_count %></span>
+              <% else %>
+                <span class="hub-inbox-badge" id="hub-work-inbox-badge" style="display: none;"></span>
+              <% end %>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Work Inbox</div>
+            </div>
+          </div>
+
+          <div class="hub-item hub-canvas-shortcut" data-canvas="scheduled_tasks" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #0ea5e9, #38bdf8);">
+              <i data-lucide="clock"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Tasks</div>
+            </div>
+          </div>
+
+          <div class="hub-item hub-canvas-shortcut" data-canvas="contact_viewer" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #10b981, #34d399);">
+              <i data-lucide="users"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Contacts</div>
+            </div>
+          </div>
+
+          <div class="hub-item hub-canvas-shortcut" data-canvas="pipeline_viewer" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas">
+              <i data-lucide="git-branch"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Pipeline</div>
+            </div>
+          </div>
+
+          <div class="hub-item hub-canvas-shortcut" data-canvas="document_store" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #f59e0b, #fbbf24);">
+              <i data-lucide="folder-open"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Documents</div>
+            </div>
+          </div>
+
+          <div class="hub-item hub-canvas-shortcut" data-canvas="integrations_manager" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas">
+              <i data-lucide="plug"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Integrations</div>
+            </div>
+          </div>
+
+          <%# User-pinned items from Platform Settings %>
+          <% if @hub_pinned_canvases.present? %>
+            <% @hub_pinned_canvases.each do |canvas_slug| %>
+              <%
+                next if %w[work_inbox scheduled_tasks contact_viewer pipeline_viewer integrations_manager document_store my_creations automation_dashboard module_manager operations_command_center analytics workflow_designer template_library media_library favorites design_studio].include?(canvas_slug.to_s)
+
+                canvas_info = case canvas_slug.to_s
+                when 'landing_pages' then { name: 'Landing Pages', icon: 'layout' }
+                when 'campaigns' then { name: 'Campaigns', icon: 'mail' }
+                when 'email_templates' then { name: 'Email Templates', icon: 'file-text' }
+                when 'contacts' then { name: 'Contacts', icon: 'users' }
+                when 'contact_groups' then { name: 'Contact Groups', icon: 'user-plus' }
+                when 'saved_visualizations' then { name: 'Saved Visualizations', icon: 'bookmark' }
+                when 'pipeline_viewer', 'pipeline' then { name: 'Sales Pipeline', icon: 'git-branch' }
+                when 'documents', 'document_viewer' then { name: 'Documents', icon: 'folder' }
+                when 'support_tickets' then { name: 'Support Tickets', icon: 'life-buoy' }
+                when 'sequence_manager' then { name: 'Email Sequences', icon: 'mail' }
+                when 'notifications' then { name: 'Notifications', icon: 'bell' }
+                else { name: canvas_slug.to_s.titleize.gsub('_', ' '), icon: 'square' }
+                end
+              %>
+              <div class="hub-item hub-canvas-shortcut" data-canvas="<%= canvas_slug %>" data-action="click->hub-sidebar#loadCanvas">
+                <div class="hub-item-avatar hub-avatar-canvas">
+                  <i data-lucide="<%= canvas_info[:icon] %>"></i>
+                </div>
+                <div class="hub-item-content">
+                  <div class="hub-item-name"><%= canvas_info[:name] %></div>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
     </div>
 
-    <%# REMOVED: Channels Section %>
-    <%# Slack-like channels are now a toggleable feature in Platform Settings %>
-    <%# When enabled, they would appear here %>
+    <%# ═══ TEAM COLLABORATION section (collapsible) ═══ %>
+    <% collab_on = current_entity.slack_notifications_enabled? rescue false %>
+    <% if collab_on %>
+      <div class="hub-section-collapsible">
+        <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="collaboration">
+          <span class="hub-section-title"><i data-lucide="messages-square" style="width:12px;height:12px;" class="me-1"></i> Team Collaboration</span>
+          <i data-lucide="chevron-down" class="hub-section-chevron" style="width:12px;height:12px;"></i>
+        </div>
+        <div class="hub-section-content">
+          <div class="hub-items">
+            <%# Amos - always at the top of collaboration %>
+            <div class="hub-item hub-amos-item active" data-thread-type="amos" data-hub-amos-item data-action="click->hub-sidebar#selectAmos">
+              <div class="hub-item-avatar" style="background: linear-gradient(135deg, #7c3aed, #a855f7);">
+                <%= image_tag 'Logo_pfp_2.png', style: 'width: 100%; height: 100%; object-fit: cover; border-radius: 8px;', alt: 'Amos' rescue content_tag(:i, '', 'data-lucide': 'bot') %>
+              </div>
+              <div class="hub-item-content">
+                <div class="hub-item-name">Amos</div>
+                <div class="hub-item-meta text-muted small">AI Assistant</div>
+              </div>
+            </div>
 
-    <%# REMOVED: Agents/Loadouts Section %>
-    <%# With plugin injection, Amos handles specialized tasks directly. %>
-    <%# Users no longer need to switch between agents - Amos adapts automatically %>
-    <%# based on the current canvas and task context. %>
+            <%# Channels %>
+            <% if @hub_channels.present? %>
+              <div class="hub-subsection-collapsible">
+                <div class="hub-subsection-header" data-action="click->hub-sidebar#toggleSubsection" data-subsection="channels" style="padding: 6px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                  <span class="text-muted small text-uppercase" style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.05em;">Channels</span>
+                  <i data-lucide="chevron-down" class="hub-subsection-chevron" style="width:10px;height:10px; opacity: 0.5;"></i>
+                </div>
+                <div class="hub-subsection-content">
+                  <% @hub_channels.each do |channel| %>
+                    <div class="hub-item" data-channel-id="<%= channel.id %>" data-action="click->hub-sidebar#selectChannel">
+                      <div class="hub-item-avatar hub-avatar-channel">
+                        <i data-lucide="hash"></i>
+                      </div>
+                      <div class="hub-item-content">
+                        <div class="hub-item-name"><%= channel.name %></div>
+                      </div>
+                    </div>
+                  <% end %>
+                  <div class="hub-item hub-add-item" data-action="click->hub-sidebar#showCreateChannelModal">
+                    <div class="hub-item-avatar" style="opacity: 0.5;">
+                      <i data-lucide="plus"></i>
+                    </div>
+                    <div class="hub-item-content">
+                      <div class="hub-item-name text-muted">Add Channel</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
 
-    <%# REMOVED: Team Members Section %>
-    <%# Team collaboration features moved to Platform Settings %>
-    <%# When enabled, team members would appear here %>
+            <%# Team Members %>
+            <% if @hub_team_members.present? %>
+              <div class="hub-subsection-collapsible">
+                <div class="hub-subsection-header" data-action="click->hub-sidebar#toggleSubsection" data-subsection="team" style="padding: 6px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                  <span class="text-muted small text-uppercase" style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.05em;">Team</span>
+                  <i data-lucide="chevron-down" class="hub-subsection-chevron" style="width:10px;height:10px; opacity: 0.5;"></i>
+                </div>
+                <div class="hub-subsection-content">
+                  <% @hub_team_members.each do |eu| %>
+                    <% user = eu.user %>
+                    <div class="hub-item" data-user-id="<%= user.id %>" data-action="click->hub-sidebar#selectTeamMember">
+                      <div class="hub-item-avatar hub-avatar-user">
+                        <span><%= user.first_name&.first || user.email.first.upcase %></span>
+                      </div>
+                      <div class="hub-item-content">
+                        <div class="hub-item-name"><%= user.full_name.presence || user.email %></div>
+                        <div class="hub-item-meta text-muted small"><%= eu.role&.titleize || 'Member' %></div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
 
   </div>
 

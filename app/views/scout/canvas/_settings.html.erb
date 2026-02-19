@@ -904,7 +904,10 @@
       headers: { 'X-CSRF-Token': csrfToken, 'Accept': 'application/json' },
       body: formData
     }).then(r => r.json()).then(data => {
-      if (data.success) showSavedIndicator();
+      if (data.success) {
+        showSavedIndicator();
+        setTimeout(() => location.reload(), 500);
+      }
     }).catch(err => console.error('Settings save failed:', err));
   };
 
