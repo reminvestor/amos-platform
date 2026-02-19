@@ -540,19 +540,35 @@ module V3
       # Exclude purely conversational patterns
       discussion_patterns = /\b(what do you think|analyze|opinion|explain|tell me about|compare|discuss|how does|can you tell|what is|who is|describe)\b/i
 
+      # Exclude exploratory/brainstorming patterns that use action verbs hypothetically
+      # e.g., "what would it take to build X?", "could we create X?", "ideas for building X"
+      exploratory_patterns = /\b(what would|could (we|you|i)|ideas for|thoughts on|how would|would it be possible|what if we|talk about|thinking about|interested in)\b/i
+
       return false if msg.match?(discussion_patterns)
+      return false if msg.match?(exploratory_patterns)
       msg.match?(action_patterns) || msg.match?(complaint_patterns)
     end
 
     # Check if the model's response claims it completed an action without actually calling a tool.
-    # Three tiers:
+    # Four tiers:
     #   1. Short responses (<500 chars) with completion language (e.g., "Done! I've updated it")
     #   2. ANY length response that narrates executing a tool action (e.g., "Let me pull... Here are your results:")
     #      This catches models that fabricate detailed fake data instead of calling tools.
     #   3. ANY length response that claims to have built/created an app/module with details
     #      (e.g., "Your Weekly Task Tracker module has been created. ✅ 7 columns...")
+    #   4. Feature lists with creation-related words
     def response_claims_completion?(text)
       return false if text.blank?
+
+      # EXEMPTION: Proposals and offers to build are NOT completion claims.
+      # If the model is asking for permission or offering to create something, that's correct
+      # behavior (confirming before acting). Don't penalize this.
+      proposal_patterns = /\b(want me to|would you like me to|shall i|should i|i can (create|build|make|generate|set up)|i could (create|build|make|generate)|if you['']d like|ready to (build|create|start)|let me know if|would that work)\b/i
+      ends_with_question = text.strip.end_with?('?')
+      if text.match?(proposal_patterns) && ends_with_question
+        Rails.logger.info "[V3::AgentLoop] Hallucination guard: skipping — response is a proposal/offer, not a completion claim"
+        return false
+      end
 
       # Tier 1: Short direct claims (original check)
       if text.length <= 500
@@ -576,7 +592,8 @@ module V3
 
       # Tier 4: Response lists "features" of something that was supposedly created
       # e.g., "✅ Title ✅ Description ✅ Priority" — without any tool call
-      return true if has_feature_list && text.match?(/\b(created|built|ready|live|tracker|module|app)\b/i)
+      # Only trigger if text also uses past-tense completion language (not just mentioning "module" or "app")
+      return true if has_feature_list && text.match?(/\b(created|built|ready to use|is live|now active)\b/i)
 
       false
     end
