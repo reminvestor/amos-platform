@@ -4178,8 +4178,10 @@ export default class extends Controller {
       lucide.createIcons()
     }
     
-    // Scroll to bottom
-    chatMessages.scrollTop = chatMessages.scrollHeight
+    // Scroll to bottom (respect user's scroll position during streaming)
+    if (!window._autoScrollLocked) {
+      chatMessages.scrollTop = chatMessages.scrollHeight
+    }
   }
   
   hideThinkingIndicator(forceImmediate = false) {
@@ -4461,8 +4463,9 @@ export default class extends Controller {
     // Legacy streaming window removed
   }
 
-  scrollChatToBottom() {
+  scrollChatToBottom(force = false) {
     if (this.hasChatMessagesTarget) {
+      if (!force && window._autoScrollLocked) return
       this.chatMessagesTarget.scrollTop = this.chatMessagesTarget.scrollHeight
     }
   }
