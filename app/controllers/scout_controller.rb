@@ -4445,12 +4445,34 @@ class ScoutController < ApplicationController
     js = canvas.js_content || ''
     css = canvas.css_content || ''
     
+    js = sanitize_canvas_js(js) if js.present?
+
     # Compose the full canvas: CSS in a <style> tag, HTML, JS in a <script> tag
     output = ""
     output += "<style>#{css}</style>\n" if css.present?
     output += html
     output += "\n<script>#{js}</script>" if js.present?
     output
+  end
+
+  # Sanitize AI-generated canvas JS to prevent known dangerous patterns
+  def sanitize_canvas_js(js)
+    return js if js.blank?
+
+    # Replace DOMContentLoaded (never fires in dynamically loaded canvases) with setTimeout
+    js = js.gsub(
+      /document\.addEventListener\s*\(\s*['"]DOMContentLoaded['"]\s*,\s*function\s*\(\s*\)\s*\{/,
+      'setTimeout(function() {'
+    )
+
+    # Remove MutationObserver on document.body that calls lucide/icon init (causes infinite loops)
+    js = js.gsub(
+      /(?:\/\/.*\n\s*)?(?:const|let|var)\s+(\w+)\s*=\s*new\s+MutationObserver\s*\(\s*function\s*\(\s*\w*\s*\)\s*\{[^}]*(?:initializeLucide|lucide\.createIcons)[^}]*\}\s*\)\s*;\s*\n\s*\1\.observe\s*\(\s*document\.body\s*,\s*\{[^}]*\}\s*\)\s*;/m,
+      '// Initialize Lucide icons once after a short delay
+  setTimeout(function() { if (typeof lucide !== "undefined") lucide.createIcons(); }, 100);'
+    )
+
+    js
   end
 
   # Render a form canvas for creating/editing records
@@ -4955,7 +4977,7 @@ class ScoutController < ApplicationController
         </div>
       </div>
       #{canvas.css_content.present? ? "<style>#{canvas.css_content}</style>" : ""}
-      #{canvas.js_content.present? ? "<script>#{canvas.js_content}</script>" : ""}
+      #{canvas.js_content.present? ? "<script>#{sanitize_canvas_js(canvas.js_content)}</script>" : ""}
     HTML
   end
 

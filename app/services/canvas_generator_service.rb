@@ -115,6 +115,8 @@ class CanvasGeneratorService
       - The Stimulus controller `module-canvas` is automatically connected to elements with data-controller="module-canvas"
       - Use data-action="click->module-canvas#performAction" with data-action-name="add|edit|refresh|export" for standard actions
       - For the JavaScript section, write a self-executing function that runs when the canvas is loaded
+      - CRITICAL: Do NOT use document.addEventListener('DOMContentLoaded', ...) — the canvas loads dynamically after the page is already loaded, so DOMContentLoaded will never fire. Use setTimeout(function() { ... }, 100) instead.
+      - CRITICAL: Do NOT use MutationObserver on document.body — this causes infinite loops when combined with lucide.createIcons() or any DOM-modifying code. If you need to re-initialize Lucide icons, call lucide.createIcons() once after rendering, not on every DOM change.
       - The API base path for data is: /api/modules/MODULE_SLUG/models/MODEL_NAME
         - GET / — list records (supports ?search=, ?status=, ?limit=, ?page=)
         - GET /:id — single record
@@ -296,9 +298,35 @@ class CanvasGeneratorService
 
     {
       html: html&.strip,
-      js: js&.strip,
+      js: sanitize_canvas_js(js&.strip),
       css: css&.strip
     }
+  end
+
+  def sanitize_canvas_js(js)
+    return js if js.blank?
+
+    # Replace DOMContentLoaded with setTimeout since canvases load after page is ready
+    js = js.gsub(
+      /document\.addEventListener\s*\(\s*['"]DOMContentLoaded['"]\s*,\s*function\s*\(\s*\)\s*\{/,
+      'setTimeout(function() {'
+    )
+
+    # Remove MutationObserver watching document.body (causes infinite loops with lucide.createIcons)
+    js = js.gsub(
+      /\/\/.*?(?:Re-initialize|re-initialize|reinitialize|Reinitialize).*?\n\s*(?:const|let|var)\s+\w+\s*=\s*new\s+MutationObserver\s*\(.*?\)\s*;\s*\n\s*\w+\.observe\s*\(\s*document\.body\s*,\s*\{[^}]*\}\s*\)\s*;/m,
+      '// Initialize Lucide icons once after a short delay
+  setTimeout(function() { if (typeof lucide !== "undefined") lucide.createIcons(); }, 100);'
+    )
+
+    # Catch any remaining MutationObserver on document.body even without the comment
+    js = js.gsub(
+      /(?:const|let|var)\s+(\w+)\s*=\s*new\s+MutationObserver\s*\(\s*function\s*\(\s*\w*\s*\)\s*\{\s*(?:initializeLucide|lucide\.createIcons)\s*\(\s*\)\s*;\s*\}\s*\)\s*;\s*\n\s*\1\.observe\s*\(\s*document\.body\s*,\s*\{[^}]*\}\s*\)\s*;/m,
+      '// Initialize Lucide icons once after a short delay
+  setTimeout(function() { if (typeof lucide !== "undefined") lucide.createIcons(); }, 100);'
+    )
+
+    js
   end
 
   def extract_code_block(text, language)
@@ -428,7 +456,17 @@ class CanvasGeneratorService
       issues << { type: :undefined_function, function: func_name }
     end
 
-    # ── Check 6: JS references element IDs not present in HTML ──
+    # ── Check 6: DOMContentLoaded (never fires in dynamically loaded canvases) ──
+    if js.match?(/document\.addEventListener\s*\(\s*['"]DOMContentLoaded['"]/i)
+      issues << { type: :dom_content_loaded, detail: "DOMContentLoaded will never fire in dynamically loaded canvases — use setTimeout instead" }
+    end
+
+    # ── Check 7: MutationObserver on document.body (causes infinite loops with DOM-modifying callbacks) ──
+    if js.match?(/MutationObserver/i) && js.match?(/document\.body/i)
+      issues << { type: :mutation_observer_body, detail: "MutationObserver on document.body causes infinite loops when combined with DOM-modifying callbacks like lucide.createIcons()" }
+    end
+
+    # ── Check 8: JS references element IDs not present in HTML ──
     js_id_refs = Set.new(
       js.scan(/getElementById\s*\(\s*["']([^"']+)["']\s*\)/).flatten +
       js.scan(/querySelector\s*\(\s*["']#([^"']+)["']\s*\)/).flatten
@@ -463,6 +501,10 @@ class CanvasGeneratorService
         "#{i + 1}. UNDEFINED FUNCTION: onclick calls '#{issue[:function]}()' but it's not defined — implement the function"
       when :missing_element
         "#{i + 1}. MISSING ELEMENT: JS references id='#{issue[:element_id]}' but no such element exists — add the element or fix the reference"
+      when :dom_content_loaded
+        "#{i + 1}. DOM_CONTENT_LOADED: Canvas uses DOMContentLoaded which never fires in dynamically loaded content — replace with setTimeout(function() { ... }, 100)"
+      when :mutation_observer_body
+        "#{i + 1}. MUTATION_OBSERVER_BODY: MutationObserver on document.body causes infinite loops — remove it and call lucide.createIcons() once after rendering instead"
       end
     end.compact
 
@@ -530,6 +572,8 @@ class CanvasGeneratorService
       - API base path: /api/modules/MODULE_SLUG/models/MODEL_NAME
       - CSRF token: document.querySelector('meta[name="csrf-token"]')?.content
       - Keep all existing working functionality intact
+      - CRITICAL: Do NOT use document.addEventListener('DOMContentLoaded', ...) — canvases load dynamically after page load, so DOMContentLoaded never fires. Use setTimeout(function() { ... }, 100) instead.
+      - CRITICAL: Do NOT use MutationObserver on document.body — causes infinite loops with lucide.createIcons().
     PROMPT
   end
 
