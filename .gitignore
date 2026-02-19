@@ -57,6 +57,7 @@ dump.rdb
 /yarn-error.log
 yarn-debug.log*
 .yarn-integrity
+.yarn/install-state.gz
 
 # Ignore coverage reports
 /coverage
