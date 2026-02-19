@@ -1,0 +1,44 @@
+# Deliverfile - App Store Delivery Configuration for AMOS Mobile
+# https://docs.fastlane.tools/actions/deliver/
+
+# App metadata
+app_identifier(ENV["APP_IDENTIFIER"] || "com.amoslabs.mobile")
+username(ENV["APPLE_ID"] || "ryan@amoslabs.com")
+
+# Metadata path (relative to fastlane directory)
+metadata_path("./metadata")
+
+# Screenshots path
+screenshots_path("../screenshots")
+
+# Pricing
+price_tier(0)  # Free app (change if paid)
+
+# App rating (set to match your App Store Connect questionnaire)
+app_rating_config_path("./metadata/app_rating.json")
+
+# Submission information
+submission_information({
+  add_id_info_uses_idfa: false,
+  export_compliance_uses_encryption: false,
+  export_compliance_encryption_updated: false,
+  content_rights_contains_third_party_content: false
+})
+
+# Auto-release after approval (set to true for automatic release)
+automatic_release(false)
+
+# Phased release (gradual rollout over 7 days)
+phased_release(true)
+
+# Reject build waiting for review if uploading a new one
+reject_if_possible(true)
+
+# Precheck warnings
+precheck_include_in_app_purchases(false)
+
+# Force upload (skip confirmation prompt)
+force(true)
+
+# Run precheck before submit
+run_precheck_before_submit(true)

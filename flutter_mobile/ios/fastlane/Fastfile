@@ -31,8 +31,28 @@ platform :ios do
     )
   end
 
+  desc "Sync version number from pubspec.yaml to Xcode project"
+  lane :sync_version_from_pubspec do
+    Dir.chdir("..") do
+      pubspec = File.read("pubspec.yaml")
+      version_match = pubspec.match(/^version:\s*(\d+\.\d+\.\d+)\+(\d+)/)
+      if version_match
+        marketing_version = version_match[1]
+        UI.message("Syncing version #{marketing_version} from pubspec.yaml to Xcode project")
+        increment_version_number(
+          version_number: marketing_version,
+          xcodeproj: "ios/Runner.xcodeproj"
+        )
+      else
+        UI.user_error!("Could not parse version from pubspec.yaml")
+      end
+    end
+  end
+
   desc "Bump build number based on latest TestFlight build"
   lane :bump_build_number do
+    sync_version_from_pubspec
+
     app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
 
     current_version = get_version_number(
@@ -120,9 +140,37 @@ platform :ios do
     upload_to_app_store(
       submit_for_review: false,
       automatic_release: false,
+      phased_release: true,
       skip_screenshots: true,
       skip_metadata: false,
-      precheck_include_in_app_purchases: false
+      metadata_path: "./metadata",
+      screenshots_path: "../screenshots",
+      precheck_include_in_app_purchases: false,
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false
+      }
+    )
+  end
+
+  desc "Deploy to App Store and submit for review"
+  lane :deploy_and_submit do
+    bump_build_number
+    build_ios
+
+    upload_to_app_store(
+      submit_for_review: true,
+      automatic_release: false,
+      phased_release: true,
+      skip_screenshots: false,
+      skip_metadata: false,
+      metadata_path: "./metadata",
+      screenshots_path: "../screenshots",
+      precheck_include_in_app_purchases: false,
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false
+      }
     )
   end
 

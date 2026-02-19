@@ -81,7 +81,7 @@ class Env {
   static const String appName = 'AMOS Labs';
 
   /// App version
-  static const String appVersion = '1.0.0';
+  static const String appVersion = '1.1.0';
 
   /// Enable debug logging (disabled in production by default)
   static bool get debugMode {
