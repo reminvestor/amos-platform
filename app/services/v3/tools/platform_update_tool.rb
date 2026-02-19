@@ -20,11 +20,20 @@ module V3
             For app modules, use type="app_module" to update the module itself (name, description, schema fields, icon, etc.).
             To update records WITHIN a module, use the module's slug as the type (e.g., type="project_tracker", id=5, data={...}).
             
+            Canvas locking — protect user-customized forms/canvases from being overwritten:
+            - Lock: type="canvas", id=CANVAS_ID, data={ lock: true, reason: "User customized this form" }
+            - Unlock: type="canvas", id=CANVAS_ID, data={ lock: false }
+            - Restore version: type="canvas", id=CANVAS_ID, data={ restore_version: 3 }
+            - Can also use id=MODULE_SLUG to find the default canvas for that module
+            When a user says "lock this", "don't change this form", "keep this", or "this is final" → lock it immediately.
+            
             Examples:
             - type: "contact", id: 42, data: { lifecycle_stage: "customer" }
             - type: "app_module", id: 7, data: { name: "New Name", schema: { fields: [{ name: "priority", type: "select", options: ["low", "medium", "high"] }] } }
             - type: "landing_page", id: 189, data: { section: "hero", instruction: "Center the text" }
             - type: "landing_page", id: 189, data: { instruction: "Redesign with a dark theme and bold typography" }
+            - type: "canvas", id: 256, data: { lock: true, reason: "User's custom contact form" }
+            - type: "canvas", id: "contacts", data: { lock: true }
           DESC
           category: "v3_core",
           input_schema: {
@@ -78,6 +87,12 @@ module V3
         # the entire page. Route to GenerateLandingPageTool as an update.
         if type == "landing_page" && (data["instruction"] || data[:instruction])
           return regenerate_landing_page(id, data)
+        end
+
+        # Canvas lock/unlock/restore — protect user-customized canvases
+        # Note: "canvas".singularize => "canva" in Rails, so we match both
+        if %w[canvas canva module_canvas module_canva].include?(type)
+          return manage_canvas(id, data)
         end
 
         # App module / module update — update the AppModule record itself
@@ -300,6 +315,131 @@ module V3
       rescue => e
         Rails.logger.error "[V3::PlatformUpdate] Landing page regeneration failed: #{e.message}"
         error_response("Failed to regenerate landing page: #{e.message}")
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # CANVAS LOCK / UNLOCK / RESTORE
+      # ═══════════════════════════════════════════════════════════════
+
+      def manage_canvas(id, data)
+        canvas = find_canvas_by_id_or_slug(id)
+        return error_response("Canvas not found for '#{id}'. Use platform_query(type: 'canvases') to search.") unless canvas
+
+        # Restore a previous version
+        if data["restore_version"] || data[:restore_version]
+          return restore_canvas_version(canvas, data)
+        end
+
+        # Lock / unlock
+        if data.key?("lock") || data.key?(:lock)
+          lock_value = data["lock"] || data[:lock]
+          if lock_value
+            return lock_canvas(canvas, data)
+          else
+            return unlock_canvas(canvas)
+          end
+        end
+
+        error_response("Specify data: { lock: true/false } or { restore_version: N }")
+      end
+
+      def find_canvas_by_id_or_slug(id)
+        return nil unless entity
+
+        # Try numeric ID first
+        if id.to_s =~ /\A\d+\z/
+          canvas = ModuleCanvas.where(entity_id: entity.id).find_by(id: id)
+          return canvas if canvas
+        end
+
+        # Try as module slug — find the default (or first) canvas
+        app_mod = entity.app_modules.find_by(slug: id.to_s) ||
+                  entity.app_modules.find_by(slug: id.to_s.singularize)
+        if app_mod
+          return app_mod.module_canvases.find_by(is_default: true) ||
+                 app_mod.module_canvases.first
+        end
+
+        # Try as canvas slug across all modules
+        ModuleCanvas.joins(:app_module)
+                    .where(app_modules: { entity_id: entity.id })
+                    .find_by(slug: id.to_s)
+      end
+
+      def lock_canvas(canvas, data)
+        if canvas.locked?
+          return success_response(
+            id: canvas.id,
+            name: canvas.name,
+            is_locked: true,
+            locked_at: canvas.locked_at&.iso8601,
+            message: "Canvas '#{canvas.name}' is already locked (since #{canvas.locked_at&.strftime('%b %d, %Y')}). No changes needed."
+          )
+        end
+
+        reason = data["reason"] || data[:reason] || "Locked by user to preserve customizations"
+        canvas.lock!(user: user, reason: reason)
+
+        Rails.logger.info "[V3::PlatformUpdate] Locked canvas: #{canvas.name} (##{canvas.id})"
+
+        success_response(
+          id: canvas.id,
+          name: canvas.name,
+          module_name: canvas.app_module.name,
+          is_locked: true,
+          locked_at: canvas.locked_at&.iso8601,
+          version: canvas.version,
+          message: "Canvas '#{canvas.name}' is now LOCKED. Its content is protected — rebuilding the module will skip this canvas."
+        )
+      end
+
+      def unlock_canvas(canvas)
+        unless canvas.locked?
+          return success_response(
+            id: canvas.id,
+            name: canvas.name,
+            is_locked: false,
+            message: "Canvas '#{canvas.name}' is already unlocked."
+          )
+        end
+
+        canvas.unlock!(user: user)
+
+        Rails.logger.info "[V3::PlatformUpdate] Unlocked canvas: #{canvas.name} (##{canvas.id})"
+
+        success_response(
+          id: canvas.id,
+          name: canvas.name,
+          is_locked: false,
+          message: "Canvas '#{canvas.name}' is now unlocked and can be modified."
+        )
+      end
+
+      def restore_canvas_version(canvas, data)
+        version_number = (data["restore_version"] || data[:restore_version]).to_i
+        versions = canvas.parsed_previous_versions
+
+        target = versions.find { |v| v['version'] == version_number }
+        unless target
+          available = versions.map { |v| "v#{v['version']} (#{v['saved_at']})" }.join(', ')
+          return error_response(
+            "Version #{version_number} not found. Available versions: #{available.presence || 'none (only current version exists)'}"
+          )
+        end
+
+        canvas.restore_version!(version_number)
+        canvas.reload
+
+        Rails.logger.info "[V3::PlatformUpdate] Restored canvas #{canvas.name} to v#{version_number}"
+
+        success_response(
+          id: canvas.id,
+          name: canvas.name,
+          restored_version: version_number,
+          current_version: canvas.version,
+          is_locked: canvas.locked?,
+          message: "Canvas '#{canvas.name}' restored to version #{version_number} (from #{target['saved_at']})"
+        )
       end
 
       # ═══════════════════════════════════════════════════════════════

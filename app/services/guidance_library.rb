@@ -419,6 +419,20 @@ class GuidanceLibrary
         ALWAYS wire "Add", "Edit", "Delete" buttons to amosAPI calls. NEVER make visual-only buttons.
         After create/update, refresh the UI by re-fetching data with amosAPI.list().
         
+        ## Canvas Locking & Versioning
+        When a user says to "lock", "fix", "keep", "don't change", or "preserve" a form or canvas:
+        - Use platform_update(type: "canvas", id: CANVAS_ID_OR_MODULE_SLUG, data: { lock: true, reason: "User requested" })
+        - Locked canvases are PROTECTED from being overwritten during app rebuilds
+        - Always lock a canvas when the user expresses satisfaction with a form they've customized
+        
+        When a user asks about previous versions or wants to restore old content:
+        - platform_query(type: "canvas_versions", id: CANVAS_ID) to show version history
+        - platform_update(type: "canvas", id: CANVAS_ID, data: { restore_version: N }) to restore
+        
+        Before rebuilding or regenerating a module, CHECK if any canvases are locked:
+        - platform_query(type: "canvases", search: "module_name") to find canvases
+        - If locked, inform the user and skip those canvases
+        
         ## Context
         After creating an app, show the module_manager canvas so the user can see and manage it.
       GUIDANCE
@@ -571,6 +585,7 @@ class GuidanceLibrary
     app_design: %w[
       platform_create
       platform_query
+      platform_update
       load_canvas
     ],
 
@@ -591,7 +606,8 @@ class GuidanceLibrary
       platform_execute
       platform_query
       load_canvas
-    ],
+
+      ],
 
     general: []  # No specific tools - use standard set
   }.freeze

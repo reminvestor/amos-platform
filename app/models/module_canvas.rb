@@ -31,6 +31,7 @@ class ModuleCanvas < ApplicationRecord
   # Associations
   belongs_to :app_module
   belongs_to :entity
+  belongs_to :locked_by, class_name: 'User', optional: true
 
   # Canvas types
   CANVAS_TYPES = %w[module dashboard data_grid form detail kanban calendar report wizard custom].freeze
@@ -43,6 +44,7 @@ class ModuleCanvas < ApplicationRecord
   validates :ui_mode, inclusion: { in: UI_MODES }
   validates :public_slug, uniqueness: true, allow_nil: true,
             format: { with: /\A[a-z0-9\-]+\z/, message: 'only lowercase letters, numbers, and hyphens', allow_nil: true }
+  validate :content_not_locked, on: :update
 
   # Scopes
   scope :simple, -> { where(ui_mode: 'simple') }
@@ -52,11 +54,13 @@ class ModuleCanvas < ApplicationRecord
   scope :ordered, -> { order(:name) }
   scope :published, -> { where(is_public: true) }
   scope :custom, -> { where(canvas_type: 'custom') }
+  scope :locked, -> { where(is_locked: true) }
+  scope :unlocked, -> { where(is_locked: false) }
 
   # Callbacks
   before_validation :generate_slug, if: -> { slug.blank? && name.present? }
   before_validation :generate_public_slug, if: -> { is_public && public_slug.blank? }
-  before_update :save_previous_version, if: :html_content_changed?
+  before_update :save_previous_version, if: :content_changed?
   
   # ============================================
   # PUBLISHING
@@ -143,6 +147,36 @@ class ModuleCanvas < ApplicationRecord
   end
 
   # ============================================
+  # LOCKING
+  # ============================================
+
+  def lock!(user: nil, reason: nil)
+    update_columns(
+      is_locked: true,
+      locked_at: Time.current,
+      locked_by_id: user&.id,
+      lock_reason: reason || "Locked by #{user&.first_name || 'system'}"
+    )
+  end
+
+  def unlock!(user: nil)
+    update_columns(
+      is_locked: false,
+      locked_at: nil,
+      locked_by_id: nil,
+      lock_reason: nil
+    )
+  end
+
+  def locked?
+    is_locked
+  end
+
+  def content_changed?
+    html_content_changed? || js_content_changed? || css_content_changed?
+  end
+
+  # ============================================
   # VERSIONING
   # ============================================
 
@@ -157,10 +191,14 @@ class ModuleCanvas < ApplicationRecord
     
     return false unless target
 
+    # Temporarily allow content update on locked canvas for restoration
+    @skip_lock_check = true
     self.html_content = target['html_content']
     self.js_content = target['js_content']
     self.css_content = target['css_content']
-    save!
+    result = save!
+    @skip_lock_check = false
+    result
   end
 
   def parsed_previous_versions
@@ -168,6 +206,18 @@ class ModuleCanvas < ApplicationRecord
     JSON.parse(previous_versions)
   rescue JSON::ParserError
     []
+  end
+
+  def version_summary
+    parsed_previous_versions.map do |v|
+      {
+        version: v['version'],
+        saved_at: v['saved_at'],
+        html_size: v['html_content'].to_s.length,
+        js_size: v['js_content'].to_s.length,
+        css_size: v['css_content'].to_s.length
+      }
+    end
   end
 
   # ============================================
@@ -211,8 +261,16 @@ class ModuleCanvas < ApplicationRecord
     end
   end
 
+  def content_not_locked
+    return unless is_locked && !@skip_lock_check
+    return unless content_changed?
+
+    errors.add(:base, "Canvas is locked and cannot be modified. Unlock it first or restore a previous version.")
+  end
+
   def save_previous_version
-    return if html_content_was.blank?
+    return unless content_changed?
+    return if html_content_was.blank? && js_content_was.blank? && css_content_was.blank?
     
     versions = parsed_previous_versions
     versions << {
@@ -223,8 +281,8 @@ class ModuleCanvas < ApplicationRecord
       saved_at: Time.current.iso8601
     }
     
-    # Keep last 10 versions
-    versions = versions.last(10)
+    # Keep last 20 versions
+    versions = versions.last(20)
     self.previous_versions = versions.to_json
   end
 

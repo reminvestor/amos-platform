@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_16_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_19_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -3694,49 +3694,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_16_000001) do
     t.index ["slug"], name: "index_integrations_on_slug", unique: true
   end
 
-  create_table "inventory_items", force: :cascade do |t|
-    t.bigint "entity_id", null: false
-    t.string "name", null: false
-    t.string "sku"
-    t.text "description"
-    t.string "category"
-    t.integer "quantity", default: 0, null: false
-    t.integer "reorder_level", default: 10
-    t.string "location"
-    t.decimal "unit_cost", precision: 10, scale: 2
-    t.decimal "selling_price", precision: 10, scale: 2
-    t.string "supplier"
-    t.string "status", default: "active", null: false
-    t.text "notes"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["created_at"], name: "index_inventory_items_on_created_at"
-    t.index ["entity_id", "category"], name: "index_inventory_items_on_entity_id_and_category"
-    t.index ["entity_id", "quantity"], name: "index_inventory_items_on_entity_id_and_quantity"
-    t.index ["entity_id", "sku"], name: "index_inventory_items_on_entity_id_and_sku", unique: true
-    t.index ["entity_id", "status"], name: "index_inventory_items_on_entity_id_and_status"
-    t.index ["entity_id"], name: "index_inventory_items_on_entity_id"
-  end
-
-  create_table "inventory_managements", force: :cascade do |t|
-    t.bigint "entity_id", null: false
-    t.string "name", null: false
-    t.string "sku"
-    t.text "description"
-    t.string "category"
-    t.integer "quantity", default: 0, null: false
-    t.integer "reorder_level", default: 10
-    t.string "location"
-    t.decimal "unit_cost"
-    t.decimal "selling_price"
-    t.string "supplier"
-    t.string "status", default: "active", null: false
-    t.text "notes"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["entity_id"], name: "index_inventory_managements_on_entity_id"
-  end
-
   create_table "knowledge_bases", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "title", null: false
@@ -4122,14 +4079,20 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_16_000001) do
     t.datetime "published_at"
     t.integer "view_count", default: 0, null: false
     t.bigint "custom_domain_id"
+    t.boolean "is_locked", default: false, null: false
+    t.datetime "locked_at"
+    t.bigint "locked_by_id"
+    t.string "lock_reason"
     t.index ["app_module_id", "slug"], name: "index_module_canvases_on_app_module_id_and_slug", unique: true
     t.index ["app_module_id"], name: "index_module_canvases_on_app_module_id"
     t.index ["canvas_type"], name: "index_module_canvases_on_canvas_type"
     t.index ["custom_domain_id"], name: "index_module_canvases_on_custom_domain_id"
     t.index ["entity_id", "slug"], name: "index_module_canvases_on_entity_id_and_slug"
     t.index ["entity_id"], name: "index_module_canvases_on_entity_id"
+    t.index ["is_locked"], name: "index_module_canvases_on_is_locked"
     t.index ["is_public"], name: "index_module_canvases_on_is_public"
     t.index ["layout"], name: "index_module_canvases_on_layout"
+    t.index ["locked_by_id"], name: "index_module_canvases_on_locked_by_id"
     t.index ["public_slug"], name: "index_module_canvases_on_public_slug", unique: true, where: "(public_slug IS NOT NULL)"
     t.index ["ui_mode"], name: "index_module_canvases_on_ui_mode"
   end
@@ -7338,8 +7301,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_16_000001) do
   add_foreign_key "integrations", "entities"
   add_foreign_key "integrations", "users", column: "created_by_id"
   add_foreign_key "integrations", "users", column: "reviewed_by_id", on_delete: :nullify
-  add_foreign_key "inventory_items", "entities"
-  add_foreign_key "inventory_managements", "entities"
   add_foreign_key "knowledge_bases", "entities"
   add_foreign_key "knowledge_documents", "entities"
   add_foreign_key "landing_page_chat_messages", "landing_pages"

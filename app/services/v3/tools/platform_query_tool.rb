@@ -39,6 +39,9 @@ module V3
             - type: "documents", search: "contract terms"
             - type: "tasks", filters: { status: "in_progress" }
             - type: "schema" — lists ALL types including custom app models
+            - type: "canvases", search: "contact" — find canvases by name/slug
+            - type: "canvases", id: 256 — get canvas details, lock status, and version history
+            - type: "canvas_versions", id: 256 — list all saved versions of a canvas
           DESC
           category: "v3_core",
           input_schema: {
@@ -106,6 +109,10 @@ module V3
           query_usage
         when "custom_domains", "custom_domain", "domains", "domain"
           query_custom_domains(args)
+        when "canvases", "canvas", "canva", "module_canvases", "module_canvas", "module_canva"
+          query_canvases(args)
+        when "canvas_versions", "canva_versions"
+          query_canvas_versions(args)
         else
           query_data(type, args)
         end
@@ -795,6 +802,149 @@ module V3
         end
 
         nil
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # CANVAS QUERIES
+      # ═══════════════════════════════════════════════════════════════
+
+      def query_canvases(args)
+        id = get_arg(args, :id)
+        search = get_arg(args, :search)
+
+        if id.present?
+          canvas = find_canvas_for_query(id)
+          return error_response("Canvas '#{id}' not found") unless canvas
+
+          versions = canvas.version_summary
+          return success_response(
+            canvas: canvas_detail(canvas),
+            version_count: versions.length + 1,
+            versions: versions.map { |v| { version: v[:version], saved_at: v[:saved_at] } },
+            message: "Canvas '#{canvas.name}' — v#{canvas.version}, #{canvas.locked? ? 'LOCKED' : 'unlocked'}, #{canvas.html_content.to_s.length + canvas.js_content.to_s.length + canvas.css_content.to_s.length} bytes total"
+          )
+        end
+
+        scope = ModuleCanvas.joins(:app_module)
+                            .where(entity_id: entity.id)
+                            .includes(:app_module)
+
+        if search.present?
+          scope = scope.where(
+            "LOWER(module_canvases.name) LIKE :q OR LOWER(module_canvases.slug) LIKE :q OR LOWER(app_modules.name) LIKE :q",
+            q: "%#{search.downcase}%"
+          )
+        end
+
+        canvases = scope.order(:name).limit(get_arg(args, :limit, 30).to_i)
+
+        success_response(
+          canvases: canvases.map { |c| canvas_summary(c) },
+          count: canvases.length,
+          locked_count: canvases.count(&:locked?),
+          message: "#{canvases.length} canvas(es) found#{search ? " matching '#{search}'" : ''}. #{canvases.count(&:locked?)} locked."
+        )
+      end
+
+      def query_canvas_versions(args)
+        id = get_arg(args, :id)
+        return error_response("Canvas ID required") if id.blank?
+
+        canvas = find_canvas_for_query(id)
+        return error_response("Canvas '#{id}' not found") unless canvas
+
+        versions = canvas.parsed_previous_versions
+        current = {
+          'version' => canvas.version,
+          'saved_at' => canvas.updated_at.iso8601,
+          'html_size' => canvas.html_content.to_s.length,
+          'js_size' => canvas.js_content.to_s.length,
+          'css_size' => canvas.css_content.to_s.length,
+          'current' => true
+        }
+
+        all_versions = versions.map do |v|
+          {
+            version: v['version'],
+            saved_at: v['saved_at'],
+            html_size: v['html_content'].to_s.length,
+            js_size: v['js_content'].to_s.length,
+            css_size: v['css_content'].to_s.length
+          }
+        end
+        all_versions << {
+          version: current['version'],
+          saved_at: current['saved_at'],
+          html_size: current['html_size'],
+          js_size: current['js_size'],
+          css_size: current['css_size'],
+          current: true
+        }
+
+        success_response(
+          canvas_id: canvas.id,
+          canvas_name: canvas.name,
+          is_locked: canvas.locked?,
+          current_version: canvas.version,
+          total_versions: all_versions.length,
+          versions: all_versions,
+          message: "Canvas '#{canvas.name}' has #{all_versions.length} version(s). Current: v#{canvas.version}. Use platform_update(type: 'canvas', id: #{canvas.id}, data: { restore_version: N }) to restore."
+        )
+      end
+
+      def find_canvas_for_query(id)
+        if id.to_s =~ /\A\d+\z/
+          canvas = ModuleCanvas.where(entity_id: entity.id).find_by(id: id)
+          return canvas if canvas
+        end
+
+        app_mod = entity.app_modules.find_by(slug: id.to_s) ||
+                  entity.app_modules.find_by(slug: id.to_s.singularize)
+        if app_mod
+          return app_mod.module_canvases.find_by(is_default: true) ||
+                 app_mod.module_canvases.first
+        end
+
+        ModuleCanvas.joins(:app_module)
+                    .where(app_modules: { entity_id: entity.id })
+                    .find_by(slug: id.to_s)
+      end
+
+      def canvas_detail(canvas)
+        {
+          id: canvas.id,
+          name: canvas.name,
+          slug: canvas.slug,
+          canvas_type: canvas.canvas_type,
+          module_name: canvas.app_module.name,
+          module_slug: canvas.app_module.slug,
+          version: canvas.version,
+          is_locked: canvas.locked?,
+          locked_at: canvas.locked_at&.iso8601,
+          lock_reason: canvas.lock_reason,
+          locked_by: canvas.locked_by&.first_name,
+          updated_at: canvas.updated_at.iso8601,
+          created_at: canvas.created_at.iso8601,
+          html_size: canvas.html_content.to_s.length,
+          js_size: canvas.js_content.to_s.length,
+          css_size: canvas.css_content.to_s.length,
+          html_preview: canvas.html_content.to_s[0..300]
+        }
+      end
+
+      def canvas_summary(c)
+        {
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          canvas_type: c.canvas_type,
+          module_name: c.app_module.name,
+          module_slug: c.app_module.slug,
+          version: c.version,
+          is_locked: c.locked?,
+          lock_reason: c.lock_reason,
+          updated_at: c.updated_at.iso8601
+        }
       end
 
       def normalize_type(type)

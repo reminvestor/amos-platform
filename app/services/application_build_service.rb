@@ -826,27 +826,47 @@ class ApplicationBuildService
     
     views.each do |view_type|
       canvas_type = view_type == 'list' ? 'data_grid' : view_type
+      slug = "#{app_module.slug}_#{view_type}"
+
+      existing = app_module.module_canvases.find_by(slug: slug)
+      if existing&.locked?
+        Rails.logger.info "[ApplicationBuildService] Skipping locked canvas: #{existing.name} (#{slug})"
+        progress_callback&.call("Skipping locked canvas '#{existing.name}' — preserving user customizations", nil)
+        next
+      end
       
-      # Use CanvasGeneratorService for rich canvas generation (AI + fallback)
       canvas_content = generate_rich_canvas(app_module, view_type, fields, related_models)
-      
-      ModuleCanvas.create!(
-        app_module: app_module,
-        entity_id: app_module.entity_id,
-        name: "#{app_module.name} #{view_type.titleize}",
-        slug: "#{app_module.slug}_#{view_type}",
-        canvas_type: canvas_type,
-        is_default: view_type == 'list',
-        html_content: canvas_content[:html] || generate_canvas_html(app_module, view_type, fields),
-        js_content: canvas_content[:js],
-        css_content: canvas_content[:css],
-        data_sources: [{ type: 'module_data', model: app_module.slug }],
-        metadata: {
-          display_fields: fields.first(6).map { |f| f['name'] },
-          icon: 'database',
-          generated_by: canvas_content[:generated_by] || 'static'
-        }
-      )
+
+      if existing
+        Rails.logger.info "[ApplicationBuildService] Updating existing canvas: #{existing.name} (#{slug})"
+        existing.update!(
+          html_content: canvas_content[:html] || generate_canvas_html(app_module, view_type, fields),
+          js_content: canvas_content[:js],
+          css_content: canvas_content[:css],
+          metadata: existing.metadata.merge(
+            'display_fields' => fields.first(6).map { |f| f['name'] },
+            'generated_by' => canvas_content[:generated_by] || 'static'
+          )
+        )
+      else
+        ModuleCanvas.create!(
+          app_module: app_module,
+          entity_id: app_module.entity_id,
+          name: "#{app_module.name} #{view_type.titleize}",
+          slug: slug,
+          canvas_type: canvas_type,
+          is_default: view_type == 'list',
+          html_content: canvas_content[:html] || generate_canvas_html(app_module, view_type, fields),
+          js_content: canvas_content[:js],
+          css_content: canvas_content[:css],
+          data_sources: [{ type: 'module_data', model: app_module.slug }],
+          metadata: {
+            display_fields: fields.first(6).map { |f| f['name'] },
+            icon: 'database',
+            generated_by: canvas_content[:generated_by] || 'static'
+          }
+        )
+      end
     end
   end
   
