@@ -439,7 +439,7 @@ docker compose restart web
 
 ### **Test Fails: "AWS credentials not configured"**
 ```bash
-# Set environment variables in docker-compose.yml
+# Set environment variables in compose.yaml
 # Or export in shell before running docker compose up
 export AWS_ACCESS_KEY_ID=your_key
 export AWS_SECRET_ACCESS_KEY=your_secret

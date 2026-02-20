@@ -163,7 +163,7 @@ RagConfig.log_config
 
 **Container (Recommended)**:
 ```bash
-# Already in Dockerfile.dev, just rebuild
+# Already in Containerfile.dev, just rebuild
 podman compose build web
 ```
 

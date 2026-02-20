@@ -355,7 +355,7 @@ class RailsStoreAdapter:
 #### Docker Compose Setup
 
 ```yaml
-# docker-compose.yml additions
+# compose.yaml additions
 services:
   agent_lightning:
     build: ./python_services/agent_lightning
@@ -376,10 +376,10 @@ volumes:
   agent_lightning_checkpoints:
 ```
 
-#### Python Service Dockerfile
+#### Python Service Containerfile
 
 ```dockerfile
-# python_services/agent_lightning/Dockerfile
+# python_services/agent_lightning/Containerfile
 FROM python:3.11-slim
 
 WORKDIR /app

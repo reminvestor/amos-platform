@@ -187,7 +187,7 @@ module AiAgents::Pipeline
       # - AWS CodeDeploy
       # - Kubernetes deployment
       # - Heroku/Render/Railway API
-      # - Docker image push + container restart
+      # - Container image push + restart
 
       deployment_result = {
         success: true,

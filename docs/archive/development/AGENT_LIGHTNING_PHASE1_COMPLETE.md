@@ -99,10 +99,10 @@ PythonAgentLightningClient.wait_for_training(job_id)
 
 ```bash
 # Start all services including Agent Lightning
-docker-compose up -d
+podman compose up -d
 
 # Check logs
-docker-compose logs -f agent_lightning
+podman compose logs -f agent_lightning
 
 # Verify health
 curl http://localhost:4747/health
@@ -274,7 +274,7 @@ end
 
 3. Check Docker network (if using compose):
    ```bash
-   docker-compose ps
+   podman compose ps
    docker network inspect agent_marketing_default
    ```
 
@@ -285,7 +285,7 @@ end
 **Solutions**:
 1. Check Python service logs:
    ```bash
-   docker-compose logs agent_lightning | grep ERROR
+   podman compose logs agent_lightning | grep ERROR
    ```
 
 2. Verify traces exist:
@@ -311,13 +311,13 @@ end
 - `python_services/agent_lightning/app.py` - FastAPI application
 - `python_services/agent_lightning/config.py` - Configuration
 - `python_services/agent_lightning/requirements.txt` - Python dependencies
-- `python_services/agent_lightning/Dockerfile` - Container definition
+- `python_services/agent_lightning/Containerfile` - Container definition
 - `python_services/agent_lightning/README.md` - Service documentation
 - `python_services/agent_lightning/.env.example` - Environment template
 - `app/services/python_agent_lightning_client.rb` - Rails HTTP client
 
 ### Modified Files
-- `docker-compose.yml` - Added agent_lightning service
+- `compose.yaml` - Added agent_lightning service
 - `app/services/agent_lightning_training_service.rb` - Simplified to delegate to Python
 - `docs/AGENT_LIGHTNING_REAL_INTEGRATION.md` - Architecture documentation
 

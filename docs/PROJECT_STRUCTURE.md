@@ -18,8 +18,8 @@ agent_marketing/
 ├── yarn.lock                 # Locked Node dependency versions
 ├── Rakefile                  # Rake task definitions
 ├── config.ru                 # Rack configuration for Rails
-├── docker-compose.yml        # Docker multi-container setup
-├── Dockerfile                # Docker image build instructions
+├── compose.yaml        # Docker multi-container setup
+├── Containerfile                # Docker image build instructions
 ├── requirements.txt          # Python dependencies (Docling, transformers)
 ├── .env                      # Environment variables (NOT in git)
 ├── .env.example              # Environment variable template
@@ -27,7 +27,7 @@ agent_marketing/
 ├── .gitattributes            # Git attributes configuration
 ├── .ruby-version             # Ruby version specification
 ├── .node-version             # Node.js version specification
-├── .dockerignore             # Docker build ignore patterns
+├── .containerignore          # Container build ignore patterns
 │
 ├── 📂 .claude/               # Claude Code configuration
 │   ├── 📂 agents/            # Agent-specific instructions
@@ -274,9 +274,9 @@ RAG_DETECT_TABLES=true
 
 | File | Purpose |
 |------|---------|
-| `Dockerfile` | Rails application image |
-| `docker-compose.yml` | Multi-container setup (web, db, redis) |
-| `.dockerignore` | Files excluded from Docker build |
+| `Containerfile` | Rails application image |
+| `compose.yaml` | Multi-container setup (web, db, redis) |
+| `.containerignore` | Files excluded from container build |
 
 ---
 

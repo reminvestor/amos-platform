@@ -110,9 +110,9 @@ AWS_SECRET_ACCESS_KEY=your-secret
 ### Port Conflicts
 
 If ports are already in use:
-- Rails (3000): Change in docker-compose.yml
-- Agent Lightning (4747/4748): Change in docker-compose.yml
-- PostgreSQL (5432): Change in docker-compose.yml
+- Rails (3000): Change in compose.yaml
+- Agent Lightning (4747/4748): Change in compose.yaml
+- PostgreSQL (5432): Change in compose.yaml
 
 ## 🎯 Next Steps for AWS Deployment
 

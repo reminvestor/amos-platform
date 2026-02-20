@@ -20,7 +20,7 @@ if ! $CONTAINER_CMD info > /dev/null 2>&1; then
     if [ "$CONTAINER_CMD" = "podman" ]; then
         echo "Run: podman machine start"
     else
-        echo "Please start Docker Desktop."
+        echo "Please start your container engine."
     fi
     exit 1
 fi

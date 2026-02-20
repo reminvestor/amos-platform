@@ -1645,7 +1645,7 @@ end
   </div>
 </div>
 Deployment Configuration
-yaml# docker-compose.yml
+yaml# compose.yaml
 version: '3.8'
 
 services:

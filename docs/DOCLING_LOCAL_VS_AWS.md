@@ -265,7 +265,7 @@ entities/#{entity_id}/docling_output/#{rag_store_id}/#{rag_document_id}_output.j
 
 ### Docker Compose Setup
 ```yaml
-# docker-compose.yml
+# compose.yaml
 localstack:
   image: localstack/localstack:latest
   ports:

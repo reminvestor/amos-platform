@@ -182,7 +182,7 @@ If port 3000, 5432, or 6379 is already in use:
 lsof -ti:3000 | xargs kill -9
 ```
 
-**Option 2**: Change ports in `docker-compose.yml`
+**Option 2**: Change ports in `compose.yaml`
 ```yaml
 web:
   ports:
@@ -281,7 +281,7 @@ podman compose run --rm web rails test test/models/rag_store_test.rb test/servic
 
 This container setup is for **development only**. For production:
 
-1. Use separate production Dockerfile
+1. Use separate production Containerfile
 2. Don't mount volumes (bake code into image)
 3. Use managed PostgreSQL/Redis
 4. Set proper environment variables

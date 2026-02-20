@@ -118,7 +118,7 @@ This will:
 ### Step 1: Open Rails Console
 
 ```bash
-docker-compose exec web rails console
+podman compose exec web rails console
 ```
 
 ### Step 2: Check Environment
@@ -282,13 +282,13 @@ Stripe API Docs
 ### Terminal 1: Watch Rails Logs
 
 ```bash
-docker-compose logs -f web | grep -E "(RAG|Pinecone|OpenAI|embedding)"
+podman compose logs -f web | grep -E "(RAG|Pinecone|OpenAI|embedding)"
 ```
 
 ### Terminal 2: Run Operations
 
 ```bash
-docker-compose exec web rails console
+podman compose exec web rails console
 ```
 
 ```ruby
@@ -314,7 +314,7 @@ result = service.create_rag_store("test", [{ content: "test", metadata: { source
 ### Check RAG Store Records
 
 ```bash
-docker-compose exec web rails dbconsole
+podman compose exec web rails dbconsole
 ```
 
 ```sql
@@ -344,7 +344,7 @@ GROUP BY entity_id;
 
 1. **Start Docker:**
    ```bash
-   docker-compose up -d
+   podman compose up -d
    ```
 
 2. **Visit:** http://localhost:3000
@@ -368,7 +368,7 @@ GROUP BY entity_id;
 
 ```bash
 # In another terminal, watch logs
-docker-compose logs -f web
+podman compose logs -f web
 
 # Look for:
 # 📄 Processing document: company_handbook.pdf
@@ -385,7 +385,7 @@ docker-compose logs -f web
 ### Remove Test RAG Stores
 
 ```bash
-docker-compose exec web rails console
+podman compose exec web rails console
 ```
 
 ```ruby
@@ -402,7 +402,7 @@ RagStore.find(1).destroy
 ### Check Pinecone Directly
 
 ```bash
-docker-compose exec web rails runner "
+podman compose exec web rails runner "
   client = Pinecone::Client.new
 
   # List indexes
@@ -451,7 +451,7 @@ cat .env | grep -E "(OPENAI|PINECONE)"
 
 # If keys have quotes, remove them
 # Restart Docker:
-docker-compose down && docker-compose up -d
+podman compose down && podman compose up -d
 ```
 
 ### Issue: "Index not found"
@@ -479,10 +479,10 @@ No colors in test output
 **Fix:**
 ```bash
 # Install colorize gem (should be in Gemfile)
-docker-compose exec web bundle add colorize
+podman compose exec web bundle add colorize
 
 # Or run without colors:
-docker-compose exec web rails runner scripts/test_rag_visual.rb 2>&1 | cat
+podman compose exec web rails runner scripts/test_rag_visual.rb 2>&1 | cat
 ```
 
 ---
@@ -523,7 +523,7 @@ After visual testing works:
 
 1. **Run automated tests:**
    ```bash
-   docker-compose exec web rails test test/services/rag_store_service_comprehensive_test.rb
+   podman compose exec web rails test test/services/rag_store_service_comprehensive_test.rb
    ```
 
 2. **Try with real documents:**

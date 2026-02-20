@@ -276,7 +276,7 @@ ScoutMessage.for_session(session_id).oldest_first
 
 ```bash
 # Console
-docker-compose exec web rails console
+podman compose exec web rails console
 
 # Check cache stats
 service = RagStoreService.new

@@ -52,7 +52,7 @@ REDIS_URL=redis://localhost:6379/0
 
 ### Docker Setup
 
-Redis is already included in `docker-compose.yml`:
+Redis is already included in `compose.yaml`:
 
 ```yaml
 services:
@@ -71,19 +71,19 @@ services:
 RAG_EMBEDDING_CACHE_ENABLED=true
 
 # 2. Ensure Redis is running (Docker)
-docker-compose up -d redis
+podman compose up -d redis
 
 # 3. Restart web
-docker-compose restart web
+podman compose restart web
 
 # 4. Verify
-docker-compose exec web rails rag:health
+podman compose exec web rails rag:health
 ```
 
 ### Check Cache Statistics
 
 ```bash
-docker-compose exec web rails rag:cache_stats
+podman compose exec web rails rag:cache_stats
 ```
 
 **Example Output**:
@@ -111,7 +111,7 @@ Estimated Savings:
 ### Clear Cache
 
 ```bash
-docker-compose exec web rails rag:clear_cache
+podman compose exec web rails rag:clear_cache
 ```
 
 ## How It Works
@@ -241,23 +241,23 @@ Attempt 4: Give up, raise error
 
 ```bash
 # 1. Load a document
-docker-compose exec web rails rag:load_amos_docs
+podman compose exec web rails rag:load_amos_docs
 
 # 2. Check cache stats (should show some hits)
-docker-compose exec web rails rag:cache_stats
+podman compose exec web rails rag:cache_stats
 
 # 3. Load same docs again
-docker-compose exec web rails rag:load_amos_docs
+podman compose exec web rails rag:load_amos_docs
 
 # 4. Check stats again (hit rate should be higher)
-docker-compose exec web rails rag:cache_stats
+podman compose exec web rails rag:cache_stats
 ```
 
 ### Test Without Cache
 
 ```bash
 # Temporarily disable
-docker-compose exec web bash -c 'export RAG_EMBEDDING_CACHE_ENABLED=false && rails rag:load_amos_docs'
+podman compose exec web bash -c 'export RAG_EMBEDDING_CACHE_ENABLED=false && rails rag:load_amos_docs'
 
 # Will use batch processing but skip caching
 ```
@@ -267,7 +267,7 @@ docker-compose exec web bash -c 'export RAG_EMBEDDING_CACHE_ENABLED=false && rai
 ### Health Check
 
 ```bash
-docker-compose exec web rails rag:health
+podman compose exec web rails rag:health
 ```
 
 **Shows**:
@@ -279,7 +279,7 @@ docker-compose exec web rails rag:health
 ### Detailed Stats
 
 ```bash
-docker-compose exec web rails rag:cache_stats
+podman compose exec web rails rag:cache_stats
 ```
 
 **Shows**:
@@ -301,13 +301,13 @@ Embedding Cache:
 **Fix**:
 ```bash
 # Check if Redis is running
-docker-compose ps redis
+podman compose ps redis
 
 # Start Redis
-docker-compose up -d redis
+podman compose up -d redis
 
 # Restart web
-docker-compose restart web
+podman compose restart web
 ```
 
 ### Low Hit Rate (<30%)
@@ -330,7 +330,7 @@ docker-compose restart web
 
 **Manual**: Clear cache
 ```bash
-docker-compose exec web rails rag:clear_cache
+podman compose exec web rails rag:clear_cache
 ```
 
 ## Best Practices

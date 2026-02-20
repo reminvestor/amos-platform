@@ -352,8 +352,8 @@ Expected: Scout calls retrieve_history(start_index: 1, end_index: 10)
 
 Check Redis status:
 ```bash
-docker-compose ps redis
-docker-compose logs redis
+podman compose ps redis
+podman compose logs redis
 ```
 
 Test connection in Rails console:

@@ -77,7 +77,7 @@ end
 module ActiveSupport
   class TestCase
     # Run tests in parallel with processes
-    # Use limited workers to avoid database ownership issues in Docker
+    # Use limited workers to avoid database ownership issues in containers
     parallelize(workers: ENV.fetch('PARALLEL_WORKERS', 4).to_i, with: :processes, threshold: 50)
 
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.

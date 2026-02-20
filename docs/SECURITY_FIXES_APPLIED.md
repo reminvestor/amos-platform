@@ -174,7 +174,7 @@ All Priority 1 critical security vulnerabilities identified in the audit have be
 
 If issues arise, rollback with:
 ```bash
-docker-compose exec web rails db:rollback
+podman compose exec web rails db:rollback
 ```
 
 Then restore `optional: true` in models and revert controller changes.

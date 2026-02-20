@@ -70,7 +70,7 @@ RagConfig.log_config
 
 ```bash
 # 1. Install dependencies
-docker-compose run --rm web pip3 install transformers torch
+podman compose run --rm web pip3 install transformers torch
 
 # 2. Update .env
 RAG_CHUNKING_STRATEGY=semantic
@@ -78,10 +78,10 @@ RAG_CHUNK_SIZE=1000
 RAG_CHUNK_OVERLAP=200
 
 # 3. Restart
-docker-compose restart web
+podman compose restart web
 
 # 4. Test
-docker-compose exec web rails docling:check
+podman compose exec web rails docling:check
 ```
 
 ### Use Simple Chunking (Default)
@@ -176,7 +176,7 @@ While adopting Ottomator's best practices, we maintain advantages:
 ### Compare Strategies
 
 ```bash
-docker-compose exec web rails docling:compare[path/to/doc.pdf]
+podman compose exec web rails docling:compare[path/to/doc.pdf]
 ```
 
 **Output**:
@@ -202,7 +202,7 @@ Processing time: 1.8s
 ### Health Check
 
 ```bash
-docker-compose exec web rails rag:health
+podman compose exec web rails rag:health
 ```
 
 **Expected**:
@@ -223,15 +223,15 @@ Docling:
 
 ```bash
 # 1. Install deps
-docker-compose run --rm web pip3 install transformers torch
+podman compose run --rm web pip3 install transformers torch
 
 # 2. Update .env
 RAG_CHUNKING_STRATEGY=semantic
 
 # 3. Re-index (optional but recommended)
-docker-compose exec web rails rag:delete_all[YES]
-docker-compose exec web rails rag:load_amos_docs
-docker-compose exec web rails rag:load_integration_docs
+podman compose exec web rails rag:delete_all[YES]
+podman compose exec web rails rag:load_amos_docs
+podman compose exec web rails rag:load_integration_docs
 ```
 
 ### Rollback to Simple
@@ -241,7 +241,7 @@ docker-compose exec web rails rag:load_integration_docs
 RAG_CHUNKING_STRATEGY=simple
 
 # 2. Restart
-docker-compose restart web
+podman compose restart web
 
 # That's it! No need to uninstall deps
 ```
@@ -302,8 +302,8 @@ Want to implement these? See `docs/RAG_COMPARISON_OTTOMATOR.md` for full plan.
 
 **Fix**:
 ```bash
-docker-compose run --rm web pip3 install transformers torch
-docker-compose restart web
+podman compose run --rm web pip3 install transformers torch
+podman compose restart web
 ```
 
 ### Chunking too slow

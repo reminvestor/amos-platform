@@ -140,7 +140,7 @@ rails runner db/seeds/analytics_setup.rb
 **Already in Gemfile**:
 - ✅ mini_magick
 
-**In Dockerfile**:
+**In Containerfile**:
 - ✅ imagemagick
 
 **No additional gems needed!**

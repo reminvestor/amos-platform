@@ -1,4 +1,4 @@
-# See https://docs.docker.com/engine/reference/builder/#dockerignore-file for more about ignoring files.
+# Container build ignore patterns (Podman/Buildah compatible)
 
 # Ignore git directory.
 /.git/
@@ -46,9 +46,9 @@
 # Ignore development files
 /.devcontainer
 
-# Ignore Docker-related files
-/.dockerignore
-/Dockerfile*
+# Ignore container build files
+/.containerignore
+/Containerfile*
 
 # Ignore documentation (not needed in production image)
 /docs/

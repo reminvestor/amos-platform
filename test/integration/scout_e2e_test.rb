@@ -32,7 +32,7 @@ class ScoutE2eTest < ActionDispatch::IntegrationTest
     end
 
     # E2E tests need REAL AWS Bedrock calls (test_helper stubs all AWS by default)
-    # Restore real credentials from ~/.aws (mounted in Docker) or environment
+    # Restore real credentials from ~/.aws (mounted in container) or environment
     provider = nil
     begin
       provider = Aws::SharedCredentials.new

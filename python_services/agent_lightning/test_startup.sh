@@ -20,13 +20,13 @@ fi
 
 echo "✓ Found requirements.txt"
 
-# Check Dockerfile
-if [ ! -f "Dockerfile" ]; then
-  echo "❌ Error: Dockerfile not found"
+# Check Containerfile
+if [ ! -f "Containerfile" ]; then
+  echo "❌ Error: Containerfile not found"
   exit 1
 fi
 
-echo "✓ Found Dockerfile"
+echo "✓ Found Containerfile"
 
 echo
 echo "📦 Installing Python dependencies..."
@@ -38,8 +38,8 @@ python -m py_compile app.py 2>&1 && echo "✓ app.py syntax valid" || echo "❌ 
 python -m py_compile config.py 2>&1 && echo "✓ config.py syntax valid" || echo "❌ Syntax error in config.py"
 
 echo
-echo "🐳 Testing Docker build..."
-docker build -t agent-lightning-test . > /dev/null 2>&1 && echo "✓ Docker build successful" || echo "❌ Docker build failed"
+echo "📦 Testing container build..."
+docker build -t agent-lightning-test . > /dev/null 2>&1 && echo "✓ Container build successful" || echo "❌ Container build failed"
 
 echo
 echo "✅ Tests complete!"

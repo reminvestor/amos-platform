@@ -441,7 +441,7 @@ AWS_S3_ENDPOINT=http://localhost:4566
 ### Local Development with LocalStack
 
 ```bash
-# docker-compose.yml includes LocalStack service
+# compose.yaml includes LocalStack service
 docker compose up -d
 
 # LocalStack provides S3 locally

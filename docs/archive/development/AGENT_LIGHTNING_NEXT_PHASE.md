@@ -202,7 +202,7 @@ Just say:
 - `python_services/agent_lightning/app.py` - FastAPI application
 - `python_services/agent_lightning/config.py` - Configuration
 - `python_services/agent_lightning/requirements.txt` - Dependencies
-- `python_services/agent_lightning/Dockerfile` - Container
+- `python_services/agent_lightning/Containerfile` - Container
 
 **You'll add:**
 - `python_services/agent_lightning/store_adapter.py` - NEW (main work)

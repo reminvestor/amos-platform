@@ -137,7 +137,7 @@ end
 
 ### Local Development
 
-**docker-compose.yml:**
+**compose.yaml:**
 ```yaml
 services:
   db:

@@ -413,17 +413,17 @@ RAG_DETECT_IMAGES=false          # Enable image detection (optional)
 ### 1. Run Database Migration
 
 ```bash
-docker-compose exec web rails db:migrate
+podman compose exec web rails db:migrate
 ```
 
 ### 2. Load Test Documents
 
 ```bash
 # Load Stripe docs with semantic chunking
-docker-compose exec web rails rag:load_amos_docs
+podman compose exec web rails rag:load_amos_docs
 
 # Check metadata statistics
-docker-compose exec web rails rag:health
+podman compose exec web rails rag:health
 ```
 
 **Expected Output**:
@@ -444,7 +444,7 @@ Metadata Support:
 
 ```ruby
 # Open console
-docker-compose exec web rails console
+podman compose exec web rails console
 
 # Query with page filter
 rag_service = RagStoreService.new

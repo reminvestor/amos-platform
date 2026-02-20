@@ -415,7 +415,7 @@ Authorization header of each request..."
 ### Health Check
 
 ```bash
-docker-compose exec web rails rag:health
+podman compose exec web rails rag:health
 
 # Output:
 ✅ Pinecone connected (amos-system-knowledge, amos-entity-knowledge)
@@ -439,7 +439,7 @@ Cache Statistics:
 ### Cache Statistics
 
 ```bash
-docker-compose exec web rails rag:cache_stats
+podman compose exec web rails rag:cache_stats
 
 # Output:
 Embedding Cache Statistics
@@ -545,8 +545,8 @@ rails docling:compare[path/to/doc.pdf]
 
 **Solution**:
 ```bash
-docker-compose exec web pip3 install -r requirements.txt
-docker-compose exec web python3 -c 'import docling; print(docling.__version__)'
+podman compose exec web pip3 install -r requirements.txt
+podman compose exec web python3 -c 'import docling; print(docling.__version__)'
 ```
 
 ### Issue: Cache Not Working
@@ -556,10 +556,10 @@ docker-compose exec web python3 -c 'import docling; print(docling.__version__)'
 **Solution**:
 ```bash
 # Check Redis connection
-docker-compose exec web rails runner "puts Redis.new(url: ENV['REDIS_URL']).ping"
+podman compose exec web rails runner "puts Redis.new(url: ENV['REDIS_URL']).ping"
 
 # Restart Redis
-docker-compose restart redis
+podman compose restart redis
 ```
 
 ### Issue: Empty Search Results
@@ -569,10 +569,10 @@ docker-compose restart redis
 **Solution**:
 ```bash
 # Check RAG stores
-docker-compose exec web rails runner "puts RagStore.active.count"
+podman compose exec web rails runner "puts RagStore.active.count"
 
 # Re-load docs
-docker-compose exec web rails rag:load_amos_docs
+podman compose exec web rails rag:load_amos_docs
 ```
 
 ### Issue: Poor Search Quality
@@ -582,12 +582,12 @@ docker-compose exec web rails rag:load_amos_docs
 **Solution**:
 ```bash
 # Verify semantic chunking
-docker-compose exec web rails runner "puts ENV['RAG_CHUNKING_STRATEGY']"
+podman compose exec web rails runner "puts ENV['RAG_CHUNKING_STRATEGY']"
 # Should be: semantic
 
 # Clear cache and re-index
-docker-compose exec web rails rag:clear_cache
-docker-compose exec web rails rag:load_amos_docs
+podman compose exec web rails rag:clear_cache
+podman compose exec web rails rag:load_amos_docs
 ```
 
 ---

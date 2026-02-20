@@ -37,7 +37,7 @@ giphy:
 
 ```bash
 # If using Docker:
-docker-compose restart web
+podman compose restart web
 
 # If using bin/dev:
 # Press Ctrl+C to stop

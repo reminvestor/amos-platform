@@ -37,8 +37,7 @@
 /config/solana_token.yml
 
 # Container local overrides
-docker-compose.override.yml
-podman-compose.override.yml
+compose.override.yaml
 
 # Ignore environment variables
 .env

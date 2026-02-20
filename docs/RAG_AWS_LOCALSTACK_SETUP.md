@@ -310,7 +310,7 @@ RAG_EMBEDDING_CACHE_ENABLED=true
 ### Step 1: Start LocalStack
 
 ```bash
-# docker-compose.yml includes localstack service
+# compose.yaml includes localstack service
 docker compose up -d localstack
 
 # Wait for LocalStack to start (30-60 seconds)
