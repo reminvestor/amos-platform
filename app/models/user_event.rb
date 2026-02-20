@@ -57,17 +57,17 @@ class UserEvent < ApplicationRecord
   # @return [Hash] Conversion stats for each step
   #
   # @example
-  #   UserEvent.funnel_analysis(['signup_started', 'email_confirmed', 'profile_completed'])
+  #   UserEvent.for_entity(entity.id).funnel_analysis(['signup_started', 'email_confirmed', 'profile_completed'])
   #   # => {
   #   #   'signup_started' => { count: 100, conversion: 100.0 },
   #   #   'email_confirmed' => { count: 80, conversion: 80.0 },
   #   #   'profile_completed' => { count: 60, conversion: 60.0 }
   #   # }
   def self.funnel_analysis(steps)
-    first_step_count = where(event_name: steps.first).count.to_f
+    first_step_count = where(event_name: steps.first).distinct.count(:user_id).to_f
 
     steps.each_with_object({}) do |step, result|
-      count = where(event_name: step).count
+      count = where(event_name: step).distinct.count(:user_id)
       conversion = first_step_count > 0 ? (count / first_step_count * 100).round(1) : 0.0
 
       result[step] = {
@@ -78,6 +78,7 @@ class UserEvent < ApplicationRecord
   end
 
   # Cohort analysis - group users by a time period and track their behavior
+  # Should be called on an entity-scoped relation: UserEvent.for_entity(id).cohort_analysis
   #
   # @param period [Symbol] :day, :week, or :month
   # @return [Hash] Users grouped by cohort with event counts
@@ -93,6 +94,6 @@ class UserEvent < ApplicationRecord
                   raise ArgumentError, "Invalid period: #{period}"
                 end
 
-    group(group_sql).count
+    group(Arel.sql(group_sql)).count
   end
 end

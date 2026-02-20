@@ -4,7 +4,6 @@ class ScoutController < ApplicationController
   include ActionView::Helpers::DateHelper  # For time_ago_in_words
   include Scout::Streaming  # Streaming helpers
   include Scout::StreamingKeepalive  # Keep-alive for long operations
-  include EventTrackable  # User event tracking for analytics
 
   skip_before_action :verify_authenticity_token, only: [:chat_stream, :chat]
   before_action :authenticate_user_or_api!

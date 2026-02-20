@@ -16,6 +16,9 @@
 class TrackUserEventJob < ApplicationJob
   queue_as :default
 
+  retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: 3
+  discard_on ActiveRecord::RecordInvalid
+
   # Track a user event by persisting it to the database
   #
   # @param user_id [Integer] ID of the user who triggered the event (nil for anonymous)
@@ -43,17 +46,5 @@ class TrackUserEventJob < ApplicationJob
     Rails.logger.info(
       "[UserEvent] Tracked: #{event_name} (category: #{event_category}, user: #{user_id}, entity: #{entity_id})"
     )
-  rescue ActiveRecord::RecordInvalid => e
-    # Log validation errors but don't fail the job
-    Rails.logger.warn(
-      "[UserEvent] Failed to track event: #{e.message} (event: #{event_name}, user: #{user_id})"
-    )
-  rescue => e
-    # Log unexpected errors
-    Rails.logger.error(
-      "[UserEvent] Unexpected error tracking event: #{e.message} (event: #{event_name}, user: #{user_id})"
-    )
-    # Re-raise to retry the job
-    raise e
   end
 end
