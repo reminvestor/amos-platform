@@ -158,6 +158,28 @@ class GuidanceLibrary
     nil
   end
 
+  # Get best-performing model recommendation for a task type
+  # Returns model_id string or nil if insufficient data
+  def self.recommended_model_for(task_type, entity)
+    return nil unless defined?(TaskExperience)
+
+    cache_key = "guidance:model_rec:#{entity.id}:#{task_type}"
+    Rails.cache.fetch(cache_key, expires_in: 10.minutes) do
+      routing_exp = TaskExperience.where(entity: entity, source_type: 'model_routing', active: true)
+                                   .where("task_type = ? OR task_type = 'general'", task_type.to_s)
+                                   .by_utility
+                                   .first
+
+      if routing_exp&.content
+        model_match = routing_exp.content.match(/Prefer (\S+) for/)
+        model_match&.[](1)
+      end
+    end
+  rescue => e
+    Rails.logger.debug "[GuidanceLibrary] Model recommendation lookup failed: #{e.message}"
+    nil
+  end
+
   # ═══════════════════════════════════════════════════════════════
   # GUIDANCE DEFINITIONS
   # Small, focused prompt fragments - NOT full system prompts

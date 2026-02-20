@@ -72,6 +72,7 @@ module ContextGraphInstrumentable
     quality_score: nil,
     reasoning: nil,
     tools_used: [],
+    model_used: nil,
     context: {}
   )
     return unless decision_recorder
@@ -87,8 +88,9 @@ module ContextGraphInstrumentable
         outcome: outcome,
         quality_score: quality_score,
         tools_used: tools_used,
+        model_used: model_used,
         recorded_for: 'experience_learning'
-      }
+      }.compact
     )
   rescue => e
     Rails.logger.warn "[ContextGraph] Failed to record task interaction: #{e.message}"

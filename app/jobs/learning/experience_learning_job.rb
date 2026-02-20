@@ -45,6 +45,10 @@ module Learning
         task_types: task_types
       )
 
+      # Extract model routing insights alongside semantic advantages
+      model_insights = service.extract_model_routing_insights(window: window_days.days)
+      results[:model_routing_insights] = model_insights.size
+
       # Log summary
       log_results(entity, results)
 

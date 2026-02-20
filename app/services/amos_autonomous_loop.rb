@@ -62,6 +62,7 @@ class AmosAutonomousLoop
     create_bounty: { cost: :medium, description: "Create a new bounty for the community" },
     groom_bounties: { cost: :medium, description: "Reprioritize and adjust bounty backlog" },
     evolve_skill: { cost: :medium, description: "Improve a skill file based on execution data" },
+    analyze_model_performance: { cost: :low, description: "Analyze model performance and update routing" },
     investigate: { cost: :low, description: "Dig deeper into an observation (creates working memory)" },
     resolve_thought: { cost: :low, description: "Mark a working memory thought as addressed" },
     connect_dots: { cost: :low, description: "Link related observations together" },
@@ -174,6 +175,9 @@ class AmosAutonomousLoop
 
     # Signal 7: Recent agent execution quality
     signals += perceive_execution_quality
+
+    # Signal 8: Model performance patterns
+    signals += perceive_model_performance
 
     # Filter by minimum strength
     signals.select { |s| s[:strength] >= MIN_SIGNAL_STRENGTH }
@@ -379,6 +383,57 @@ class AmosAutonomousLoop
     []
   end
 
+  def perceive_model_performance
+    signals = []
+
+    return signals unless defined?(ModelQualityLog)
+
+    # Check for models with high error rates in the last 24 hours
+    model_errors = ModelQualityLog.where('created_at > ?', 24.hours.ago)
+                                   .group(:model_id)
+                                   .select(
+                                     'model_id',
+                                     'COUNT(*) as total',
+                                     "SUM(CASE WHEN event_type IN ('tool_success', 'retry_success') THEN 1 ELSE 0 END) as successes"
+                                   )
+
+    model_errors.each do |row|
+      next if row.total < 10
+
+      success_rate = row.successes.to_f / row.total
+      if success_rate < 0.7
+        signals << {
+          type: :model_underperformance,
+          label: "Model #{row.model_id} success rate: #{(success_rate * 100).round}% (#{row.successes}/#{row.total})",
+          strength: [0.5 + ((1 - success_rate) * 0.5), 0.85].min,
+          data: { model_id: row.model_id, success_rate: success_rate, total: row.total },
+          suggested_action: :analyze_model_performance
+        }
+      end
+    end
+
+    # Check if we have enough data to extract model routing insights
+    recent_traces_with_model = DecisionTrace.where(entity: entity)
+                                             .where('created_at > ?', 7.days.ago)
+                                             .where("metadata->>'model_used' IS NOT NULL")
+                                             .count
+
+    if recent_traces_with_model >= 20
+      signals << {
+        type: :model_routing_opportunity,
+        label: "#{recent_traces_with_model} executions with model data available for routing analysis",
+        strength: 0.5,
+        data: { trace_count: recent_traces_with_model },
+        suggested_action: :analyze_model_performance
+      }
+    end
+
+    signals
+  rescue => e
+    log "⚠️ Model performance perception failed: #{e.message}"
+    []
+  end
+
   # ═══════════════════════════════════════════════════════════════════════════
   # PHASE 2: ATTENTION ALLOCATION
   # Decide what to focus on this session
@@ -460,6 +515,8 @@ class AmosAutonomousLoop
                think_and_groom(focus)
              when :evolve_skill
                think_and_evolve_skills(focus)
+             when :analyze_model_performance
+               think_and_analyze_models(focus)
              when :investigate
                think_and_investigate(focus)
              when :connect_dots
@@ -535,6 +592,28 @@ class AmosAutonomousLoop
 
     { action: :evolve_skill, success: true, bounties_created: 0, points_allocated: 0,
       skills_evolved: results[:skills_evolved] }
+  end
+
+  def think_and_analyze_models(focus)
+    service = Learning::SemanticAdvantageService.new(entity: entity)
+    insights = service.extract_model_routing_insights(window: 7.days)
+
+    if insights.any?
+      summary = insights.map { |i| "#{i[:task_type]}: #{i[:best_model]} (#{i[:best_rate]}%)" }.join(", ")
+      create_thought!(
+        type: 'insight',
+        topic: 'model_performance',
+        content: "Model routing analysis: #{summary}. " \
+                 "#{insights.size} task types show significant model performance differences.",
+        salience: 0.7
+      )
+    end
+
+    { action: :analyze_model_performance, success: true, bounties_created: 0, points_allocated: 0,
+      insights_generated: insights.size }
+  rescue => e
+    log "  ❌ Model analysis failed: #{e.message}"
+    { action: :analyze_model_performance, success: false, error: e.message, bounties_created: 0, points_allocated: 0 }
   end
 
   def think_and_investigate(focus)

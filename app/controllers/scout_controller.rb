@@ -611,11 +611,26 @@ class ScoutController < ApplicationController
     # Determine model - default to qwen for auto mode (fast/cheap)
     # Only use premium models if explicitly selected by user
     model = model_preference.presence || ENV.fetch("BEDROCK_DEFAULT_MODEL", "qwen3-next-80b")
-    Rails.logger.info "[V3] Using model: #{model} (explicit: #{model_preference.present?})"
 
     # Extract canvas type and data
     canvas_type = extract_canvas_type(current_canvas)
     canvas_data = extract_canvas_data(current_canvas)
+
+    # If user hasn't explicitly picked a model, check if the learning system
+    # has a better recommendation for this task type
+    if model_preference.blank?
+      task_type = GuidanceLibrary.detect_task_type(
+        canvas_context: { type: canvas_type }.merge(extract_canvas_data(current_canvas) || {}),
+        message: message
+      )
+      learned_model = GuidanceLibrary.recommended_model_for(task_type, current_entity)
+      if learned_model.present? && learned_model != model
+        Rails.logger.info "[V3] Learning system recommends #{learned_model} for #{task_type} (default: #{model})"
+        model = learned_model
+      end
+    end
+
+    Rails.logger.info "[V3] Using model: #{model} (explicit: #{model_preference.present?})"
 
     # If user is on a canvas with context (e.g., landing page editor with landing_page_id),
     # inject that context into the message so Amos knows what they're looking at

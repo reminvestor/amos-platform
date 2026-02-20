@@ -168,7 +168,8 @@ module Learning
           outcome: trace.outcome,
           quality: trace.outcome_quality_score,
           is_exception: trace.is_exception,
-          tools_used: extract_tools_used(trace)
+          tools_used: extract_tools_used(trace),
+          model_used: trace.metadata&.dig('model_used')
         }
       end
     end
@@ -235,6 +236,8 @@ module Learning
         2. Start with context: "When [situation], [do this] to [achieve outcome]"
         3. Be specific enough to be useful, general enough to apply broadly
         4. Don't repeat existing experiences - add NEW insights or MODIFY existing ones
+        5. If you notice model-specific patterns (e.g., one model consistently succeeds/fails at this task type),
+           include that as a lesson with source_type "model_routing"
         
         ## Response Format (JSON)
         
@@ -245,7 +248,14 @@ module Learning
           {
             "operation": "add",
             "content": "When executing integration APIs, always verify connection status first to avoid cryptic auth errors",
-            "applies_when": "Before calling integration tools"
+            "applies_when": "Before calling integration tools",
+            "source_type": "semantic_advantage"
+          },
+          {
+            "operation": "add",
+            "content": "Claude Opus significantly outperforms Qwen on integration setup tasks requiring complex multi-step API orchestration",
+            "applies_when": "When selecting model for integration tasks",
+            "source_type": "model_routing"
           },
           {
             "operation": "modify",
@@ -275,12 +285,14 @@ module Learning
         tools = s[:tools_used].any? ? "Tools: #{s[:tools_used].join(', ')}" : "No tools"
         quality = s[:quality] ? "Quality: #{s[:quality]}" : ""
         exception = s[:is_exception] ? "[EXCEPTION]" : ""
+        model = s[:model_used].present? ? "Model: #{s[:model_used]}" : ""
         
         <<~SUMMARY
           ### Execution #{i + 1} #{exception}
           - Summary: #{s[:summary]}
           - Reasoning: #{s[:reasoning].to_s.truncate(200)}
           - #{tools}
+          - #{model}
           - Outcome: #{s[:outcome]} #{quality}
         SUMMARY
       end.join("\n")
@@ -346,7 +358,7 @@ module Learning
         task_type: task_type,
         content: advantage['content'],
         applies_when: advantage['applies_when'],
-        source_type: 'semantic_advantage',
+        source_type: advantage['source_type'] || 'semantic_advantage',
         source_context: {
           extracted_at: Time.current.iso8601,
           generation: TaskExperience.current_generation(entity)
@@ -375,6 +387,121 @@ module Learning
       experience.deactivate!(reason: advantage['reason'])
       Rails.logger.info "[SemanticAdvantage] Deleted experience #{experience.id}: #{advantage['reason']}"
     end
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # MODEL PERFORMANCE ANALYSIS
+    # Extracts model-specific routing insights from DecisionTrace + ModelQualityLog
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    public
+
+    def extract_model_routing_insights(window: 7.days)
+      return [] unless defined?(ModelQualityLog)
+
+      Rails.logger.info "[SemanticAdvantage] Extracting model routing insights for entity #{entity.id}"
+
+      insights = []
+
+      # Analyze DecisionTrace outcomes grouped by model
+      model_outcomes = DecisionTrace.where(entity: entity)
+                                     .where('created_at > ?', window.ago)
+                                     .where.not(outcome: nil)
+                                     .where("metadata->>'model_used' IS NOT NULL")
+                                     .group(Arel.sql("metadata->>'model_used'"), :outcome)
+                                     .count
+
+      # Build per-model stats
+      model_stats = {}
+      model_outcomes.each do |(model, outcome), count|
+        model_stats[model] ||= { success: 0, failure: 0, total: 0 }
+        model_stats[model][outcome.to_sym] = count
+        model_stats[model][:total] += count
+      end
+
+      # Also group by task_type + model for task-specific routing
+      task_model_outcomes = DecisionTrace.where(entity: entity)
+                                          .where('created_at > ?', window.ago)
+                                          .where.not(outcome: nil)
+                                          .where("metadata->>'model_used' IS NOT NULL")
+                                          .where("metadata->>'task_type' IS NOT NULL")
+                                          .group(
+                                            Arel.sql("metadata->>'task_type'"),
+                                            Arel.sql("metadata->>'model_used'"),
+                                            :outcome
+                                          ).count
+
+      # Build per-task-type model rankings
+      task_model_stats = {}
+      task_model_outcomes.each do |(task_type, model, outcome), count|
+        task_model_stats[task_type] ||= {}
+        task_model_stats[task_type][model] ||= { success: 0, failure: 0, total: 0 }
+        task_model_stats[task_type][model][outcome.to_sym] = count
+        task_model_stats[task_type][model][:total] += count
+      end
+
+      # Generate insights for task types where models differ significantly
+      task_model_stats.each do |task_type, models|
+        next if models.size < 2
+
+        ranked = models.map do |model, stats|
+          next if stats[:total] < 3
+          rate = stats[:success].to_f / stats[:total]
+          { model: model, success_rate: rate, total: stats[:total] }
+        end.compact.sort_by { |m| -m[:success_rate] }
+
+        next if ranked.size < 2
+
+        best = ranked.first
+        worst = ranked.last
+        gap = best[:success_rate] - worst[:success_rate]
+
+        if gap > 0.15 && best[:total] >= 5
+          insights << {
+            task_type: task_type,
+            best_model: best[:model],
+            best_rate: (best[:success_rate] * 100).round(1),
+            worst_model: worst[:model],
+            worst_rate: (worst[:success_rate] * 100).round(1),
+            sample_size: ranked.sum { |r| r[:total] }
+          }
+        end
+      end
+
+      # Store significant insights as TaskExperience records
+      insights.first(3).each do |insight|
+        content = "For #{insight[:task_type].to_s.titleize} tasks, " \
+                  "#{insight[:best_model]} achieves #{insight[:best_rate]}% success rate " \
+                  "vs #{insight[:worst_model]} at #{insight[:worst_rate]}% " \
+                  "(based on #{insight[:sample_size]} executions). " \
+                  "Prefer #{insight[:best_model]} for this task type."
+
+        existing = TaskExperience.where(entity: entity, source_type: 'model_routing')
+                                 .where("content LIKE ?", "%#{insight[:task_type].to_s.titleize}%")
+                                 .active
+                                 .first
+
+        if existing
+          existing.update!(content: content, metadata: existing.metadata.merge(
+            'updated_at' => Time.current.iso8601,
+            'stats' => insight
+          ))
+        else
+          TaskExperience.learn!(
+            entity: entity,
+            task_type: insight[:task_type],
+            content: content,
+            applies_when: "When selecting model for #{insight[:task_type]} tasks",
+            source_type: 'model_routing',
+            source_context: { stats: insight, extracted_at: Time.current.iso8601 }
+          )
+        end
+      end
+
+      Rails.logger.info "[SemanticAdvantage] Generated #{insights.size} model routing insights"
+      insights
+    end
+
+    private
 
     # ═══════════════════════════════════════════════════════════════════════════
     # HELPERS

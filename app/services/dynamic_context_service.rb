@@ -76,12 +76,16 @@ class DynamicContextService
     # Step 6: Get entity's custom tools (always prioritize these)
     custom_tools = get_entity_custom_tools
 
+    # Step 7: Get model recommendation based on learned performance data
+    recommended_model = GuidanceLibrary.recommended_model_for(task_type, @entity)
+
     {
       task_type: task_type,
       guidance_block: guidance_block,
       priority_tools: (custom_tools + priority_tools).uniq,
       context_summary: context_summary,
       canvas_context: canvas_context,
+      recommended_model: recommended_model,
       # For backwards compatibility with existing code
       plugin: nil,
       plugin_slug: nil,

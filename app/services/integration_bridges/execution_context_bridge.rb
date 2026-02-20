@@ -35,8 +35,10 @@ module IntegrationBridges
         requires_approval: requires_approval?,
         metadata: {
           agent_plugin_execution_id: execution.id,
-          outcome_quality_score: calculate_quality_score
-        }
+          outcome_quality_score: calculate_quality_score,
+          model_used: extract_model_used,
+          task_type: extract_task_type
+        }.compact
       )
 
       Rails.logger.info "[ExecutionContextBridge] Recorded decision for execution #{execution.id}"
@@ -178,6 +180,16 @@ module IntegrationBridges
     def requires_approval?
       output = execution.output_result || {}
       output['requires_approval'] == true || output['needs_human_review'] == true
+    end
+
+    def extract_model_used
+      output = execution.output_result || {}
+      output['model_used'] || execution.try(:model_id)
+    end
+
+    def extract_task_type
+      input = execution.input_context || {}
+      input['task_type'] || input[:task_type]
     end
   end
 end
