@@ -154,11 +154,11 @@ module Amos
 
     def agent_performance
       entity.agent_plugins.where(status: 'active').map do |agent|
-        traces = AgentLightningTrace.where(entity: entity, agent_role: agent.slug)
+        executions = agent.agent_plugin_executions
           .where('created_at > ?', 24.hours.ago)
 
-        total = traces.count
-        successful = traces.where(status: 'completed').count
+        total = executions.count
+        successful = executions.where(status: 'completed').count
         success_rate = total > 0 ? (successful.to_f / total * 100).round : nil
 
         {

@@ -219,5 +219,101 @@ namespace :tools do
   task cleanup: [:diagnose, :fix, :delete_orphans] do
     puts "\n✅ Tool cleanup complete!"
   end
+
+  desc "Preview redundant module CRUD tools that would be deleted (dry run)"
+  task preview_module_crud: :environment do
+    puts "🔍 Scanning for auto-generated module CRUD ToolDefinitions..."
+    puts "   These are redundant -- platform tools handle all module CRUD natively.\n\n"
+
+    crud_tools = ToolDefinition.where.not(app_module_id: nil)
+    total = crud_tools.count
+
+    if total == 0
+      puts "✅ No module CRUD tools found. Nothing to clean up!"
+      next
+    end
+
+    by_entity = crud_tools.includes(:entity, :app_module).group_by(&:entity_id)
+
+    by_entity.each do |entity_id, tools|
+      entity_name = tools.first.entity&.name || "Unknown"
+      puts "  📦 Entity: #{entity_name} (ID: #{entity_id}) — #{tools.size} CRUD tools"
+
+      tools.group_by { |t| t.app_module&.name || "Deleted module" }.each do |mod_name, mod_tools|
+        puts "     └─ Module: #{mod_name}"
+        mod_tools.each do |tool|
+          puts "        • #{tool.name} (ID: #{tool.id}, created: #{tool.created_at&.strftime('%Y-%m-%d %H:%M')})"
+        end
+      end
+      puts ""
+    end
+
+    puts "="*60
+    puts "📊 Total: #{total} redundant module CRUD tools across #{by_entity.size} entities"
+    puts "💡 Run 'rake tools:delete_module_crud' to remove them"
+    puts "   Or 'rake tools:delete_module_crud_for_entity[ENTITY_ID]' for a specific entity"
+  end
+
+  desc "Delete all auto-generated module CRUD tools (they duplicate platform tools)"
+  task delete_module_crud: :environment do
+    crud_tools = ToolDefinition.where.not(app_module_id: nil)
+    total = crud_tools.count
+
+    if total == 0
+      puts "✅ No module CRUD tools found. Nothing to clean up!"
+      next
+    end
+
+    puts "🗑️  Deleting #{total} redundant module CRUD ToolDefinitions..."
+
+    deleted = 0
+    crud_tools.find_each do |tool|
+      entity_name = tool.entity&.name || "?"
+      puts "  🗑️  #{tool.name} (entity: #{entity_name}, module: #{tool.app_module&.name || 'deleted'})"
+      tool.destroy
+      deleted += 1
+    end
+
+    # Clear the ToolCatalog cache so stale tools aren't served
+    if defined?(Tools::ToolCatalog)
+      Tools::ToolCatalog.instance.instance_variable_set(:@entity_tools, {})
+      puts "\n🔄 ToolCatalog cache cleared"
+    end
+
+    puts "\n✅ Deleted #{deleted} redundant module CRUD tools"
+    puts "   Platform tools (platform_create/query/update/execute) handle all module CRUD."
+  end
+
+  desc "Delete module CRUD tools for a specific entity"
+  task :delete_module_crud_for_entity, [:entity_id] => :environment do |t, args|
+    entity_id = args.entity_id
+    raise "Usage: rake tools:delete_module_crud_for_entity[ENTITY_ID]" unless entity_id
+
+    entity = Entity.find(entity_id)
+    crud_tools = ToolDefinition.where(entity_id: entity.id).where.not(app_module_id: nil)
+    total = crud_tools.count
+
+    if total == 0
+      puts "✅ No module CRUD tools found for #{entity.name}. Nothing to clean up!"
+      next
+    end
+
+    puts "🗑️  Deleting #{total} redundant module CRUD tools for #{entity.name}..."
+
+    deleted = 0
+    crud_tools.find_each do |tool|
+      puts "  🗑️  #{tool.name} (module: #{tool.app_module&.name || 'deleted'})"
+      tool.destroy
+      deleted += 1
+    end
+
+    # Clear the ToolCatalog cache for this entity
+    if defined?(Tools::ToolCatalog)
+      Tools::ToolCatalog.instance.instance_variable_set(:@entity_tools, {})
+      puts "\n🔄 ToolCatalog cache cleared"
+    end
+
+    puts "\n✅ Deleted #{deleted} redundant module CRUD tools for #{entity.name}"
+  end
 end
 

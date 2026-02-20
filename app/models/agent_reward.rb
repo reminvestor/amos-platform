@@ -1,6 +1,5 @@
 class AgentReward < ApplicationRecord
   belongs_to :entity
-  belongs_to :agent_lightning_trace
   belongs_to :user, optional: true
 
   validates :reward_type, presence: true, inclusion: { in: %w[completion quality efficiency user_feedback validation benchmark task_success] }

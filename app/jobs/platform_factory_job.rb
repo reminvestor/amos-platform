@@ -655,33 +655,12 @@ class PlatformFactoryJob < ApplicationJob
   end
 
   def generate_tools(schema)
-    tools = []
-    errors = []
-
-    (schema[:models] || []).each do |model_schema|
-      # Generate CRUD tools for each model
-      tool = Tools::GenerateToolDefinitionTool.new(
-        user: @user,
-        entity: @entity,
-        context: { platform_factory: true }
-      )
-
-      result = tool.execute(
-        module_slug: @app_module.slug,
-        tool_name: "manage_#{model_schema[:name].underscore}",
-        description: "Manage #{model_schema[:name]} records",
-        tool_type: 'crud',
-        model_name: model_schema[:name]
-      )
-
-      if result[:error].blank?
-        tools.concat(result[:tools_created] || [])
-      else
-        errors << result[:error]
-      end
-    end
-
-    { success: true, tools: tools, errors: errors }  # Tools are optional
+    # CRUD tools are no longer generated per-module. The V3 platform tools
+    # (platform_create, platform_query, platform_update, platform_execute)
+    # handle all custom module CRUD natively. Generating ToolDefinitions
+    # bloats the LLM context and duplicates existing platform capabilities.
+    Rails.logger.info "[PlatformFactory] Skipping CRUD tool generation for #{@app_module&.slug} - handled by platform tools"
+    { success: true, tools: [], errors: [] }
   end
 
   # ============================================
@@ -745,42 +724,10 @@ class PlatformFactoryJob < ApplicationJob
   end
 
   def generate_tools_from_plan(planned_spec)
-    tools = []
-    errors = []
-    
-    tool_specs = planned_spec[:tools] || planned_spec['tools'] || []
-    
-    # If detailed tool specs provided, use them
-    if tool_specs.any?
-      tool_specs.each do |tool_spec|
-        tool = Tools::GenerateToolDefinitionTool.new(
-          user: @user,
-          entity: @entity,
-          context: { platform_factory: true, planned_spec: tool_spec }
-        )
-        
-        result = tool.execute(
-          module_slug: @app_module.slug,
-          tool_name: tool_spec[:name] || tool_spec['name'],
-          description: tool_spec[:description] || tool_spec['description'],
-          tool_type: tool_spec[:tool_type] || tool_spec['tool_type'] || 'crud',
-          model_name: tool_spec[:model] || tool_spec['model'],
-          capabilities: tool_spec[:capabilities] || tool_spec['capabilities']
-        )
-        
-        if result[:error].blank?
-          tools.concat(result[:tools_created] || [])
-        else
-          errors << result[:error]
-        end
-      end
-    else
-      # Fall back to default tool generation from models
-      schema = normalize_planned_spec(planned_spec)
-      return generate_tools(schema)
-    end
-    
-    { success: true, tools: tools, errors: errors }
+    # CRUD tools are no longer generated per-module. The V3 platform tools
+    # handle all custom module CRUD natively. See generate_tools for details.
+    Rails.logger.info "[PlatformFactory] Skipping tool generation from plan for #{@app_module&.slug} - handled by platform tools"
+    { success: true, tools: [], errors: [] }
   end
 
   def generate_automations_from_plan(planned_spec)

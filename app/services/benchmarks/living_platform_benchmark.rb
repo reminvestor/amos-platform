@@ -859,7 +859,7 @@ module Benchmarks
         {
           passed: true,
           note: 'Evolution cycle cost varies based on experiments',
-          recommendation: 'Monitor via AgentLightning traces'
+          recommendation: 'Monitor via DecisionTrace records'
         }
       end
 

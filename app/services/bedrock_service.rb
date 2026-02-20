@@ -2,7 +2,6 @@ require "aws-sdk-bedrockruntime"
 require "json"
 
 class BedrockService
-  include AgentLightningInstrumentable
   include WorkTokenTrackable
 
   attr_reader :model_registry

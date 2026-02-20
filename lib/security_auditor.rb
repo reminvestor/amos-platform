@@ -104,11 +104,6 @@ class SecurityAuditor
     ContactGroupsContact
     DocumentTagAssignment
     DocumentSubjectAssignment
-    AgentLightningConfig
-    AgentLightningTrace
-    AgentLightningOptimization
-    AgentLightningWebhook
-    AgentLightningWebhookLog
     AgentTrainingJob
     AgentReward
     AgentSchoolEnrollment

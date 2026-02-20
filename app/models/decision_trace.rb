@@ -14,7 +14,6 @@ class DecisionTrace < ApplicationRecord
   belongs_to :entity
   belongs_to :user, optional: true
   belongs_to :agent_plugin, optional: true
-  belongs_to :agent_lightning_trace, optional: true
   belongs_to :parent_decision, class_name: 'DecisionTrace', optional: true
   
   has_many :child_decisions, class_name: 'DecisionTrace', foreign_key: :parent_decision_id
@@ -69,7 +68,6 @@ class DecisionTrace < ApplicationRecord
     policies_evaluated: [],
     agent_plugin: nil,
     user: nil,
-    agent_lightning_trace: nil,
     is_exception: false,
     exception_justification: nil,
     requires_approval: false,
@@ -82,7 +80,6 @@ class DecisionTrace < ApplicationRecord
       entity: entity,
       agent_plugin: agent_plugin,
       user: user,
-      agent_lightning_trace: agent_lightning_trace,
       decision_type: decision_type,
       decision_summary: decision_summary,
       reasoning: reasoning,

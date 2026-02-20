@@ -478,6 +478,13 @@ module Tools
 
     # Load dynamic tools for a specific entity (entity-scoped for security)
     # Returns a hash of tool_name => tool_info
+    #
+    # IMPORTANT: Tools linked to an AppModule (app_module_id present) are
+    # excluded. These are auto-generated CRUD tools that duplicate the V3
+    # platform tools (platform_create/query/update/execute), which already
+    # handle custom module operations natively. Loading them would bloat
+    # the LLM context window and confuse the model with duplicate paths.
+    # Only genuinely custom tools (no module link) are loaded.
     def load_dynamic_tools_for_entity(entity)
       return {} unless entity.present?
       return {} unless ActiveRecord::Base.connection.table_exists?('tool_definitions')
@@ -490,9 +497,11 @@ module Tools
       
       tools = {}
       count = 0
+      skipped = 0
       
       # SECURITY: Only load tools for this specific entity
-      ToolDefinition.where(entity_id: entity.id).find_each do |tool_def|
+      # Skip module-linked CRUD tools -- platform tools handle those
+      ToolDefinition.where(entity_id: entity.id, app_module_id: nil).find_each do |tool_def|
         name = tool_def.name
         tools[name] = {
           type: :definition,
@@ -508,10 +517,12 @@ module Tools
         count += 1
       end
       
+      skipped = ToolDefinition.where(entity_id: entity.id).where.not(app_module_id: nil).count
+      
       # Cache for this entity (short TTL to pick up changes)
       @entity_tools[cache_key] = tools
       
-      Rails.logger.info "📚 ToolCatalog: Loaded #{count} dynamic tools for entity #{entity.id}" if count > 0
+      Rails.logger.info "📚 ToolCatalog: Loaded #{count} custom tools for entity #{entity.id} (skipped #{skipped} module CRUD tools)" if count > 0 || skipped > 0
       tools
     rescue => e
       Rails.logger.warn "Failed to load dynamic tools for entity #{entity&.id}: #{e.message}"

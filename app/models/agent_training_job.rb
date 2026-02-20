@@ -1,6 +1,5 @@
 class AgentTrainingJob < ApplicationRecord
   belongs_to :entity
-  has_many :agent_lightning_optimizations, dependent: :nullify
 
   validates :job_id, presence: true, uniqueness: true
   validates :job_type, presence: true, inclusion: { in: %w[prompt_optimization supervised_finetuning rl_training] }

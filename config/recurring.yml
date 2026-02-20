@@ -72,22 +72,6 @@ production:
       - sample_size: 1
 
   # ========================================
-  # Agent Lightning Jobs
-  # ========================================
-  
-  # Hourly auto-rollback check - monitors optimization performance
-  agent_lightning_auto_rollback:
-    class: AgentLightningAutoRollbackJob
-    queue: agent_lightning
-    schedule: every hour
-
-  # Daily Agent Lightning training - RL-based prompt optimization
-  agent_lightning_training:
-    class: RunAgentLightningTrainingJob
-    queue: agent_lightning
-    schedule: at 5am every day
-
-  # ========================================
   # Scheduled Agent Tasks
   # ========================================
   
@@ -178,7 +162,23 @@ production:
     schedule: at 4am every day
 
   # ========================================
-  # Living Platform Jobs - Autonomous Evolution
+  # Experience Learning Jobs
+  # ========================================
+  
+  # Weekly experience extraction - compare winners vs losers via Training-Free GRPO
+  experience_learning_weekly:
+    class: Learning::ExperienceLearningJob
+    queue: learning
+    schedule: at 4am every sunday
+
+  # Daily maintenance - decay, pruning, calibration, conflict resolution
+  experience_maintenance_daily:
+    class: ExperienceMaintenanceJob
+    queue: maintenance
+    schedule: at 5am every day
+
+  # ========================================
+  # Living Platform Jobs - Safe Single-Agent
   # ========================================
   
   # Hourly perception - monitor platform health & detect anomalies
@@ -186,27 +186,6 @@ production:
     class: LivingPlatform::PerceptionJob
     queue: living_platform
     schedule: every hour
-  
-  # Daily evolution cycle - full improvement cycle (perception, analysis, experimentation)
-  living_platform_evolution_daily:
-    class: LivingPlatform::EvolutionCycleJob
-    queue: living_platform
-    schedule: at 3am every day
-  
-  # Weekly evolution cycle - deeper analysis and experiments
-  living_platform_evolution_weekly:
-    class: LivingPlatform::EvolutionCycleJob
-    queue: living_platform
-    schedule: at 4am every sunday
-    args:
-      - null
-      - cycle_type: weekly
-  
-  # Daily desire engine - generate autonomous goals
-  living_platform_desire_engine:
-    class: LivingPlatform::DesireEngineJob
-    queue: living_platform
-    schedule: at 1am every day
   
   # Daily agent reflections - end of day summary for all agents
   living_platform_daily_reflections:
@@ -219,12 +198,6 @@ production:
     class: LivingPlatform::WeeklyAgentReflectionsJob
     queue: living_platform
     schedule: at 10pm every sunday
-  
-  # Daily lifecycle evaluation - check for training completion, retirement
-  living_platform_lifecycle_evaluation:
-    class: LivingPlatform::LifecycleEvaluationJob
-    queue: living_platform
-    schedule: at 2am every day
 
 # Development environment - run less frequently to avoid noise
 development:
@@ -258,19 +231,13 @@ development:
     queue: default
     schedule: every 5 minutes
 
-  # Living Platform - hourly perception in dev
+  # Living Platform - perception in dev (reduced frequency)
   living_platform_perception:
     class: LivingPlatform::PerceptionJob
     queue: living_platform
     schedule: every 2 hours
   
-  # Living Platform - daily evolution cycle
-  living_platform_evolution_daily:
-    class: LivingPlatform::EvolutionCycleJob
-    queue: living_platform
-    schedule: at 3am every day
-  
-  # Tool embeddings refresh - once at startup (5 minutes after boot)
+  # Tool embeddings refresh
   refresh_tool_embeddings:
     class: RefreshToolEmbeddingsJob
     queue: maintenance

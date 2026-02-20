@@ -526,39 +526,9 @@ module Benchmarks
 
     private
 
-    # Emit reward signal to Agent Lightning for training
     def emit_benchmark_reward(task, task_result)
-      return unless @entity && @user
-
-      begin
-        lightning_store = LightningStoreService.new(@entity, @user)
-        
-        # Calculate reward value based on task success and quality
-        reward_value = calculate_benchmark_reward(task, task_result)
-        
-        # Record the reward
-        lightning_store.record_reward(
-          reward_type: 'benchmark',
-          reward_value: reward_value,
-          source: 'bob_benchmark',
-          metadata: {
-            task_id: task[:id],
-            task_category: task[:category],
-            task_name: task[:name],
-            success: task_result[:success],
-            grounded: task_result[:grounded],
-            tool_calls: task_result[:tool_calls],
-            agent_calls: task_result[:agent_calls],
-            creation_success: task_result[:creation_success],
-            verification_success: task_result[:verification_success],
-            elapsed_ms: task_result[:elapsed_ms]
-          }
-        )
-
-        Rails.logger.debug "[Benchmark] Emitted reward signal: #{reward_value} for task #{task[:id]}"
-      rescue => e
-        Rails.logger.warn "[Benchmark] Failed to emit reward signal: #{e.message}"
-      end
+      # Agent Lightning system has been deprecated and removed.
+      # Benchmark rewards are now tracked via DecisionTrace and TaskExperience.
     end
 
     # Calculate reward value (0.0 to 1.0) based on task result

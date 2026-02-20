@@ -7,31 +7,30 @@
 #
 # Usage:
 #   AgentReflectionJob.perform_later(agent.id)
+#   AgentReflectionJob.perform_later(agent.id, reflection_type: 'weekly')
 #   AgentReflectionJob.perform_all_active  # Run for all active agents
 #
 class AgentReflectionJob < ApplicationJob
   queue_as :low_priority
   
-  # Don't retry reflection - it's not critical
   discard_on StandardError
   discard_on ActiveRecord::RecordNotFound
 
-  def perform(agent_id)
+  def perform(agent_id, reflection_type: 'daily')
     agent = AgentPlugin.find(agent_id)
     
-    # Skip if agent is not active or on probation
     unless agent.status.in?(%w[active probation])
       Rails.logger.info "[AgentReflectionJob] Skipping #{agent.name} - status: #{agent.status}"
       return
     end
     
-    Rails.logger.info "[AgentReflectionJob] Starting reflection for: #{agent.name}"
+    Rails.logger.info "[AgentReflectionJob] Starting #{reflection_type} reflection for: #{agent.name}"
     
     service = AgentReflectionService.new(agent)
     result = service.run_reflection_cycle!
     
     if result[:success]
-      Rails.logger.info "[AgentReflectionJob] Reflection complete for #{agent.name}"
+      Rails.logger.info "[AgentReflectionJob] #{reflection_type.capitalize} reflection complete for #{agent.name}"
       Rails.logger.info "[AgentReflectionJob] Insights: #{result[:insights].to_json}"
     else
       Rails.logger.info "[AgentReflectionJob] Reflection skipped for #{agent.name}: #{result[:reason]}"

@@ -21,15 +21,13 @@ module ContextGraphInstrumentable
       entity = @entity || context&.dig(:entity)
       user = @user || context&.dig(:user)
       agent = @agent_plugin || @agent
-      trace = @lightning_store&.trace
 
       return nil unless entity
 
       ContextGraph::DecisionRecorder.new(
         entity,
         user,
-        agent_plugin: agent,
-        lightning_trace: trace
+        agent_plugin: agent
       )
     end
   end

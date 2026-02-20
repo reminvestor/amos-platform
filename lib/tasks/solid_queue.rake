@@ -52,6 +52,65 @@ namespace :solid_queue do
         schedule: "0 3 * * *", # Every day at 3 AM
         queue: "low_priority",
         description: "Memory retention and cleanup"
+      },
+      # AMOS Mind - Autonomous Cognition
+      {
+        key: "amos_thinking_time",
+        class_name: "AmosThinkingTimeJob",
+        schedule: "0 2 * * *", # Every day at 2 AM
+        queue: "living_platform",
+        description: "AMOS autonomous cognitive session (perceive, attend, think, act)"
+      },
+      {
+        key: "amos_weekly_reflection",
+        class_name: "AmosThinkingTimeJob",
+        schedule: "0 3 * * 0", # Every Sunday at 3 AM
+        queue: "living_platform",
+        description: "AMOS weekly deep reflection session"
+      },
+      {
+        key: "amos_signal_cleanup",
+        class_name: "AmosSignalCleanupJob",
+        schedule: "0 */2 * * *", # Every 2 hours
+        queue: "living_platform",
+        description: "Expire old signals and apply working memory salience decay"
+      },
+      # Experience Learning - continual improvement
+      {
+        key: "experience_learning_weekly",
+        class_name: "Learning::ExperienceLearningJob",
+        schedule: "0 4 * * 0", # Every Sunday at 4 AM
+        queue: "learning",
+        description: "Weekly experience extraction via Training-Free GRPO"
+      },
+      {
+        key: "experience_maintenance_daily",
+        class_name: "ExperienceMaintenanceJob",
+        schedule: "0 5 * * *", # Every day at 5 AM
+        queue: "maintenance",
+        description: "Daily experience maintenance (decay, calibration, pruning)"
+      },
+      # Living Platform - Safe single-agent jobs
+      {
+        key: "living_platform_perception",
+        class_name: "LivingPlatform::PerceptionJob",
+        schedule: "0 * * * *", # Every hour
+        queue: "living_platform",
+        description: "Platform health monitoring and anomaly detection"
+      },
+      {
+        key: "living_platform_daily_reflections",
+        class_name: "LivingPlatform::DailyAgentReflectionsJob",
+        schedule: "0 23 * * *", # Every day at 11 PM
+        queue: "living_platform",
+        description: "Daily agent reflection for active agents"
+      },
+      {
+        key: "living_platform_weekly_reflections",
+        class_name: "LivingPlatform::WeeklyAgentReflectionsJob",
+        schedule: "0 22 * * 0", # Every Sunday at 10 PM
+        queue: "living_platform",
+        description: "Weekly comprehensive agent reflection"
       }
     ]
 
@@ -305,6 +364,57 @@ namespace :solid_queue do
           class: "MemoryCleanupJob",
           schedule: "0 3 * * *", # Every day at 3 AM
           queue: "low_priority"
+        ),
+        # AMOS Mind - Autonomous Cognition
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "amos_thinking_time",
+          class: "AmosThinkingTimeJob",
+          schedule: "0 2 * * *", # Every day at 2 AM
+          queue: "living_platform"
+        ),
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "amos_weekly_reflection",
+          class: "AmosThinkingTimeJob",
+          schedule: "0 3 * * 0", # Every Sunday at 3 AM
+          queue: "living_platform"
+        ),
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "amos_signal_cleanup",
+          class: "AmosSignalCleanupJob",
+          schedule: "0 */2 * * *", # Every 2 hours
+          queue: "living_platform"
+        ),
+        # Experience Learning - continual improvement
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "experience_learning_weekly",
+          class: "Learning::ExperienceLearningJob",
+          schedule: "0 4 * * 0", # Every Sunday at 4 AM
+          queue: "learning"
+        ),
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "experience_maintenance_daily",
+          class: "ExperienceMaintenanceJob",
+          schedule: "0 5 * * *", # Every day at 5 AM
+          queue: "maintenance"
+        ),
+        # Living Platform - Safe single-agent jobs
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "living_platform_perception",
+          class: "LivingPlatform::PerceptionJob",
+          schedule: "0 * * * *", # Every hour
+          queue: "living_platform"
+        ),
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "living_platform_daily_reflections",
+          class: "LivingPlatform::DailyAgentReflectionsJob",
+          schedule: "0 23 * * *", # Every day at 11 PM
+          queue: "living_platform"
+        ),
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "living_platform_weekly_reflections",
+          class: "LivingPlatform::WeeklyAgentReflectionsJob",
+          schedule: "0 22 * * 0", # Every Sunday at 10 PM
+          queue: "living_platform"
         )
       ].select(&:valid?)
 

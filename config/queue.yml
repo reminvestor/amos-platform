@@ -51,6 +51,20 @@ default: &default
       polling_interval: 1
       priority: 3
 
+    # Learning queue - experience learning, immediate learning, calibration
+    - queues: learning
+      threads: 2
+      processes: 1
+      polling_interval: 1
+      priority: 3
+
+    # Living Platform queue - AMOS cognition, perception, reflections
+    - queues: living_platform
+      threads: 2
+      processes: 1
+      polling_interval: 1
+      priority: 2
+
     # Maintenance queue - background monitoring/cleanup (lowest priority)
     - queues: maintenance
       threads: 1

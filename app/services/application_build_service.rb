@@ -380,21 +380,15 @@ class ApplicationBuildService
   
   def build_tools!
     log_progress("Registering tools...")
-    
-    # Create CRUD tools for each module
-    results[:modules].each do |mod_info|
-      app_module = AppModule.find(mod_info[:id])
-      module_tools = create_crud_tools(app_module)
-      results[:tools] += module_tools.map { |t| { id: t.id, name: t.name } }
-    end
-    
-    # Create any custom tools from the plan
-    plan.tools_spec.each do |tool_spec|
-      tool = create_custom_tool(tool_spec)
-      results[:tools] << { id: tool.id, name: tool.name } if tool
-    end
-    
-    log_progress("#{results[:tools].count} tools registered")
+
+    # CRUD tools are NOT generated per-module. The V3 platform tools
+    # (platform_create, platform_query, platform_update, platform_execute)
+    # handle all custom module CRUD operations natively via
+    # ScoutDataRegistry and resolve_dynamic_model. Generating per-module
+    # ToolDefinitions would bloat the LLM context and duplicate
+    # functionality that already exists in the platform tools.
+
+    log_progress("Module CRUD handled by platform tools (no custom tool generation needed)")
   end
   
   def wire_integrations!

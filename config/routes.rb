@@ -1766,19 +1766,6 @@ Rails.application.routes.draw do
       end
     end
 
-    # Agent Lightning - Micro-level RL-based agent optimization
-    resource :agent_lightning, only: [], controller: 'agent_lightning' do
-      get '/', action: :dashboard, as: ''
-      get :training_jobs
-      get :optimizations
-      get :traces
-      get 'agent/:agent_id', action: :agent_detail, as: :agent_detail
-      post :start_training
-      post :stop_training
-      post 'rollback/:optimization_id', action: :rollback, as: :rollback
-      get :service_status
-    end
-
     # Scheduled Tasks Management
     resources :scheduled_tasks do
       member do

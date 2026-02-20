@@ -150,59 +150,6 @@ namespace :living_platform do
     puts "  Duration: #{cycle.duration_minutes}m"
   end
 
-  desc "Check Agent Lightning integration status"
-  task :agent_lightning_status => :environment do
-    puts "\n" + "="*70
-    puts "⚡ AGENT LIGHTNING INTEGRATION STATUS"
-    puts "="*70
-
-    # Check environment
-    enabled = ENV['AGENT_LIGHTNING_ENABLED'] == 'true'
-    puts "\n📋 CONFIGURATION:"
-    puts "  Enabled in ENV:    #{enabled ? '✅ Yes' : '❌ No (set AGENT_LIGHTNING_ENABLED=true)'}"
-    puts "  Service URL:       #{ENV['AGENT_LIGHTNING_SERVICE_URL'] || 'http://localhost:4747 (default)'}"
-
-    # Check service health
-    begin
-      response = HTTParty.get("#{ENV['AGENT_LIGHTNING_SERVICE_URL'] || 'http://localhost:4747'}/health", timeout: 5)
-      if response.success?
-        health = response.parsed_response
-        puts "\n🔌 SERVICE STATUS:"
-        puts "  Status:            #{health['status']}"
-        puts "  Version:           #{health['version']}"
-        puts "  Agent Lightning:   #{health['agent_lightning_available'] ? '✅ Available' : '❌ Not installed'}"
-      else
-        puts "\n🔌 SERVICE STATUS: ❌ Unhealthy"
-      end
-    rescue => e
-      puts "\n🔌 SERVICE STATUS: ❌ Not running (#{e.message})"
-    end
-
-    # Check client availability
-    puts "\n🔗 CLIENT STATUS:"
-    puts "  Available:         #{PythonAgentLightningClient.available? ? '✅ Yes' : '❌ No'}"
-
-    # Check database status
-    puts "\n📊 DATABASE STATUS:"
-    puts "  Traces:            #{AgentLightningTrace.count}"
-    puts "  LLM Calls:         #{AgentLlmCall.count}"
-    puts "  Tool Executions:   #{AgentToolExecution.count}"
-    puts "  Training Jobs:     #{AgentTrainingJob.count}"
-    puts "  Optimizations:     #{AgentLightningOptimization.count}"
-
-    # Check entities with configs
-    configs = AgentLightningConfig.all
-    puts "\n📝 ENTITY CONFIGS:"
-    configs.each do |config|
-      puts "  #{config.entity&.name || 'Unknown'}:"
-      puts "    Mode:            #{config.mode}"
-      puts "    Enabled:         #{config.enabled?}"
-      puts "    Ready:           #{config.ready_for_training?}"
-    end
-
-    puts "\n" + "="*70 + "\n"
-  end
-
   desc "Show cost analysis for Living Platform"
   task :costs, [:entity_id] => :environment do |t, args|
     entity_id = args.entity_id || Entity.first&.id

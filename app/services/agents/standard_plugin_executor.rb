@@ -15,7 +15,6 @@
 #   result = agent.run("Generate a sales email for John Smith")
 #
 class Agents::StandardPluginExecutor
-  include AgentLightningInstrumentable
   attr_reader :role, :capabilities, :system_prompt, :config, :context, :execution
 
   def initialize(role:, capabilities:, system_prompt:, config: {}, context: {})

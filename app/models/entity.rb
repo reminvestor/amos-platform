@@ -87,14 +87,12 @@ class Entity < ApplicationRecord
   # Custom Agent Definitions
   has_many :custom_agent_definitions, dependent: :destroy
 
-  # Agent Lightning - RL-based optimization
-  has_many :agent_lightning_traces, dependent: :destroy
+  # Execution tracking
   has_many :agent_llm_calls, dependent: :destroy
   has_many :agent_tool_executions, dependent: :destroy
   has_many :agent_phase_executions, dependent: :destroy
   has_many :agent_rewards, dependent: :destroy
   has_many :agent_training_jobs, dependent: :destroy
-  has_one :agent_lightning_config, dependent: :destroy
 
   # Agent Plugins and Scheduled Tasks
   has_many :agent_plugins, dependent: :destroy

@@ -11,7 +11,7 @@ module PlatformEvolution
   # 5. Can interact with users for more information
   #
   class DebugAgentService
-    include AgentLightningInstrumentable
+
 
     attr_reader :ticket, :session, :entity
 

@@ -3,21 +3,12 @@ require "test_helper"
 class AgentLlmCallTest < ActiveSupport::TestCase
   setup do
     @entity = entities(:one)
-    @trace = AgentLightningTrace.create!(
-      entity: @entity,
-      user: users(:one),
-      trace_id: SecureRandom.uuid,
-      trace_type: "llm_call",
-      status: "completed",
-      input_data: {},
-      output_data: {}
-    )
   end
 
   test "should create llm_call with valid attributes" do
     call = AgentLlmCall.new(
       entity: @entity,
-      agent_lightning_trace: @trace,
+
       call_id: SecureRandom.uuid,
       model: "claude-sonnet-4-5",
       agent_role: "executor",
@@ -52,7 +43,7 @@ class AgentLlmCallTest < ActiveSupport::TestCase
     call_id = SecureRandom.uuid
     AgentLlmCall.create!(
       entity: @entity,
-      agent_lightning_trace: @trace,
+
       call_id: call_id,
       model: "claude-sonnet-4-5",
       agent_role: "executor",
@@ -97,7 +88,7 @@ class AgentLlmCallTest < ActiveSupport::TestCase
   test "should calculate cost_per_token" do
     call = AgentLlmCall.create!(
       entity: @entity,
-      agent_lightning_trace: @trace,
+
       call_id: SecureRandom.uuid,
       model: "claude-sonnet-4-5",
       agent_role: "executor",
@@ -120,7 +111,7 @@ class AgentLlmCallTest < ActiveSupport::TestCase
   test "should identify successful calls" do
     successful_call = AgentLlmCall.create!(
       entity: @entity,
-      agent_lightning_trace: @trace,
+
       call_id: SecureRandom.uuid,
       model: "claude-sonnet-4-5",
       agent_role: "executor",
@@ -141,7 +132,7 @@ class AgentLlmCallTest < ActiveSupport::TestCase
   test "should identify failed calls" do
     failed_call = AgentLlmCall.create!(
       entity: @entity,
-      agent_lightning_trace: @trace,
+
       call_id: SecureRandom.uuid,
       model: "claude-sonnet-4-5",
       agent_role: "executor",
@@ -163,7 +154,7 @@ class AgentLlmCallTest < ActiveSupport::TestCase
   test "should generate execution_summary" do
     call = AgentLlmCall.create!(
       entity: @entity,
-      agent_lightning_trace: @trace,
+
       call_id: SecureRandom.uuid,
       model: "claude-sonnet-4-5",
       agent_role: "planner",

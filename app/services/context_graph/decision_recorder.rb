@@ -26,13 +26,12 @@ module ContextGraph
   #   recorder.record_outcome!(decision, outcome: 'success', quality: 0.9)
   #
   class DecisionRecorder
-    attr_reader :entity, :user, :agent_plugin, :lightning_trace
+    attr_reader :entity, :user, :agent_plugin
 
     def initialize(entity, user = nil, agent_plugin: nil, lightning_trace: nil)
       @entity = entity
       @user = user
       @agent_plugin = agent_plugin
-      @lightning_trace = lightning_trace
     end
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -101,7 +100,6 @@ module ContextGraph
         entity: entity,
         user: user,
         agent_plugin: agent_plugin,
-        agent_lightning_trace: lightning_trace,
         decision_type: decision_type,
         decision_summary: summary,
         reasoning: reasoning,

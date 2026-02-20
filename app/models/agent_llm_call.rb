@@ -1,6 +1,5 @@
 class AgentLlmCall < ApplicationRecord
   belongs_to :entity
-  belongs_to :agent_lightning_trace, optional: true
   has_many :agent_tool_executions
 
   validates :call_id, presence: true, uniqueness: true

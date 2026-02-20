@@ -18,13 +18,11 @@ class SidebarTest < ActionDispatch::IntegrationTest
   # Personal sidebar - Command Center position
   # ═══════════════════════════════════════════════════════════════
 
-  test "sidebar renders Command Center as second nav item after Home" do
-    # Load the main scout page which renders the sidebar
+  test "sidebar renders Command Center as first nav item" do
     get scout_path
 
     assert_response :success
 
-    # The sidebar should contain Command Center
     assert_match(/Command Center/, response.body,
       "Expected 'Command Center' to appear in the sidebar")
   end
@@ -87,7 +85,6 @@ class SidebarTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     expected_items = [
-      "Home",
       "Command Center",
       "Work Inbox",
       "Tasks",

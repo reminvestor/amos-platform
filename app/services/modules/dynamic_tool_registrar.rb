@@ -94,76 +94,13 @@ module Modules
       tool_def
     end
 
-    # Generate a basic CRUD tool for a module model
+    # DEPRECATED: CRUD tools are no longer generated per-module.
+    # The V3 platform tools (platform_create, platform_query, platform_update,
+    # platform_execute) handle all custom module CRUD natively via
+    # ScoutDataRegistry and resolve_dynamic_model.
     def create_crud_tools_for_model(app_module, model_code)
-      model_name = model_code.name
-      table_name = model_code.table_name
-      
-      tools = []
-
-      # Create tool
-      tools << create_tool_for_module(app_module, {
-        name: "create_#{model_name.underscore}",
-        description: "Create a new #{model_name.titleize}",
-        parameters: {
-          type: 'object',
-          properties: build_properties_from_schema(model_code),
-          required: required_fields_from_schema(model_code)
-        },
-        execution_type: 'ruby_code',
-        code: generate_create_code(model_name, app_module.slug)
-      })
-
-      # Read/List tool
-      tools << create_tool_for_module(app_module, {
-        name: "list_#{model_name.underscore.pluralize}",
-        description: "List all #{model_name.titleize.pluralize} with optional filters",
-        parameters: {
-          type: 'object',
-          properties: {
-            limit: { type: 'integer', description: 'Maximum number of records to return' },
-            offset: { type: 'integer', description: 'Number of records to skip' },
-            order_by: { type: 'string', description: 'Field to order by' },
-            order_dir: { type: 'string', enum: %w[asc desc], description: 'Order direction' },
-            filters: { type: 'object', description: 'Filter conditions' }
-          }
-        },
-        execution_type: 'ruby_code',
-        code: generate_list_code(model_name, app_module.slug)
-      })
-
-      # Update tool
-      tools << create_tool_for_module(app_module, {
-        name: "update_#{model_name.underscore}",
-        description: "Update an existing #{model_name.titleize}",
-        parameters: {
-          type: 'object',
-          properties: {
-            id: { type: 'integer', description: 'ID of the record to update' },
-            **build_properties_from_schema(model_code)
-          },
-          required: ['id']
-        },
-        execution_type: 'ruby_code',
-        code: generate_update_code(model_name, app_module.slug)
-      })
-
-      # Delete tool
-      tools << create_tool_for_module(app_module, {
-        name: "delete_#{model_name.underscore}",
-        description: "Delete a #{model_name.titleize}",
-        parameters: {
-          type: 'object',
-          properties: {
-            id: { type: 'integer', description: 'ID of the record to delete' }
-          },
-          required: ['id']
-        },
-        execution_type: 'ruby_code',
-        code: generate_delete_code(model_name, app_module.slug)
-      })
-
-      tools
+      Rails.logger.info "[DynamicToolRegistrar] Skipping CRUD tool generation for #{app_module.slug}/#{model_code.name} - handled by platform tools"
+      []
     end
 
     private

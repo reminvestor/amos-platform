@@ -1,7 +1,6 @@
 class AgentPhaseExecution < ApplicationRecord
   belongs_to :entity
   belongs_to :workflow_execution, optional: true
-  belongs_to :agent_lightning_trace, optional: true
 
   validates :phase_id, presence: true
   validates :phase_type, presence: true

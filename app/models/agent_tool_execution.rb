@@ -1,6 +1,5 @@
 class AgentToolExecution < ApplicationRecord
   belongs_to :entity
-  belongs_to :agent_lightning_trace, optional: true
   belongs_to :agent_llm_call, optional: true
   belongs_to :parent, class_name: "AgentToolExecution", optional: true
   has_many :children, class_name: "AgentToolExecution", foreign_key: :parent_tool_execution_id

@@ -764,7 +764,10 @@ module V3
         when "automation", "automation_code" then AutomationCode
         when "custom_domain" then CustomDomain
         else
-          return error_response("Cannot delete type: #{type}. Supported: contact, contact_group, campaign, email_template, landing_page, opportunity, activity, support_ticket, automation, custom_domain")
+          # Try dynamic module resolution for custom app module records
+          resolved = resolve_dynamic_model_for_delete(type)
+          return error_response("Cannot delete type: #{type}. Supported: contact, contact_group, campaign, email_template, landing_page, opportunity, activity, support_ticket, automation, custom_domain, or any custom module type (e.g. 'module_slug/ModelName')") unless resolved
+          resolved
         end
 
         record = model_class.where(entity: entity).find_by(id: id)
@@ -912,6 +915,49 @@ module V3
         else
           error_response(result[:error])
         end
+      end
+
+      # Resolve a dynamic module model class for delete operations.
+      # Supports formats: "module_slug/ModelName", "module_slug", or
+      # underscore variants like "contact_profiles_trust_party".
+      def resolve_dynamic_model_for_delete(type)
+        return nil unless entity.present?
+
+        parts = type.to_s.split('/')
+        if parts.length == 2
+          module_slug = parts[0]
+          model_name = parts[1]
+          app_module = entity.app_modules.active.find_by(slug: module_slug)
+          if app_module
+            return Modules::DynamicModelLoader.instance.get_model_by_path(entity, "#{module_slug}/#{model_name}")
+          end
+        end
+
+        # Try as module slug directly
+        app_module = entity.app_modules.active.find_by(slug: type)
+        app_module ||= entity.app_modules.active.find_by(slug: type.singularize)
+        if app_module
+          model_code = app_module.module_codes&.models&.first
+          return nil unless model_code
+          return Modules::DynamicModelLoader.instance.get_model_by_path(entity, "#{app_module.slug}/#{model_code.name}")
+        end
+
+        # Try matching as "module_slug_model_name" (underscore combined format)
+        entity.app_modules.active.each do |mod|
+          if type.start_with?(mod.slug)
+            remainder = type.sub("#{mod.slug}_", '')
+            next if remainder.blank? || remainder == type
+            model_code = mod.module_codes&.models&.find_by(name: remainder.classify)
+            if model_code
+              return Modules::DynamicModelLoader.instance.get_model_by_path(entity, "#{mod.slug}/#{model_code.name}")
+            end
+          end
+        end
+
+        nil
+      rescue => e
+        Rails.logger.warn "[V3::PlatformExecute] Dynamic model resolution failed for delete type '#{type}': #{e.message}"
+        nil
       end
 
       # Helper: find CustomDomain from args (by domain_id, custom_domain_id, or domain_name)

@@ -11,7 +11,7 @@ module PlatformEvolution
   # 5. Prepares for PR submission
   #
   class CodeFixAgentService
-    include AgentLightningInstrumentable
+
 
     attr_reader :session, :ticket, :code_fix
 
