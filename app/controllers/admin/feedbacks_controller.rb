@@ -15,12 +15,12 @@ module Admin
 
       # Calculate statistics
       @total_count = @feedbacks.count
-      @positive_count = @feedbacks.where('rating >= ?', 4).count
-      @neutral_count = @feedbacks.where(rating: 3).count
-      @negative_count = @feedbacks.where('rating <= ?', 2).count
+      @positive_count = @feedbacks.where(rating: 1).count
+      @neutral_count = @feedbacks.where(rating: 0).count
+      @negative_count = @feedbacks.where(rating: -1).count
       @with_comments_count = @feedbacks.where.not(comment: [nil, '']).count
 
-      # Calculate satisfaction score (% of 4-5 star ratings)
+      # Calculate satisfaction score (% of positive ratings)
       @satisfaction_score = if @total_count > 0
                               (@positive_count.to_f / @total_count * 100).round(1)
                             else
@@ -30,12 +30,11 @@ module Admin
       # Group by feedbackable_type
       @by_type = @feedbacks.group(:feedbackable_type).count
 
-      # Satisfaction by type
+      # Satisfaction by type (single query instead of N+1)
+      positive_by_type = @feedbacks.where(rating: 1).group(:feedbackable_type).count
       @satisfaction_by_type = {}
-      @by_type.keys.each do |type|
-        type_feedbacks = @feedbacks.where(feedbackable_type: type)
-        type_positive = type_feedbacks.where('rating >= ?', 4).count
-        total = type_feedbacks.count
+      @by_type.each do |type, total|
+        type_positive = positive_by_type[type] || 0
         @satisfaction_by_type[type] = if total > 0
                                         (type_positive.to_f / total * 100).round(1)
                                       else
@@ -44,11 +43,11 @@ module Admin
       end
 
       # Daily trend data
-      @daily_positive = @feedbacks.where('rating >= ?', 4)
+      @daily_positive = @feedbacks.where(rating: 1)
                                    .group("DATE_TRUNC('day', created_at)")
                                    .count
 
-      @daily_negative = @feedbacks.where('rating <= ?', 2)
+      @daily_negative = @feedbacks.where(rating: -1)
                                    .group("DATE_TRUNC('day', created_at)")
                                    .count
 
@@ -58,7 +57,7 @@ module Admin
                                      .limit(10)
 
       # Recent negative comments
-      @negative_comments = @feedbacks.where('rating <= ?', 2)
+      @negative_comments = @feedbacks.where(rating: -1)
                                       .where.not(comment: [nil, ''])
                                       .includes(:user)
                                       .order(created_at: :desc)

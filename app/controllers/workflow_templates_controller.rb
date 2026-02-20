@@ -35,10 +35,10 @@ class WorkflowTemplatesController < ApplicationController
       format.html { redirect_to workflow_templates_path, notice: "Template duplicated successfully." }
       format.json { render json: @new_template, status: :created }
     end
-  rescue => e
+  rescue ActiveRecord::RecordInvalid => e
     respond_to do |format|
-      format.html { redirect_to workflow_templates_path, alert: "Failed to duplicate template: #{e.message}" }
-      format.json { render json: { error: e.message }, status: :unprocessable_entity }
+      format.html { redirect_to workflow_templates_path, alert: "Failed to duplicate template." }
+      format.json { render json: { error: "Failed to duplicate template" }, status: :unprocessable_entity }
     end
   end
 
@@ -78,7 +78,7 @@ class WorkflowTemplatesController < ApplicationController
   private
 
   def set_template
-    @template = WorkflowTemplate.find(params[:id])
+    @template = WorkflowTemplate.for_entity(current_entity.id).find(params[:id])
   end
 
   def template_params

@@ -552,11 +552,14 @@ class ScoutController < ApplicationController
     end
 
     # Track chat event (async, non-blocking)
-    track_event("chat.message_sent", category: "feature", properties: { message_length: user_message.length })
+    # EventTrackable will be available after merging PR #39
+    if respond_to?(:track_event, true)
+      track_event("chat.message_sent", category: "feature", properties: { message_length: user_message.length })
 
-    # Track first message as a conversion event
-    if current_user && ScoutMessage.where(user_id: current_user.id, role: "user").none?
-      track_event("chat.first_message", category: "conversion")
+      # Track first message as a conversion event
+      if current_user && ScoutMessage.where(user_id: current_user.id, role: "user").exists? == false
+        track_event("chat.first_message", category: "conversion")
+      end
     end
 
     # Set streaming headers

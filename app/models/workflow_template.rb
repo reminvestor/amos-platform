@@ -10,10 +10,10 @@ class WorkflowTemplate < ApplicationRecord
   scope :system, -> { where(is_system: true) }
   scope :by_category, ->(category) { where(category: category) }
 
-  # Entity scoping: returns system templates, entity-owned templates, and shared templates
+  # Entity scoping: returns system templates (nil entity), entity-owned templates, and shared templates
   scope :for_entity, ->(entity_id) {
     where(entity_id: [nil, entity_id])
-      .or(where(shared: true))
+      .or(where(shared: true, is_system: true))
   }
   scope :custom, -> { where(is_system: false) }
   scope :shared_templates, -> { where(shared: true, is_system: false) }

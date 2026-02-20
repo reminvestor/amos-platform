@@ -52,8 +52,8 @@ module RowLevelSecurityHelper
   extend ActiveSupport::Concern
 
   included do
-    # Set RLS context after authentication
-    after_action :set_rls_context, if: -> { current_entity.present? }
+    # Set RLS context before database queries execute
+    before_action :set_rls_context, if: -> { current_entity.present? }
   end
 
   private

@@ -1647,7 +1647,7 @@ document.addEventListener('turbo:load', function() {
 
   // Personalized actions from onboarding (if available)
   <% if @personalized_actions.present? %>
-  const PERSONALIZED_ACTIONS = <%= @personalized_actions.to_json.html_safe %>;
+  const PERSONALIZED_ACTIONS = <%= json_escape(@personalized_actions.to_json) %>;
   <% else %>
   const PERSONALIZED_ACTIONS = null;
   <% end %>

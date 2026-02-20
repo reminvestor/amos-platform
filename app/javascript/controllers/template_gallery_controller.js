@@ -10,7 +10,6 @@ export default class extends Controller {
   static targets = ["searchInput", "categoryFilter", "industryFilter", "grid", "card", "resultCount"]
 
   connect() {
-    console.log("Template Gallery controller connected")
   }
 
   /**
