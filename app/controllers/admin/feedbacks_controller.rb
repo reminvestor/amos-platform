@@ -3,7 +3,7 @@
 class Admin::FeedbacksController < Admin::BaseController
   def index
     @date_range = parse_date_range
-    @feedbacks = UserFeedback.where(created_at: @date_range)
+    @feedbacks = current_entity.user_feedbacks.where(created_at: @date_range)
 
     # Aggregations
     @total_count = @feedbacks.count
@@ -23,12 +23,14 @@ class Admin::FeedbacksController < Admin::BaseController
                         .order(Arel.sql("DATE_TRUNC('day', created_at)"))
                         .count
 
-    # By feedbackable type
+    # By feedbackable type (single grouped query instead of N+1)
     @by_type = @feedbacks.group(:feedbackable_type).count
+    positive_by_type = @feedbacks.positive.group(:feedbackable_type).count
     @satisfaction_by_type = {}
-    UserFeedback::VALID_FEEDBACKABLE_TYPES.each do |type|
-      type_feedbacks = @feedbacks.where(feedbackable_type: type)
-      @satisfaction_by_type[type] = type_feedbacks.satisfaction_score if type_feedbacks.any?
+    @by_type.each do |type, total|
+      next if total.zero?
+      positive = positive_by_type[type] || 0
+      @satisfaction_by_type[type] = (positive.to_f / total * 100).round(1)
     end
 
     # Recent negative feedback with comments

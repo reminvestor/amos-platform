@@ -20,7 +20,7 @@
     <div class="card-body">
       <% if @landing_page.html_content.present? %>
         <div class="landing-page-preview-frame" style="border: 1px solid #dee2e6; border-radius: 4px; overflow: hidden; min-height: 400px;">
-          <%= @landing_page.html_content.html_safe %>
+          <%= sanitize @landing_page.html_content, tags: %w[h1 h2 h3 h4 h5 h6 p div span a img ul ol li br hr section header footer nav main article aside figure figcaption blockquote pre code em strong b i u s sub sup table thead tbody tfoot tr th td caption form input button label select option textarea video source svg path circle rect line polyline polygon g defs use text], attributes: %w[class id style href src alt title target rel width height type name value placeholder for action method colspan rowspan data-action data-controller data-target viewBox fill stroke stroke-width d cx cy r x y x1 y1 x2 y2 points transform xmlns] %>
         </div>
       <% else %>
         <div class="text-center py-5 text-muted">
