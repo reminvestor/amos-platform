@@ -129,6 +129,10 @@ TODO.md
 .claude/settings.local.json
 .claude/.hook-logs
 
+# E2E test artifacts (Playwright reports and results)
+/e2e/playwright-report/
+/e2e/test-results/
+
 # Security audit reports (generated output)
 security_audit_report*.txt
 security_report*.txt

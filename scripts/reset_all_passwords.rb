@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# Reset all user passwords to 'password123'
+# Reset all user passwords to 'Password123!'
 #
 # SECURITY: This script should NEVER run in production
 
@@ -14,16 +14,16 @@ puts ""
 
 User.find_each do |user|
   user.update!(
-    password: 'password123',
-    password_confirmation: 'password123'
+    password: 'Password123!',
+    password_confirmation: 'Password123!'
   )
 
-  verified = user.valid_password?('password123') ? '✅' : '❌'
-  puts "   #{verified} #{user.email.ljust(25)} → password123"
+  verified = user.valid_password?('Password123!') ? '✅' : '❌'
+  puts "   #{verified} #{user.email.ljust(25)} → Password123!"
 end
 
 puts ""
-puts "✅ All users now have password: password123"
+puts "✅ All users now have password: Password123!"
 puts ""
 puts "Available accounts:"
 puts "   • test@example.com    (admin)"

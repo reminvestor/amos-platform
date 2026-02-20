@@ -99,8 +99,8 @@ demo_users.each do |user_data|
     entity: demo_entity,
     first_name: user_data[:first_name],
     last_name: user_data[:last_name],
-    password: 'password123',
-    password_confirmation: 'password123',
+    password: 'Password123!',
+    password_confirmation: 'Password123!',
     onboarded: true,
     role: user_data[:role]
   )
@@ -142,8 +142,8 @@ admin_users.each do |admin_data|
   admin.assign_attributes(
     first_name: admin_data[:first_name],
     last_name: admin_data[:last_name],
-    password: 'password123',
-    password_confirmation: 'password123',
+    password: 'Password123!',
+    password_confirmation: 'Password123!',
     role: admin_data[:role]
   )
 
@@ -163,24 +163,24 @@ puts "
 
    🔑 Admin User:
       Email: admin@demo.com
-      Password: password123
+      Password: Password123!
       Role: Full access to all features
 
    📊 Marketer User:
       Email: marketer@demo.com
-      Password: password123
+      Password: Password123!
       Role: Marketing features
 
    👁️  Viewer User:
       Email: viewer@demo.com
-      Password: password123
+      Password: Password123!
       Role: Read-only access
 
    ⚙️ BACK-OFFICE ADMIN (localhost:3000/admin):
 
    🔐 Back-Office Access:
       Email: admin@demo.com
-      Password: password123
+      Password: Password123!
       Role: super_admin
       Purpose: Platform administration and maintenance
 "

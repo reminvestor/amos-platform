@@ -25,8 +25,8 @@ end
 # Create new user with known password
 user = User.create!(
   email: 'test@example.com',
-  password: 'password123',
-  password_confirmation: 'password123',
+  password: 'Password123!',
+  password_confirmation: 'Password123!',
   first_name: 'Test',
   last_name: 'User',
   entity: entity,
@@ -39,13 +39,13 @@ puts ""
 puts "Login Credentials:"
 puts "   URL:      http://localhost:3000"
 puts "   Email:    test@example.com"
-puts "   Password: password123"
+puts "   Password: Password123!"
 puts "   Entity:   #{entity.name || entity.id}"
 puts "   Role:     #{user.role}"
 puts ""
 
 # Verify it works
-if user.valid_password?('password123')
+if user.valid_password?('Password123!')
   puts "✅ Password verification successful!"
 else
   puts "❌ Password verification failed"
@@ -54,6 +54,6 @@ end
 puts ""
 puts "All users in database:"
 User.all.each do |u|
-  verified = u.valid_password?('password123') ? '✅' : '❌'
+  verified = u.valid_password?('Password123!') ? '✅' : '❌'
   puts "   #{verified} #{u.email} (#{u.role})"
 end
