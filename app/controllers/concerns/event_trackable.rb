@@ -10,7 +10,7 @@ module EventTrackable
       event_name: event_name,
       event_category: category,
       properties: properties,
-      session_id: session.id.to_s,
+      session_id: (session.id.to_s if respond_to?(:session, true) && session&.id),
       referrer: request.referer,
       user_agent: request.user_agent
     )

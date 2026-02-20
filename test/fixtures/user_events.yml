@@ -1,0 +1,33 @@
+# User event fixtures for testing analytics and event tracking
+
+onboarding_started:
+  entity: one
+  user: one
+  event_name: "onboarding.started"
+  event_category: "onboarding"
+  properties: {}
+  created_at: <%= 5.days.ago.iso8601 %>
+
+onboarding_completed:
+  entity: one
+  user: one
+  event_name: "onboarding.completed"
+  event_category: "onboarding"
+  properties: {}
+  created_at: <%= 4.days.ago.iso8601 %>
+
+feature_used:
+  entity: one
+  user: one
+  event_name: "chat.message_sent"
+  event_category: "feature"
+  properties: { "message_length": 42 }
+  created_at: <%= 3.days.ago.iso8601 %>
+
+other_entity_event:
+  entity: another_entity
+  user: another_user
+  event_name: "onboarding.started"
+  event_category: "onboarding"
+  properties: {}
+  created_at: <%= 2.days.ago.iso8601 %>
