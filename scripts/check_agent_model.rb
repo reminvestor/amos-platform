@@ -1,4 +1,4 @@
-# Run with: docker-compose exec web rails runner scripts/check_agent_model.rb
+# Run with: podman compose exec web rails runner scripts/check_agent_model.rb
 
 agent = AgentPlugin.find_by(slug: 'landing_page_manager')
 if agent

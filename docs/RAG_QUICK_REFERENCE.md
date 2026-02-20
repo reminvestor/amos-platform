@@ -170,9 +170,9 @@ rails db:migrate
 | `AWS_ACCESS_KEY_ID` | `test` | Your actual AWS key |
 | `AWS_SECRET_ACCESS_KEY` | `test` | Your actual AWS secret |
 | Bedrock Access | Uses real AWS (not emulated) | Uses real AWS |
-| S3 Bucket | Auto-created in `/docker/localstack/init.d/01-s3-bucket-init.sh` | Must create manually with `aws s3 mb` |
-| PostgreSQL | Local Docker container | AWS RDS |
-| Redis | Local Docker container | AWS ElastiCache |
+| S3 Bucket | Auto-created in `/containers/localstack/init.d/01-s3-bucket-init.sh` | Must create manually with `aws s3 mb` |
+| PostgreSQL | Local container | AWS RDS |
+| Redis | Local container | AWS ElastiCache |
 
 ---
 

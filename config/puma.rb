@@ -33,14 +33,14 @@ threads threads_count, threads_count
 port ENV.fetch("PORT", 3000)
 
 # Set up workers - disable on Windows due to lack of fork support
-# Enable workers in Docker (Linux) even for development
+# Enable workers in containers (Linux) even for development
 if Gem.win_platform?
   workers 0
-elsif ENV["RAILS_ENV"] == "development" && !ENV["DOCKER_CONTAINER"]
+elsif ENV["RAILS_ENV"] == "development" && !ENV["CONTAINER_ENV"]
   # Disable workers on local dev to avoid pg gem segfaults on macOS
   workers 0
 else
-  # Use workers in Docker or production for true parallelism
+  # Use workers in containers or production for true parallelism
   workers ENV.fetch("WEB_CONCURRENCY", 2)
   preload_app!
 end

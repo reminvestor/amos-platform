@@ -60,7 +60,7 @@ Rails.application.configure do
     config.action_mailer.delivery_method = :aws_sdk
     config.action_mailer.perform_deliveries = true
   else
-    # Use letter_opener_web for Docker (provides web UI at /letter_opener)
+    # Use letter_opener_web for containers (provides web UI at /letter_opener)
     config.action_mailer.delivery_method = :letter_opener_web
     config.action_mailer.perform_deliveries = true
   end

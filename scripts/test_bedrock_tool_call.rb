@@ -1,4 +1,4 @@
-# Run with: docker-compose exec web rails runner scripts/test_bedrock_tool_call.rb
+# Run with: podman compose exec web rails runner scripts/test_bedrock_tool_call.rb
 #
 # This script directly tests if the Bedrock model calls tools when given them.
 # Bypasses the agent framework to isolate the issue.

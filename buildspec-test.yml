@@ -24,7 +24,7 @@ phases:
       - echo "✅ Test image built successfully!"
       
       - echo "Building PostgreSQL with pgvector..."
-      - docker build -t postgres-pgvector:test -f docker/postgres-test.Dockerfile .
+      - docker build -t postgres-pgvector:test -f containers/postgres-test.Dockerfile .
       
       - echo "Starting PostgreSQL container..."
       - docker network create test-network || true

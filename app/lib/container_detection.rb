@@ -2,7 +2,7 @@
 
 module ContainerDetection
   def self.in_container?
-    ENV["DOCKER_ENV"].present? ||
+    ENV["CONTAINER_ENV"].present? ||
       File.exist?("/.dockerenv") ||
       File.exist?("/run/.containerenv")
   end

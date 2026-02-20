@@ -2972,7 +2972,7 @@ class ScoutController < ApplicationController
 
   private
 
-  # Get the real client IP, checking proxy headers for Docker/reverse proxy setups
+  # Get the real client IP, checking proxy headers for container/reverse proxy setups
   def real_client_ip
     # Check X-Forwarded-For first (set by proxies/load balancers)
     forwarded_for = request.headers['X-Forwarded-For']
@@ -2996,7 +2996,7 @@ class ScoutController < ApplicationController
       return x_real_ip
     end
     
-    # Fall back to remote_ip (may be Docker internal IP in dev)
+    # Fall back to remote_ip (may be container internal IP in dev)
     Rails.logger.info "[ClientIP] Falling back to remote_ip: #{remote_ip}"
     remote_ip
   end

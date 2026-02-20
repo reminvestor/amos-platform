@@ -1,4 +1,4 @@
-# Run with: docker-compose exec web rails runner scripts/update_agent_models.rb
+# Run with: podman compose exec web rails runner scripts/update_agent_models.rb
 #
 # Clears ai_model from all agents so they inherit from the system default.
 # This enables:

@@ -1164,7 +1164,7 @@ class BrowserSessionService
         "disable-background-timer-throttling": true,
         "disable-backgrounding-occluded-windows": true,
         "disable-renderer-backgrounding": true,
-        # Site isolation can trigger extra processes / memory in Docker.
+        # Site isolation can trigger extra processes / memory in containers.
         "disable-site-isolation-trials": true,
         "disable-features": "TranslateUI,site-per-process,IsolateOrigins",
         "hide-scrollbars": true,

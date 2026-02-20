@@ -74,8 +74,8 @@ end
 puts "   Total blobs with missing files: #{orphaned_count}"
 
 # Check localstack status (if in container)
-if ENV['DOCKER_ENV'] == 'true' || ENV['DOCKER_CONTAINER'] == 'true'
-  puts "\n🐳 Container/Localstack detected"
+if ENV['CONTAINER_ENV'] == 'true'
+  puts "\n📦 Container/Localstack detected"
   puts "   ⚠️ If localstack was restarted, S3 data may be lost!"
   puts "   Suggestion: Add localstack data volume to docker-compose.yml"
 end

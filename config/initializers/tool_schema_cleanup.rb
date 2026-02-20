@@ -4,7 +4,7 @@
 # This fixes the recurring JSON Schema 2020-12 validation errors from Bedrock
 
 Rails.application.config.after_initialize do
-  next if ENV["SECRET_KEY_BASE_DUMMY"].present? # Docker build asset precompilation
+  next if ENV["SECRET_KEY_BASE_DUMMY"].present? # Container build asset precompilation
   begin
     next unless defined?(ToolDefinition) && ActiveRecord::Base.connection.table_exists?('tool_definitions')
   rescue ActiveRecord::ConnectionNotEstablished, PG::ConnectionBad

@@ -1,4 +1,4 @@
-# Run with: docker-compose exec web rails runner scripts/test_agent_tool_call.rb
+# Run with: podman compose exec web rails runner scripts/test_agent_tool_call.rb
 #
 # This script tests whether the Landing Page Manager agent actually calls tools
 # when asked to make edits.
