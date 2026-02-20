@@ -167,12 +167,8 @@ module Tools
       require 'net/http'
       require 'uri'
       
-      # Determine callback URL (web container in Docker, or localhost in dev)
-      host = if ENV['DOCKER_ENV'] || File.exist?('/.dockerenv')
-               'web:3000'
-             else
-               'localhost:3000'
-             end
+      # Determine callback URL (container network or localhost)
+      host = ContainerDetection.web_host
       
       callback_url = "http://#{host}/scout/broadcast_question"
       

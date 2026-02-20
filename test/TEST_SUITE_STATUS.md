@@ -132,11 +132,11 @@ RAILS_ENV=test bin/rails test test/services/email_campaign_workflow_comprehensiv
 RAILS_ENV=test bin/rails test test/services/email_campaign_workflow_comprehensive_test.rb:69
 ```
 
-### Docker Environment
+### Container Environment
 
 ```bash
-# Run inside Docker container
-docker compose exec web bash -c "RAILS_ENV=test bin/rails test test/services/email_campaign_workflow_comprehensive_test.rb"
+# Run inside container
+podman compose exec web bash -c "RAILS_ENV=test bin/rails test test/services/email_campaign_workflow_comprehensive_test.rb"
 ```
 
 ## Performance Optimization

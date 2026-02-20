@@ -15,7 +15,7 @@
 ### Technical Infrastructure
 - Rails 8.0 + Ruby 3.4.1
 - AWS Bedrock (Claude Sonnet 4.5) integration
-- Docker support (production + development)
+- Container support (production + development)
 - Background jobs (SolidQueue)
 - Asset pipeline (esbuild + Bootstrap 5)
 
@@ -41,7 +41,7 @@
 
 **Impact**: Low - these are optional features
 
-## 🚀 Quick Start with Docker
+## 🚀 Quick Start with Podman
 
 ### 1. Set Up Environment Variables
 Edit `.env` file and add your AWS credentials:
@@ -53,16 +53,16 @@ AWS_SECRET_ACCESS_KEY=your_actual_secret
 ### 2. Start Services
 ```bash
 # Start database and Redis (already running)
-docker-compose up -d db redis
+podman compose up -d db redis
 
 # Build and start the web app
-docker-compose up --build web
+podman compose up --build web
 ```
 
 ### 3. Setup Database
 ```bash
 # In another terminal
-docker-compose exec web rails db:create db:migrate db:seed
+podman compose exec web rails db:create db:migrate db:seed
 ```
 
 ### 4. Access the App
@@ -227,8 +227,8 @@ Open browser to: http://localhost:3000
 - **Setup Time**: 1-2 days
 - **See**: [AWS_MIGRATION_GUIDE.md](AWS_MIGRATION_GUIDE.md)
 
-### Option 3: Docker + DigitalOcean/Fly.io (Balanced)
-- **Pros**: Docker-based (you have it!), affordable, simple
+### Option 3: Container + DigitalOcean/Fly.io (Balanced)
+- **Pros**: Container-based (you have it!), affordable, simple
 - **Cons**: Manual setup required
 - **Setup Time**: 4-8 hours
 

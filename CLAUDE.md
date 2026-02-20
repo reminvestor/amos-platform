@@ -4,23 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-### Development (Docker - Recommended)
+### Development (Podman - Recommended)
 ```bash
 # Start all services (Rails, PostgreSQL, Redis, LocalStack, SolidQueue)
-docker compose up -d
+podman compose up -d
 
 # View logs
-docker compose logs -f web
+bin/podman-logs web
 
 # Run Rails console in container
-docker compose exec web rails console
+podman compose exec web rails console
 
 # Run database operations in container
-docker compose exec web rails db:migrate
-docker compose exec web rails db:seed
+podman compose exec web rails db:migrate
+podman compose exec web rails db:seed
 
 # Restart web service after code changes (if needed)
-docker compose restart web
+podman compose restart web
 ```
 
 ### Development (Local - Alternative)
@@ -325,10 +325,10 @@ The application includes a sophisticated voice-to-text transcription system with
 
 ## Flutter Mobile App
 
-The mobile app (`flutter_mobile/`) is a Flutter-based iOS/Android client that connects to the Rails API running in Docker.
+The mobile app (`flutter_mobile/`) is a Flutter-based iOS/Android client that connects to the Rails API running in containers.
 
 ### Prerequisites
-- Docker containers must be running (`docker compose up -d`)
+- Containers must be running (`podman compose up -d`)
 - Rails API available at `http://localhost:3000`
 
 ### Running the Mobile App
@@ -336,7 +336,7 @@ The mobile app (`flutter_mobile/`) is a Flutter-based iOS/Android client that co
 cd flutter_mobile
 flutter pub get
 
-# Run on iOS Simulator (connects to Docker Rails API)
+# Run on iOS Simulator (connects to containerized Rails API)
 flutter run -d "iPhone 16 Pro" --dart-define=API_BASE_URL=http://localhost:3000
 
 # Run on Android Emulator (use 10.0.2.2 for localhost from emulator)
@@ -347,10 +347,10 @@ flutter run --dart-define=API_BASE_URL=http://192.168.x.x:3000
 ```
 
 ### Development Workflow
-1. Start Docker services: `docker compose up -d`
+1. Start services: `podman compose up -d`
 2. Verify API is running: `curl http://localhost:3000/api/auth/me`
-3. Run Flutter app with API_BASE_URL pointing to Docker
-4. Changes to Rails code auto-reload in Docker container
+3. Run Flutter app with API_BASE_URL pointing to container
+4. Changes to Rails code auto-reload in container
 5. Flutter hot-reload works as normal (`r` in terminal)
 
 ### Mobile Authentication Architecture

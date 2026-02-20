@@ -12,48 +12,51 @@
 #   ./scripts/run_tests.sh all          # Run everything
 #   ./scripts/run_tests.sh single FILE  # Run a specific test file
 #
-# All commands run inside Docker via docker compose exec web.
-# Ensure docker compose up is running first.
+# All commands run inside containers via podman/docker compose exec web.
+# Ensure 'podman compose up' is running first.
 # ════════════════════════════════════════════════════════════════════
 
 set -e
 
-DOCKER_CMD="docker compose exec web"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../bin/detect-container-engine"
+
+EXEC_CMD="$COMPOSE_CMD exec web"
 
 case "${1:-unit}" in
   unit|tests)
     echo "════════════════════════════════════════════════════════════"
     echo "Running unit tests (excluding .deprecated)"
     echo "════════════════════════════════════════════════════════════"
-    $DOCKER_CMD bash -c "find test/models test/services test/controllers test/jobs test/mailers test/helpers -name '*_test.rb' -not -path '*/.deprecated/*' | sort | xargs bundle exec rails test"
+    $EXEC_CMD bash -c "find test/models test/services test/controllers test/jobs test/mailers test/helpers -name '*_test.rb' -not -path '*/.deprecated/*' | sort | xargs bundle exec rails test"
     ;;
 
   v3)
     echo "════════════════════════════════════════════════════════════"
     echo "Running V3 tests"
     echo "════════════════════════════════════════════════════════════"
-    $DOCKER_CMD bundle exec rails test test/services/v3/ -v
+    $EXEC_CMD bundle exec rails test test/services/v3/ -v
     ;;
 
   bob)
     echo "════════════════════════════════════════════════════════════"
     echo "Running BOB v4 Benchmark (quick - 2 per tier)"
     echo "════════════════════════════════════════════════════════════"
-    $DOCKER_CMD bundle exec rake benchmark:bob4:quick
+    $EXEC_CMD bundle exec rake benchmark:bob4:quick
     ;;
 
   bob:full)
     echo "════════════════════════════════════════════════════════════"
     echo "Running BOB v4 Benchmark (full)"
     echo "════════════════════════════════════════════════════════════"
-    $DOCKER_CMD bundle exec rake benchmark:bob4:full
+    $EXEC_CMD bundle exec rake benchmark:bob4:full
     ;;
 
   bob:single)
     echo "════════════════════════════════════════════════════════════"
     echo "Running BOB v4 single task: ${2}"
     echo "════════════════════════════════════════════════════════════"
-    $DOCKER_CMD bundle exec rake "benchmark:bob4:single[${2}]"
+    $EXEC_CMD bundle exec rake "benchmark:bob4:single[${2}]"
     ;;
 
   e2e)
@@ -61,21 +64,21 @@ case "${1:-unit}" in
     echo "Running HTTP E2E integration tests"
     echo "(Requires Bedrock access for real LLM calls)"
     echo "════════════════════════════════════════════════════════════"
-    $DOCKER_CMD bundle exec rails test test/integration/scout_e2e_test.rb -v
+    $EXEC_CMD bundle exec rails test test/integration/scout_e2e_test.rb -v
     ;;
 
   integration)
     echo "════════════════════════════════════════════════════════════"
     echo "Running all integration tests"
     echo "════════════════════════════════════════════════════════════"
-    $DOCKER_CMD bundle exec rails test test/integration/ -v
+    $EXEC_CMD bundle exec rails test test/integration/ -v
     ;;
 
   single)
     echo "════════════════════════════════════════════════════════════"
     echo "Running: ${2}"
     echo "════════════════════════════════════════════════════════════"
-    $DOCKER_CMD bundle exec rails test "${2}" -v
+    $EXEC_CMD bundle exec rails test "${2}" -v
     ;;
 
   all)
@@ -84,13 +87,13 @@ case "${1:-unit}" in
     echo "════════════════════════════════════════════════════════════"
     echo ""
     echo "--- Phase 1: Unit Tests ---"
-    $DOCKER_CMD bash -c "find test/models test/services test/controllers test/jobs test/mailers test/helpers -name '*_test.rb' -not -path '*/.deprecated/*' | sort | xargs bundle exec rails test"
+    $EXEC_CMD bash -c "find test/models test/services test/controllers test/jobs test/mailers test/helpers -name '*_test.rb' -not -path '*/.deprecated/*' | sort | xargs bundle exec rails test"
     echo ""
     echo "--- Phase 2: Integration Tests ---"
-    $DOCKER_CMD bundle exec rails test test/integration/ -v
+    $EXEC_CMD bundle exec rails test test/integration/ -v
     echo ""
     echo "--- Phase 3: BOB Benchmark (quick) ---"
-    $DOCKER_CMD bundle exec rake benchmark:bob4:quick
+    $EXEC_CMD bundle exec rake benchmark:bob4:quick
     echo ""
     echo "════════════════════════════════════════════════════════════"
     echo "ALL TESTS COMPLETE"
@@ -112,7 +115,7 @@ case "${1:-unit}" in
     echo ""
     echo "BOB task IDs: b1_data_001, b1_canvas_001, b1_template_001, b1_delete_001,"
     echo "  b2_automation_001, b2_schema_001, b3_welcome_flow_001, etc."
-    echo "  Run 'docker compose exec web bundle exec rake benchmark:bob4:list' for full list."
+    echo "  Run '$COMPOSE_CMD exec web bundle exec rake benchmark:bob4:list' for full list."
     ;;
 
   *)

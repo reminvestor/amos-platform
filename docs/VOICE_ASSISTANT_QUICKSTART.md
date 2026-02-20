@@ -70,10 +70,10 @@ Edit `app/views/scout/index.html.erb` and add this near the chat input area (aro
      ```
 3. **Save webhook**
 
-### Step 4: Restart Docker (1 minute)
+### Step 4: Restart Services (1 minute)
 
 ```bash
-docker compose restart web
+podman compose restart web
 ```
 
 ## ✨ Test It Out!
@@ -129,14 +129,14 @@ POLLY_ENGINE=neural        # Or: standard (faster, lower quality)
 
 ### "Failed to get Deepgram credentials"
 
-**Fix**: Check `DEEPGRAM_API_KEY` is set in `.env` and Docker restarted.
+**Fix**: Check `DEEPGRAM_API_KEY` is set in `.env` and containers restarted.
 
 ### "No response from AI"
 
 **Fix**:
-1. Check Docker logs: `docker compose logs web --tail=50`
+1. Check Docker logs: `podman compose logs web --tail=50`
 2. Verify Scout chat works (test with text input first)
-3. Check `VoiceAgentJob` is processing: `docker compose exec web rails c`, then `VoiceAgentJob.count`
+3. Check `VoiceAgentJob` is processing: `podman compose exec web rails c`, then `VoiceAgentJob.count`
 
 ### "Audio choppy or delayed"
 

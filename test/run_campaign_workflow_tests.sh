@@ -5,6 +5,11 @@
 
 set -e
 
+# Detect container engine
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+source "$PROJECT_ROOT/bin/detect-container-engine"
+
 echo "=================================================="
 echo "Email Campaign V2 Workflow Test Suite"
 echo "=================================================="
@@ -18,14 +23,14 @@ NC='\033[0m' # No Color
 
 # Test database setup
 echo -e "${YELLOW}Setting up test database...${NC}"
-docker compose exec web bash -c "RAILS_ENV=test bin/rails db:migrate"
+$COMPOSE_CMD exec web bash -c "RAILS_ENV=test bin/rails db:migrate"
 
 echo ""
 echo -e "${YELLOW}Running comprehensive workflow tests...${NC}"
 echo ""
 
 # Run the comprehensive test suite
-docker compose exec web bash -c "RAILS_ENV=test bin/rails test test/services/email_campaign_workflow_comprehensive_test.rb"
+$COMPOSE_CMD exec web bash -c "RAILS_ENV=test bin/rails test test/services/email_campaign_workflow_comprehensive_test.rb"
 
 TEST_EXIT_CODE=$?
 

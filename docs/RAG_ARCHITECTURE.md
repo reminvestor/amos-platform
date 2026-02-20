@@ -927,20 +927,20 @@ rails docling:compare[path/to/doc.pdf]
    pip3 install -r requirements.txt
    ```
 
-### Docker Deployment
+### Container Deployment
 
 ```bash
 # 1. Build and start services
-docker-compose up -d
+podman compose up -d
 
 # 2. Run migrations
-docker-compose exec web rails db:migrate
+podman compose exec web rails db:migrate
 
 # 3. Verify Docling installation
-docker-compose exec web python3 -c 'import docling; print(docling.__version__)'
+podman compose exec web python3 -c 'import docling; print(docling.__version__)'
 
 # 4. Test RAG system
-docker-compose exec web rails rag:health
+podman compose exec web rails rag:health
 ```
 
 ### Environment Configuration
@@ -1006,16 +1006,16 @@ RAG_DETECT_IMAGES=false
 
 **Diagnosis**:
 ```bash
-docker-compose exec web python3 -c 'import docling'
+podman compose exec web python3 -c 'import docling'
 ```
 
 **Solution**:
 ```bash
 # Install Docling dependencies
-docker-compose exec web pip3 install -r requirements.txt
+podman compose exec web pip3 install -r requirements.txt
 
 # Verify installation
-docker-compose exec web python3 lib/docling_processor.py --help
+podman compose exec web python3 lib/docling_processor.py --help
 ```
 
 #### 2. Redis Cache Not Working
@@ -1025,18 +1025,18 @@ docker-compose exec web python3 lib/docling_processor.py --help
 **Diagnosis**:
 ```bash
 # Check Redis connection
-docker-compose exec web rails runner "puts Redis.new(url: ENV['REDIS_URL']).ping"
+podman compose exec web rails runner "puts Redis.new(url: ENV['REDIS_URL']).ping"
 # Expected: "PONG"
 
 # Check cache availability
-docker-compose exec web rails runner "puts EmbeddingCacheService.new.available?"
+podman compose exec web rails runner "puts EmbeddingCacheService.new.available?"
 # Expected: "true"
 ```
 
 **Solution**:
 ```bash
 # Restart Redis
-docker-compose restart redis
+podman compose restart redis
 
 # Verify REDIS_URL in .env
 echo $REDIS_URL
@@ -1049,7 +1049,7 @@ echo $REDIS_URL
 **Diagnosis**:
 ```bash
 # Check Pinecone API key
-docker-compose exec web rails runner "puts Pinecone::Client.new.list_indexes"
+podman compose exec web rails runner "puts Pinecone::Client.new.list_indexes"
 ```
 
 **Solution**:
@@ -1065,19 +1065,19 @@ docker-compose exec web rails runner "puts Pinecone::Client.new.list_indexes"
 **Diagnosis**:
 ```bash
 # Check RAG store status
-docker-compose exec web rails runner "puts RagStore.active.count"
+podman compose exec web rails runner "puts RagStore.active.count"
 
 # Check chunk count
-docker-compose exec web rails runner "puts RagStore.last&.chunk_count"
+podman compose exec web rails runner "puts RagStore.last&.chunk_count"
 ```
 
 **Solution**:
 ```bash
 # Re-load documentation
-docker-compose exec web rails rag:load_amos_docs
+podman compose exec web rails rag:load_amos_docs
 
 # Verify chunks stored
-docker-compose exec web rails rag:health
+podman compose exec web rails rag:health
 ```
 
 #### 5. Poor Search Quality
@@ -1087,11 +1087,11 @@ docker-compose exec web rails rag:health
 **Diagnosis**:
 ```bash
 # Check chunking strategy
-docker-compose exec web rails runner "puts ENV['RAG_CHUNKING_STRATEGY']"
+podman compose exec web rails runner "puts ENV['RAG_CHUNKING_STRATEGY']"
 # Expected: "semantic"
 
 # Check cache stats (stale cache can hurt quality)
-docker-compose exec web rails rag:cache_stats
+podman compose exec web rails rag:cache_stats
 ```
 
 **Solution**:
@@ -1100,34 +1100,34 @@ docker-compose exec web rails rag:cache_stats
 # In .env: RAG_CHUNKING_STRATEGY=semantic
 
 # Clear cache and re-index
-docker-compose exec web rails rag:clear_cache
-docker-compose exec web rails rag:load_amos_docs
+podman compose exec web rails rag:clear_cache
+podman compose exec web rails rag:load_amos_docs
 ```
 
 ### Monitoring Commands
 
 ```bash
 # Health check (overall system status)
-docker-compose exec web rails rag:health
+podman compose exec web rails rag:health
 
 # Cache statistics (performance monitoring)
-docker-compose exec web rails rag:cache_stats
+podman compose exec web rails rag:cache_stats
 
 # Active RAG stores
-docker-compose exec web rails runner "RagStore.active.each { |r| puts \"#{r.app_name}: #{r.chunk_count} chunks\" }"
+podman compose exec web rails runner "RagStore.active.each { |r| puts \"#{r.app_name}: #{r.chunk_count} chunks\" }"
 
 # Recent queries (last 10)
-docker-compose exec web rails runner "puts RagStore.order(updated_at: :desc).limit(10).pluck(:app_name, :updated_at)"
+podman compose exec web rails runner "puts RagStore.order(updated_at: :desc).limit(10).pluck(:app_name, :updated_at)"
 ```
 
 ### Performance Debugging
 
 ```bash
 # Enable debug logging
-docker-compose exec web rails runner "Rails.logger.level = :debug"
+podman compose exec web rails runner "Rails.logger.level = :debug"
 
 # Test embedding generation speed
-docker-compose exec web rails runner "
+podman compose exec web rails runner "
   start = Time.now
   service = RagStoreService.new
   service.send(:generate_embedding, 'test query')
@@ -1135,7 +1135,7 @@ docker-compose exec web rails runner "
 "
 
 # Test Pinecone query speed
-docker-compose exec web rails runner "
+podman compose exec web rails runner "
   start = Time.now
   service = RagStoreService.new
   result = service.query_rag_store(RagStore.first.id, 'test query')
@@ -1155,7 +1155,7 @@ AMOS RAG system provides enterprise-grade document retrieval with:
 ✅ **Enhanced Metadata**: Page numbers, headings, tables
 ✅ **Advanced Filtering**: Search by page, section, content type
 ✅ **Multi-Tenant Security**: Isolated namespaces per entity
-✅ **Production-Ready**: Deployed in Docker, monitored, tested
+✅ **Production-Ready**: Deployed in containers, monitored, tested
 
 **Total Performance Gain**: 6.5x faster document processing, 67% more relevant results
 

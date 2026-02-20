@@ -1,18 +1,18 @@
 # Local Development Guide
 
-## Docker Setup
+## Container Setup
 
 ### Starting the App
 
 ```bash
 # Start all containers
-docker-compose up -d
+podman compose up -d
 
 # View logs
-docker-compose logs -f web
+podman compose logs -f web
 
 # Stop containers
-docker-compose down
+podman compose down
 ```
 
 ### Accessing the App
@@ -38,7 +38,7 @@ The app will automatically redirect to the appropriate page based on your authen
 You can create additional users via Rails console:
 
 ```bash
-docker-compose exec web rails console
+podman compose exec web rails console
 ```
 
 ```ruby
@@ -74,13 +74,13 @@ user = User.create!(
 ### Rails Console
 
 ```bash
-docker-compose exec web rails console
+podman compose exec web rails console
 ```
 
 ### PostgreSQL Direct Access
 
 ```bash
-docker-compose exec db psql -U postgres -d agent_marketing_development
+podman compose exec db psql -U postgres -d agent_marketing_development
 ```
 
 ## Resetting Data
@@ -88,7 +88,7 @@ docker-compose exec db psql -U postgres -d agent_marketing_development
 ### Reset Database
 
 ```bash
-docker-compose exec web rails db:reset
+podman compose exec web rails db:reset
 ```
 
 **Note**: This will wipe all data and reload fixtures. You'll need to create a new user after reset.
@@ -96,20 +96,20 @@ docker-compose exec web rails db:reset
 ### Reload Schema Only
 
 ```bash
-docker-compose exec web rails db:schema:load
+podman compose exec web rails db:schema:load
 ```
 
 ## Running Tests
 
 ```bash
 # All tests
-docker-compose exec web rails test
+podman compose exec web rails test
 
 # Specific test file
-docker-compose exec web rails test test/models/user_test.rb
+podman compose exec web rails test test/models/user_test.rb
 
 # Stripe tests
-docker-compose exec web rails test test/controllers/stripe_webhooks_controller_test.rb
+podman compose exec web rails test test/controllers/stripe_webhooks_controller_test.rb
 ```
 
 ## Troubleshooting
@@ -118,42 +118,42 @@ docker-compose exec web rails test test/controllers/stripe_webhooks_controller_t
 
 1. Verify the user exists:
    ```bash
-   docker-compose exec web rails runner "puts User.pluck(:email).join(', ')"
+   podman compose exec web rails runner "puts User.pluck(:email).join(', ')"
    ```
 
 2. Create a fresh user:
    ```bash
-   docker-compose exec web rails runner tmp/create_user.rb
+   podman compose exec web rails runner tmp/create_user.rb
    ```
 
 ### App Not Loading
 
 1. Check container status:
    ```bash
-   docker-compose ps
+   podman compose ps
    ```
 
 2. View Rails logs:
    ```bash
-   docker-compose logs web --tail=100
+   podman compose logs web --tail=100
    ```
 
 3. Restart containers:
    ```bash
-   docker-compose restart web
+   podman compose restart web
    ```
 
 ### Database Connection Issues
 
 ```bash
 # Check DB is running
-docker-compose ps db
+podman compose ps db
 
 # Check DB logs
-docker-compose logs db --tail=50
+podman compose logs db --tail=50
 
 # Recreate DB
-docker-compose exec web rails db:drop db:create db:migrate
+podman compose exec web rails db:drop db:create db:migrate
 ```
 
 ## Subscription Testing
@@ -161,7 +161,7 @@ docker-compose exec web rails db:drop db:create db:migrate
 The app includes subscription event tracking. To view subscription history:
 
 ```bash
-docker-compose exec web rails console
+podman compose exec web rails console
 ```
 
 ```ruby
@@ -192,20 +192,20 @@ Key environment variables are in `.env` file:
 
 ```bash
 # Start app
-docker-compose up -d
+podman compose up -d
 
 # View logs
-docker-compose logs -f
+podman compose logs -f
 
 # Rails console
-docker-compose exec web rails console
+podman compose exec web rails console
 
 # Run migrations
-docker-compose exec web rails db:migrate
+podman compose exec web rails db:migrate
 
 # Reset everything
-docker-compose down -v && docker-compose up -d
-docker-compose exec web rails db:setup
+podman compose down -v && podman compose up -d
+podman compose exec web rails db:setup
 ```
 
 ## Login Credentials Summary

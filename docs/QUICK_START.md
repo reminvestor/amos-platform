@@ -2,7 +2,7 @@
 
 ## 🚀 Your App is Running!
 
-The AMOS application is successfully running in Docker.
+The AMOS application is successfully running in containers.
 
 ## 🌐 Access the Application
 
@@ -53,7 +53,7 @@ Without valid AWS Bedrock credentials, the AI won't work!
 After adding credentials:
 
 ```bash
-docker-compose restart web
+podman compose restart web
 ```
 
 ### 3. Create an Account
@@ -97,45 +97,45 @@ Try these commands in the chat:
 ### View Logs
 ```bash
 # All services
-docker-compose logs -f
+podman compose logs -f
 
 # Just the app
-docker-compose logs -f web
+podman compose logs -f web
 ```
 
 ### Rails Console
 ```bash
-docker-compose exec web rails console
+podman compose exec web rails console
 ```
 
 ### Database Operations
 ```bash
 # Run migrations
-docker-compose exec web rails db:migrate
+podman compose exec web rails db:migrate
 
 # Seed database
-docker-compose exec web rails db:seed
+podman compose exec web rails db:seed
 
 # Reset database
-docker-compose exec web rails db:reset
+podman compose exec web rails db:reset
 ```
 
 ### Restart Services
 ```bash
 # Restart everything
-docker-compose restart
+podman compose restart
 
 # Restart just the app
-docker-compose restart web
+podman compose restart web
 ```
 
 ### Stop Services
 ```bash
 # Stop all
-docker-compose down
+podman compose down
 
 # Stop and remove all data
-docker-compose down -v
+podman compose down -v
 ```
 
 ---
@@ -149,28 +149,28 @@ Make sure you're using `app.localhost:3000`, not just `localhost:3000`.
 ### AI Not Working?
 
 1. Check if AWS credentials are in `.env`
-2. Restart: `docker-compose restart web`
-3. Check logs: `docker-compose logs -f web`
+2. Restart: `podman compose restart web`
+3. Check logs: `podman compose logs -f web`
 
 ### Assets Not Loading?
 
 ```bash
-docker-compose exec web yarn build
-docker-compose exec web yarn build:css
+podman compose exec web yarn build
+podman compose exec web yarn build:css
 ```
 
 ### Database Issues?
 
 ```bash
 # Reset database
-docker-compose exec web rails db:reset
+podman compose exec web rails db:reset
 ```
 
 ---
 
 ## 📚 More Information
 
-- **Complete Docker Guide**: [DOCKER_SETUP.md](DOCKER_SETUP.md)
+- **Complete Container Setup Guide**: [DOCKER_SETUP.md](DOCKER_SETUP.md)
 - **Production Readiness**: [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md)
 - **Development Reference**: [CLAUDE.md](CLAUDE.md)
 - **Feature Overview**: [README.md](README.md)
@@ -181,8 +181,8 @@ docker-compose exec web rails db:reset
 
 1. **Bookmark** `http://app.localhost:3000` in your browser
 2. **Open DevTools** (F12) to see streaming chat responses in Network tab
-3. **Keep logs open** in a terminal: `docker-compose logs -f web`
-4. **Use Rails console** for debugging: `docker-compose exec web rails console`
+3. **Keep logs open** in a terminal: `podman compose logs -f web`
+4. **Use Rails console** for debugging: `podman compose exec web rails console`
 
 ---
 
@@ -211,8 +211,8 @@ Once you have AWS credentials configured:
 
 ## 📞 Need Help?
 
-- Check logs: `docker-compose logs -f web`
-- Rails console: `docker-compose exec web rails console`
+- Check logs: `podman compose logs -f web`
+- Rails console: `podman compose exec web rails console`
 - Read docs: [DOCKER_SETUP.md](DOCKER_SETUP.md), [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md)
 
 ---

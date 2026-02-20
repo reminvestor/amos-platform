@@ -1,10 +1,10 @@
-# Docker Setup Guide for AMOS with Agent Lightning
+# Container Setup Guide for AMOS with Agent Lightning
 
 ## 🚀 Quick Start
 
 ### 1. Required Environment Variables
 
-Before starting Docker, make sure your `.env` file contains these required variables:
+Before starting services, make sure your `.env` file contains these required variables:
 
 ```bash
 # AWS Bedrock (Required for AI features)
@@ -16,21 +16,21 @@ AWS_SECRET_ACCESS_KEY=your-secret-key-here
 OPENAI_API_KEY=sk-your-key-here  # For embeddings
 ```
 
-### 2. Start Docker Services
+### 2. Start Container Services
 
 ```bash
 # Start all services including Agent Lightning
-docker compose up -d
+podman compose up -d
 
 # Or start with logs visible
-docker compose up
+podman compose up
 ```
 
 ### 3. Verify Services Are Running
 
 ```bash
 # Check all services status
-docker compose ps
+podman compose ps
 
 # Expected output should show:
 # - db (PostgreSQL with pgvector)
@@ -48,7 +48,7 @@ docker compose ps
 curl http://localhost:4747/health
 
 # View logs
-docker compose logs -f agent_lightning
+podman compose logs -f agent_lightning
 
 # Check metrics
 curl http://localhost:4747/metrics
@@ -64,20 +64,20 @@ curl http://localhost:4747/metrics
 
 ```bash
 # Stop all services
-docker compose down
+podman compose down
 
 # Rebuild after code changes
-docker compose build agent_lightning
-docker compose up -d agent_lightning
+podman compose build agent_lightning
+podman compose up -d agent_lightning
 
 # View Rails logs
-docker compose logs -f web
+podman compose logs -f web
 
 # Access Rails console
-docker compose exec web rails console
+podman compose exec web rails console
 
 # Run database migrations
-docker compose exec web rails db:migrate
+podman compose exec web rails db:migrate
 ```
 
 ## 🔧 Troubleshooting
@@ -86,17 +86,17 @@ docker compose exec web rails db:migrate
 
 1. Check logs:
    ```
-   docker compose logs agent_lightning
+   podman compose logs agent_lightning
    ```
 
 2. Verify database connection:
    ```
-   docker compose exec agent_lightning python -c "from config import config; print(config.database_url)"
+   podman compose exec agent_lightning python -c "from config import config; print(config.database_url)"
    ```
 
 3. Test startup script:
    ```
-   docker compose exec agent_lightning bash test_startup.sh
+   podman compose exec agent_lightning bash test_startup.sh
    ```
 
 ### AWS Credentials Issues

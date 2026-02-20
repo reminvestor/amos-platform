@@ -73,9 +73,9 @@ ActiveStorage::Blob.find_each do |blob|
 end
 puts "   Total blobs with missing files: #{orphaned_count}"
 
-# Check localstack status (if in Docker)
+# Check localstack status (if in container)
 if ENV['DOCKER_ENV'] == 'true' || ENV['DOCKER_CONTAINER'] == 'true'
-  puts "\n🐳 Docker/Localstack detected"
+  puts "\n🐳 Container/Localstack detected"
   puts "   ⚠️ If localstack was restarted, S3 data may be lost!"
   puts "   Suggestion: Add localstack data volume to docker-compose.yml"
 end

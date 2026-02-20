@@ -116,7 +116,7 @@ Std deviation: 0 tokens (0% variance)
 
 #### Test Setup
 - Document: 100 chunks (typical size)
-- Hardware: Docker on M1 Mac
+- Hardware: Podman on M1 Mac
 - Network: Standard internet connection
 
 #### Results
@@ -300,7 +300,7 @@ Cache hit rate: 70%
 **Redis requirements**:
 - Minimum: 128MB instance
 - Recommended: 256MB (for growth)
-- Docker default: 512MB (plenty)
+- Podman default: 512MB (plenty)
 
 ### Pinecone Storage
 
@@ -391,7 +391,7 @@ RAG_EMBEDDING_BATCH_SIZE=100          # Maximum speed
 
 1. **Cache Hit Rate**
    ```bash
-   docker-compose exec web rails rag:cache_stats
+   podman compose exec web rails rag:cache_stats
    ```
    - Target: >60%
    - Alert if: <30% (may indicate cache issues)
@@ -430,18 +430,18 @@ RAG_EMBEDDING_BATCH_SIZE=100          # Maximum speed
 
 ```bash
 # 1. Test semantic chunking
-docker-compose exec web rails docling:compare[path/to/test.pdf]
+podman compose exec web rails docling:compare[path/to/test.pdf]
 
 # 2. Load documents and measure cache performance
-docker-compose exec web rails rag:load_amos_docs
-docker-compose exec web rails rag:cache_stats
+podman compose exec web rails rag:load_amos_docs
+podman compose exec web rails rag:cache_stats
 
 # 3. Re-load to see cache benefit
-docker-compose exec web rails rag:load_amos_docs
-docker-compose exec web rails rag:cache_stats
+podman compose exec web rails rag:load_amos_docs
+podman compose exec web rails rag:cache_stats
 
 # 4. Check overall health
-docker-compose exec web rails rag:health
+podman compose exec web rails rag:health
 ```
 
 ### Expected Results

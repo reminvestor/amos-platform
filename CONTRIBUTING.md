@@ -17,7 +17,7 @@ cd amos-platform
 cp .env.example .env
 # Edit .env with your API keys
 
-docker compose up -d  # Start Postgres, Redis
+podman compose up -d  # Start Postgres, Redis
 bundle install
 yarn install
 rails db:create db:migrate db:seed

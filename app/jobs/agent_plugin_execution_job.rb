@@ -653,11 +653,7 @@ class AgentPluginExecutionJob < ApplicationJob
     require 'uri'
     
     # Determine the host based on environment
-    host = if ENV['DOCKER_ENV'] || File.exist?('/.dockerenv')
-             'web:3000'
-           else
-             'localhost:3000'
-           end
+    host = ContainerDetection.web_host
     
     callback_url = "http://#{host}/scout/broadcast_completion"
     

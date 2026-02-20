@@ -1,6 +1,6 @@
-# RAG Setup for Docker Development
+# RAG Setup for Container Development
 
-Complete guide for running AMOS RAG features (Docling + Pinecone) in Docker locally.
+Complete guide for running AMOS RAG features (Docling + Pinecone) in containers locally.
 
 ---
 
@@ -64,14 +64,14 @@ PINECONE_API_KEY=your-pinecone-key
 PINECONE_ENVIRONMENT=us-east-1-aws
 ```
 
-### Step 4: Start Docker Services
+### Step 4: Start Container Services
 
 ```bash
 # Build and start all services
-docker-compose up --build
+podman compose up --build
 
 # Or run in background
-docker-compose up -d --build
+podman compose up -d --build
 ```
 
 This starts:
@@ -83,10 +83,10 @@ This starts:
 
 ```bash
 # Check Docling installation
-docker-compose exec web python3 -c "import docling; print('✅ Docling ready')"
+podman compose exec web python3 -c "import docling; print('✅ Docling ready')"
 
 # Run RAG health check
-docker-compose exec web rails rag:health
+podman compose exec web rails rag:health
 ```
 
 Expected output:
@@ -101,7 +101,7 @@ Expected output:
 ### Step 6: Seed System Documentation
 
 ```bash
-docker-compose exec web rails rag:populate_system
+podman compose exec web rails rag:populate_system
 ```
 
 This creates shared knowledge bases for:
@@ -137,7 +137,7 @@ This creates shared knowledge bases for:
 
 **Test 3: Rails Console Test**
 ```bash
-docker-compose exec web rails console
+podman compose exec web rails console
 ```
 
 ```ruby
@@ -166,14 +166,14 @@ service.query_rag_store(result[:rag_store].id, "test query")
 
 ```bash
 # Rebuild without cache
-docker-compose build --no-cache web
-docker-compose up
+podman compose build --no-cache web
+podman compose up
 ```
 
 ### Issue: OpenAI 401 Unauthorized
 
 1. Check `.env` has correct `OPENAI_API_KEY`
-2. Restart Docker: `docker-compose down && docker-compose up`
+2. Restart services: `podman compose down && podman compose up`
 
 ### Issue: Pinecone Index Not Found
 
@@ -186,11 +186,11 @@ docker-compose up
 
 ```bash
 # Check Redis is running
-docker-compose ps redis
+podman compose ps redis
 # Should show "Up"
 
 # Restart if needed
-docker-compose restart redis
+podman compose restart redis
 ```
 
 ---
@@ -199,17 +199,17 @@ docker-compose restart redis
 
 **View logs:**
 ```bash
-docker-compose logs -f web
+podman compose logs -f web
 ```
 
 **Check RAG status:**
 ```bash
-docker-compose exec web rails rag:list
+podman compose exec web rails rag:list
 ```
 
 **Check system health:**
 ```bash
-docker-compose exec web rails rag:health
+podman compose exec web rails rag:health
 ```
 
 ---
@@ -239,7 +239,7 @@ docker-compose exec web rails rag:health
 
 - [ ] OpenAI API key configured
 - [ ] Pinecone indexes created (2)
-- [ ] Docker Compose running
+- [ ] Podman Compose running
 - [ ] `rails rag:health` passes
 - [ ] System RAG stores populated
 - [ ] Scout can upload and query PDFs

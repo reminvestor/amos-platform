@@ -130,11 +130,13 @@ Rails.application.configure do
   config.hosts << "default.localhost"
   config.hosts << ".default.localhost"
   
-  # Docker hosts
+  # Container hosts (Podman and Docker)
   config.hosts << "host.docker.internal"
+  config.hosts << "host.containers.internal"
   config.hosts << /.*\.docker\.internal/
+  config.hosts << /.*\.containers\.internal/
 
-  # Allow Docker container-to-container communication
+  # Allow container-to-container communication
   config.hosts << "web"
 
   # Disable CSRF protection in development to match production behavior

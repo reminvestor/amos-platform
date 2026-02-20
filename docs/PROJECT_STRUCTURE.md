@@ -129,7 +129,7 @@ agent_marketing/
 │   └── robots.txt
 │
 ├── 📂 scripts/               # 🔧 Utility scripts
-│   ├── docker-setup.sh       # Docker environment setup
+│   ├── podman-setup.sh       # Container environment setup (Podman/Docker)
 │   └── restore_db.sh         # AWS database restore script
 │
 ├── 📂 test/                  # Test suite
@@ -347,12 +347,12 @@ pip3 install -r requirements.txt
 
 ## 🔧 Utility Scripts
 
-### scripts/docker-setup.sh
-Docker environment initialization and validation.
+### scripts/podman-setup.sh
+Container environment initialization and validation (supports Podman and Docker).
 
 **Usage**:
 ```bash
-./scripts/docker-setup.sh
+./scripts/podman-setup.sh
 ```
 
 ### scripts/restore_db.sh

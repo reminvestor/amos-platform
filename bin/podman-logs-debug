@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Enhanced Container Logs Viewer for Debugging
+# Filters and highlights important messages
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/detect-container-engine"
+
+echo "Debug Logs Viewer ($CONTAINER_CMD)"
+echo "================================"
+echo "Highlighting: Scout, Amos, ActionCable, Errors, Warnings"
+echo "Press Ctrl+C to exit"
+echo ""
+
+# Function to colorize output
+colorize_logs() {
+    sed -E \
+        -e 's/(ERROR|error|Error)/\x1b[31m\1\x1b[0m/g' \
+        -e 's/(WARN|WARNING|warn|warning|Warning)/\x1b[33m\1\x1b[0m/g' \
+        -e 's/(Scout|scout|SCOUT)/\x1b[36m\1\x1b[0m/g' \
+        -e 's/(Amos|amos|AMOS)/\x1b[35m\1\x1b[0m/g' \
+        -e 's/(ActionCable|WebSocket|Channel)/\x1b[32m\1\x1b[0m/g' \
+        -e 's/(SolidQueue|Job|job)/\x1b[34m\1\x1b[0m/g' \
+        -e 's/(Bedrock|bedrock|Claude|claude)/\x1b[95m\1\x1b[0m/g' \
+        -e 's/(SUCCESS|success|Success)/\x1b[92m\1\x1b[0m/g'
+}
+
+if [ "$1" == "chat" ]; then
+    echo "Filtering for chat-related logs..."
+    $COMPOSE_CMD logs -f --tail=200 web worker | grep -E "(Scout|Amos|ActionCable|Channel|scout|chat|message|bedrock|claude)" | colorize_logs
+elif [ "$1" == "errors" ]; then
+    echo "Filtering for errors..."
+    $COMPOSE_CMD logs -f --tail=200 | grep -E "(ERROR|error|Error|FAIL|fail|Fail|exception|Exception)" | colorize_logs
+elif [ "$1" == "jobs" ]; then
+    echo "Filtering for job processing..."
+    $COMPOSE_CMD logs -f --tail=200 worker | grep -E "(SolidQueue|Job|job|Perform|perform|enqueue)" | colorize_logs
+else
+    echo "Showing all logs with highlighting..."
+    $COMPOSE_CMD logs -f --tail=100 | colorize_logs
+fi

@@ -220,17 +220,31 @@ rails db:create db:migrate db:seed
 bin/dev
 ```
 
-### Docker Setup
+### Container Setup (Podman)
 
 ```bash
-docker compose up
+# Install Podman (macOS)
+brew install podman
+podman machine init --cpus 4 --memory 8192 --disk-size 60
+podman machine start
+
+# Start all services (PostgreSQL, Redis, LocalStack, Rails, SolidQueue)
+podman compose up -d
+
+# View logs
+bin/podman-logs web
+
+# Run Rails console
+podman compose exec web rails console
+
+# Run database operations
+podman compose exec web rails db:migrate
+
+# Run tests
+./scripts/run_tests.sh
 ```
 
-For AWS-like local development (with LocalStack for S3, SES, etc.):
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.aws-dev.yml up
-```
+All `podman compose` commands work identically with `docker compose` if you prefer Docker.
 
 ---
 

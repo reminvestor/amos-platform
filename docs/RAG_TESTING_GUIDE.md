@@ -20,7 +20,7 @@ The RAG system has three levels of testing:
 
 ```bash
 # Run all RAG unit tests
-docker-compose exec web rails test test/services/rag_store_service_comprehensive_test.rb
+podman compose exec web rails test test/services/rag_store_service_comprehensive_test.rb
 
 # Expected output:
 # 14 runs, 29 assertions, 0 failures, 0 errors, 7 skips
@@ -60,14 +60,14 @@ docker-compose exec web rails test test/services/rag_store_service_comprehensive
 #### Run E2E Tests
 
 ```bash
-# Restart Docker to load new env vars
-docker-compose down && docker-compose up -d
+# Restart services to load new env vars
+podman compose down && podman compose up -d
 
 # Wait for services to start
 sleep 45
 
 # Run end-to-end test
-docker-compose exec web rails test test/integration/rag_end_to_end_test.rb
+podman compose exec web rails test test/integration/rag_end_to_end_test.rb
 ```
 
 **What's Tested:**
@@ -123,7 +123,7 @@ docker-compose exec web rails test test/integration/rag_end_to_end_test.rb
 ### Test 1: Create Your First RAG Store
 
 ```bash
-docker-compose exec web rails console
+podman compose exec web rails console
 ```
 
 ```ruby
@@ -235,7 +235,7 @@ Error: Invalid API key
 **Fix:**
 1. Check `.env` has `OPENAI_API_KEY=sk-proj-...`
 2. Verify no quotes around the key
-3. Restart Docker: `docker-compose down && docker-compose up -d`
+3. Restart services: `podman compose down && podman compose up -d`
 
 ### OpenAI 429 Insufficient Quota
 
@@ -258,7 +258,7 @@ Error: Invalid API Key
 1. Get new API key from https://app.pinecone.io
 2. Modern keys start with `pcsk_` or `pc-`
 3. Legacy keys (`a9e7aee5-...`) won't work
-4. Update `.env` and restart Docker
+4. Update `.env` and restart services
 
 ### Pinecone Index Not Found
 
@@ -286,10 +286,10 @@ Error: Redis connection refused
 **Fix:**
 ```bash
 # Check Redis is running
-docker-compose ps redis
+podman compose ps redis
 
 # Restart if needed
-docker-compose restart redis
+podman compose restart redis
 ```
 
 ---
@@ -368,8 +368,8 @@ jobs:
 
       - name: Run Unit Tests
         run: |
-          docker-compose up -d db redis
-          docker-compose run web rails test test/services/rag_store_service_comprehensive_test.rb
+          podman compose up -d db redis
+          podman compose run web rails test test/services/rag_store_service_comprehensive_test.rb
 
       # E2E tests only on main branch with secrets
       - name: Run E2E Tests
@@ -378,7 +378,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
         run: |
-          docker-compose run web rails test test/integration/rag_end_to_end_test.rb
+          podman compose run web rails test test/integration/rag_end_to_end_test.rb
 ```
 
 ---

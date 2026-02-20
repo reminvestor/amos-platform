@@ -18,10 +18,10 @@ RAG_CHUNK_SIZE=1000          # tokens
 RAG_CHUNK_OVERLAP=200        # characters
 
 # Install dependencies
-docker-compose run --rm web pip3 install transformers torch
+podman compose run --rm web pip3 install transformers torch
 
 # Restart
-docker-compose restart web
+podman compose restart web
 ```
 
 ### Use Simple Chunking (Default)
@@ -161,10 +161,10 @@ RagConfig.log_config
 
 ### Semantic Chunking Dependencies
 
-**Docker (Recommended)**:
+**Container (Recommended)**:
 ```bash
 # Already in Dockerfile.dev, just rebuild
-docker-compose build web
+podman compose build web
 ```
 
 **Local**:
@@ -174,7 +174,7 @@ pip3 install transformers torch
 
 **Verify Installation**:
 ```bash
-docker-compose exec web rails docling:check
+podman compose exec web rails docling:check
 
 # Expected output:
 # ✅ Docling installed (version 2.57.0)
@@ -190,7 +190,7 @@ docker-compose exec web rails docling:check
 
 ```bash
 # Set strategy
-docker-compose exec web bash -c 'export RAG_CHUNKING_STRATEGY=simple && rails docling:test[path/to/doc.pdf]'
+podman compose exec web bash -c 'export RAG_CHUNKING_STRATEGY=simple && rails docling:test[path/to/doc.pdf]'
 ```
 
 **Expected Output**:
@@ -205,7 +205,7 @@ Token count range: 350-650 tokens (variable)
 
 ```bash
 # Set strategy
-docker-compose exec web bash -c 'export RAG_CHUNKING_STRATEGY=semantic && rails docling:test[path/to/doc.pdf]'
+podman compose exec web bash -c 'export RAG_CHUNKING_STRATEGY=semantic && rails docling:test[path/to/doc.pdf]'
 ```
 
 **Expected Output**:
@@ -223,7 +223,7 @@ Chunk metadata includes:
 ### Compare Strategies
 
 ```bash
-docker-compose exec web rails docling:compare[path/to/doc.pdf]
+podman compose exec web rails docling:compare[path/to/doc.pdf]
 ```
 
 **Example Output**:
@@ -306,10 +306,10 @@ Based on Ottomator benchmarks:
 **Solutions**:
 ```bash
 # Check Python dependencies
-docker-compose exec web python3 -c "import transformers; import torch"
+podman compose exec web python3 -c "import transformers; import torch"
 
 # Reinstall
-docker-compose run --rm web pip3 install transformers torch
+podman compose run --rm web pip3 install transformers torch
 
 # Check disk space (BERT model is ~400MB)
 df -h
@@ -353,7 +353,7 @@ RAG_CHUNK_SIZE=800   # Smaller chunks
 
 1. **Install dependencies**:
    ```bash
-   docker-compose run --rm web pip3 install transformers torch
+   podman compose run --rm web pip3 install transformers torch
    ```
 
 2. **Update .env**:
@@ -365,22 +365,22 @@ RAG_CHUNK_SIZE=800   # Smaller chunks
 
 3. **Restart**:
    ```bash
-   docker-compose restart web
+   podman compose restart web
    ```
 
 4. **Re-index existing RAG stores** (optional but recommended):
    ```bash
    # Delete old stores
-   docker-compose exec web rails rag:delete_all[YES]
+   podman compose exec web rails rag:delete_all[YES]
 
    # Re-populate with semantic chunking
-   docker-compose exec web rails rag:load_amos_docs
-   docker-compose exec web rails rag:load_integration_docs
+   podman compose exec web rails rag:load_amos_docs
+   podman compose exec web rails rag:load_integration_docs
    ```
 
 5. **Test**:
    ```bash
-   docker-compose exec web rails rag:health
+   podman compose exec web rails rag:health
    ```
 
 ### Switching from Semantic → Simple
@@ -393,7 +393,7 @@ RAG_CHUNK_SIZE=800   # Smaller chunks
 
 2. **Restart**:
    ```bash
-   docker-compose restart web
+   podman compose restart web
    ```
 
 3. **No need to uninstall dependencies** (they'll just be ignored)
@@ -436,18 +436,18 @@ Always test with a small document first:
 
 ```bash
 # Test with sample doc
-docker-compose exec web rails docling:compare[docs/QUICK_START.md]
+podman compose exec web rails docling:compare[docs/QUICK_START.md]
 
 # If good, re-index everything
-docker-compose exec web rails rag:delete_all[YES]
-docker-compose exec web rails rag:populate_system
+podman compose exec web rails rag:delete_all[YES]
+podman compose exec web rails rag:populate_system
 ```
 
 ---
 
 ## FAQ
 
-**Q: Can I use semantic chunking without Docker?**
+**Q: Can I use semantic chunking without containers?**
 A: Yes, but you need to install `transformers` and `torch` locally. These are large dependencies (~2GB).
 
 **Q: Does semantic chunking work offline?**

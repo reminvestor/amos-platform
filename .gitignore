@@ -36,8 +36,9 @@
 # Ignore sensitive config files
 /config/solana_token.yml
 
-# Docker local overrides
+# Container local overrides
 docker-compose.override.yml
+podman-compose.override.yml
 
 # Ignore environment variables
 .env

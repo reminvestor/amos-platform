@@ -544,7 +544,7 @@ class SkillLibraryService
         
         ### Rails Testing Commands
         ```bash
-        docker-compose run --rm web rails test path/to/test.rb
+        podman compose run --rm web rails test path/to/test.rb
         ```
         
         ### Key Rules
@@ -570,9 +570,9 @@ class SkillLibraryService
         6. VERIFY: Confirm fix doesn't break other things
         
         ### Common Rails Debugging
-        - Check logs: `docker-compose logs -f web`
-        - Rails console: `docker-compose exec web rails c`
-        - Database: `docker-compose exec web rails dbconsole`
+        - Check logs: `podman compose logs -f web`
+        - Rails console: `podman compose exec web rails c`
+        - Database: `podman compose exec web rails dbconsole`
       SKILL
     },
 
