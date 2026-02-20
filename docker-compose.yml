@@ -39,7 +39,7 @@ services:
       - "4566:4566"
     environment:
       - SERVICES=s3
-      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DOCKER_HOST=unix://${CONTAINER_SOCK:-/var/run/docker.sock}
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - AWS_DEFAULT_REGION=us-east-1

@@ -11,7 +11,7 @@ $COMPOSE_CMD exec web rails db:seed
 echo ""
 echo "Done! You can now login with any of these users:"
 echo ""
-echo "   All passwords: password123"
+echo "   All passwords: Password123!"
 echo ""
 echo "   admin@demo.com    - Full admin access"
 echo "   marketer@demo.com - Marketing features"
