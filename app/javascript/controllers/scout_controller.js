@@ -1489,10 +1489,15 @@ export default class extends Controller {
       chatInputArea?.classList.add('is-streaming')
       sendButton?.classList.add('d-none')
       stopButton?.classList.remove('d-none')
-      // Keep input enabled so user can type during streaming!
       if (messageInput) {
         messageInput.disabled = false
         messageInput.placeholder = "Type to interrupt or add context..."
+      }
+      // Reset scroll lock at the start of each new stream
+      if (typeof window.resetAutoScrollLock === 'function') {
+        window.resetAutoScrollLock()
+      } else {
+        window._autoScrollLocked = false
       }
     } else {
       chatInputArea?.classList.remove('is-streaming')
@@ -1505,6 +1510,7 @@ export default class extends Controller {
     }
     
     this.isStreaming = isStreaming
+    window._isStreaming = isStreaming
   }
   
   // Abort any active streaming response (lets the user interrupt Scout mid-stream).

@@ -2196,36 +2196,41 @@ document.addEventListener('turbo:load', function() {
     return false;  // Always use streaming
   }
 
-  // Track streaming state for scroll behavior
+  // Track streaming state for scroll behavior (shared across both streaming paths)
   let isStreaming = false;
+  window._isStreaming = false;
   window._autoScrollLocked = false;
 
-  // Detect ANY user scroll gesture during streaming and permanently lock
-  // auto-scroll off for the rest of that stream. This prevents the user
-  // from being yanked back to bottom while trying to read.
+  // Lock auto-scroll whenever the user scrolls UP (away from the bottom).
+  // This works for BOTH streaming paths (inline JS EventSource and Stimulus fetch).
+  // The lock is only released when:
+  //   1. The user sends a new message (resetAutoScrollLock is called)
+  //   2. The user manually scrolls back to the bottom
   if (chatMessages) {
-    chatMessages.addEventListener('wheel', function() {
-      if (isStreaming) window._autoScrollLocked = true;
-    }, { passive: true });
-
-    chatMessages.addEventListener('touchmove', function() {
-      if (isStreaming) window._autoScrollLocked = true;
-    }, { passive: true });
-
-    // Detect scrollbar drag (pointerdown on the scrollbar area)
-    chatMessages.addEventListener('mousedown', function(e) {
-      if (isStreaming && e.offsetX >= chatMessages.clientWidth) {
-        window._autoScrollLocked = true;
-      }
-    }, { passive: true });
-
-    // Detect keyboard scrolling (Page Up, Arrow Up, etc.)
-    chatMessages.addEventListener('keydown', function(e) {
-      if (isStreaming && ['ArrowUp', 'PageUp', 'Home'].includes(e.key)) {
-        window._autoScrollLocked = true;
-      }
+    // Use the scroll event itself to detect when user moves away from bottom.
+    // This catches ALL scroll sources: wheel, touch, scrollbar drag, keyboard.
+    let _scrollLockRaf = null;
+    chatMessages.addEventListener('scroll', function() {
+      if (_scrollLockRaf) return;
+      _scrollLockRaf = requestAnimationFrame(function() {
+        _scrollLockRaf = null;
+        if (!chatMessages) return;
+        const distanceFromBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight;
+        if (distanceFromBottom > 80) {
+          // User has scrolled up significantly — lock auto-scroll
+          window._autoScrollLocked = true;
+        } else if (distanceFromBottom < 10) {
+          // User scrolled back to the bottom — unlock
+          window._autoScrollLocked = false;
+        }
+      });
     }, { passive: true });
   }
+
+  // Reset scroll lock (called when user sends a new message)
+  window.resetAutoScrollLock = function() {
+    window._autoScrollLocked = false;
+  };
 
   function scrollToBottom(force = false) {
     if (!chatMessages || chatMessages.scrollHeight === undefined) return;
@@ -3254,7 +3259,8 @@ document.addEventListener('turbo:load', function() {
     let streamingMessage = null;
     let streamingContent = '';
     isStreaming = true;
-    window._autoScrollLocked = false;
+    window._isStreaming = true;
+    window.resetAutoScrollLock();
     
     // Add timeout fallback to prevent getting stuck
     const timeoutId = setTimeout(() => {
@@ -3544,6 +3550,7 @@ document.addEventListener('turbo:load', function() {
                 streamingMessage = null;
                 streamingContent = '';
                 isStreaming = false;
+                window._isStreaming = false;
                 
                 return; // Done processing
               }
@@ -3557,6 +3564,7 @@ document.addEventListener('turbo:load', function() {
       console.error('Streaming error:', error);
       clearTimeout(timeoutId);
       isStreaming = false;
+      window._isStreaming = false;
 
       window.currentStreamAbortController = null;
       
