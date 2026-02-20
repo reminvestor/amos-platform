@@ -208,21 +208,36 @@ export default class extends Controller {
   }
 
   showError(message) {
-    // Create temporary error toast
+    // Create temporary error toast using DOM APIs to prevent XSS
     const toast = document.createElement('div')
     toast.className = 'position-fixed bottom-0 end-0 p-3'
     toast.style.zIndex = '1100'
-    toast.innerHTML = `
-      <div class="toast show" role="alert">
-        <div class="toast-header bg-danger text-white">
-          <strong class="me-auto">Error</strong>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-        </div>
-        <div class="toast-body">${message}</div>
-      </div>
-    `
+
+    const toastInner = document.createElement('div')
+    toastInner.className = 'toast show'
+    toastInner.setAttribute('role', 'alert')
+
+    const header = document.createElement('div')
+    header.className = 'toast-header bg-danger text-white'
+    const title = document.createElement('strong')
+    title.className = 'me-auto'
+    title.textContent = 'Error'
+    const closeBtn = document.createElement('button')
+    closeBtn.type = 'button'
+    closeBtn.className = 'btn-close btn-close-white'
+    closeBtn.setAttribute('data-bs-dismiss', 'toast')
+    header.appendChild(title)
+    header.appendChild(closeBtn)
+
+    const body = document.createElement('div')
+    body.className = 'toast-body'
+    body.textContent = message
+
+    toastInner.appendChild(header)
+    toastInner.appendChild(body)
+    toast.appendChild(toastInner)
     document.body.appendChild(toast)
-    
+
     // Auto-remove after 5 seconds
     setTimeout(() => toast.remove(), 5000)
   }
