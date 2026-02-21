@@ -30,6 +30,9 @@ class AmosSignal < ApplicationRecord
     resource_limit_warning
     anomaly_detected
     feature_demand
+    platform_health_issue
+    platform_improvement
+    entity_insight
   ].freeze
 
   SOURCES = %w[
@@ -42,6 +45,7 @@ class AmosSignal < ApplicationRecord
     user_activity
     skill_injection_log
     error_log
+    platform_health_scanner
   ].freeze
 
   STATUSES = %w[pending acknowledged acted_on dismissed expired].freeze
@@ -142,6 +146,8 @@ class AmosSignal < ApplicationRecord
                when 'integration_failure_rate' then data.slice('integration_name')
                when 'tool_failure_rate' then data.slice('tool_name')
                when 'skill_effectiveness_drop' then data.slice('skill_id')
+               when 'platform_health_issue', 'platform_improvement', 'entity_insight'
+                 data.slice('check_name', 'scope', 'severity')
                else data.slice('key', 'id', 'name')
                end
 

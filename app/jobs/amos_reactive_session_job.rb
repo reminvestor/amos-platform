@@ -98,6 +98,8 @@ class AmosReactiveSessionJob < ApplicationJob
       handle_skill_signals(entity, signals)
     when 'resource_limit_warning'
       handle_resource_signals(entity, signals)
+    when 'platform_health_issue'
+      handle_platform_health_signals(entity, signals)
     else
       handle_generic_signals(entity, signals)
     end
@@ -227,6 +229,117 @@ class AmosReactiveSessionJob < ApplicationJob
 
     { action: 'resource_alert', thought_id: thought.id, bounties_created: 0, points: 0,
       log: "Resource limit warning" }
+  end
+
+  def handle_platform_health_signals(entity, signals)
+    summary = signals.map(&:summary).join('; ')
+    max_strength = signals.map(&:strength).max
+
+    thought = AmosWorkingMemory.create!(
+      entity: entity,
+      thought_type: 'concern',
+      topic: 'platform_health',
+      content: "Platform health issue detected: #{summary}",
+      salience: [max_strength, 0.8].min,
+      confidence: 0.8,
+      evidence: signals.map { |s| { type: s.signal_type, data: s.data, time: s.created_at.iso8601 } }
+    )
+
+    bounties_created = 0
+    total_points = 0
+
+    # Attempt auto-recovery for recoverable findings, create bounties for the rest
+    signals.each do |signal|
+      check_data = signal.data || {}
+      recoverable = check_data.dig("details", "recoverable")
+      action = check_data["suggested_action"]
+
+      if action == "auto_recover" && recoverable
+        recovered = attempt_auto_recovery(entity, check_data)
+        if recovered
+          Rails.logger.info "[AmosReactive] Auto-recovered platform health issue: #{signal.summary}"
+          next
+        end
+      end
+
+      # Create a bounty for actionable issues (high/critical severity)
+      severity = check_data["severity"]
+      next unless severity.in?(%w[critical high])
+
+      bounty_params = check_data.dig("details", "bounty_params") || check_data["bounty_params"] || {}
+      title = bounty_params["title"] || "Platform health: #{signal.summary.truncate(80)}"
+
+      next if Bounty.where(entity: entity, status: 'open')
+                     .where("title ILIKE ?", "%#{title.first(60)}%")
+                     .exists?
+
+      begin
+        points = (bounty_params["points"] || 150).to_i
+        Bounty.create_from_amos!(
+          entity: entity,
+          title: title,
+          description: bounty_params["description"] || signal.summary,
+          bounty_type: bounty_params["bounty_type"] || "infrastructure",
+          points: points,
+          scoring_rationale: "Auto-scored: platform health reactive signal (strength: #{signal.strength})",
+          metadata: { signal_id: signal.id, check_name: check_data["check_name"], trigger: "reactive" }
+        )
+        bounties_created += 1
+        total_points += points
+      rescue => e
+        Rails.logger.warn "[AmosReactive] Failed to create platform health bounty: #{e.message}"
+      end
+    end
+
+    { action: 'platform_health_response', thought_id: thought.id,
+      bounties_created: bounties_created, points: total_points,
+      log: "Platform health: #{summary}" }
+  end
+
+  def attempt_auto_recovery(entity, check_data)
+    check_name = check_data["check_name"]
+    details = check_data.dig("details") || {}
+
+    case check_name
+    when "stuck_modules"
+      module_ids = details["module_ids"] || details[:module_ids] || []
+      return false if module_ids.empty?
+
+      activated = 0
+      AppModule.where(id: module_ids, status: "generating").find_each do |mod|
+        has_table = ActiveRecord::Base.connection.table_exists?(mod.slug.pluralize) rescue false
+        has_code = mod.module_codes.where(code_type: "model").exists?
+
+        if has_table && has_code
+          mod.activate!
+          activated += 1
+        end
+      end
+      activated > 0
+
+    when "stale_plans"
+      plan_id = details["plan_id"]
+      return false unless plan_id
+
+      plan = ApplicationPlan.find_by(id: plan_id)
+      return false unless plan
+
+      completed = plan.build_results&.dig("completed_phases") || []
+      active_modules = AppModule.where(entity_id: plan.entity_id, status: "active").count
+
+      if completed.include?("modules") && active_modules > 0
+        plan.update!(status: "completed", error_message: nil)
+        true
+      else
+        plan.update!(status: "failed", error_message: "Auto-failed: stale plan with no progress")
+        true
+      end
+    else
+      false
+    end
+  rescue => e
+    Rails.logger.warn "[AmosReactive] Auto-recovery failed for #{check_data['check_name']}: #{e.message}"
+    false
   end
 
   def handle_generic_signals(entity, signals)

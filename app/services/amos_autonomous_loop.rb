@@ -179,6 +179,9 @@ class AmosAutonomousLoop
     # Signal 8: Model performance patterns
     signals += perceive_model_performance
 
+    # Signal 9: Platform health (stuck modules, stale plans, failed builds)
+    signals += perceive_platform_health
+
     # Filter by minimum strength
     signals.select { |s| s[:strength] >= MIN_SIGNAL_STRENGTH }
            .sort_by { |s| -s[:strength] }
@@ -434,6 +437,26 @@ class AmosAutonomousLoop
     []
   end
 
+  def perceive_platform_health
+    findings = AmosChecks::Registry.run_health_checks
+
+    findings.map do |finding|
+      {
+        type: :platform_health,
+        label: finding.summary,
+        strength: finding.signal_strength,
+        data: finding.to_signal_data.merge(
+          entity_id: finding.entity_id,
+          bounty_params: finding.bounty_params
+        ),
+        suggested_action: finding.actionable? ? :create_bounty : :investigate
+      }
+    end
+  rescue => e
+    log "⚠️ Platform health perception failed: #{e.message}"
+    []
+  end
+
   # ═══════════════════════════════════════════════════════════════════════════
   # PHASE 2: ATTENTION ALLOCATION
   # Decide what to focus on this session
@@ -539,24 +562,69 @@ class AmosAutonomousLoop
   end
 
   def think_and_create_bounties(focus)
-    # Delegate to the existing thinking service for bounty generation
-    thinking_service = AmosThinkingService.new(entity)
-    context = thinking_service.gather_context
-    reflection = thinking_service.send(:reflect, context)
-    bounties = thinking_service.send(:create_bounties_from_reflection, reflection)
+    bounties = []
 
-    # Record in working memory
+    # Step 1: Create bounties directly from signals that carry actionable data.
+    # This is the primary path -- the signals already contain what we need.
+    focus[:signals].each do |signal|
+      bounty = create_bounty_from_signal(signal)
+      bounties << bounty if bounty
+    end
+
+    # Step 2: Fall back to AI reflection only when signals lack bounty context.
+    if bounties.empty?
+      thinking_service = AmosThinkingService.new(entity)
+      context = thinking_service.gather_context
+      reflection = thinking_service.send(:reflect, context)
+      reflection_bounties = thinking_service.send(:create_bounties_from_reflection, reflection)
+      bounties.concat(reflection_bounties)
+    end
+
     create_thought!(
       type: 'observation',
       topic: 'bounty_generation',
-      content: "Generated #{bounties.count} bounties. Reflection: #{reflection[:reflection_summary]&.truncate(300)}"
+      content: "Generated #{bounties.count} bounties from #{focus[:signals].size} signals: #{focus[:label]}"
     )
 
     { action: :create_bounty, success: true, bounties_created: bounties.count,
-      points_allocated: bounties.sum(&:points) }
+      points_allocated: bounties.sum { |b| b.respond_to?(:points) ? b.points : 0 } }
   rescue => e
-    log "  ⚠️ Bounty creation fell back to simple: #{e.message}"
+    log "  ⚠️ Bounty creation failed: #{e.message}"
     { action: :create_bounty, success: false, error: e.message, bounties_created: 0, points_allocated: 0 }
+  end
+
+  # Convert a single signal into a bounty if it has enough context.
+  # Returns the created Bounty, or nil if the signal isn't bounty-ready.
+  def create_bounty_from_signal(signal)
+    return nil unless signal[:strength] >= 0.6
+
+    params = signal.dig(:data, :bounty_params) || signal.dig(:data, "bounty_params")
+    return nil unless params
+
+    title = params[:title] || params["title"]
+    return nil unless title
+
+    # Deduplicate: skip if an open bounty with a similar title already exists
+    return nil if Bounty.where(entity: entity, status: 'open')
+                        .where("title ILIKE ?", "%#{title.first(60)}%")
+                        .exists?
+
+    Bounty.create_from_amos!(
+      entity: entity,
+      title: title,
+      description: params[:description] || params["description"] || signal[:label],
+      bounty_type: params[:bounty_type] || params["bounty_type"] || "infrastructure",
+      points: params[:points] || params["points"] || 100,
+      scoring_rationale: "Auto-scored from signal: #{signal[:type]} (strength: #{signal[:strength]})",
+      metadata: {
+        signal_type: signal[:type].to_s,
+        signal_data: signal[:data]&.except(:bounty_params, "bounty_params"),
+        source: "amos_autonomous_loop"
+      }
+    )
+  rescue => e
+    log "  ⚠️ Signal bounty creation failed for #{signal[:type]}: #{e.message}"
+    nil
   end
 
   def think_and_groom(focus)

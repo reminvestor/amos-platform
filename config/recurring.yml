@@ -131,11 +131,11 @@ production:
   # AMOS Autonomous Cognition Jobs
   # ========================================
   
-  # Nightly autonomous session - AMOS perceives, attends, thinks, acts
+  # Autonomous session - AMOS perceives, attends, thinks, acts (every 6 hours)
   amos_thinking_time:
     class: AmosThinkingTimeJob
     queue: living_platform
-    schedule: at 2am every day
+    schedule: every 6 hours
 
   # Weekly deep reflection - more comprehensive analysis
   amos_weekly_reflection:
@@ -144,6 +144,13 @@ production:
     schedule: at 3am every sunday
     args:
       - entity_id: null
+
+  # Platform health scan - detect stuck records, failed builds, etc.
+  # Emits AmosSignals that can trigger reactive sessions
+  platform_health_scan:
+    class: PlatformHealthScanJob
+    queue: living_platform
+    schedule: every 30 minutes
 
   # Signal cleanup + memory decay - every 2 hours
   amos_signal_cleanup:
