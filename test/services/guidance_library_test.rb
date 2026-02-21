@@ -237,4 +237,126 @@ class GuidanceLibraryTest < ActiveSupport::TestCase
     
     assert_nil result
   end
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # RECOMMENDED MODEL FOR TASK TYPE
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  test "recommended_model_for returns nil when no model_routing experiences exist" do
+    result = GuidanceLibrary.recommended_model_for(:integration_setup, @entity)
+    assert_nil result
+  end
+
+  test "recommended_model_for returns model from model_routing experience" do
+    TaskExperience.create!(
+      entity: @entity,
+      task_type: "integration_setup",
+      content: "Prefer claude-opus-4-6 for integration setup tasks requiring complex multi-step API orchestration",
+      source_type: "model_routing",
+      utility_score: 0.9,
+      apply_count: 5,
+      positive_outcome_count: 4,
+      active: true,
+      generation: 1,
+      source_context: {},
+      metadata: {}
+    )
+
+    Rails.cache.clear
+    result = GuidanceLibrary.recommended_model_for(:integration_setup, @entity)
+    assert_equal "claude-opus-4-6", result
+  end
+
+  test "recommended_model_for ignores inactive experiences" do
+    TaskExperience.create!(
+      entity: @entity,
+      task_type: "crm_operation",
+      content: "Prefer claude-sonnet-4-6 for CRM operations",
+      source_type: "model_routing",
+      utility_score: 0.9,
+      apply_count: 5,
+      positive_outcome_count: 4,
+      active: false,
+      generation: 1,
+      source_context: {},
+      metadata: {}
+    )
+
+    Rails.cache.clear
+    result = GuidanceLibrary.recommended_model_for(:crm_operation, @entity)
+    assert_nil result
+  end
+
+  test "recommended_model_for matches general task type as fallback" do
+    TaskExperience.create!(
+      entity: @entity,
+      task_type: "general",
+      content: "Prefer qwen3-next-80b for general tasks as a cost-effective default",
+      source_type: "model_routing",
+      utility_score: 0.7,
+      apply_count: 20,
+      positive_outcome_count: 15,
+      active: true,
+      generation: 1,
+      source_context: {},
+      metadata: {}
+    )
+
+    Rails.cache.clear
+    result = GuidanceLibrary.recommended_model_for(:some_unknown_task, @entity)
+    assert_equal "qwen3-next-80b", result
+  end
+
+  test "recommended_model_for picks highest utility experience" do
+    TaskExperience.create!(
+      entity: @entity,
+      task_type: "landing_page_edit",
+      content: "Prefer claude-haiku-4-5 for landing page edits",
+      source_type: "model_routing",
+      utility_score: 0.6,
+      apply_count: 5,
+      positive_outcome_count: 3,
+      active: true,
+      generation: 1,
+      source_context: {},
+      metadata: {}
+    )
+    TaskExperience.create!(
+      entity: @entity,
+      task_type: "landing_page_edit",
+      content: "Prefer claude-sonnet-4-6 for landing page edits with better results",
+      source_type: "model_routing",
+      utility_score: 0.95,
+      apply_count: 10,
+      positive_outcome_count: 9,
+      active: true,
+      generation: 1,
+      source_context: {},
+      metadata: {}
+    )
+
+    Rails.cache.clear
+    result = GuidanceLibrary.recommended_model_for(:landing_page_edit, @entity)
+    assert_equal "claude-sonnet-4-6", result
+  end
+
+  test "recommended_model_for can recommend open-source models" do
+    TaskExperience.create!(
+      entity: @entity,
+      task_type: "general",
+      content: "Prefer qwen3-next-80b for simple conversational tasks",
+      source_type: "model_routing",
+      utility_score: 0.8,
+      apply_count: 30,
+      positive_outcome_count: 25,
+      active: true,
+      generation: 1,
+      source_context: {},
+      metadata: {}
+    )
+
+    Rails.cache.clear
+    result = GuidanceLibrary.recommended_model_for(:general, @entity)
+    assert_equal "qwen3-next-80b", result
+  end
 end

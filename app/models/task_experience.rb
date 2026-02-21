@@ -36,6 +36,7 @@ class TaskExperience < ApplicationRecord
   SOURCE_TYPES = %w[
     semantic_advantage reflection manual evolution_cycle imported
     immediate_failure promoted_from_entity confidence_calibration
+    model_routing
   ].freeze
 
   validates :task_type, presence: true, inclusion: { in: TASK_TYPES }
