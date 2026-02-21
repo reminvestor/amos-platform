@@ -191,6 +191,11 @@ class ApplicationBuildService
       app_module = create_module(module_spec)
       create_module_table(app_module, module_spec)
       create_module_canvases(app_module, module_spec)
+
+      # Activate immediately so the module is usable even if the build
+      # pauses or fails in a later phase. The finalize phase still runs
+      # verify_module_completeness! as a safety net.
+      app_module.activate!
       
       results[:modules] << {
         id: app_module.id,
@@ -200,7 +205,7 @@ class ApplicationBuildService
       relationship: module_spec['relationship']
     }
 
-    log_progress("#{module_spec['name']} created")
+    log_progress("#{module_spec['name']} created and active")
   end
   
   def wire_module_associations!
@@ -579,7 +584,7 @@ class ApplicationBuildService
       id: web_app.id,
       name: web_app.name,
       slug: web_app.slug,
-      public_url: web_app.public_url,
+      preview_url: "/design_preview/web_app/#{web_app.id}",
       requires_auth: web_app.requires_auth
     }
     
@@ -589,17 +594,23 @@ class ApplicationBuildService
   def finalize_build!
     log_progress("Finalizing build...")
     
-    # Update primary module status and verify completeness
+    # Safety-net verification: modules were already activated in
+    # build_single_module, but re-verify and repair if needed.
     results[:modules].each do |mod_info|
       app_module = AppModule.find(mod_info[:id])
       
-      # Post-build verification: ensure module has all required components
       verify_module_completeness!(app_module)
       
-      app_module.activate!
+      # Ensure active (idempotent) in case activation was missed
+      app_module.activate! unless app_module.status == 'active'
       
-      # Notify Hub about the new module
       notify_hub_module_created(app_module)
+    end
+
+    # Activate any WebApp created during the build
+    if results[:web_app].present?
+      web_app = WebApp.find_by(id: results[:web_app][:id])
+      web_app&.activate! if web_app && web_app.status != 'active'
     end
     
     # Update parent App status to active

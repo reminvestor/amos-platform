@@ -377,13 +377,11 @@ module V3
           website_id: website&.id,
           name: web_app.name,
           slug: web_app.slug,
-          subdomain: web_app.subdomain,
-          public_url: web_app.public_url,
           page_count: pages_data.length,
           module_count: linked_modules.length,
           linked_modules: linked_modules,
           workflows_created: created_workflows.length,
-          message: "Web app '#{name}' created! #{linked_modules.any? ? "Linked modules: #{linked_modules.join(', ')}." : ''} #{pages_data.any? ? "#{pages_data.length} page(s) built." : ''} #{created_workflows.any? ? "#{created_workflows.length} workflow(s) added." : ''}".strip,
+          message: "Web app '#{name}' created and available in the platform! #{linked_modules.any? ? "Linked modules: #{linked_modules.join(', ')}." : ''} #{pages_data.any? ? "#{pages_data.length} page(s) built." : ''} Open the preview to see it.".strip,
           canvas_type: "design_preview",
           canvas_data: { web_app_id: web_app.id, preview_type: "web_app" }
         )
@@ -957,50 +955,45 @@ module V3
         stream_progress("Planning app '#{name}'...", percentage: 0)
 
         begin
-          # Use ApplicationPlannerService to create a plan
-          planner = ApplicationPlannerService.new(entity: entity, user: user)
-          plan = planner.create_plan(
-            name: name,
-            description: description,
-            requirements: data.except("name", "description", :name, :description)
-          )
+          # Check for an existing resumable plan before creating a new one.
+          # This prevents duplicate modules when a user says "build it again".
+          existing_plan = find_resumable_plan(name)
+
+          plan = if existing_plan
+            Rails.logger.info "[V3::PlatformCreate] Resuming existing plan #{existing_plan.id} (status: #{existing_plan.status}) for '#{name}'"
+            stream_progress("Resuming previous build for '#{name}'...", percentage: 5)
+            existing_plan.update!(status: "approved") if existing_plan.status.in?(%w[failed paused])
+            existing_plan
+          else
+            planner = ApplicationPlannerService.new(entity: entity, user: user)
+            new_plan = planner.create_plan(
+              name: name,
+              description: description,
+              requirements: data.except("name", "description", :name, :description)
+            )
+            new_plan.update!(status: "approved")
+            new_plan
+          end
 
           stream_progress("Building app '#{name}'...", percentage: 10)
 
-          # Approve and build immediately (no user-facing plan review)
-          plan.update!(status: "approved")
-
-          # Wire progress callback so build steps stream to the user in real-time
           build_progress = ->(msg, pct = nil) { stream_progress(msg, percentage: pct) }
 
-          # Wire cancellation check — if the user sends a new message during the build,
-          # pause gracefully so the agent can respond to them
           build_start_time = Time.current
-          cancel_check = -> {
-            ScoutMessage.where(
-              user_id: user.id,
-              entity_id: entity.id,
-              role: "user"
-            ).where("created_at > ?", build_start_time).exists?
-          }
+          cancel_check = build_cancellation_check(build_start_time)
 
           builder = ApplicationBuildService.new(
             plan,
             progress_callback: build_progress,
             cancellation_check: cancel_check
           )
-          result = builder.execute!
+          result = existing_plan ? builder.execute! : builder.execute!
 
           if result[:success] == true
             stream_progress("App '#{name}' is ready!", percentage: 100)
 
-            # Find the built module to open its canvas
             built_module = plan.reload.app_modules.first
-            canvas_data = if built_module
-                            { app_module_id: built_module.id }
-                          else
-                            {}
-                          end
+            canvas_data = built_module ? { app_module_id: built_module.id } : {}
 
             success_response(
               app_id: plan.id,
@@ -1012,14 +1005,17 @@ module V3
               canvas_data: canvas_data
             )
           elsif result[:success] == :partial
-            # Build was paused by user — report what was completed
             completed = result[:results][:modules]&.map { |m| m[:name] } || []
+            built_module = plan.reload.app_modules.where(status: 'active').first
+
             success_response(
               app_id: plan.id,
               name: name,
               modules: result[:results][:modules]&.map { |m| { id: m[:id], name: m[:name], slug: m[:slug] } } || [],
-              message: "Build paused. Completed so far: #{completed.join(', ')}. You can ask me to resume it anytime.",
-              partial: true
+              message: "Build paused. Completed so far: #{completed.join(', ')}. All completed modules are active and usable. Ask me to resume anytime.",
+              partial: true,
+              canvas_type: built_module ? "module_manager" : nil,
+              canvas_data: built_module ? { app_module_id: built_module.id } : {}
             )
           else
             error_response("App build failed: #{result[:error]}")
@@ -1028,6 +1024,36 @@ module V3
           Rails.logger.error "[V3::PlatformCreate] App build failed: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
           error_response("App creation failed: #{e.message}")
         end
+      end
+
+      def find_resumable_plan(name)
+        ApplicationPlan.where(entity_id: entity.id)
+          .where(status: %w[paused building failed])
+          .where("created_at > ?", 7.days.ago)
+          .order(created_at: :desc)
+          .detect { |p| p.name.downcase.strip == name.downcase.strip }
+      end
+
+      def build_cancellation_check(build_start_time)
+        encouragement = %w[yes yeah yep sure ok okay continue go build proceed do resume keep start]
+
+        -> {
+          recent = ScoutMessage.where(
+            user_id: user.id,
+            entity_id: entity.id,
+            role: "user"
+          ).where("created_at > ?", build_start_time).order(created_at: :desc).first
+
+          return false unless recent
+
+          normalized = recent.content.to_s.downcase.gsub(/[^a-z0-9\s]/, '').strip
+          words = normalized.split
+
+          # Short affirmative messages are encouragement, not cancellation
+          return false if words.length <= 4 && words.any? { |w| encouragement.include?(w) }
+
+          true
+        }
       end
     end
   end
