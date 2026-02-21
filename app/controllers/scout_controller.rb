@@ -116,7 +116,7 @@ class ScoutController < ApplicationController
       save_scout_message("user", user_message)
 
       # V3 agent loop (non-streaming for JSON endpoint)
-      model = params[:model] || session[:premium_model] || ENV.fetch("BEDROCK_DEFAULT_MODEL", "anthropic.claude-sonnet-4-v1")
+      model = params[:model] || session[:selected_model] || ENV.fetch("BEDROCK_DEFAULT_MODEL", "anthropic.claude-sonnet-4-v1")
       canvas_type = extract_canvas_type(current_canvas)
 
       agent = V3::AgentLoop.new(
@@ -337,86 +337,83 @@ class ScoutController < ApplicationController
     end
   end
 
-  # Set thinking depth mode (auto, quick, standard, deep)
-  # Also supports legacy modes (fast, balanced, powerful) for backwards compatibility
+  VALID_MODELS = %w[
+    qwen3-next-80b
+    claude-haiku-4-5
+    claude-sonnet-4-6
+    claude-opus-4-6
+  ].freeze
+
+  MODE_TO_MODEL = {
+    'auto'    => nil,
+    'economy' => 'qwen3-next-80b',
+    'light'   => 'claude-haiku-4-5',
+    'medium'  => 'claude-sonnet-4-6',
+    'deep'    => 'claude-opus-4-6'
+  }.freeze
+
+  # Set model mode — unified slider (auto/light/medium/deep)
+  # Each mode maps to a specific model; Auto lets the system decide.
   def set_model_mode
-    mode = params[:mode]&.to_sym
-    
-    # Map legacy modes to new thinking depth modes
+    mode = params[:mode]&.to_s
+
+    # Map legacy modes
     mode = case mode
-           when :fast, :quick then :light
-           when :balanced, :standard then :medium
-           when :powerful, :maximum then :deep
+           when 'fast', 'quick' then 'light'
+           when 'balanced', 'standard' then 'medium'
+           when 'powerful', 'maximum' then 'deep'
+           when 'cheap', 'budget' then 'economy'
            else mode
            end
-    
-    valid_modes = %i[auto light medium deep]
 
-    unless valid_modes.include?(mode)
-      render json: { success: false, error: "Invalid mode. Valid: #{valid_modes.join(', ')}" }, status: 400
+    unless MODE_TO_MODEL.key?(mode)
+      render json: { success: false, error: "Invalid mode. Valid: #{MODE_TO_MODEL.keys.join(', ')}" }, status: 400
       return
     end
 
-    # Store in session
+    # Store both mode and the resolved model in session
+    model = params[:model].presence || MODE_TO_MODEL[mode]
     session[:model_mode] = mode
+    session[:selected_model] = model
+
+    Rails.logger.info "[Scout] Model mode: #{mode}, model: #{model || 'auto (system picks)'}"
 
     render json: {
       success: true,
       mode: mode,
-      description: "Model mode set to #{mode}",
-      thinking_depth: mode == :auto ? "auto-selected" : mode.to_s
+      model: model,
+      description: model ? "Using #{model}" : "Auto — system selects the best model"
     }
   end
 
   # Get current model mode
   def get_model_mode
-    current_mode = session[:model_mode]&.to_sym || :auto
+    current_mode = session[:model_mode] || 'auto'
 
     render json: {
       success: true,
       current_mode: current_mode,
-      available_tiers: [
-        { key: :auto, level: 1, description: "Auto — system picks the best model" },
-        { key: :quick, level: 2, description: "Quick — fast responses" },
-        { key: :standard, level: 3, description: "Standard — balanced quality" },
-        { key: :deep, level: 4, description: "Deep — maximum reasoning" }
-      ]
+      current_model: session[:selected_model],
+      available_modes: MODE_TO_MODEL.map { |k, v|
+        { key: k, model: v, description: v ? v : "Auto — system picks the best model" }
+      }
     }
   end
 
-  # Set premium model (Claude models for users who want higher quality)
-  # When nil, system uses default open-source models (Qwen, DeepSeek)
+  # Legacy endpoint — redirects to set_model_mode for backwards compatibility
   def set_premium_model
     model = params[:model]
-    
-    # Valid premium models (Claude only for now)
-    valid_models = %w[
-      claude-sonnet-4-6
-      claude-haiku-4-5
-      claude-opus-4-6
-    ]
-    
-    if model.nil? || model.blank?
-      # User disabled premium mode - use open-source
-      session[:premium_model] = nil
-      Rails.logger.info "[Scout] Premium mode disabled - using open-source models"
-      render json: { success: true, model: nil, mode: 'open-source' }
-    elsif valid_models.include?(model)
-      # User selected a premium model
-      session[:premium_model] = model
-      Rails.logger.info "[Scout] Premium model set to: #{model}"
-      render json: { 
-        success: true, 
-        model: model, 
-        mode: 'premium',
-        note: 'Usage billed at cost + 20%'
-      }
+    if model.blank?
+      session[:selected_model] = nil
+      session[:model_mode] = 'auto'
+      render json: { success: true, model: nil, mode: 'auto' }
+    elsif VALID_MODELS.include?(model)
+      mode = MODE_TO_MODEL.key(model) || 'medium'
+      session[:selected_model] = model
+      session[:model_mode] = mode
+      render json: { success: true, model: model, mode: mode }
     else
-      Rails.logger.warn "[Scout] Invalid premium model: #{model}"
-      render json: { 
-        success: false, 
-        error: "Invalid model. Valid: #{valid_models.join(', ')}" 
-      }, status: 400
+      render json: { success: false, error: "Invalid model" }, status: 400
     end
   end
 
@@ -536,7 +533,7 @@ class ScoutController < ApplicationController
     user_message = params[:message]&.strip
     current_canvas = params[:current_canvas]
     file_urls = params[:file_urls] || []
-    selected_model = params[:model] || session[:premium_model]
+    selected_model = params[:model] || session[:selected_model]
 
     Rails.logger.info "[V3] Chat stream - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message&.truncate(100)}"
     Rails.logger.info "[V3] Model: #{selected_model}" if selected_model
@@ -608,8 +605,7 @@ class ScoutController < ApplicationController
     # Save user message (after loading history so it's not included twice)
     save_scout_message("user", enhanced_message)
 
-    # Determine model - default to qwen for auto mode (fast/cheap)
-    # Only use premium models if explicitly selected by user
+    # Use the user's slider selection if set, otherwise default to auto
     model = model_preference.presence || ENV.fetch("BEDROCK_DEFAULT_MODEL", "qwen3-next-80b")
 
     # Extract canvas type and data
@@ -617,7 +613,9 @@ class ScoutController < ApplicationController
     canvas_data = extract_canvas_data(current_canvas)
 
     # If user hasn't explicitly picked a model, check if the learning system
-    # has a better recommendation for this task type
+    # has a better recommendation for this task type.
+    # All models are priced the same (cost + 20%), so the system is free
+    # to recommend any model — Claude, Qwen, DeepSeek, etc.
     if model_preference.blank?
       task_type = GuidanceLibrary.detect_task_type(
         canvas_context: { type: canvas_type }.merge(extract_canvas_data(current_canvas) || {}),

@@ -160,6 +160,7 @@ class GuidanceLibrary
 
   # Get best-performing model recommendation for a task type
   # Returns model_id string or nil if insufficient data
+  # All models are priced equally (cost + 20%), so no tier restrictions.
   def self.recommended_model_for(task_type, entity)
     return nil unless defined?(TaskExperience)
 

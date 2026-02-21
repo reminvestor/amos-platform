@@ -39,7 +39,7 @@ module V3AgentSupport
     save_scout_message("user", enhanced_message) if respond_to?(:save_scout_message, true)
 
     # Determine model - default to qwen for auto mode (fast/cheap)
-    model = model_preference.presence || session[:premium_model].presence || ENV.fetch("BEDROCK_DEFAULT_MODEL", "qwen3-next-80b")
+    model = model_preference.presence || session[:selected_model].presence || ENV.fetch("BEDROCK_DEFAULT_MODEL", "qwen3-next-80b")
 
     # Extract canvas context
     canvas_type = if current_canvas.is_a?(Hash) || current_canvas.is_a?(ActionController::Parameters)
