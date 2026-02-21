@@ -227,37 +227,43 @@ module Tools
     
     def extract_excel_text(file_path)
       require 'roo'
-      
-      spreadsheet = Roo::Spreadsheet.open(file_path)
+
+      ext = File.extname(file_path).downcase
+      spreadsheet = Roo::Spreadsheet.open(file_path, extension: ext.delete('.'))
       text_parts = []
-      
+
       spreadsheet.sheets.each do |sheet_name|
         sheet = spreadsheet.sheet(sheet_name)
+        last_row = sheet.last_row
+        next unless last_row && last_row >= 1
+
         text_parts << "=== Sheet: #{sheet_name} ==="
-        
-        # Get headers from first row
+
         headers = sheet.row(1).map(&:to_s)
         text_parts << headers.join("\t")
         text_parts << "-" * 40
-        
-        # Get data rows (limit to first 500 for sanity)
-        (2..[sheet.last_row, 502].min).each do |row_num|
+
+        row_limit = [last_row, 502].min
+        (2..row_limit).each do |row_num|
           row = sheet.row(row_num).map(&:to_s)
           text_parts << row.join("\t")
         end
-        
-        if sheet.last_row > 502
-          text_parts << "[... #{sheet.last_row - 502} more rows truncated ...]"
+
+        if last_row > 502
+          text_parts << "[... #{last_row - 502} more rows truncated ...]"
         end
-        
+
         text_parts << ""
       end
-      
-      text_parts.join("\n")
-    rescue LoadError
-      Rails.logger.warn "roo gem not available for Excel parsing"
+
+      result = text_parts.join("\n")
+      result.presence || "Excel file is empty (no data found in any sheet)"
+    rescue LoadError => e
+      Rails.logger.error "[ReadDocument] roo gem not available: #{e.message}"
       "Excel parsing requires the 'roo' gem. Please install it or convert to CSV."
     rescue => e
+      Rails.logger.error "[ReadDocument] Excel extraction failed for #{file_path}: #{e.message}"
+      Rails.logger.error e.backtrace.first(5).join("\n")
       "Error reading Excel file: #{e.message}"
     end
 

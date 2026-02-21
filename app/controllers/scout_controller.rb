@@ -628,6 +628,18 @@ class ScoutController < ApplicationController
       end
     end
 
+    # Auto-escalate to a vision-capable model when images are attached
+    # and the current model can't process them
+    if file_urls.any? && !model_supports_vision?(model)
+      image_types = %w[image/jpeg image/jpg image/png image/gif image/webp]
+      has_images = file_urls.any? { |f| image_types.include?(f["content_type"].to_s.downcase) }
+      if has_images
+        vision_model = "claude-sonnet-4-6"
+        Rails.logger.info "[V3] Auto-escalating #{model} → #{vision_model} (images attached, model lacks vision)"
+        model = vision_model
+      end
+    end
+
     Rails.logger.info "[V3] Using model: #{model} (explicit: #{model_preference.present?})"
 
     # If user is on a canvas with context (e.g., landing page editor with landing_page_id),
@@ -673,6 +685,11 @@ class ScoutController < ApplicationController
     end.join(", ")
 
     "#{message}\n\n[Attached Files: #{file_details}]\n\nTo read these files, use the read_file tool with action='read' and the document_id from above."
+  end
+
+  def model_supports_vision?(model_key)
+    config = BedrockService::AVAILABLE_MODELS[model_key]
+    config.present? && config[:supports_vision] == true
   end
 
   def extract_canvas_type(current_canvas)
