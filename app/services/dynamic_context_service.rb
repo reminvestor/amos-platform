@@ -221,12 +221,13 @@ class DynamicContextService
                   .pluck(:name)
   end
 
-  # Build context about connected integrations and their available actions
-  # This helps Amos know exactly what's available without guessing
+  # Build a compact summary of connected integrations.
+  # Lists integration names and available action names only — the model
+  # can call platform_query(type: "integration_actions") for full schemas
+  # when needed, rather than bloating every prompt with input details.
   def build_integration_context
     return nil unless @entity.present? && @user.present?
 
-    # Get user's connected integrations
     connections = Connection.where(user: @user, entity: @entity)
                             .active
                             .includes(:integration)
@@ -236,57 +237,23 @@ class DynamicContextService
     return nil if connections.empty?
 
     parts = ["## YOUR CONNECTED INTEGRATIONS"]
-    
+    parts << "Use `platform_execute(action: \"integration\", integration: \"slug\", operation: \"action_name\", inputs: {...})` to call these."
+    parts << "Use `platform_query(type: \"integration_actions\", filters: { integration: \"slug\" })` to see full input schemas.\n"
+
     connections.each do |conn|
       integration = conn.integration
       next unless integration
 
-      # Get available actions for this integration
       actions = IntegrationAction.for_entity(@entity)
                                  .where(integration: integration)
                                  .usable
-                                 .limit(10)
+                                 .limit(15)
 
-      parts << "\n### #{integration.name} (connected)"
-      
       if actions.any?
-        parts << "**Available actions:**"
-        actions.each do |action|
-          required_inputs = action.input_schema
-                                  .select { |f| f['required'] || f[:required] }
-                                  .map { |f| f['name'] || f[:name] }
-          
-          optional_inputs = action.input_schema
-                                  .reject { |f| f['required'] || f[:required] }
-                                  .map { |f| f['name'] || f[:name] }
-
-          desc = action.description.presence || action.action_name.titleize
-          required_str = required_inputs.any? ? "required: #{required_inputs.join(', ')}" : "no required inputs"
-          optional_str = optional_inputs.any? ? "optional: #{optional_inputs.join(', ')}" : ""
-          
-          parts << "- `#{action.action_name}`: #{desc}"
-          parts << "  - #{required_str}"
-          parts << "  - #{optional_str}" if optional_str.present?
-        end
-        
-        parts << "\n**Example call:**"
-        parts << "```"
-        parts << "execute_integration_action("
-        parts << "  integration: \"#{integration.slug}\","
-        parts << "  action: \"#{actions.first.action_name}\","
-        parts << "  inputs: { ... }"
-        parts << ")"
-        parts << "```"
-        
-        # Check if knowledge base exists for this integration
-        if has_integration_knowledge?(integration.slug)
-          parts << "\n💡 _API documentation available - use `query_integration_knowledge` for syntax questions._"
-        end
+        action_names = actions.map { |a| "`#{a.action_name}`" }.join(", ")
+        parts << "- **#{integration.name}** (`#{integration.slug}`): #{action_names}"
       else
-        parts << "_No pre-defined actions. Use list_operations to see available API endpoints._"
-        if has_integration_knowledge?(integration.slug)
-          parts << "\n💡 _API documentation available - use `query_integration_knowledge` for help._"
-        end
+        parts << "- **#{integration.name}** (`#{integration.slug}`): _use platform_query to discover actions_"
       end
     end
 

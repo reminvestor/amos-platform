@@ -837,13 +837,16 @@ class SkillLibraryService
     end.sort_by { |s| -s[:relevance] }.first(limit)
   end
 
+  MAX_SKILL_CONTENT_CHARS = 2000
+
   private_class_method def self.build_skill_block(skills)
     return nil if skills.empty?
     
     blocks = skills.map do |skill|
+      content = truncate_skill_content(skill[:content])
       <<~BLOCK
         ### 📚 #{skill[:name]}
-        #{skill[:content]}
+        #{content}
       BLOCK
     end
     
@@ -854,5 +857,14 @@ class SkillLibraryService
       
       #{blocks.join("\n---\n\n")}
     COMBINED
+  end
+
+  private_class_method def self.truncate_skill_content(content)
+    return content if content.blank? || content.length <= MAX_SKILL_CONTENT_CHARS
+
+    truncated = content[0...MAX_SKILL_CONTENT_CHARS]
+    last_newline = truncated.rindex("\n")
+    truncated = truncated[0...last_newline] if last_newline && last_newline > MAX_SKILL_CONTENT_CHARS * 0.7
+    "#{truncated}\n\n_(Skill truncated for brevity — use platform_query for full details)_"
   end
 end
