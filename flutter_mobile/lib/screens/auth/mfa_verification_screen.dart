@@ -351,7 +351,9 @@ class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
               const SizedBox(height: 12),
 
               Text(
-                'Enter the 6-digit code from your authenticator app',
+                authState.mfaDeliveryMethod == 'email'
+                    ? 'Enter the 6-digit code sent to your email'
+                    : 'Enter the 6-digit code from your authenticator app',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Colors.grey[600],
                 ),
@@ -488,15 +490,16 @@ class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
 
               const SizedBox(height: 24),
 
-              // Resend code button
-              TextButton.icon(
-                onPressed: _isLoading ? null : _resendCode,
-                icon: const Icon(LucideIcons.refreshCw, size: 18),
-                label: const Text('Resend Code'),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+              // Resend code button (only for email delivery)
+              if (authState.mfaDeliveryMethod == 'email')
+                TextButton.icon(
+                  onPressed: _isLoading ? null : _resendCode,
+                  icon: const Icon(LucideIcons.refreshCw, size: 18),
+                  label: const Text('Resend Code'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
                 ),
-              ),
 
               const SizedBox(height: 16),
 
