@@ -66,6 +66,7 @@ class LoginResult {
   final AuthResult? authResult;
   final bool mfaRequired;
   final String? mfaSessionToken;
+  final String? mfaDeliveryMethod; // "email" or "totp"
 
   /// SECURITY: Rotated device token for next biometric login.
   /// Server rotates the token on each use to prevent replay attacks.
@@ -75,6 +76,7 @@ class LoginResult {
     this.authResult,
     this.mfaRequired = false,
     this.mfaSessionToken,
+    this.mfaDeliveryMethod,
     this.newDeviceToken,
   });
 }

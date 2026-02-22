@@ -38,6 +38,7 @@ Rails.application.routes.draw do
     post 'auth/login', to: 'auth#login'
     post 'auth/login-device', to: 'auth#login_with_device_token'
     post 'auth/verify-mfa', to: 'auth#verify_mfa'
+    post 'auth/resend-mfa', to: 'auth#resend_mfa_code'
     post 'auth/register', to: 'auth#register'
     post 'auth/logout', to: 'auth#logout'
     get 'auth/me', to: 'auth#me'

@@ -12,6 +12,7 @@ class AuthState {
   final String? token;
   final bool mfaRequired;
   final String? mfaSessionToken;
+  final String? mfaDeliveryMethod; // "email" or "totp"
 
   const AuthState({
     this.user,
@@ -20,6 +21,7 @@ class AuthState {
     this.token,
     this.mfaRequired = false,
     this.mfaSessionToken,
+    this.mfaDeliveryMethod,
   });
 
   bool get isAuthenticated => user != null && token != null && !mfaRequired;
@@ -31,6 +33,7 @@ class AuthState {
     String? token,
     bool? mfaRequired,
     String? mfaSessionToken,
+    String? mfaDeliveryMethod,
   }) {
     return AuthState(
       user: user ?? this.user,
@@ -39,6 +42,7 @@ class AuthState {
       token: token ?? this.token,
       mfaRequired: mfaRequired ?? this.mfaRequired,
       mfaSessionToken: mfaSessionToken ?? this.mfaSessionToken,
+      mfaDeliveryMethod: mfaDeliveryMethod ?? this.mfaDeliveryMethod,
     );
   }
 
@@ -50,6 +54,7 @@ class AuthState {
       token: token,
       mfaRequired: false,
       mfaSessionToken: null,
+      mfaDeliveryMethod: null,
     );
   }
 }
@@ -98,6 +103,7 @@ class AuthNotifier extends Notifier<AuthState> {
           isLoading: false,
           mfaRequired: true,
           mfaSessionToken: result.mfaSessionToken,
+          mfaDeliveryMethod: result.mfaDeliveryMethod,
           error: null,
         );
       } else if (result.authResult != null) {
