@@ -5,7 +5,7 @@ class BenchmarkRun < ApplicationRecord
   has_many :task_results, class_name: 'BenchmarkTaskResult', dependent: :destroy
 
   # Run types
-  RUN_TYPES = %w[single category full ab_comparison cross_domain].freeze
+  RUN_TYPES = %w[single category full ab_comparison cross_domain v2_benchmark].freeze
   
   # Categories
   CATEGORIES = %w[gsm8k hotpot tool_use collaboration mixed].freeze

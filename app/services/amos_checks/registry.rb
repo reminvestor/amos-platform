@@ -25,7 +25,7 @@ module AmosChecks
       failed_builds:  AmosChecks::Platform::FailedBuildsCheck,
 
       # Platform improvement: how could the platform be better?
-      # (future: usage_patterns, friction_points, feature_gaps)
+      benchmark_regression: AmosChecks::Improvement::BenchmarkRegressionCheck,
 
       # Entity insight: how can we help this specific user?
       # (future: data_quality, goal_progress, engagement_analysis)

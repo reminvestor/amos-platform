@@ -625,6 +625,12 @@ class ApplicationBuildService
     
     # Complete the plan
     plan.complete!(results)
+
+    # Queue AI canvas upgrades in the background. The build used fast
+    # static templates so the user gets working canvases immediately;
+    # UpgradeModuleCanvasesJob will replace them with richer AI-generated
+    # versions asynchronously (~60s per canvas via Claude).
+    schedule_canvas_upgrades!
     
     log_progress("Build complete! Your #{plan.name} is live.")
   end
@@ -827,7 +833,6 @@ class ApplicationBuildService
   def create_module_canvases(app_module, module_spec)
     views = module_spec['views'] || %w[list form detail]
     fields = module_spec['fields'] || []
-    related_models = build_related_models_context(app_module, module_spec)
     
     views.each do |view_type|
       canvas_type = view_type == 'list' ? 'data_grid' : view_type
@@ -839,18 +844,16 @@ class ApplicationBuildService
         progress_callback&.call("Skipping locked canvas '#{existing.name}' — preserving user customizations", nil)
         next
       end
-      
-      canvas_content = generate_rich_canvas(app_module, view_type, fields, related_models)
+
+      html = generate_canvas_html(app_module, view_type, fields)
 
       if existing
-        Rails.logger.info "[ApplicationBuildService] Updating existing canvas: #{existing.name} (#{slug})"
         existing.update!(
-          html_content: canvas_content[:html] || generate_canvas_html(app_module, view_type, fields),
-          js_content: canvas_content[:js],
-          css_content: canvas_content[:css],
+          html_content: html,
           metadata: existing.metadata.merge(
             'display_fields' => fields.first(6).map { |f| f['name'] },
-            'generated_by' => canvas_content[:generated_by] || 'static'
+            'generated_by' => 'static',
+            'ai_upgrade_pending' => true
           )
         )
       else
@@ -861,68 +864,25 @@ class ApplicationBuildService
           slug: slug,
           canvas_type: canvas_type,
           is_default: view_type == 'list',
-          html_content: canvas_content[:html] || generate_canvas_html(app_module, view_type, fields),
-          js_content: canvas_content[:js],
-          css_content: canvas_content[:css],
+          html_content: html,
           data_sources: [{ type: 'module_data', model: app_module.slug }],
           metadata: {
             display_fields: fields.first(6).map { |f| f['name'] },
             icon: 'database',
-            generated_by: canvas_content[:generated_by] || 'static'
+            generated_by: 'static',
+            ai_upgrade_pending: true
           }
         )
       end
     end
   end
   
-  def generate_rich_canvas(app_module, view_type, fields, related_models)
-    generator = CanvasGeneratorService.new(entity: plan.entity, user: plan.created_by)
-    result = generator.generate(
-      app_module: app_module,
-      view_type: view_type,
-      fields: fields,
-      related_models: related_models
-    )
-    result.merge(generated_by: result[:html].present? ? 'canvas_generator' : 'static')
+  def schedule_canvas_upgrades!
+    results[:modules].each do |mod_info|
+      UpgradeModuleCanvasesJob.perform_later(mod_info[:id])
+    end
   rescue => e
-    Rails.logger.warn "[ApplicationBuildService] Canvas generation failed: #{e.message}, using legacy static HTML"
-    { html: nil, js: nil, css: nil, generated_by: 'static_fallback' }
-  end
-  
-  def build_related_models_context(app_module, module_spec)
-    related = []
-    
-    # Check if this module belongs to a parent
-    relationship = module_spec['relationship']
-    if relationship
-      rel_type = relationship['type'] || relationship[:type]
-      
-      if rel_type == 'belongs_to'
-        parent_slug = relationship['parent_model'] || relationship[:parent_model]
-        parent_mod = AppModule.find_by(slug: parent_slug, entity_id: app_module.entity_id)
-        related << {
-          name: parent_mod&.name || parent_slug.to_s.titleize,
-          relationship_type: 'belongs_to',
-          slug: parent_slug
-        } if parent_slug
-      end
-    end
-    
-    # Check if any other modules in the plan belong to this one (has_many)
-    plan.plan_spec['modules']&.each do |other_spec|
-      other_rel = other_spec['relationship']
-      next unless other_rel
-      parent_model = other_rel['parent_model'] || other_rel[:parent_model]
-      if parent_model == app_module.slug
-        related << {
-          name: other_spec['name'] || other_spec['slug'].to_s.titleize,
-          relationship_type: 'has_many',
-          slug: other_spec['slug']
-        }
-      end
-    end
-    
-    related
+    Rails.logger.warn "[ApplicationBuildService] Canvas upgrade scheduling failed (non-critical): #{e.message}"
   end
   
   def create_crud_tools(app_module)

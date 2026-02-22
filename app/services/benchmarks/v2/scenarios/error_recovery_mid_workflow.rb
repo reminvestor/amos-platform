@@ -1,0 +1,52 @@
+# frozen_string_literal: true
+
+module Benchmarks
+  module V2
+    module Scenarios
+      class ErrorRecoveryMidWorkflow
+        def self.build
+          Scenario.new(
+            id: :error_recovery_mid_workflow,
+            level: :L4,
+            category: :error_recovery,
+            name: "Recover from error during multi-step workflow",
+            description: "Tests resilience: the AI starts a multi-step task, encounters " \
+                         "a problem (invalid data), and must recover gracefully without " \
+                         "losing progress or confusing the user.",
+            tags: [],
+            messages: [
+              "Create 3 contacts for me: Alice (alice@test.com), Bob (invalid-email-format), " \
+              "and Charlie (charlie@test.com). Then create a group called 'Test Group' with all of them.",
+              "Just skip Bob and add the other two to the group.",
+            ],
+            assertions: [
+              { type: :record_exists, model: "Contact", conditions: {}, min_count: 2 },
+              { type: :tool_called, tool_name: "platform_create", min_times: 1 },
+              { type: :no_errors },
+              { type: :conversation_completed },
+            ],
+            quality_rubric: <<~RUBRIC,
+              Evaluate error recovery during a multi-step workflow:
+              1. ERROR HANDLING (0-15): Did the AI handle the invalid email gracefully?
+                 - Identified that Bob's email is invalid
+                 - Didn't crash or abandon the entire task
+                 - Communicated the issue clearly to the user
+              2. RECOVERY (0-15): Did the AI recover correctly after user guidance?
+                 - Created Alice and Charlie successfully
+                 - Skipped Bob as instructed
+                 - Created the group with the valid contacts
+              3. PROGRESS PRESERVATION (0-10): Was earlier work preserved?
+                 - Contacts created before the error were not lost
+                 - Didn't restart the entire workflow from scratch
+              4. COMMUNICATION (0-10): Was the error communicated well?
+                 - Explained what went wrong specifically
+                 - Asked how the user wanted to proceed
+                 - Confirmed the final state after recovery
+            RUBRIC
+            timeout_seconds: 180
+          )
+        end
+      end
+    end
+  end
+end

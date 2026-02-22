@@ -56,13 +56,20 @@ production:
   # Benchmark Tracking Jobs
   # ========================================
   
-  # Weekly benchmark run - track performance over time
+  # V2 Benchmark: continuous benchmark run every 6 hours
+  # Runs core suite, compares to baseline, detects regressions
+  benchmark_v2_continuous:
+    class: ContinuousBenchmarkJob
+    queue: living_platform
+    schedule: every 6 hours
+
+  # Legacy: Weekly benchmark run (v1, kept for comparison)
   scheduled_benchmark:
     class: ScheduledBenchmarkJob
     queue: agents
     schedule: at 6am every monday
   
-  # Daily quick benchmark (smaller sample)
+  # Legacy: Daily quick benchmark (v1)
   daily_benchmark:
     class: ScheduledBenchmarkJob
     queue: agents
