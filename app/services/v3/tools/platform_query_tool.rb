@@ -162,7 +162,7 @@ module V3
             model_class = resolve_dynamic_model(object)
             if model_class
               fields = model_class.columns.map { |c| { name: c.name, type: c.type.to_s } }
-              fields.reject! { |f| %w[id entity_id created_at updated_at].include?(f[:name]) }
+              fields.reject! { |f| %w[id entity_id user_id created_by_id created_at updated_at].include?(f[:name]) }
               result = {
                 object_type: object,
                 description: "Dynamic module: #{object.titleize}",
@@ -718,7 +718,7 @@ module V3
 
           return success_response(
             type: type,
-            record: record.attributes.except('entity_id'),
+            record: record.attributes.except('entity_id', 'user_id', 'created_by_id'),
             message: "#{type.titleize} ##{object_id}"
           )
         end
@@ -751,7 +751,7 @@ module V3
         end
 
         total = scope.count
-        records = scope.limit(limit).map { |r| r.attributes.except('entity_id') }
+        records = scope.limit(limit).map { |r| r.attributes.except('entity_id', 'user_id', 'created_by_id') }
 
         success_response(
           type: type,

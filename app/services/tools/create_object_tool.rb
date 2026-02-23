@@ -22,11 +22,16 @@ module Tools
       }
     end
 
+    IDENTITY_FIELDS = %w[user_id entity_id user entity created_by_id].freeze
+
     def execute(args)
       log_execution(args)
 
       object_type = get_arg(args, :object_type)
       data = get_arg(args, :data, {})
+
+      # SECURITY: Strip identity fields — these are injected server-side, never from LLM
+      data = sanitize_identity_fields(data)
 
       # Validate required args
       if error = validate_required_args(args, [ :object_type, :data ])
@@ -726,8 +731,8 @@ module Tools
         return error_response("Could not load model: #{model_code.name}")
       end
       
-      # Prepare data - add entity_id
-      data = (data || {}).symbolize_keys
+      # SECURITY: sanitize + inject identity server-side
+      data = sanitize_identity_fields(data || {}).symbolize_keys
       data[:entity_id] = entity.id
       
       # Filter to valid columns only
@@ -884,6 +889,15 @@ module Tools
       else
         record.as_json
       end
+    end
+
+    def sanitize_identity_fields(data)
+      data = data.is_a?(Hash) ? data.dup : {}
+      IDENTITY_FIELDS.each do |field|
+        data.delete(field)
+        data.delete(field.to_sym)
+      end
+      data
     end
   end
 end

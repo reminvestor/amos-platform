@@ -63,11 +63,16 @@ module V3
         }
       end
 
+      IDENTITY_FIELDS = %w[user_id entity_id user entity created_by_id].freeze
+
       def execute(args)
         log_execution(args)
 
         type = get_arg(args, :type)&.to_s&.downcase&.singularize&.underscore
         data = get_arg(args, :data, {})
+
+        # SECURITY: Strip identity fields — injected server-side from authenticated session
+        data = sanitize_identity_fields(data)
 
         return error_response("Missing required field: type") if type.blank?
         return error_response("Missing required field: data") if data.blank?
@@ -104,6 +109,15 @@ module V3
       end
 
       private
+
+      def sanitize_identity_fields(data)
+        data = data.is_a?(Hash) ? data.dup : {}
+        IDENTITY_FIELDS.each do |field|
+          data.delete(field)
+          data.delete(field.to_sym)
+        end
+        data
+      end
 
       # ═══════════════════════════════════════════════════════════════
       # BATCH CREATE — turn N tool calls into 1

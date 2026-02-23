@@ -5,7 +5,7 @@ class Opportunity < ApplicationRecord
   
   # Associations
   belongs_to :contact
-  belongs_to :user, optional: true                    # Human owner (optional - can be AI-managed)
+  belongs_to :user
   belongs_to :entity
   belongs_to :assigned_agent, class_name: 'AgentPlugin', optional: true
   

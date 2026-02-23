@@ -630,6 +630,7 @@ module Benchmarks
       needed.times do |i|
         Opportunity.create!(
           entity: @entity,
+          user: @user,
           name: "Benchmark Deal #{i}",
           stage: %w[lead qualified proposal].sample,
           value: with_values ? rand(1000..50000) : nil

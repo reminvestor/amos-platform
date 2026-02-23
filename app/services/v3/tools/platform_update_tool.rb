@@ -57,12 +57,17 @@ module V3
         }
       end
 
+      IDENTITY_FIELDS = %w[user_id entity_id user entity created_by_id].freeze
+
       def execute(args)
         log_execution(args)
 
         type = get_arg(args, :type)&.to_s&.downcase&.singularize&.underscore
         id = get_arg(args, :id)
         data = get_arg(args, :data, {})
+
+        # SECURITY: Strip identity fields — these cannot be changed via LLM
+        data = sanitize_identity_fields(data)
 
         return error_response("Missing required field: type") if type.blank?
         return error_response("Missing required field: id") if id.blank?
@@ -123,6 +128,15 @@ module V3
       end
 
       private
+
+      def sanitize_identity_fields(data)
+        data = data.is_a?(Hash) ? data.dup : {}
+        IDENTITY_FIELDS.each do |field|
+          data.delete(field)
+          data.delete(field.to_sym)
+        end
+        data
+      end
 
       # ═══════════════════════════════════════════════════════════════
       # APP MODULE UPDATES — update the AppModule record itself
@@ -672,8 +686,8 @@ module V3
         record = model_class.find_by(id: id, entity_id: entity.id)
         return error_response("#{type.titleize} ##{id} not found") unless record
 
-        # Filter data to only include valid columns
-        valid_columns = model_class.column_names - %w[id entity_id created_at updated_at]
+        # Filter data to only include valid columns (excluding identity and system fields)
+        valid_columns = model_class.column_names - %w[id entity_id user_id created_by_id created_at updated_at]
         update_data = data.select { |k, _| valid_columns.include?(k.to_s) }
 
         return error_response("No valid fields to update") if update_data.empty?

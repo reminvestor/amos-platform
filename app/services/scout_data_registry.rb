@@ -307,7 +307,7 @@ class ScoutDataRegistry
       creatable: true,
       creation_schema: {
         required: ['name'],
-        optional: ['contact_id', 'contact_email', 'stage', 'value', 'probability', 'expected_close_date', 'user_id', 'notes'],
+        optional: ['contact_id', 'contact_email', 'stage', 'value', 'probability', 'expected_close_date', 'notes'],
         defaults: {
           stage: 'lead',
           probability: 10,

@@ -4,7 +4,7 @@ class Activity < ApplicationRecord
   # Associations
   belongs_to :contact, optional: true
   belongs_to :opportunity, optional: true
-  belongs_to :user, optional: true                      # Human who created/performed
+  belongs_to :user, optional: true
   belongs_to :performed_by_agent, class_name: 'AgentPlugin', optional: true
   belongs_to :assigned_user, class_name: 'User', optional: true
   belongs_to :assigned_agent, class_name: 'AgentPlugin', optional: true
