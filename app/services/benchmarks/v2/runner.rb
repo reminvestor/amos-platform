@@ -17,12 +17,13 @@ module Benchmarks
     #   results = runner.run_scenario(:app_build_multi_module)
     #
     class Runner
-      attr_reader :entity, :user, :run_type, :git_commit
+      attr_reader :entity, :user, :run_type, :git_commit, :model
 
-      def initialize(entity:, user:, run_type: "v2_benchmark")
+      def initialize(entity:, user:, run_type: "v2_benchmark", model: nil)
         @entity = entity
         @user = user
         @run_type = run_type
+        @model = model
         @git_commit = `git rev-parse --short HEAD 2>/dev/null`.strip.presence
       end
 
@@ -173,7 +174,7 @@ module Benchmarks
 
         begin
           Timeout.timeout(timeout) do
-            agent = V3::AgentLoop.new(user: user, entity: entity, session_id: session_id)
+            agent = V3::AgentLoop.new(user: user, entity: entity, session_id: session_id, model: model)
             loop_result = agent.process_message_streaming(
               message,
               progress_callback,
@@ -252,7 +253,7 @@ module Benchmarks
           run_type: run_type,
           benchmark_category: "v2_#{suite_name}",
           agent_slug: "v3_agent_loop",
-          model_used: V3::AgentLoop::DEFAULT_AUTO_MODEL,
+          model_used: model || V3::AgentLoop::DEFAULT_AUTO_MODEL,
           git_commit: git_commit,
           started_at: Time.current,
           total_tasks: scenario_count,

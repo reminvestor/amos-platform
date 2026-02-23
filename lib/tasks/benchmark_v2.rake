@@ -26,26 +26,27 @@ namespace :benchmark do
       puts "   Core suite: #{Benchmarks::V2::ScenarioLibrary.core_suite.size} scenarios"
     end
 
-    desc "Run core benchmark suite"
+    desc "Run core benchmark suite (MODEL=claude-sonnet-4-6 to override model)"
     task run: :environment do
       entity = Entity.find_by(slug: "amos-labs") || Entity.first
       user = entity&.users&.first
       abort "No entity/user found" unless entity && user
 
-      model = V3::AgentLoop::DEFAULT_AUTO_MODEL
+      model = ENV["MODEL"].presence
+      display_model = model || V3::AgentLoop::DEFAULT_AUTO_MODEL
       puts "\n🚀 Running Benchmark V2 Core Suite..."
       puts "   Entity: #{entity.name}"
-      puts "   Model: #{model}"
+      puts "   Model: #{display_model}#{model ? ' (override)' : ' (default)'}"
       puts "   Git commit: #{`git rev-parse --short HEAD 2>/dev/null`.strip}"
       puts ""
 
-      runner = Benchmarks::V2::Runner.new(entity: entity, user: user)
+      runner = Benchmarks::V2::Runner.new(entity: entity, user: user, model: model)
       results = runner.run_suite(:core)
 
-      print_results(results)
+      print_results(results, display_model)
     end
 
-    desc "Run a specific scenario"
+    desc "Run a specific scenario (MODEL=claude-sonnet-4-6 to override model)"
     task :scenario, [:id] => :environment do |_t, args|
       abort "Usage: rails benchmark:v2:scenario[scenario_id]" unless args[:id]
 
@@ -56,26 +57,30 @@ namespace :benchmark do
       scenario_id = args[:id].to_sym
       abort "Unknown scenario: #{scenario_id}" unless Benchmarks::V2::ScenarioLibrary.get(scenario_id)
 
-      puts "\n🚀 Running scenario: #{scenario_id}..."
+      model = ENV["MODEL"].presence
+      display_model = model || V3::AgentLoop::DEFAULT_AUTO_MODEL
+      puts "\n🚀 Running scenario: #{scenario_id} (model: #{display_model})..."
 
-      runner = Benchmarks::V2::Runner.new(entity: entity, user: user)
+      runner = Benchmarks::V2::Runner.new(entity: entity, user: user, model: model)
       results = runner.run_scenario(scenario_id)
 
-      print_results(results)
+      print_results(results, display_model)
     end
 
-    desc "Run full benchmark suite (all scenarios)"
+    desc "Run full benchmark suite (MODEL=claude-sonnet-4-6 to override model)"
     task full: :environment do
       entity = Entity.find_by(slug: "amos-labs") || Entity.first
       user = entity&.users&.first
       abort "No entity/user found" unless entity && user
 
-      puts "\n🚀 Running FULL Benchmark V2 Suite..."
+      model = ENV["MODEL"].presence
+      display_model = model || V3::AgentLoop::DEFAULT_AUTO_MODEL
+      puts "\n🚀 Running FULL Benchmark V2 Suite (model: #{display_model})..."
 
-      runner = Benchmarks::V2::Runner.new(entity: entity, user: user)
+      runner = Benchmarks::V2::Runner.new(entity: entity, user: user, model: model)
       results = runner.run_suite(:full)
 
-      print_results(results)
+      print_results(results, display_model)
     end
 
     desc "Compare latest benchmark run to baseline"
@@ -149,11 +154,11 @@ namespace :benchmark do
       end
     end
 
-    def print_results(results)
+    def print_results(results, model = nil)
       puts "\n📊 Results"
       puts "=" * 70
       puts "Suite: #{results[:suite]}"
-      puts "Model: #{V3::AgentLoop::DEFAULT_AUTO_MODEL}"
+      puts "Model: #{model || V3::AgentLoop::DEFAULT_AUTO_MODEL}"
       puts "Git commit: #{results[:git_commit] || 'unknown'}"
       puts "Total scenarios: #{results[:total_scenarios]}"
       puts "Average score: #{results[:average_score]}/100"
