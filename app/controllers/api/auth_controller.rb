@@ -116,39 +116,9 @@ module Api
         # Reset failed login attempts on successful login (Story 0.1)
         user.reset_failed_login!
 
-        # Check if MFA is required (skip in development for easier testing)
-        if user.mfa_enabled? && !Rails.env.development?
-          # Check for trusted device token (Face ID/biometric bypass)
-          device_token = params[:device_token]
-          if device_token.present?
-            trusted_device = user.trusted_devices.active.find_by(token: device_token)
-            if trusted_device
-              # Valid trusted device - bypass MFA
-              trusted_device.touch_last_used!
-              return render_login_success(user, trusted_device: true)
-            end
-            # Invalid/expired device token - fall through to require MFA
-          end
-
-          # Generate a temporary MFA session token (stored in cache)
-          mfa_session_token = SecureRandom.hex(32)
-          Rails.cache.write("mfa_session:#{mfa_session_token}", user.id, expires_in: 10.minutes)
-
-          # Determine delivery method and auto-send email OTP if needed
-          delivery_method = user.otp_delivery_method.presence || (user.otp_email_enabled? ? "email" : "totp")
-          if delivery_method == "email"
-            user.send_email_otp!
-          end
-
-          render json: {
-            mfa_required: true,
-            mfa_session_token: mfa_session_token,
-            mfa_delivery_method: delivery_method,
-            message: "Two-factor authentication required"
-          }, status: :ok
-          return
-        end
-
+        # MFA is not required for mobile API logins. The API key is device-bound
+        # and mobile devices provide their own biometric security (Face ID/Touch ID).
+        # Web users go through Devise which has its own MFA flow.
         render_login_success(user)
       else
         # Increment failed attempts (Story 0.1)
