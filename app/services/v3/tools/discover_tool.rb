@@ -123,18 +123,18 @@ module V3
           }
         end
 
-        # 2. Search user's custom skills (UserSkill model)
-        if entity.present?
-          custom_skills = UserSkill.where(entity: entity)
-                                   .where("name ILIKE ? OR content ILIKE ?", "%#{query}%", "%#{query}%")
-                                   .limit(3)
+        # 2. Search user's verified skills for relevant expertise
+        if user.present?
+          matching_skills = UserSkill.where(user: user)
+                                     .where("skill_type ILIKE ?", "%#{query}%")
+                                     .limit(3)
 
-          custom_skills.each do |skill|
+          matching_skills.each do |skill|
             results << {
               type: "custom_skill",
-              name: skill.name,
-              content: skill.content&.truncate(500),
-              source: "user_uploaded",
+              name: skill.display_name,
+              content: "#{skill.skill_type.titleize} skill (#{skill.proficiency_level})",
+              source: "user_profile",
               relevance: "medium"
             }
           end
@@ -150,8 +150,8 @@ module V3
         results = []
         query_lower = query.downcase
 
-        # Search available integrations
-        integrations = Integration.all rescue []
+        # Search available integrations (global + entity-specific)
+        integrations = Integration.where(entity_id: [nil, entity&.id]) rescue []
         
         integrations.each do |integration|
           name_match = integration.name.downcase.include?(query_lower)
@@ -164,7 +164,7 @@ module V3
           connection = entity.connections.find_by(integration: integration) rescue nil
 
           # Get available actions
-          actions = IntegrationAction.where(integration: integration).limit(10).map do |a|
+          actions = IntegrationAction.for_entity(entity).where(integration: integration).limit(10).map do |a|
             { name: a.action_name, description: a.description }
           end rescue []
 

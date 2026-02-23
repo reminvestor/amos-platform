@@ -1127,7 +1127,7 @@ module V3
           if result[:success] == true
             stream_progress("App '#{name}' is ready!", percentage: 100)
 
-            modules = plan.reload.app_modules.where(status: "active")
+            modules = plan.reload.built_app_modules.where(status: "active")
             built_module = modules.first
             canvas_data = built_module ? { app_module_id: built_module.id } : {}
             module_list = modules.map { |m| "#{m.name} (#{m.slug})" }.join(", ")
@@ -1146,7 +1146,7 @@ module V3
             )
           elsif result[:success] == :partial
             completed = result[:results][:modules]&.map { |m| m[:name] } || []
-            built_module = plan.reload.app_modules.where(status: 'active').first
+            built_module = plan.reload.built_app_modules.where(status: 'active').first
 
             success_response(
               app_id: plan.id,
@@ -1175,7 +1175,7 @@ module V3
       end
 
       def return_completed_plan(plan, name)
-        modules = plan.app_modules.where(status: "active")
+        modules = plan.built_app_modules.where(status: "active")
         built_module = modules.first
 
         success_response(

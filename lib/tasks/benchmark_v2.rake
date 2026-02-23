@@ -41,9 +41,9 @@ namespace :benchmark do
       puts ""
 
       runner = Benchmarks::V2::Runner.new(entity: entity, user: user, model: model)
-      results = runner.run_suite(:core)
+      results = runner.run_suite_with_progress(:core) { |r| print_scenario_result(r) }
 
-      print_results(results, display_model)
+      print_summary(results, display_model)
     end
 
     desc "Run a specific scenario (MODEL=claude-sonnet-4-6 to override model)"
@@ -62,9 +62,9 @@ namespace :benchmark do
       puts "\n🚀 Running scenario: #{scenario_id} (model: #{display_model})..."
 
       runner = Benchmarks::V2::Runner.new(entity: entity, user: user, model: model)
-      results = runner.run_scenario(scenario_id)
+      results = runner.run_suite_with_progress(:single, scenario_ids: [scenario_id]) { |r| print_scenario_result(r) }
 
-      print_results(results, display_model)
+      print_summary(results, display_model)
     end
 
     desc "Run full benchmark suite (MODEL=claude-sonnet-4-6 to override model)"
@@ -78,9 +78,9 @@ namespace :benchmark do
       puts "\n🚀 Running FULL Benchmark V2 Suite (model: #{display_model})..."
 
       runner = Benchmarks::V2::Runner.new(entity: entity, user: user, model: model)
-      results = runner.run_suite(:full)
+      results = runner.run_suite_with_progress(:full) { |r| print_scenario_result(r) }
 
-      print_results(results, display_model)
+      print_summary(results, display_model)
     end
 
     desc "Compare latest benchmark run to baseline"
@@ -154,8 +154,37 @@ namespace :benchmark do
       end
     end
 
-    def print_results(results, model = nil)
-      puts "\n📊 Results"
+    def print_scenario_result(r)
+      status = r[:score][:passed] ? "✅" : "❌"
+      puts ""
+      puts "#{status} #{r[:scenario_id]} (#{r[:level]})"
+      puts "   Score: #{r[:score][:total_score]}/#{r[:score][:max_score]} " \
+           "(assertions: #{r[:score][:assertion_score]}/#{r[:score][:assertion_max]}, " \
+           "judge: #{r[:score][:judge_score]}/#{r[:score][:judge_max]})"
+      puts "   Time: #{(r[:duration_ms] / 1000.0).round(1)}s"
+
+      r[:score][:assertion_details]&.each do |detail|
+        icon = detail[:passed] ? "  ✓" : "  ✗"
+        puts "   #{icon} #{detail[:type]}: #{detail[:message]}"
+      end
+
+      if r[:score][:judge_reasoning].present?
+        puts ""
+        puts "   Judge: #{r[:score][:judge_reasoning]}"
+      end
+
+      if r[:score][:judge_breakdown].present? && r[:score][:judge_breakdown].is_a?(Hash)
+        r[:score][:judge_breakdown].each do |criterion, data|
+          next unless data.is_a?(Hash)
+          puts "     #{criterion}: #{data['score'] || data[:score]}/#{data['max'] || data[:max]} — #{data['reasoning'] || data[:reasoning]}"
+        end
+      end
+      puts ""
+    end
+
+    def print_summary(results, model = nil)
+      puts "\n" + "=" * 70
+      puts "📊 Summary"
       puts "=" * 70
       puts "Suite: #{results[:suite]}"
       puts "Model: #{model || V3::AgentLoop::DEFAULT_AUTO_MODEL}"
@@ -169,22 +198,9 @@ namespace :benchmark do
 
       results[:scenario_results]&.each do |r|
         status = r[:score][:passed] ? "✅" : "❌"
-        puts "#{status} #{r[:scenario_id]} (#{r[:level]})"
-        puts "   Score: #{r[:score][:total_score]}/#{r[:score][:max_score]} " \
-             "(assertions: #{r[:score][:assertion_score]}/#{r[:score][:assertion_max]}, " \
-             "judge: #{r[:score][:judge_score]}/#{r[:score][:judge_max]})"
-        puts "   Time: #{(r[:duration_ms] / 1000.0).round(1)}s"
-
-        r[:score][:assertion_details]&.each do |detail|
-          icon = detail[:passed] ? "  ✓" : "  ✗"
-          puts "   #{icon} #{detail[:type]}: #{detail[:message]}"
-        end
-
-        if r[:score][:judge_reasoning].present?
-          puts "   Judge: #{r[:score][:judge_reasoning].truncate(120)}"
-        end
-        puts ""
+        puts "  #{status} #{r[:scenario_id]}: #{r[:score][:total_score]}/100"
       end
+      puts ""
     end
 
     def level_description(level)

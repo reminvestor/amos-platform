@@ -19,10 +19,15 @@ class ApplicationPlan < ApplicationRecord
   belongs_to :created_by, class_name: 'User'
   
   # Built components (populated after build completes)
-  has_many :app_modules, dependent: :nullify
   has_one :website, dependent: :nullify
   has_one :web_app, dependent: :nullify
-  has_one :agent_plugin, dependent: :nullify
+  # agent_plugin links via app_module, not a direct FK on this table
+  # app_modules link via metadata JSONB — use built_app_modules method
+
+  def built_app_modules
+    AppModule.where(entity_id: entity_id)
+             .where("metadata->>'application_plan_id' = ?", id.to_s)
+  end
   
   # Status values
   STATUSES = %w[drafting pending_approval approved building paused completed failed cancelled].freeze

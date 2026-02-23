@@ -105,12 +105,22 @@ module Benchmarks
       def check_record_exists(assertion)
         model_name = assertion[:model]
         min_count = assertion[:min_count] || 1
+        conditions = assertion[:conditions] || {}
         created = execution_result[:created_records]&.dig(model_name) || []
 
-        if created.size >= min_count
-          { passed: true, message: "#{model_name}: #{created.size} created (need #{min_count})" }
+        matching = if conditions.any?
+          created.select do |record|
+            conditions.all? { |key, value| record[key].to_s == value.to_s }
+          end
         else
-          { passed: false, message: "#{model_name}: #{created.size} created (need #{min_count})" }
+          created
+        end
+
+        condition_label = conditions.any? ? " (#{conditions.map { |k, v| "#{k}=#{v}" }.join(', ')})" : ""
+        if matching.size >= min_count
+          { passed: true, message: "#{model_name}#{condition_label}: #{matching.size} created (need #{min_count})" }
+        else
+          { passed: false, message: "#{model_name}#{condition_label}: #{matching.size} created (need #{min_count})" }
         end
       end
 
@@ -231,6 +241,7 @@ module Benchmarks
       def build_judge_prompt
         transcript_text = format_transcript
         tool_calls_text = format_tool_calls
+        created_records_text = format_created_records
 
         <<~PROMPT
           You are a benchmark judge evaluating an AI assistant's performance on a specific task.
@@ -246,14 +257,19 @@ module Benchmarks
           ## Conversation Transcript
           #{transcript_text}
 
-          ## Tool Calls Made
-          #{tool_calls_text}
+          ## Tool Calls Made (with inputs and results)
+          #{tool_calls_text.presence || "(no tool calls recorded)"}
+
+          ## Records Created During Execution
+          #{created_records_text.presence || "(no records created)"}
 
           ## Scoring Rubric
           #{scenario.quality_rubric}
 
           ## Instructions
           Score each criterion in the rubric. The total across all criteria should be 0-50.
+          Judge based on the FULL evidence: transcript, tool call results, and records created.
+          Tool results show what the platform actually produced — use these to verify task completion.
           Respond in JSON format:
 
           {
@@ -276,11 +292,98 @@ module Benchmarks
         end.join("\n\n")
       end
 
+      def format_created_records
+        created = execution_result[:created_records] || {}
+        return "" if created.empty?
+
+        parts = []
+        created.each do |model_name, records|
+          status_breakdown = records.group_by { |r| r[:status] }.transform_values(&:size)
+          status_info = status_breakdown.any? ? " (#{status_breakdown.map { |s, c| "#{c} #{s}" }.join(', ')})" : ""
+          parts << "#{model_name}: #{records.size} created#{status_info} (IDs: #{records.map { |r| r[:id] }.join(', ')})"
+
+          records.first(5).each do |record_info|
+            detail = fetch_record_detail(model_name, record_info[:id])
+            parts << "  - #{detail}" if detail.present?
+          end
+        end
+        parts.join("\n")
+      end
+
+      def fetch_record_detail(model_name, id)
+        klass = model_name.safe_constantize
+        return nil unless klass
+
+        record = klass.find_by(id: id)
+        return nil unless record
+
+        case model_name
+        when "LandingPage"
+          html = record.html_content.to_s
+          sections = []
+          sections << "hero" if html.match?(/hero|banner/i)
+          sections << "features" if html.match?(/features?|benefits?/i)
+          sections << "testimonials" if html.match?(/testimonial/i)
+          sections << "pricing" if html.match?(/pricing|price|plan/i)
+          sections << "form" if html.include?("<form")
+          sections << "footer" if html.include?("<footer")
+          "#{record.title} (#{html.length} chars HTML, sections: #{sections.join(', ')})"
+        when "Contact"
+          details = "#{record.first_name} #{record.last_name} <#{record.email}>"
+          details += " (#{record.title})" if record.respond_to?(:title) && record.title.present?
+          details += " @ #{record.company}" if record.respond_to?(:company) && record.company.present?
+          details
+        when "ContactGroup"
+          member_count = record.contacts.count rescue 0
+          members = record.contacts.limit(5).map { |c| c.email }.join(", ") rescue ""
+          detail = "#{record.name} (#{member_count} members)"
+          detail += ": #{members}" if members.present?
+          detail
+        when "Campaign"
+          detail = "#{record.name} (status: #{record.status})"
+          if record.respond_to?(:email_template) && record.email_template
+            detail += " | template: #{record.email_template.subject}"
+          end
+          detail
+        when "AppModule"
+          field_count = record.module_codes.where(code_type: "model").count rescue 0
+          "#{record.name} (slug: #{record.slug}, status: #{record.status}, model_codes: #{field_count})"
+        when "EmailTemplate"
+          body_preview = record.body.to_s.gsub(/<[^>]+>/, ' ').squish.truncate(150) rescue ""
+          detail = "#{record.name} | subject: '#{record.subject}'"
+          detail += " | body preview: #{body_preview}" if body_preview.present?
+          detail
+        when "EmailSequence"
+          step_count = record.sequence_steps.count rescue 0
+          steps_detail = begin
+            record.sequence_steps.order(:step_number).limit(5).map do |step|
+              template = step.email_template
+              delay = step.respond_to?(:delay_hours) ? "#{step.delay_hours}h" : "?"
+              subject = template&.subject || "no template"
+              "Step #{step.step_number} (delay: #{delay}): #{subject}"
+            end.join("; ")
+          rescue
+            ""
+          end
+          detail = "#{record.name} (#{step_count} steps, status: #{record.status})"
+          detail += " | #{steps_detail}" if steps_detail.present?
+          detail
+        else
+          record.respond_to?(:name) ? record.name : "id=#{id}"
+        end
+      rescue => e
+        nil
+      end
+
       def format_tool_calls
         (execution_result[:tool_calls] || []).map do |tc|
           status = tc[:success] ? "SUCCESS" : "ERROR"
-          "- #{tc[:tool_name]} [#{status}]: #{tc[:result_summary].to_s.truncate(200)}"
-        end.join("\n")
+          parts = ["- #{tc[:tool_name]} [#{status}]"]
+          parts << "  Input: #{tc[:input_summary]}" if tc[:input_summary].present?
+          parts << "  Result: #{tc[:result_summary]}" if tc[:result_summary].present?
+          parts << "  Error: #{tc[:error]}" if tc[:error].present?
+          parts.join("\n")
+        end.join("\n\n")
       end
 
       def call_judge_llm(prompt)

@@ -170,7 +170,6 @@ class BenchmarkV2Test < ActiveSupport::TestCase
     }
 
     scorer = Benchmarks::V2::Scorer.new(scenario: scenario, execution_result: execution)
-    # Test the assertion logic directly
     result = scorer.send(:run_assertions)
     assert result[:details].first[:passed]
   end
@@ -190,6 +189,71 @@ class BenchmarkV2Test < ActiveSupport::TestCase
     scorer = Benchmarks::V2::Scorer.new(scenario: scenario, execution_result: execution)
     result = scorer.send(:run_assertions)
     refute result[:details].first[:passed]
+  end
+
+  test "Scorer check_record_exists filters by conditions" do
+    scenario = build_simple_scenario(
+      assertions: [{ type: :record_exists, model: "AppModule", conditions: { status: "active" }, min_count: 2 }]
+    )
+
+    execution = {
+      transcript: [{ role: "assistant", content: "Built app" }],
+      tool_calls: [],
+      created_records: {
+        "AppModule" => [
+          { id: 1, status: "active" },
+          { id: 2, status: "generating" },
+          { id: 3, status: "active" }
+        ]
+      },
+      errors: []
+    }
+
+    scorer = Benchmarks::V2::Scorer.new(scenario: scenario, execution_result: execution)
+    result = scorer.send(:run_assertions)
+    detail = result[:details].first
+    assert detail[:passed], "Should pass: 2 active modules exist"
+    assert_match(/active/, detail[:message])
+  end
+
+  test "Scorer check_record_exists conditions fail when insufficient matching" do
+    scenario = build_simple_scenario(
+      assertions: [{ type: :record_exists, model: "AppModule", conditions: { status: "active" }, min_count: 3 }]
+    )
+
+    execution = {
+      transcript: [{ role: "assistant", content: "Built app" }],
+      tool_calls: [],
+      created_records: {
+        "AppModule" => [
+          { id: 1, status: "active" },
+          { id: 2, status: "generating" },
+          { id: 3, status: "generating" }
+        ]
+      },
+      errors: []
+    }
+
+    scorer = Benchmarks::V2::Scorer.new(scenario: scenario, execution_result: execution)
+    result = scorer.send(:run_assertions)
+    refute result[:details].first[:passed], "Should fail: only 1 active module but need 3"
+  end
+
+  test "Scorer check_record_exists with empty conditions matches all records" do
+    scenario = build_simple_scenario(
+      assertions: [{ type: :record_exists, model: "Contact", conditions: {}, min_count: 2 }]
+    )
+
+    execution = {
+      transcript: [{ role: "assistant", content: "Done" }],
+      tool_calls: [],
+      created_records: { "Contact" => [{ id: 1 }, { id: 2 }] },
+      errors: []
+    }
+
+    scorer = Benchmarks::V2::Scorer.new(scenario: scenario, execution_result: execution)
+    result = scorer.send(:run_assertions)
+    assert result[:details].first[:passed]
   end
 
   test "Scorer check_tool_called passes" do
@@ -611,6 +675,110 @@ class BenchmarkV2Test < ActiveSupport::TestCase
     assert_includes types, :no_errors
     assert_includes types, :conversation_completed
     assert_includes types, :no_hallucinated_data
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # Runner - Progress Callbacks & Record Detection
+  # ═══════════════════════════════════════════════════════════════
+
+  test "Runner run_suite_with_progress yields each scenario result" do
+    runner = Benchmarks::V2::Runner.new(entity: @entity, user: @user)
+    yielded_results = []
+
+    # Stub the execute_scenario to avoid real LLM calls
+    runner.stub(:execute_scenario, ->(scenario, benchmark_run) {
+      {
+        scenario_id: scenario.id,
+        level: scenario.level,
+        score: { total_score: 50, max_score: 100, passed: true, assertion_score: 20,
+                 assertion_max: 35, judge_score: 30, judge_max: 65,
+                 assertion_details: [], judge_reasoning: "Test" },
+        duration_ms: 1000,
+        execution_result: { transcript: [], tool_calls: [], created_records: {}, errors: [] }
+      }
+    }) do
+      runner.run_suite_with_progress(:core) { |r| yielded_results << r }
+    end
+
+    assert yielded_results.any?, "Should yield at least one result"
+    assert yielded_results.all? { |r| r[:scenario_id].present? }, "Each yielded result should have scenario_id"
+    assert yielded_results.none? { |r| r.key?(:execution_result) }, "Yielded results should not include execution_result"
+  end
+
+  test "Runner detect_created_records captures status field" do
+    runner = Benchmarks::V2::Runner.new(entity: @entity, user: @user)
+    snapshot_time = 1.minute.ago
+
+    contact = Contact.create!(
+      entity: @entity,
+      user: @user,
+      first_name: "DetectTest",
+      last_name: "Status",
+      email: "detect_status_test_#{SecureRandom.hex(4)}@test.com",
+      status: "active"
+    )
+
+    before_counts = { snapshot_at: snapshot_time }
+    result = runner.send(:detect_created_records, @entity, before_counts)
+
+    assert result["Contact"]&.any?, "Should detect the created contact"
+    detected = result["Contact"].find { |r| r[:id] == contact.id }
+    assert_not_nil detected, "Should find specific contact"
+    assert_equal "active", detected[:status], "Should capture status field"
+  ensure
+    contact&.destroy
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # Scenario Cleanup Methods
+  # ═══════════════════════════════════════════════════════════════
+
+  test "ErrorRecoveryMidWorkflow cleanup removes test contacts" do
+    alice = Contact.create!(
+      entity: @entity, user: @user,
+      first_name: "Alice", last_name: "Test",
+      email: "alice@test.com"
+    )
+    charlie = Contact.create!(
+      entity: @entity, user: @user,
+      first_name: "Charlie", last_name: "Test",
+      email: "charlie@test.com"
+    )
+    group = ContactGroup.create!(entity: @entity, user: @user, name: "Test Group")
+
+    assert Contact.where(entity: @entity, email: "alice@test.com").exists?
+    assert Contact.where(entity: @entity, email: "charlie@test.com").exists?
+    assert ContactGroup.where(entity: @entity, name: "Test Group").exists?
+
+    Benchmarks::V2::Scenarios::ErrorRecoveryMidWorkflow.cleanup!(@entity)
+
+    refute Contact.where(entity: @entity, email: "alice@test.com").exists?,
+           "alice@test.com should be cleaned up"
+    refute Contact.where(entity: @entity, email: "charlie@test.com").exists?,
+           "charlie@test.com should be cleaned up"
+    refute ContactGroup.where(entity: @entity, name: "Test Group").exists?,
+           "Test Group should be cleaned up"
+  end
+
+  test "ErrorRecoveryMidWorkflow scenario has setup proc" do
+    scenario = Benchmarks::V2::ScenarioLibrary.get(:error_recovery_mid_workflow)
+    assert_not_nil scenario, "error_recovery_mid_workflow should be registered"
+
+    assert_nothing_raised do
+      scenario.setup!(entity: @entity, user: @user)
+    end
+  end
+
+  test "AppBuildMultiModule cleanup removes test app data" do
+    assert_nothing_raised do
+      Benchmarks::V2::Scenarios::AppBuildMultiModule.cleanup!(@entity)
+    end
+  end
+
+  test "ContactImportAndCampaign cleanup removes test contacts" do
+    assert_nothing_raised do
+      Benchmarks::V2::Scenarios::ContactImportAndCampaign.cleanup!(@entity)
+    end
   end
 
   # ═══════════════════════════════════════════════════════════════

@@ -130,6 +130,10 @@ module V3
         result = escalate_and_retry!(system_prompt, conversation_messages, tools, progress_callback, result)
       end
 
+      # Include the full conversation history so callers (benchmarks, multi-turn sessions)
+      # can pass it back for subsequent turns
+      result[:conversation_history] = conversation_messages
+
       result
     end
 

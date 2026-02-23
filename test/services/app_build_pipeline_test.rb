@@ -222,6 +222,87 @@ class AppBuildPipelineTest < ActiveSupport::TestCase
       "Web app results should not include public_url"
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # FIX: ApplicationPlan.built_app_modules via JSONB metadata
+  # ═══════════════════════════════════════════════════════════════
+
+  test "ApplicationPlan built_app_modules finds modules via metadata JSONB" do
+    plan = build_approved_plan("JSONB Lookup App")
+    slug = "jsonb_test_#{SecureRandom.hex(4)}"
+
+    mod = AppModule.create!(
+      entity: @entity,
+      name: "JSONB Module",
+      slug: slug,
+      status: "active",
+      version: "1.0.0",
+      author_type: "amos",
+      visibility: "user_private",
+      metadata: { "application_plan_id" => plan.id.to_s }
+    )
+
+    found = plan.built_app_modules
+    assert_includes found.pluck(:id), mod.id,
+      "built_app_modules should find modules linked via metadata JSONB"
+
+    active = plan.built_app_modules.where(status: "active")
+    assert_includes active.pluck(:id), mod.id,
+      "Should be chainable with .where(status: 'active')"
+  ensure
+    mod&.delete
+    plan&.delete
+  end
+
+  test "ApplicationPlan built_app_modules excludes modules from other plans" do
+    plan_a = build_approved_plan("Plan A")
+    plan_b = build_approved_plan("Plan B")
+
+    mod_a = AppModule.create!(
+      entity: @entity,
+      name: "Module A",
+      slug: "mod_a_#{SecureRandom.hex(4)}",
+      status: "active",
+      version: "1.0.0",
+      author_type: "amos",
+      visibility: "user_private",
+      metadata: { "application_plan_id" => plan_a.id.to_s }
+    )
+
+    mod_b = AppModule.create!(
+      entity: @entity,
+      name: "Module B",
+      slug: "mod_b_#{SecureRandom.hex(4)}",
+      status: "active",
+      version: "1.0.0",
+      author_type: "amos",
+      visibility: "user_private",
+      metadata: { "application_plan_id" => plan_b.id.to_s }
+    )
+
+    result_a = plan_a.built_app_modules.pluck(:id)
+    result_b = plan_b.built_app_modules.pluck(:id)
+
+    assert_includes result_a, mod_a.id
+    refute_includes result_a, mod_b.id, "Plan A should not see Plan B's modules"
+
+    assert_includes result_b, mod_b.id
+    refute_includes result_b, mod_a.id, "Plan B should not see Plan A's modules"
+  ensure
+    mod_a&.delete
+    mod_b&.delete
+    plan_a&.delete
+    plan_b&.delete
+  end
+
+  test "ApplicationPlan does not have has_many app_modules association" do
+    plan = build_approved_plan("No Association Test")
+
+    refute plan.class.reflect_on_association(:app_modules),
+      "ApplicationPlan should NOT have has_many :app_modules (removed; use built_app_modules)"
+  ensure
+    plan&.delete
+  end
+
   private
 
   def build_approved_plan(name)

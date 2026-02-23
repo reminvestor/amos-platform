@@ -47,12 +47,31 @@ module Benchmarks
         run_scenarios([scenario], suite_name: "single")
       end
 
+      # Run with real-time progress callback (yields each result as it completes)
+      def run_suite_with_progress(suite = :core, scenario_ids: nil, &on_result)
+        scenarios = if scenario_ids
+                      scenario_ids.map { |id| ScenarioLibrary.get(id.to_sym) }.compact
+                    else
+                      case suite
+                      when :core then ScenarioLibrary.core_suite
+                      when :full then ScenarioLibrary.all
+                      when :single then ScenarioLibrary.all
+                      when Symbol then ScenarioLibrary.by_level(suite)
+                      else ScenarioLibrary.all
+                      end
+                    end
+
+        run_scenarios(scenarios, suite_name: suite.to_s, &on_result)
+      end
+
       # Run a specific list of scenarios
-      def run_scenarios(scenarios, suite_name: "custom")
+      def run_scenarios(scenarios, suite_name: "custom", &on_result)
         benchmark_run = create_benchmark_run(suite_name, scenarios.size)
 
         results = scenarios.map do |scenario|
-          execute_scenario(scenario, benchmark_run)
+          result = execute_scenario(scenario, benchmark_run)
+          on_result&.call(result.except(:execution_result))
+          result
         end
 
         complete_benchmark_run!(benchmark_run, results)
@@ -153,6 +172,8 @@ module Benchmarks
 
         tool_counts = Hash.new(0)
 
+        seen_canvases = Set.new
+
         progress_callback = lambda do |event|
           case event[:type]
           when :content
@@ -162,13 +183,17 @@ module Benchmarks
             next if tool == "processing"
             tool_counts[tool] += 1
           when :canvas_suggestion
-            result[:tool_calls] << {
-              tool_name: "load_canvas",
-              success: true,
-              error: nil,
-              result_summary: "Canvas: #{event[:canvas]}",
-              result_count: nil
-            }
+            canvas_key = event[:canvas].to_s
+            unless seen_canvases.include?(canvas_key)
+              seen_canvases << canvas_key
+              result[:tool_calls] << {
+                tool_name: "load_canvas",
+                success: true,
+                error: nil,
+                result_summary: "Canvas: #{canvas_key}",
+                result_count: nil
+              }
+            end
           end
         end
 
@@ -198,20 +223,135 @@ module Benchmarks
         rescue => e
           result[:errors] << "Turn execution error: #{e.message}"
         ensure
-          tool_counts.each do |tool_name, count|
-            count.times do
-              result[:tool_calls] << {
-                tool_name: tool_name,
-                success: result[:errors].empty?,
-                error: nil,
-                result_summary: "",
-                result_count: nil
-              }
+          extracted = extract_tool_results_from_history(result[:conversation_history])
+          if extracted.any?
+            result[:tool_calls].concat(extracted)
+          else
+            tool_counts.each do |tool_name, count|
+              count.times do
+                result[:tool_calls] << {
+                  tool_name: tool_name,
+                  success: result[:errors].empty?,
+                  error: nil,
+                  result_summary: "",
+                  result_count: nil
+                }
+              end
             end
           end
         end
 
         result
+      end
+
+      def extract_tool_results_from_history(conversation_history)
+        return [] unless conversation_history.is_a?(Array)
+
+        tool_calls = []
+        tool_inputs = {}
+
+        conversation_history.each do |msg|
+          next unless msg[:content].is_a?(Array)
+
+          msg[:content].each do |block|
+            if block[:tool_use]
+              tool_inputs[block[:tool_use][:id]] = {
+                name: block[:tool_use][:name],
+                input: block[:tool_use][:input]
+              }
+            end
+
+            if block[:tool_result]
+              tool_id = block[:tool_result][:tool_use_id]
+              input_info = tool_inputs[tool_id] || {}
+              raw = block[:tool_result][:content].to_s
+
+              parsed = begin
+                         JSON.parse(raw)
+                       rescue
+                         nil
+                       end
+
+              is_error = parsed.is_a?(Hash) && (parsed["error"].present? || parsed["success"] == false)
+              summary = summarize_tool_result(input_info[:name], input_info[:input], parsed || raw)
+
+              tool_calls << {
+                tool_name: input_info[:name] || "unknown",
+                success: !is_error,
+                error: is_error ? (parsed&.dig("error") || raw.truncate(200)) : nil,
+                result_summary: summary,
+                input_summary: summarize_tool_input(input_info[:name], input_info[:input])
+              }
+            end
+          end
+        end
+
+        tool_calls
+      end
+
+      def summarize_tool_result(tool_name, input, result)
+        return result.to_s.truncate(500) unless result.is_a?(Hash)
+
+        parts = []
+        type = input&.dig('type') || input&.dig(:type)
+        parts << "type=#{type}" if input.is_a?(Hash) && type.present?
+        parts << result["message"].to_s.truncate(400) if result["message"].present?
+
+        case tool_name
+        when "platform_create"
+          parts << "id=#{result['id']}" if result["id"]
+          parts << "name=#{result['name'] || result['title']}" if result["name"] || result["title"]
+          parts << "modules=#{result['modules']&.map { |m| "#{m['name']} (#{m['status']})" }&.join(', ')}" if result["modules"]
+          parts << "subject=#{result['subject']}" if result["subject"]
+          parts << "status=#{result['status']}" if result["status"]
+        when "platform_query"
+          parts << "count=#{result['count'] || result['total']}" if result["count"] || result["total"]
+          parts << "summary: #{result['summary'].to_s.truncate(300)}" if result["summary"]
+          if result["records"].is_a?(Array)
+            parts << "returned #{result['records'].size} records"
+            result["records"].first(3).each do |rec|
+              rec_summary = rec.slice("id", "name", "email", "status", "title", "subject").compact
+              parts << "  record: #{rec_summary.map { |k, v| "#{k}=#{v}" }.join(', ')}" if rec_summary.any?
+            end
+          end
+          if result["data"].is_a?(Hash)
+            parts << "data: #{result['data'].to_json.truncate(300)}"
+          end
+        when "platform_update"
+          parts << "id=#{result['id']}" if result["id"]
+          parts << "updated_fields=#{result['updated_fields']&.join(', ')}" if result["updated_fields"]
+        end
+
+        parts.reject(&:blank?).join(" | ").truncate(800)
+      end
+
+      def summarize_tool_input(tool_name, input)
+        return "" unless input.is_a?(Hash)
+        case tool_name
+        when "platform_create"
+          type = input["type"] || input[:type]
+          data = input["data"] || input[:data] || {}
+          key_fields = data.slice("name", "email", "title", "subject", "body", "status",
+                                  "first_name", "last_name", "company", "description",
+                                  :name, :email, :title, :subject, :body, :status,
+                                  :first_name, :last_name, :company, :description)
+          field_summary = key_fields.map { |k, v| "#{k}=#{v.to_s.truncate(80)}" }.first(6).join(", ")
+          "create #{type}: #{field_summary.presence || data.keys.first(5).join(', ')}"
+        when "platform_query"
+          type = input["type"] || input[:type]
+          filters = input["filters"] || input[:filters] || {}
+          filter_summary = filters.any? ? " (#{filters.map { |k, v| "#{k}=#{v}" }.first(3).join(', ')})" : ""
+          "query #{type}#{filter_summary}"
+        when "platform_update"
+          type = input["type"] || input[:type]
+          data = input["data"] || input[:data] || {}
+          "update #{type} id=#{input['id'] || input[:id]}: #{data.keys.first(5).join(', ')}"
+        when "platform_execute"
+          action = input["action"] || input[:action]
+          "execute #{action}"
+        else
+          tool_name.to_s
+        end.truncate(300)
       end
 
       def snapshot_record_counts(_entity)
@@ -227,9 +367,15 @@ module Benchmarks
           next unless klass.column_names.include?("created_at")
 
           scope = klass.where(entity_id: entity.id).where("created_at >= ?", since)
-          records = scope.select(:id, :created_at).to_a rescue []
+          select_cols = [:id, :created_at]
+          select_cols << :status if klass.column_names.include?("status")
+          records = scope.select(*select_cols).to_a rescue []
           if records.any?
-            created[model_name] = records.map { |r| { id: r.id, created_at: r.created_at.iso8601 } }
+            created[model_name] = records.map do |r|
+              entry = { id: r.id, created_at: r.created_at.iso8601 }
+              entry[:status] = r.status if r.respond_to?(:status) && r.status.present?
+              entry
+            end
           end
         end
         created
