@@ -467,7 +467,7 @@ module V3
 
         return error_response("Missing: sequence_id") if sequence_id.blank?
 
-        sequence = entity.email_sequences.find_by(id: sequence_id)
+        sequence = EmailSequence.visible_to_user(user).find_by(id: sequence_id)
         return error_response("Sequence not found: #{sequence_id}") unless sequence
 
         enrolled = 0
@@ -496,7 +496,7 @@ module V3
         lp_id = get_arg(args, :landing_page_id)
         return error_response("Missing: landing_page_id") if lp_id.blank?
 
-        page = entity.landing_pages.find_by(id: lp_id)
+        page = LandingPage.visible_to_user(user).find_by(id: lp_id)
         return error_response("Landing page not found: #{lp_id}") unless page
 
         page.update!(status: "published", published_at: Time.current)
@@ -894,11 +894,11 @@ module V3
 
         case assign_type
         when "landing_page"
-          lp = entity.landing_pages.find_by(id: assign_id)
+          lp = LandingPage.visible_to_user(user).find_by(id: assign_id)
           return error_response("Landing page not found: #{assign_id}") unless lp
           result = service.assign_to_landing_page(lp)
         when "website"
-          ws = entity.websites.find_by(id: assign_id)
+          ws = Website.visible_to_user(user).find_by(id: assign_id)
           return error_response("Website not found: #{assign_id}") unless ws
           result = service.assign_to_website(ws)
         else

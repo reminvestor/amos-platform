@@ -81,17 +81,22 @@ class UniversalQueryEngine
     format_records(records, object_config, params, true_total_count)
   end
 
+  ENTITY_SHAREABLE_MODELS = %w[LandingPage EmailSequence App Website WebApp AutomationCode].freeze
+
   def build_scoped_query(model_class, object_config)
+    # EntityShareable models use visible_to_user (user's own + shared with entity)
+    if ENTITY_SHAREABLE_MODELS.include?(model_class.name) && model_class.respond_to?(:visible_to_user)
+      return model_class.visible_to_user(@user)
+    end
+
     scope_field = object_config[:scoped_by]
 
     case scope_field
     when "entity_id"
       model_class.where(entity_id: @entity.id)
     when "campaign.entity_id"
-      # For models scoped through associations (like email_deliveries)
       model_class.joins(:campaign).where(campaigns: { entity_id: @entity.id })
     else
-      # Default: assume entity_id if not specified
       if model_class.column_names.include?("entity_id")
         model_class.where(entity_id: @entity.id)
       else

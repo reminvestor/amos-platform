@@ -270,7 +270,7 @@ module V3
           contact_group_id = group.id
         end
 
-        sequence = entity.email_sequences.find_by(name: name)
+        sequence = EmailSequence.visible_to_user(user).find_by(name: name)
         sequence ||= EmailSequence.create!(
           name: name,
           goal: data[:goal],
@@ -430,7 +430,7 @@ module V3
         if pages_data.any?
           website_result = build_website(data)
           if website_result.is_a?(Hash) && website_result[:success] != false
-            website = Website.find_by(id: website_result[:website_id])
+            website = Website.visible_to_user(user).find_by(id: website_result[:website_id])
           end
         end
 

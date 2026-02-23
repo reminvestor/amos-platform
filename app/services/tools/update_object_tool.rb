@@ -317,7 +317,7 @@ module Tools
     end
     
     def update_landing_page(id, data)
-      page = entity.landing_pages.find(id)
+      page = LandingPage.visible_to_user(user).find_by!(id: id)
       
       # Handle special fields
       if data['is_published'].present?
@@ -341,7 +341,7 @@ module Tools
     end
 
     def update_email_sequence(id, data)
-      sequence = entity.email_sequences.find(id)
+      sequence = EmailSequence.visible_to_user(user).find_by!(id: id)
 
       # Handle status changes with special actions
       if data['status'].present?
@@ -376,10 +376,8 @@ module Tools
     end
 
     def update_sequence_step(id, data)
-      # Find step through entity's sequences
-      step = SequenceStep.joins(:email_sequence)
-                         .where(email_sequences: { entity_id: entity.id })
-                         .find(id)
+      visible_seq_ids = EmailSequence.visible_to_user(user).select(:id)
+      step = SequenceStep.where(email_sequence_id: visible_seq_ids).find(id)
 
       step.update!(data)
       format_sequence_step(step)

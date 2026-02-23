@@ -394,7 +394,7 @@ module Tools
       # Find-or-create by name
       name = data[:name]
       if name.present?
-        existing = entity.email_sequences.find_by(name: name)
+        existing = EmailSequence.visible_to_user(user).find_by(name: name)
         if existing
           Rails.logger.info "♻️ Email sequence '#{name}' already exists (ID: #{existing.id}) — returning existing"
           @was_existing = true
@@ -439,13 +439,13 @@ module Tools
         data[:delay_hours] = data.delete(:delay_days).to_i * 24
       end
 
-      # Verify email sequence exists
+      # Verify email sequence exists (user-scoped asset)
       if data[:email_sequence_id].present?
-        sequence = entity.email_sequences.find_by(id: data[:email_sequence_id])
+        sequence = EmailSequence.visible_to_user(user).find_by(id: data[:email_sequence_id])
         return error_response("Email sequence not found with ID: #{data[:email_sequence_id]}") unless sequence
       end
 
-      # Verify email template exists if provided
+      # Verify email template exists if provided (CRM data — entity-scoped)
       if data[:email_template_id].present?
         template = entity.email_templates.find_by(id: data[:email_template_id])
         return error_response("Email template not found with ID: #{data[:email_template_id]}") unless template
@@ -499,7 +499,7 @@ module Tools
 
       # Verify email sequence exists
       if data[:email_sequence_id].present?
-        sequence = entity.email_sequences.find_by(id: data[:email_sequence_id])
+        sequence = EmailSequence.visible_to_user(user).find_by(id: data[:email_sequence_id])
         return error_response("Email sequence not found with ID: #{data[:email_sequence_id]}") unless sequence
       end
 

@@ -265,7 +265,7 @@ module V3
       # the entire landing page with new content/style. We re-run the generator on the
       # existing page, treating the instruction + any other data fields as the new spec.
       def regenerate_landing_page(landing_page_id, data)
-        lp = LandingPage.find_by(id: landing_page_id, entity: entity)
+        lp = LandingPage.visible_to_user(user).find_by(id: landing_page_id)
         return error_response("Landing page ##{landing_page_id} not found") unless lp
 
         instruction = data["instruction"] || data[:instruction]
@@ -302,7 +302,7 @@ module V3
 
           # If the generator created a NEW page, copy its HTML to the original and delete the new one
           if new_page_id && new_page_id != landing_page_id
-            new_page = LandingPage.find_by(id: new_page_id)
+            new_page = LandingPage.visible_to_user(user).find_by(id: new_page_id)
             if new_page
               lp.update!(
                 html_content: new_page.html_content,

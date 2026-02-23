@@ -230,9 +230,9 @@ module V3
         stat_models = {
           contacts: -> { entity.contacts.count },
           campaigns: -> { entity.campaigns.count },
-          landing_pages: -> { entity.landing_pages.count },
+          landing_pages: -> { LandingPage.visible_to_user(user).count },
           email_templates: -> { entity.email_templates.count },
-          email_sequences: -> { entity.email_sequences.count },
+          email_sequences: -> { EmailSequence.visible_to_user(user).count },
           opportunities: -> { entity.opportunities.count rescue 0 },
           bounties: -> { entity.bounties.count rescue 0 },
           support_tickets: -> { entity.support_tickets.count rescue 0 },
@@ -339,7 +339,7 @@ module V3
           }
         end
 
-        available = Integration.all.map do |i|
+        available = Integration.where(entity_id: [nil, entity.id]).map do |i|
           {
             name: i.name,
             slug: i.slug,
@@ -359,9 +359,8 @@ module V3
         integration_slug = get_arg(args, :integration) || get_arg(args, :search)
         return error_response("Missing: integration slug (e.g., 'stripe')") if integration_slug.blank?
 
-        integration = Integration.find_by(slug: integration_slug) ||
-                      Integration.where(entity: entity).find_by(slug: integration_slug) ||
-                      Integration.where("name ILIKE ?", "%#{integration_slug}%").first
+        integration = Integration.where(entity_id: [nil, entity.id]).find_by(slug: integration_slug) ||
+                      Integration.where(entity_id: [nil, entity.id]).where("name ILIKE ?", "%#{integration_slug}%").first
 
         return error_response("Integration '#{integration_slug}' not found") unless integration
 
@@ -373,7 +372,7 @@ module V3
             description: op.description,
             http_method: op.http_method,
             path: op.path_template,
-            has_action: IntegrationAction.exists?(integration: integration, integration_operation: op),
+            has_action: IntegrationAction.for_entity(entity).exists?(integration: integration, integration_operation: op),
             request_schema_fields: op.request_schema&.dig("properties")&.keys&.first(10)
           }
         end
@@ -399,8 +398,7 @@ module V3
         scope = IntegrationAction.for_entity(entity)
 
         if integration_slug.present?
-          integration = Integration.find_by(slug: integration_slug) ||
-                        Integration.where(entity: entity).find_by(slug: integration_slug)
+          integration = Integration.where(entity_id: [nil, entity.id]).find_by(slug: integration_slug)
           return error_response("Integration '#{integration_slug}' not found") unless integration
           scope = scope.where(integration: integration)
         end
