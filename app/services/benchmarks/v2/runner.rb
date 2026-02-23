@@ -255,14 +255,16 @@ module Benchmarks
 
           msg[:content].each do |block|
             if block[:tool_use]
-              tool_inputs[block[:tool_use][:id]] = {
-                name: block[:tool_use][:name],
-                input: block[:tool_use][:input]
+              tu = block[:tool_use]
+              use_id = tu[:tool_use_id] || tu[:id]
+              tool_inputs[use_id] = {
+                name: tu[:name],
+                input: tu[:input]
               }
             end
 
             if block[:tool_result]
-              tool_id = block[:tool_result][:tool_use_id]
+              tool_id = block[:tool_result][:tool_use_id] || block[:tool_result][:id]
               input_info = tool_inputs[tool_id] || {}
               raw = block[:tool_result][:content].to_s
 
