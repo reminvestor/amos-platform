@@ -26,16 +26,16 @@ module Benchmarks
             ],
             quality_rubric: <<~RUBRIC,
               Evaluate the email sequence creation:
-              1. TASK COMPLETION (0-15): Were all 3 emails created with correct timing?
+              1. TASK COMPLETION (0-20): Were all 3 emails created with correct timing?
                  - Email 1: Immediate welcome with feature overview
                  - Email 2: 3-day delay with getting started tips
                  - Email 3: 7-day delay with feedback request and annual discount offer
-              2. CONTENT QUALITY (0-15): Is the email copy professional and effective?
+              2. CONTENT QUALITY (0-20): Is the email copy professional and effective?
                  - Subject lines are compelling and varied
                  - Body content is specific to 'CloudSync' (not generic)
                  - Each email has a distinct purpose and clear CTA
                  - Tone is consistent across the sequence
-              3. STRATEGY (0-10): Does the sequence follow email marketing best practices?
+              3. STRATEGY (0-15): Does the sequence follow email marketing best practices?
                  - Progressive engagement (welcome -> educate -> convert)
                  - Timing makes sense
                  - Each email builds on the previous

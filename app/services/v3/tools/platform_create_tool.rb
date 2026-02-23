@@ -77,6 +77,9 @@ module V3
         return error_response("Missing required field: type") if type.blank?
         return error_response("Missing required field: data") if data.blank?
 
+        # Normalize common type aliases the model might use
+        type = "app" if type.in?(%w[app_module application application_plan])
+
         # ═══ BATCH CREATE: detect plural array in data ═══
         # If data contains a "contacts", "email_templates", etc. array, batch-create all items.
         # This turns 10 tool calls into 1.
@@ -205,22 +208,9 @@ module V3
       # ═══════════════════════════════════════════════════════════════
 
       def build_landing_page(data)
-        Rails.logger.info "[V3::PlatformCreate] Building landing page: #{data['title'] || data[:title]}"
-
-        generator = ::Tools::GenerateLandingPageTool.new(
-          user: user,
-          entity: entity,
-          context: context
-        )
-
-        # Enrich sparse data: if model only passed title/description, extract
-        # structured content from the description so the generator has richer inputs.
-        desc = (data["description"] || data[:description]).to_s
-        if desc.length > 30 && (data["business_info"] || data[:business_info]).blank?
-          data["content_focus"] ||= desc
-        end
-
-        generator.execute(data)
+        ::Tools::GenerateLandingPageTool.new(
+          user: user, entity: entity, context: context
+        ).execute(data)
       end
 
       # ═══════════════════════════════════════════════════════════════

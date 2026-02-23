@@ -151,7 +151,7 @@ module V3
       return nil if stats.empty?
 
       items = stats.map { |k, v| "#{k.to_s.titleize}: #{v}" }.join(" | ")
-      "## Platform: #{entity&.name}\n#{items}"
+      "## Platform Overview: #{entity&.name}\n#{items}\n(These counts are accurate. If a count is 0, acknowledge it directly — don't promise to retrieve data that isn't there. Use platform_query for details, filtered views, or specific records.)"
     end
 
     def build_canvas_context(current_canvas)

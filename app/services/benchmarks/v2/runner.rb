@@ -306,6 +306,30 @@ module Benchmarks
           parts << "modules=#{result['modules']&.map { |m| "#{m['name']} (#{m['status']})" }&.join(', ')}" if result["modules"]
           parts << "subject=#{result['subject']}" if result["subject"]
           parts << "status=#{result['status']}" if result["status"]
+          parts << "slug=#{result['slug']}" if result["slug"]
+          if type == "landing_page" && result["id"]
+            lp = LandingPage.find_by(id: result["id"])
+            if lp&.html_content.present?
+              html = lp.html_content
+              parts << "html_size=#{html.length} chars"
+              sects = []
+              sects << "hero" if html.match?(/hero|banner/i)
+              sects << "features" if html.match?(/features?|benefits?/i)
+              sects << "testimonials" if html.match?(/testimonial/i)
+              sects << "pricing" if html.match?(/pricing|price|plan/i)
+              sects << "form" if html.include?("<form")
+              parts << "sections=#{sects.join(', ')}"
+            end
+          end
+          if type.to_s.in?(%w[app module]) && result["modules"].is_a?(Array)
+            result["modules"].each do |mod|
+              mod_record = AppModule.find_by(id: mod["id"] || mod[:id])
+              next unless mod_record
+              schema = mod_record.metadata&.dig("schema", "fields") || mod_record.metadata&.dig(:schema, :fields) || []
+              field_names = schema.map { |f| f["name"] || f[:name] }.compact
+              parts << "  #{mod_record.name}: fields=[#{field_names.join(', ')}]" if field_names.any?
+            end
+          end
         when "platform_query"
           parts << "count=#{result['count'] || result['total']}" if result["count"] || result["total"]
           parts << "summary: #{result['summary'].to_s.truncate(300)}" if result["summary"]

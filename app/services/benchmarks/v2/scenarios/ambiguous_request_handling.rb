@@ -28,16 +28,16 @@ module Benchmarks
             ],
             quality_rubric: <<~RUBRIC,
               Evaluate how the AI handles an ambiguous request:
-              1. CLARIFICATION QUALITY (0-15): Did the AI ask good follow-up questions?
+              1. CLARIFICATION QUALITY (0-20): Did the AI ask good follow-up questions?
                  - First response should NOT jump to action -- should ask questions
                  - Questions should be specific and relevant (not generic)
                  - Questions should help narrow down: industry, goals, current state, budget
-              2. STRATEGIC THINKING (0-15): After getting context, did the AI provide a strategic response?
+              2. STRATEGIC THINKING (0-20): After getting context, did the AI provide a strategic response?
                  - Identified key opportunities (website optimization, lead generation)
                  - Recommendations are specific to interior design industry
                  - Suggested concrete, actionable next steps
                  - Prioritized recommendations logically
-              3. PLATFORM AWARENESS (0-10): Did the AI suggest platform capabilities?
+              3. PLATFORM AWARENESS (0-15): Did the AI suggest platform capabilities?
                  - Landing page creation for lead capture
                  - Email campaigns for nurturing
                  - Contact management for client tracking

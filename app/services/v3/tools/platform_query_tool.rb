@@ -958,7 +958,12 @@ module V3
           "activity" => "activities",
           "bounty" => "bounties",
           "support_ticket" => "support_tickets",
-          "contact_group" => "contact_groups"
+          "contact_group" => "contact_groups",
+          "app" => "apps",
+          "application" => "apps",
+          "application_plan" => "apps",
+          "app_module" => "app_modules",
+          "module" => "app_modules"
         }
         singular_to_plural[type] || type
       end

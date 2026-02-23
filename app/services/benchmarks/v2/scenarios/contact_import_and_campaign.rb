@@ -74,16 +74,16 @@ module Benchmarks
             ],
             quality_rubric: <<~RUBRIC,
               Evaluate the contact import and campaign creation:
-              1. TASK COMPLETION (0-15): Were all elements created?
+              1. TASK COMPLETION (0-20): Were all elements created?
                  - All 5 contacts created with correct names, emails, and titles
                  - Contact group 'Q1 Enterprise Leads' created
                  - Contacts assigned to the group
                  - Campaign created targeting the group
-              2. DATA ACCURACY (0-15): Is the data correct?
+              2. DATA ACCURACY (0-20): Is the data correct?
                  - Names, emails, titles match the input exactly
                  - No contacts missing or duplicated
                  - Group membership is correct
-              3. CAMPAIGN QUALITY (0-10): Is the outreach email effective?
+              3. CAMPAIGN QUALITY (0-15): Is the outreach email effective?
                  - Subject line is compelling for enterprise prospects
                  - Body references their seniority/role appropriately
                  - Clear value proposition for enterprise plan

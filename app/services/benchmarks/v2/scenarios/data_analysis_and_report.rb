@@ -26,17 +26,17 @@ module Benchmarks
             ],
             quality_rubric: <<~RUBRIC,
               Evaluate the data analysis and reporting:
-              1. TASK COMPLETION (0-15): Were all requested analyses performed?
+              1. TASK COMPLETION (0-20): Were all requested analyses performed?
                  - Total contact count reported
                  - Contacts broken down by group
                  - Recent contacts (last 30 days) identified
                  - Visual dashboard created (freeform canvas or similar)
-              2. ACCURACY (0-15): Is the data analysis correct?
+              2. ACCURACY (0-20): Is the data analysis correct?
                  - Numbers match actual database state
                  - No hallucinated statistics
                  - Groups are correctly identified
                  - Date filtering is accurate
-              3. PRESENTATION (0-10): Is the report well-presented?
+              3. PRESENTATION (0-15): Is the report well-presented?
                  - Data is clearly organized
                  - Visual dashboard is readable and informative
                  - Key insights are highlighted

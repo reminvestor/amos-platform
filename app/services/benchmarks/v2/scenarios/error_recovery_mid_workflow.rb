@@ -53,15 +53,15 @@ module Benchmarks
             ],
             quality_rubric: <<~RUBRIC,
               Evaluate error recovery during a multi-step workflow:
-              1. ERROR HANDLING (0-15): Did the AI handle the invalid email gracefully?
+              1. ERROR HANDLING (0-20): Did the AI handle the invalid email gracefully?
                  - Identified that Bob's email is invalid
                  - Didn't crash or abandon the entire task
                  - Communicated the issue clearly to the user
-              2. RECOVERY (0-15): Did the AI recover correctly after user guidance?
+              2. RECOVERY (0-20): Did the AI recover correctly after user guidance?
                  - Created Alice and Charlie successfully
                  - Skipped Bob as instructed
                  - Created the group with the valid contacts
-              3. PROGRESS PRESERVATION (0-10): Was earlier work preserved?
+              3. PROGRESS PRESERVATION (0-15): Was earlier work preserved?
                  - Contacts created before the error were not lost
                  - Didn't restart the entire workflow from scratch
               4. COMMUNICATION (0-10): Was the error communicated well?

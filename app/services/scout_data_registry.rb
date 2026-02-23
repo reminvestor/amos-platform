@@ -347,6 +347,39 @@ class ScoutDataRegistry
       }
     },
 
+    'apps' => {
+      model: 'App',
+      description: 'Applications built on the platform containing modules, workflows, and AI assistants',
+      queryable_fields: [
+        'id', 'name', 'slug', 'status', 'description', 'created_at', 'updated_at',
+        'published_at', 'version'
+      ],
+      filterable_fields: [
+        'status', 'created_at', 'published_at', 'slug'
+      ],
+      relationships: [
+        'app_modules', 'entity', 'created_by'
+      ],
+      scoped_by: 'entity_id',
+      creatable: false
+    },
+
+    'app_modules' => {
+      model: 'AppModule',
+      description: 'Individual modules within an app (e.g., Contacts, Invoices, Appointments)',
+      queryable_fields: [
+        'id', 'name', 'slug', 'status', 'app_id', 'created_at', 'updated_at'
+      ],
+      filterable_fields: [
+        'status', 'app_id', 'slug', 'created_at'
+      ],
+      relationships: [
+        'app', 'entity', 'module_codes', 'module_canvases'
+      ],
+      scoped_by: 'entity_id',
+      creatable: false
+    },
+
     'support_tickets' => {
       model: 'SupportTicket',
       description: 'Support tickets for tracking user-reported issues, bugs, and feature requests',

@@ -127,10 +127,13 @@ module Benchmarks
       def check_tool_called(assertion)
         tool_name = assertion[:tool_name]
         min_times = assertion[:min_times] || 1
+        optional = assertion[:optional] == true
         calls = execution_result[:tool_calls]&.select { |tc| tc[:tool_name] == tool_name } || []
 
         if calls.size >= min_times
           { passed: true, message: "#{tool_name} called #{calls.size}x (need #{min_times})" }
+        elsif optional
+          { passed: true, message: "#{tool_name} not called but optional (platform context sufficient)" }
         else
           { passed: false, message: "#{tool_name} called #{calls.size}x (need #{min_times})" }
         end
@@ -266,14 +269,23 @@ module Benchmarks
           ## Scoring Rubric
           #{scenario.quality_rubric}
 
+          ## Important Context
+          The AI receives a real-time Platform Overview in its system prompt with accurate counts
+          (e.g., "Contacts: 5 | Campaigns: 0 | Landing Pages: 3"). These counts come from live
+          database queries and are trustworthy. If the AI answers a question using this context
+          instead of making a tool call (e.g., stating there are 0 campaigns without calling
+          platform_query), that is CORRECT and EFFICIENT behavior — not laziness. Tool calls
+          should only be required when the user needs details, filtered views, or specific records
+          beyond what the summary provides.
+
           ## Instructions
-          Score each criterion in the rubric. The total across all criteria should be 0-50.
+          Score each criterion in the rubric. The total across all criteria should be 0-65.
           Judge based on the FULL evidence: transcript, tool call results, and records created.
           Tool results show what the platform actually produced — use these to verify task completion.
           Respond in JSON format:
 
           {
-            "total_score": <0-50>,
+            "total_score": <0-65>,
             "breakdown": {
               "<criterion_name>": { "score": <number>, "max": <number>, "reasoning": "<why>" }
             },
@@ -347,7 +359,13 @@ module Benchmarks
           detail
         when "AppModule"
           field_count = record.module_codes.where(code_type: "model").count rescue 0
-          "#{record.name} (slug: #{record.slug}, status: #{record.status}, model_codes: #{field_count})"
+          schema_fields = record.metadata&.dig("schema", "fields") || record.metadata&.dig(:schema, :fields) || []
+          field_names = schema_fields.map { |f| f["name"] || f[:name] }.compact
+          detail = "#{record.name} (slug: #{record.slug}, status: #{record.status}, model_codes: #{field_count}"
+          detail += ", fields: [#{field_names.join(', ')}]" if field_names.any?
+          detail += ", app_id: #{record.app_id}" if record.app_id.present?
+          detail += ")"
+          detail
         when "EmailTemplate"
           body_preview = record.body.to_s.gsub(/<[^>]+>/, ' ').squish.truncate(150) rescue ""
           detail = "#{record.name} | subject: '#{record.subject}'"

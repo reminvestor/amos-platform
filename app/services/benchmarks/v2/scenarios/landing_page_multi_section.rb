@@ -29,16 +29,16 @@ module Benchmarks
             ],
             quality_rubric: <<~RUBRIC,
               Evaluate the AI's response for creating a landing page:
-              1. TASK COMPLETION (0-15): Did it actually create a landing page with multiple sections?
+              1. TASK COMPLETION (0-20): Did it actually create a landing page with multiple sections?
                  - Hero section with headline and subheadline
                  - Features section with the 3 requested features
                  - Testimonials section
                  - Pricing section with CTA
-              2. CONTENT QUALITY (0-15): Is the generated copy professional and relevant?
+              2. CONTENT QUALITY (0-20): Is the generated copy professional and relevant?
                  - Headlines are compelling, not generic
                  - Feature descriptions are specific to a project management tool
                  - CTA is clear and action-oriented
-              3. USER EXPERIENCE (0-10): Was the interaction smooth?
+              3. USER EXPERIENCE (0-15): Was the interaction smooth?
                  - Did the AI create it without asking unnecessary questions?
                  - Was progress communicated clearly?
                  - Was the result presented or made viewable?

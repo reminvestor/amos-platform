@@ -618,7 +618,8 @@ module V3
         session_id: @session_id,
         execution_context: "v3_agent_loop",
         canvas_suggestion: @suggested_canvas,
-        canvas_data: @canvas_data
+        canvas_data: @canvas_data,
+        user_message: @user_message
       }
     end
 
