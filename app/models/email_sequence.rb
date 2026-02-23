@@ -17,6 +17,11 @@ class EmailSequence < ApplicationRecord
   # Status options
   STATUSES = %w[draft active paused completed].freeze
 
+  attribute :status, :string, default: "draft"
+  attribute :enrolled_count, :integer, default: 0
+  attribute :completed_count, :integer, default: 0
+  attribute :active_count, :integer, default: 0
+
   # Validations
   validates :name, presence: true
   validates :status, inclusion: { in: STATUSES }

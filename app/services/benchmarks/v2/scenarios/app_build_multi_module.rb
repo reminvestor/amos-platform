@@ -4,6 +4,43 @@ module Benchmarks
   module V2
     module Scenarios
       class AppBuildMultiModule
+        def self.cleanup!(entity)
+          # Clean up modules first (child of app), then apps, then plans
+          AppModule.where(entity: entity)
+            .joins(:app).where("apps.name ILIKE ?", "%client management%")
+            .find_each do |mod|
+              mod.agent_plugins.delete_all rescue nil
+              mod.module_codes.delete_all rescue nil
+              mod.destroy
+            rescue => e
+              Rails.logger.debug "[BenchmarkCleanup] Module #{mod.id}: #{e.message}"
+            end
+
+          App.where(entity: entity)
+            .where("name ILIKE ?", "%client management%")
+            .find_each do |app|
+              app.app_modules.each do |mod|
+                mod.agent_plugins.delete_all rescue nil
+                mod.module_codes.delete_all rescue nil
+                mod.destroy rescue nil
+              end
+              app.destroy
+            rescue => e
+              Rails.logger.debug "[BenchmarkCleanup] App #{app.id}: #{e.message}"
+            end
+
+          ApplicationPlan.where(entity: entity)
+            .where("name ILIKE ?", "%client management%")
+            .where("created_at > ?", 30.days.ago)
+            .find_each do |plan|
+              plan.destroy
+            rescue => e
+              Rails.logger.debug "[BenchmarkCleanup] Plan #{plan.id}: #{e.message}"
+            end
+        rescue => e
+          Rails.logger.warn "[BenchmarkCleanup] app_build cleanup failed: #{e.message}"
+        end
+
         def self.build
           Scenario.new(
             id: :app_build_multi_module,
@@ -15,6 +52,9 @@ module Benchmarks
                          "and Chris attempted. Tests app planning, module creation, table " \
                          "creation, canvas generation, and activation.",
             tags: [:core],
+            setup: ->(entity:, user:) {
+              AppBuildMultiModule.cleanup!(entity)
+            },
             messages: [
               "Build me a client management app. I need a main Clients module with fields for " \
               "name, email, phone, company, and status. Then I need an Appointments module linked " \

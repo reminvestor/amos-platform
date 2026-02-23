@@ -84,54 +84,56 @@ class AppBuildPipelineTest < ActiveSupport::TestCase
   # FIX 2: PLAN RESUME
   # ═══════════════════════════════════════════════════════════════
 
-  test "find_resumable_plan finds paused plans" do
+  test "find_existing_plan finds paused plans" do
     plan = build_approved_plan("Resume Test App")
     plan.update!(status: "paused")
 
     tool = build_platform_create_tool
-    result = tool.send(:find_resumable_plan, "Resume Test App")
+    result = tool.send(:find_existing_plan, "Resume Test App")
 
     assert_not_nil result, "Should find a paused plan with matching name"
     assert_equal plan.id, result.id
   end
 
-  test "find_resumable_plan finds building plans" do
+  test "find_existing_plan finds building plans" do
     plan = build_approved_plan("Building Test App")
     plan.update!(status: "building")
 
     tool = build_platform_create_tool
-    result = tool.send(:find_resumable_plan, "Building Test App")
+    result = tool.send(:find_existing_plan, "Building Test App")
 
     assert_not_nil result, "Should find a building plan with matching name"
     assert_equal plan.id, result.id
   end
 
-  test "find_resumable_plan ignores completed plans" do
+  test "find_existing_plan finds completed plans to prevent duplicates" do
     plan = build_approved_plan("Completed App")
     plan.update!(status: "completed")
 
     tool = build_platform_create_tool
-    result = tool.send(:find_resumable_plan, "Completed App")
+    result = tool.send(:find_existing_plan, "Completed App")
 
-    assert_nil result, "Should not resume a completed plan"
+    assert_not_nil result, "Should find a completed plan to prevent duplicate creation"
+    assert_equal plan.id, result.id
+    assert_equal "completed", result.status
   end
 
-  test "find_resumable_plan ignores old plans" do
+  test "find_existing_plan ignores old plans" do
     plan = build_approved_plan("Old Paused App")
-    plan.update!(status: "paused", created_at: 10.days.ago)
+    plan.update!(status: "paused", created_at: 31.days.ago)
 
     tool = build_platform_create_tool
-    result = tool.send(:find_resumable_plan, "Old Paused App")
+    result = tool.send(:find_existing_plan, "Old Paused App")
 
-    assert_nil result, "Should not resume a plan older than 7 days"
+    assert_nil result, "Should not find a plan older than 30 days"
   end
 
-  test "find_resumable_plan is case insensitive" do
+  test "find_existing_plan is case insensitive" do
     plan = build_approved_plan("My CRM App")
     plan.update!(status: "paused")
 
     tool = build_platform_create_tool
-    result = tool.send(:find_resumable_plan, "my crm app")
+    result = tool.send(:find_existing_plan, "my crm app")
 
     assert_not_nil result, "Should find plan regardless of case"
     assert_equal plan.id, result.id

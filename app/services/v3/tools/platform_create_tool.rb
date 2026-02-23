@@ -32,6 +32,11 @@ module V3
             - type: "email_sequence", data: { name: "Welcome Series", emails: [{ subject: "Welcome!", body: "<h1>Hi {{first_name}}!</h1>...", delay_days: 0 }, { subject: "Getting Started", body: "...", delay_days: 3 }] }
             - type: "app", data: { name: "CRM", description: "Contact management" }
 
+            Smart behaviors:
+            - Duplicate prevention: contacts by email, groups/campaigns/sequences/opportunities by name — returns existing if found.
+            - Auto-create dependencies: campaign with subject+body auto-creates template. sequence_step with subject+body auto-creates template. email_sequence without contact_group auto-creates one. activity with contact_email auto-finds or creates the contact. opportunity with contact_email auto-finds or creates the contact.
+            - Defaults: status defaults to 'draft' (campaigns, sequences), 'pending' (enrollments, activities), 'lead' (opportunities).
+
             Email sequence (one-call): pass 'emails' array to auto-create templates, contact group, sequence, and steps in one call.
             Automation triggers: contact_created, form_submit, record_updated, status_changed, field_changed, schedule, webhook
             Automation actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user
@@ -251,7 +256,8 @@ module V3
           contact_group_id = group.id
         end
 
-        sequence = EmailSequence.create!(
+        sequence = entity.email_sequences.find_by(name: name)
+        sequence ||= EmailSequence.create!(
           name: name,
           goal: data[:goal],
           entity: entity,

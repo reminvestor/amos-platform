@@ -214,27 +214,22 @@ module Benchmarks
         result
       end
 
-      def snapshot_record_counts(entity)
-        counts = {}
-        %w[Contact ContactGroup LandingPage Campaign AppModule EmailTemplate].each do |model_name|
-          klass = model_name.safe_constantize
-          next unless klass
-          scope = klass.respond_to?(:where) ? klass.where(entity_id: entity.id) : klass.all
-          counts[model_name] = scope.count rescue 0
-        end
-        counts
+      def snapshot_record_counts(_entity)
+        { snapshot_at: Time.current }
       end
 
       def detect_created_records(entity, before_counts)
         created = {}
-        %w[Contact ContactGroup LandingPage Campaign AppModule EmailTemplate].each do |model_name|
+        since = before_counts[:snapshot_at]
+        %w[Contact ContactGroup LandingPage Campaign AppModule EmailTemplate EmailSequence].each do |model_name|
           klass = model_name.safe_constantize
           next unless klass
-          scope = klass.respond_to?(:where) ? klass.where(entity_id: entity.id) : klass.all
-          current = scope.count rescue 0
-          diff = current - (before_counts[model_name] || 0)
-          if diff > 0
-            created[model_name] = (1..diff).map { |i| { id: i, created_at: Time.current.iso8601 } }
+          next unless klass.column_names.include?("created_at")
+
+          scope = klass.where(entity_id: entity.id).where("created_at >= ?", since)
+          records = scope.select(:id, :created_at).to_a rescue []
+          if records.any?
+            created[model_name] = records.map { |r| { id: r.id, created_at: r.created_at.iso8601 } }
           end
         end
         created

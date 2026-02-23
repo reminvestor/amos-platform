@@ -22,11 +22,11 @@ class ScoutDataRegistry
       creatable: true,
       creation_schema: {
         required: [ "name" ],
-        optional: [ "email_template_id", "subject", "scheduled_at", "description", "from_email", "from_name", "contact_group_ids" ],
+        optional: [ "email_template_id", "subject", "body", "scheduled_at", "description", "contact_group_ids" ],
         defaults: {
           status: "draft"
         },
-        notes: "email_template_id is optional but recommended. Attach contact_group_ids to set recipients. Status auto-defaults to 'draft'."
+        notes: "If subject+body provided without email_template_id, a template is auto-created. Existing campaign with same name returns existing record. Status defaults to 'draft'."
       }
     },
 
@@ -216,14 +216,14 @@ class ScoutDataRegistry
       creatable: true,
       creation_schema: {
         required: ['name'],
-        optional: ['contact_group_id', 'goal', 'status'],
+        optional: ['contact_group_id', 'contact_group_name', 'goal', 'status'],
         defaults: {
           status: 'draft',
           enrolled_count: 0,
           completed_count: 0,
           active_count: 0
         },
-        notes: "contact_group_id is auto-created if not provided. For one-call creation, use platform_create(type: 'email_sequence', data: { name: '...', emails: [{ subject: '...', body: '...', delay_days: 0 }] })."
+        notes: "contact_group_id is auto-created if not provided. Existing sequence with same name returns existing record. For one-call creation, use platform_create(type: 'email_sequence', data: { name: '...', emails: [{ subject: '...', body: '...', delay_days: 0 }] })."
       }
     },
 
@@ -246,15 +246,15 @@ class ScoutDataRegistry
       scoped_by: 'email_sequence.entity_id',
       creatable: true,
       creation_schema: {
-        required: ['email_sequence_id', 'step_number', 'delay_hours'],
-        optional: ['email_template_id', 'subject', 'body'],
+        required: ['email_sequence_id'],
+        optional: ['email_template_id', 'subject', 'body', 'step_number', 'delay_hours', 'delay_days'],
         defaults: {
           delay_hours: 0,
           sent_count: 0,
           opened_count: 0,
           clicked_count: 0
         },
-        notes: "Must provide EITHER email_template_id OR both subject and body. step_number must be unique within the sequence."
+        notes: "step_number auto-increments if omitted. delay_days is converted to delay_hours. If subject+body provided without template_id, a template is auto-created. Existing step with same step_number is updated."
       }
     },
 
@@ -313,7 +313,7 @@ class ScoutDataRegistry
           probability: 10,
           value: 0
         },
-        notes: "Provide contact_id or contact_email to link to a contact (auto-creates if contact_email not found). stage values: lead, qualified, proposal, negotiation, closed_won, closed_lost."
+        notes: "Existing opportunity with same name returns existing record. Provide contact_id or contact_email (auto-creates contact if not found). Stage defaults to 'lead'. Valid stages: lead, qualified, proposal, negotiation, closed_won, closed_lost."
       }
     },
 
@@ -336,14 +336,14 @@ class ScoutDataRegistry
       scoped_by: 'entity_id',
       creatable: true,
       creation_schema: {
-        required: ['activity_type', 'subject'],
-        optional: ['description', 'status', 'priority', 'due_at', 'contact_id', 'opportunity_id', 'user_id'],
+        required: ['subject'],
+        optional: ['activity_type', 'description', 'status', 'priority', 'due_at', 'due_in_hours', 'due_in_days', 'contact_id', 'contact_email', 'opportunity_id'],
         defaults: {
           status: 'pending',
-          priority: 'medium',
-          activity_type: 'task'
+          priority: 'normal',
+          activity_type: 'note'
         },
-        notes: "Must provide EITHER contact_id OR opportunity_id (or both). activity_type values: note, email, call, meeting, task. status values: pending, in_progress, completed, cancelled. priority values: low, normal, high, urgent."
+        notes: "activity_type defaults to 'note'. Provide contact_id or contact_email (auto-creates if not found). activity_type values: note, email, call, meeting, task. status values: pending, in_progress, completed, cancelled. priority: low, normal, high, urgent."
       }
     },
 

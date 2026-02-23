@@ -6,6 +6,9 @@ class SequenceEnrollment < ApplicationRecord
   # Status options
   STATUSES = %w[pending active completed paused cancelled].freeze
 
+  attribute :status, :string, default: "pending"
+  attribute :current_step_number, :integer, default: 0
+
   # Callbacks to keep sequence counts in sync
   after_save :update_sequence_counts, if: :saved_change_to_status?
 

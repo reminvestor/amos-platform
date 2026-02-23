@@ -20,6 +20,8 @@ class Campaign < ApplicationRecord
   # Status options
   STATUSES = %w[draft scheduled in_progress completed paused stopped].freeze
 
+  attribute :status, :string, default: "draft"
+
   # Validations
   validates :name, presence: true
   validates :status, inclusion: { in: STATUSES }

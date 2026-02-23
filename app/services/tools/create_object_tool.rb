@@ -111,7 +111,6 @@ module Tools
     private
 
     def create_campaign(data)
-      # Symbolize keys for consistent access
       data = data.symbolize_keys
 
       # Check for drip mode -- route to EmailSequence internally
@@ -122,12 +121,24 @@ module Tools
         return create_drip_campaign(data, steps)
       end
 
-      # Standard blast campaign
       data[:status] ||= "draft"
 
       # Remove fields that don't exist on Campaign model
       data.delete(:from_email)
       data.delete(:from_name)
+
+      # Auto-create template if subject+body provided but no template_id
+      if data[:email_template_id].blank? && data[:subject].present? && data[:body].present?
+        template = EmailTemplate.create!(
+          name: "#{data[:name]} Template",
+          subject: data.delete(:subject),
+          body: data.delete(:body),
+          user: user,
+          entity: entity
+        )
+        data[:email_template_id] = template.id
+        Rails.logger.info "✅ Auto-created email template '#{template.name}' (ID: #{template.id}) for campaign"
+      end
 
       # Handle unresolved variables
       if data[:email_template_id].is_a?(String) && data[:email_template_id].include?("{{")
@@ -140,6 +151,17 @@ module Tools
       end
       if data[:email_template_id].is_a?(String) && data[:email_template_id].match?(/^\d+$/)
         data[:email_template_id] = data[:email_template_id].to_i
+      end
+
+      # Find-or-create by name
+      name = data[:name]
+      if name.present?
+        existing = entity.campaigns.find_by(name: name)
+        if existing
+          Rails.logger.info "♻️ Campaign '#{name}' already exists (ID: #{existing.id}) — returning existing"
+          @was_existing = true
+          return existing
+        end
       end
 
       campaign = Campaign.new(data)
@@ -357,22 +379,39 @@ module Tools
     end
 
     def create_email_sequence(data)
-      # Symbolize keys for consistent access
       data = data.symbolize_keys
 
-      # Ensure required fields
       data[:status] ||= "draft"
       data[:enrolled_count] ||= 0
       data[:completed_count] ||= 0
       data[:active_count] ||= 0
 
-      # Verify contact group exists
+      # Find-or-create by name
+      name = data[:name]
+      if name.present?
+        existing = entity.email_sequences.find_by(name: name)
+        if existing
+          Rails.logger.info "♻️ Email sequence '#{name}' already exists (ID: #{existing.id}) — returning existing"
+          @was_existing = true
+          return existing
+        end
+      end
+
+      # Verify contact group exists, or auto-create one
       if data[:contact_group_id].present?
         contact_group = entity.contact_groups.find_by(id: data[:contact_group_id])
         return error_response("Contact group not found with ID: #{data[:contact_group_id]}") unless contact_group
+      else
+        group_name = data.delete(:contact_group_name) || "#{name || 'Sequence'} Recipients"
+        contact_group = entity.contact_groups.find_by(name: group_name)
+        contact_group ||= ContactGroup.create!(
+          name: group_name,
+          user: user,
+          entity: entity
+        )
+        data[:contact_group_id] = contact_group.id
+        Rails.logger.info "✅ Auto-created contact group '#{contact_group.name}' (ID: #{contact_group.id}) for sequence"
       end
-
-      Rails.logger.info "📝 Creating email sequence with data: #{data.inspect}"
 
       sequence = EmailSequence.new(data)
       sequence.entity = entity
@@ -383,14 +422,17 @@ module Tools
     end
 
     def create_sequence_step(data)
-      # Symbolize keys for consistent access
       data = data.symbolize_keys
 
-      # Ensure required fields
       data[:delay_hours] ||= 0
       data[:sent_count] ||= 0
       data[:opened_count] ||= 0
       data[:clicked_count] ||= 0
+
+      # Convert delay_days to delay_hours if provided
+      if data[:delay_days].present? && data[:delay_hours] == 0
+        data[:delay_hours] = data.delete(:delay_days).to_i * 24
+      end
 
       # Verify email sequence exists
       if data[:email_sequence_id].present?
@@ -404,7 +446,36 @@ module Tools
         return error_response("Email template not found with ID: #{data[:email_template_id]}") unless template
       end
 
-      Rails.logger.info "📝 Creating sequence step with data: #{data.inspect}"
+      # Auto-create template from subject+body if no template_id
+      if data[:email_template_id].blank? && data[:subject].present? && data[:body].present?
+        seq_name = sequence&.name || "Sequence"
+        step_num = data[:step_number] || "?"
+        template = EmailTemplate.create!(
+          name: "#{seq_name} - Step #{step_num}",
+          subject: data.delete(:subject),
+          body: data.delete(:body),
+          user: user,
+          entity: entity
+        )
+        data[:email_template_id] = template.id
+        Rails.logger.info "✅ Auto-created email template '#{template.name}' (ID: #{template.id}) for sequence step"
+      end
+
+      # Auto-assign step_number if missing
+      if data[:step_number].blank? && sequence
+        data[:step_number] = (sequence.sequence_steps.maximum(:step_number) || 0) + 1
+      end
+
+      # Find-or-update by sequence + step_number
+      if sequence && data[:step_number].present?
+        existing = sequence.sequence_steps.find_by(step_number: data[:step_number])
+        if existing
+          existing.update!(data.except(:email_sequence_id, :step_number))
+          Rails.logger.info "♻️ Updated existing step #{existing.step_number} (ID: #{existing.id})"
+          @was_existing = true
+          return existing
+        end
+      end
 
       step = SequenceStep.new(data)
       step.save!
@@ -450,12 +521,21 @@ module Tools
     end
 
     def create_opportunity(data)
-      # Symbolize keys for consistent access
       data = data.symbolize_keys
 
-      # Ensure required fields
       data[:stage] ||= "lead"
       data[:probability] ||= Opportunity::STAGES.dig(data[:stage], :probability) || 10
+
+      # Find-or-create by name within entity
+      name = data[:name]
+      if name.present?
+        existing = entity.opportunities.find_by(name: name)
+        if existing
+          Rails.logger.info "♻️ Opportunity '#{name}' already exists (ID: #{existing.id}) — returning existing"
+          @was_existing = true
+          return existing
+        end
+      end
 
       # Verify contact exists if provided
       if data[:contact_id].present?
@@ -515,10 +595,8 @@ module Tools
     end
 
     def create_activity(data)
-      # Symbolize keys for consistent access
       data = data.symbolize_keys
 
-      # Ensure required fields
       data[:activity_type] ||= "note"
       data[:status] ||= "pending"
       data[:priority] ||= "normal"
@@ -529,6 +607,21 @@ module Tools
         unless contact
           return error_response("Contact not found with ID: #{data[:contact_id]}")
         end
+      elsif data[:contact_email].present?
+        # Auto-find or create contact from email
+        contact = entity.contacts.find_by(email: data[:contact_email])
+        unless contact
+          contact = entity.contacts.create!(
+            email: data[:contact_email],
+            first_name: data.delete(:contact_first_name) || data[:contact_email].split("@").first.capitalize,
+            last_name: data.delete(:contact_last_name) || "",
+            status: "active",
+            user: user
+          )
+          Rails.logger.info "✅ Auto-created contact '#{contact.email}' (ID: #{contact.id}) for activity"
+        end
+        data[:contact_id] = contact.id
+        data.delete(:contact_email)
       end
 
       # Verify opportunity exists if provided
@@ -537,7 +630,6 @@ module Tools
         unless opportunity
           return error_response("Opportunity not found with ID: #{data[:opportunity_id]}")
         end
-        # Auto-link to opportunity's contact if not specified
         data[:contact_id] ||= opportunity.contact_id
       end
 
@@ -549,8 +641,6 @@ module Tools
         data[:due_at] = data[:due_in_days].to_i.days.from_now
         data.delete(:due_in_days)
       end
-
-      Rails.logger.info "📝 Creating activity with data: #{data.inspect}"
 
       activity = Activity.new(data)
       activity.entity = entity

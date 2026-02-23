@@ -4,6 +4,45 @@ module Benchmarks
   module V2
     module Scenarios
       class ContactImportAndCampaign
+        TEST_EMAILS = %w[
+          john@acme.com sarah@techstart.io mike@growthco.com
+          lisa@designlab.co tom@buildright.com
+        ].freeze
+
+        def self.cleanup!(entity)
+          # Order matters: campaigns -> groups -> contacts (reverse of creation)
+          # Delete campaigns that reference the test group
+          Campaign.where(entity: entity).where("name ILIKE ?", "%enterprise%").find_each do |c|
+            c.campaign_groups.delete_all
+            c.email_deliveries.delete_all
+            c.destroy
+          rescue => e
+            Rails.logger.debug "[BenchmarkCleanup] Campaign #{c.id}: #{e.message}"
+          end
+
+          # Delete contact groups (clears join table first)
+          ContactGroup.where(entity: entity, name: "Q1 Enterprise Leads").find_each do |g|
+            g.contacts.clear
+            g.email_sequences.destroy_all
+            CampaignGroup.where(contact_group_id: g.id).delete_all
+            g.destroy
+          rescue => e
+            Rails.logger.debug "[BenchmarkCleanup] ContactGroup #{g.id}: #{e.message}"
+          end
+
+          # Delete test contacts (clear join table references first)
+          Contact.where(entity: entity, email: TEST_EMAILS).find_each do |c|
+            ActiveRecord::Base.connection.execute(
+              "DELETE FROM contact_groups_contacts WHERE contact_id = #{c.id}"
+            )
+            c.destroy
+          rescue => e
+            Rails.logger.debug "[BenchmarkCleanup] Contact #{c.id}: #{e.message}"
+          end
+        rescue => e
+          Rails.logger.warn "[BenchmarkCleanup] contact_import cleanup failed: #{e.message}"
+        end
+
         def self.build
           Scenario.new(
             id: :contact_import_and_campaign,
@@ -13,6 +52,12 @@ module Benchmarks
             description: "Tests data handling + content creation: the AI must understand " \
                          "a data request, create contacts, organize them, and build a campaign.",
             tags: [:core],
+            setup: ->(entity:, user:) {
+              ContactImportAndCampaign.cleanup!(entity)
+            },
+            teardown: ->(entity:, user:) {
+              ContactImportAndCampaign.cleanup!(entity)
+            },
             messages: [
               "I have 5 new leads I need to add: John Smith (john@acme.com, CEO), " \
               "Sarah Jones (sarah@techstart.io, CTO), Mike Chen (mike@growthco.com, VP Marketing), " \

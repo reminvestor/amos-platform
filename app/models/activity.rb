@@ -32,6 +32,10 @@ class Activity < ApplicationRecord
 
   STATUSES = %w[pending in_progress completed cancelled].freeze
   PRIORITIES = %w[low normal high urgent].freeze
+
+  attribute :status, :string, default: "pending"
+  attribute :priority, :string, default: "normal"
+  attribute :activity_type, :string, default: "note"
   
   CALL_OUTCOMES = %w[connected voicemail no_answer busy callback_scheduled left_message].freeze
   MEETING_OUTCOMES = %w[completed rescheduled cancelled no_show].freeze

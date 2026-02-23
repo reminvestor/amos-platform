@@ -28,6 +28,8 @@ class Opportunity < ApplicationRecord
     product_fit went_silent other
   ].freeze
 
+  attribute :stage, :string, default: "lead"
+
   # Validations
   validates :name, presence: true
   validates :stage, presence: true, inclusion: { in: STAGES.keys }
