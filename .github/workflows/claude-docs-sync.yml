@@ -62,7 +62,10 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: |
+          model: claude-sonnet-4-20250514
+          max_turns: 30
+          allowed_tools: "Read,Write,Edit,Glob,Grep,Bash"
+          direct_prompt: |
             # Monthly Documentation Sync
 
             You are running a scheduled documentation sync. Code has changed since ${{ steps.check-changes.outputs.since_date }}.
@@ -107,7 +110,6 @@ jobs:
             - ONLY update docs when they are incorrect or misleading
             - Focus on CLAUDE.md and README.md primarily
             - If no problems are found, report that and DO NOT create a PR
-          claude_args: "--model claude-sonnet-4-20250514 --max-turns 30 --allowedTools Read,Write,Edit,Glob,Grep,Bash"
 
       - name: Report no changes
         if: steps.check-changes.outputs.has_changes == 'false'

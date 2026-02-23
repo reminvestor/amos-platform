@@ -95,7 +95,10 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: |
+          model: claude-sonnet-4-20250514
+          max_turns: 35
+          allowed_tools: "Read,Write,Edit,Glob,Grep,Bash"
+          direct_prompt: |
             # Weekly Code Quality Review
 
             You are performing a scheduled code quality review of a specific directory.
@@ -140,7 +143,6 @@ jobs:
             - Fix issues that are clear improvements
             - Don't refactor working code just for style
             - If no issues found, report that and skip PR creation
-          claude_args: "--model claude-sonnet-4-20250514 --max-turns 35 --allowedTools Read,Write,Edit,Glob,Grep,Bash"
 
   report-completion:
     needs: [select-directories, review-directory]

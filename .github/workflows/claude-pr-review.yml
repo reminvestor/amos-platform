@@ -66,7 +66,10 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: |
+          model: claude-sonnet-4-20250514
+          max_turns: 10
+          allowed_tools: "Read,Glob,Grep,Bash"
+          direct_prompt: |
             Review this Pull Request using the standards in .claude/agents/code-reviewer.md
 
             1. Read .claude/agents/code-reviewer.md for the full review checklist
@@ -79,4 +82,3 @@ jobs:
 
             Provide feedback organized by severity (Critical, Warning, Suggestion).
             Post your review as a PR comment using `gh pr comment`.
-          claude_args: "--model claude-sonnet-4-20250514 --max-turns 10 --allowedTools Read,Glob,Grep,Bash"
