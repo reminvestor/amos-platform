@@ -122,8 +122,8 @@ module V3
         rescue ::Tools::AskUserTool::ExecutionSuspended => e
           raise e # Let ask_user suspension propagate
         rescue => e
-          Rails.logger.error "[V3::ToolRegistry] #{name} failed: #{e.message}"
-          { success: false, error: e.message, backtrace: e.backtrace.first(5) }
+          Rails.logger.error "[V3::ToolRegistry] #{name} failed: #{e.class}: #{e.message}\n#{e.backtrace&.first(3)&.join("\n")}"
+          V3::AiErrorTransformer.transform(e, tool: name)
         end
       end
 

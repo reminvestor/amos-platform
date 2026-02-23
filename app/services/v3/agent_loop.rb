@@ -245,18 +245,18 @@ module V3
             conversation_messages << { role: "assistant", content: [{ text: turn_text }] }
 
             nudge_text = if @hallucination_guard_count == 1 && is_build_request
-              "[SYSTEM] STOP. You claimed to create an app/module but you did NOT call any tool. " \
-              "You MUST call platform_create(type: \"app\", data: { name: \"...\", description: \"...\" }) " \
-              "to actually build the module. Describing what you would create is NOT the same as creating it. " \
-              "Call the tool NOW."
+              "[SYSTEM] STOP. You described what you would build but did NOT call any tool. " \
+              "Describing what you would create is NOT the same as creating it. " \
+              "You MUST call platform_create(type: \"app\", data: { name: \"...\", description: \"...\" }) NOW. " \
+              "Do not explain — just call the tool."
             elsif @hallucination_guard_count == 1
-              "[SYSTEM] Check-in: The user asked you to perform an action (#{@user_message.truncate(80)}), " \
-              "and you responded with text but did NOT call any tools. If you have real data from a " \
-              "previous tool call, that's fine — just confirm. But if you fabricated or guessed at the " \
-              "data, you MUST call the appropriate tool now (platform_execute, platform_query, platform_create, etc.) " \
-              "to get real results. Do NOT make up data."
+              "[SYSTEM] You responded with text but did NOT call any tools. " \
+              "The user's message was a direct command: \"#{@user_message.truncate(80)}\". " \
+              "Direct commands must be executed immediately with the appropriate tool " \
+              "(platform_create, platform_execute, platform_query, or platform_update). " \
+              "Do NOT describe what you will do — call the tool NOW."
             else
-              "[SYSTEM] FINAL WARNING: You have now responded TWICE without calling a tool. " \
+              "[SYSTEM] FINAL WARNING: You have responded TWICE without calling a tool. " \
               "The user asked for a concrete action. You MUST call a tool in your next response. " \
               "If you cannot perform the action, say so honestly instead of pretending you did it."
             end
@@ -418,8 +418,8 @@ module V3
     rescue ::Tools::AskUserTool::ExecutionSuspended => e
       raise e # Propagate suspension
     rescue => e
-      Rails.logger.error "[V3::AgentLoop] Tool #{tc[:name]} error: #{e.message}"
-      { success: false, error: e.message }
+      Rails.logger.error "[V3::AgentLoop] Tool #{tc[:name]} error: #{e.class}: #{e.message}\n#{e.backtrace&.first(3)&.join("\n")}"
+      V3::AiErrorTransformer.transform(e, tool: tc[:name])
     end
 
     # ═══════════════════════════════════════════════════════════════
@@ -550,13 +550,15 @@ module V3
     end
 
     # Check if the model's response claims it completed an action without actually calling a tool.
-    # Four tiers:
+    # Five tiers:
     #   1. Short responses (<500 chars) with completion language (e.g., "Done! I've updated it")
     #   2. ANY length response that narrates executing a tool action (e.g., "Let me pull... Here are your results:")
     #      This catches models that fabricate detailed fake data instead of calling tools.
     #   3. ANY length response that claims to have built/created an app/module with details
     #      (e.g., "Your Weekly Task Tracker module has been created. ✅ 7 columns...")
     #   4. Feature lists with creation-related words
+    #   5. Intent-without-action: model says what it WILL do instead of doing it
+    #      (e.g., "I'll create a landing page..." without calling platform_create)
     def response_claims_completion?(text)
       return false if text.blank?
 
@@ -568,6 +570,15 @@ module V3
       if text.match?(proposal_patterns) && ends_with_question
         Rails.logger.info "[V3::AgentLoop] Hallucination guard: skipping — response is a proposal/offer, not a completion claim"
         return false
+      end
+
+      # Tier 0: Intent-without-action — model describes what it WILL do but doesn't call tools.
+      # The user gave a direct command, and the model responded with "I'll create..." or
+      # "Let me build..." without actually invoking a tool. This is the #1 failure mode.
+      intent_patterns = /\b(i['']ll (create|build|make|generate|set up|add|send|delete)|let me (create|build|make|generate|set up|add|send)|i['']m going to (create|build|make)|i will (create|build|make|generate|set up)|here['']s what i['']ll (do|create|build))\b/i
+      if text.match?(intent_patterns) && !ends_with_question
+        Rails.logger.info "[V3::AgentLoop] Hallucination guard: intent-without-action detected"
+        return true
       end
 
       # Tier 1: Short direct claims (original check)

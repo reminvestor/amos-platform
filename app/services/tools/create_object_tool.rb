@@ -71,6 +71,8 @@ module Tools
           create_opportunity(data)
         when "activities"
           create_activity(data)
+        when "support_tickets"
+          create_support_ticket(data)
         end
 
         # Determine if this was a find-or-create merge vs a new record
@@ -96,36 +98,13 @@ module Tools
           note += "Some values were automatically adjusted: #{response[:auto_corrections].join('; ')}"
           response[:note] = note
         end
+
+        response[:next_actions] = next_actions_for(object_type, result)
         
         success_response(response)
-      rescue ActiveRecord::RecordInvalid => e
-        # Rich error: include valid values so the Brain can self-correct in one try
-        enriched_errors = e.record.errors.map do |error|
-          msg = error.full_message
-          case error.attribute.to_s
-          when 'status'
-            valid = e.record.class.const_get(:STATUSES) rescue nil
-            msg += " (valid: #{valid.join(', ')})" if valid
-          when 'lifecycle_stage'
-            valid = e.record.class.const_get(:LIFECYCLE_STAGES).keys rescue nil
-            msg += " (valid: #{valid.join(', ')})" if valid
-          when 'lead_source'
-            valid = e.record.class.const_get(:LEAD_SOURCES) rescue nil
-            msg += " (valid: #{valid.join(', ')})" if valid
-          when 'stage'
-            valid = e.record.class.const_get(:STAGES).keys rescue nil
-            msg += " (valid: #{valid.join(', ')})" if valid
-          end
-          msg
-        end
-
-        error_response(
-          "Validation failed: #{enriched_errors.join(', ')}",
-          validation_errors: enriched_errors
-        )
       rescue => e
-        Rails.logger.error "CreateObjectTool error: #{e.message}"
-        error_response("Creation failed: #{e.message}")
+        Rails.logger.error "CreateObjectTool error: #{e.class}: #{e.message}"
+        V3::AiErrorTransformer.transform(e, type: object_type&.singularize, tool: "create_object", data: data)
       end
     end
 
@@ -318,23 +297,40 @@ module Tools
     def create_contact_group(data)
       data = data.symbolize_keys
       name = data[:name]
+      member_ids = Array(data.delete(:contact_ids)).compact
+      member_emails = Array(data.delete(:contact_emails)).compact
 
-      # Find-or-create by name: if group already exists, return it
       if name.present?
         existing = entity.contact_groups.find_by(name: name)
         if existing
           Rails.logger.info "♻️ Contact group '#{name}' already exists (ID: #{existing.id}) — returning existing"
           @was_existing = true
+          assign_group_members(existing, member_ids, member_emails)
           return existing
         end
       end
 
       group = ContactGroup.new(data)
       group.entity = entity
+      group.user = user
       group.save!
 
-      Rails.logger.info "✅ Created contact group: #{group.name} (ID: #{group.id})"
+      assign_group_members(group, member_ids, member_emails)
+
+      Rails.logger.info "✅ Created contact group: #{group.name} (ID: #{group.id}, members: #{group.contacts.count})"
       group
+    end
+
+    def assign_group_members(group, member_ids, member_emails)
+      contacts_to_add = []
+      contacts_to_add += entity.contacts.where(id: member_ids) if member_ids.any?
+      contacts_to_add += entity.contacts.where(email: member_emails) if member_emails.any?
+
+      contacts_to_add.uniq.each do |contact|
+        group.contacts << contact unless group.contact_ids.include?(contact.id)
+      rescue ActiveRecord::RecordNotUnique
+        next
+      end
     end
 
     def create_email_template(data)
@@ -565,6 +561,34 @@ module Tools
       activity
     end
 
+    def create_support_ticket(data)
+      data = data.symbolize_keys
+
+      title = data[:title] || data[:subject] || data[:name]
+      return error_response("Missing: title (describe the issue)") if title.blank?
+
+      description = data[:description] || data[:body] || ""
+      category = data[:category]&.downcase
+      priority = data[:priority]&.downcase || "medium"
+
+      # Use the model's built-in factory for dedup, fingerprinting, and signal emission
+      ticket = SupportTicket.create_from_user_report!(
+        entity: entity,
+        user: user,
+        title: title,
+        description: description
+      )
+
+      # Apply category/priority overrides if provided
+      updates = {}
+      updates[:category] = category if category.present? && SupportTicket::CATEGORIES.include?(category)
+      updates[:priority] = priority if SupportTicket::PRIORITIES.include?(priority)
+      ticket.update!(updates) if updates.any?
+
+      Rails.logger.info "✅ Created support ticket: #{ticket.ticket_number} — #{ticket.title}"
+      ticket
+    end
+
     def create_module_record(object_type, config, data)
       # Parse "module_slug/model_name" format
       parts = object_type.to_s.split('/')
@@ -641,6 +665,49 @@ module Tools
       error_response("Creation failed: #{e.message}")
     end
     
+    def next_actions_for(object_type, record)
+      id = record.id
+      case object_type
+      when "campaigns"
+        [
+          "Add recipients: platform_update(type: 'campaign', id: #{id}, data: { contact_group_ids: [GROUP_ID] })",
+          "Send it: platform_execute(action: 'send_campaign', campaign_id: #{id})"
+        ]
+      when "contacts"
+        [
+          "Add to a group: platform_create(type: 'contact_group', data: { name: '...', contact_ids: [#{id}] })",
+          "Create an opportunity: platform_create(type: 'opportunity', data: { name: '...', contact_id: #{id} })"
+        ]
+      when "contact_groups"
+        [
+          "Create a campaign for this group: platform_create(type: 'campaign', data: { name: '...', email_template_id: TEMPLATE_ID })",
+          "Create an email sequence: platform_create(type: 'email_sequence', data: { name: '...', contact_group_id: #{id} })"
+        ]
+      when "email_templates"
+        [
+          "Use in a campaign: platform_create(type: 'campaign', data: { name: '...', email_template_id: #{id} })",
+          "Use in a sequence step: platform_create(type: 'sequence_step', data: { email_sequence_id: SEQ_ID, email_template_id: #{id}, step_number: 1, delay_hours: 0 })"
+        ]
+      when "email_sequences"
+        [
+          "Add steps: platform_create(type: 'sequence_step', data: { email_sequence_id: #{id}, step_number: 1, delay_hours: 0, email_template_id: TEMPLATE_ID })",
+          "Enroll contacts: platform_execute(action: 'enroll_sequence', sequence_id: #{id})"
+        ]
+      when "sequence_steps"
+        ["Step added. Add more steps or enroll contacts in the sequence."]
+      when "opportunities"
+        [
+          "Add an activity: platform_create(type: 'activity', data: { activity_type: 'note', subject: '...', opportunity_id: #{id} })"
+        ]
+      when "activities"
+        ["Activity recorded. Present the result to the user."]
+      when "support_tickets"
+        ["Ticket created. Let the user know their issue has been logged and will be investigated."]
+      else
+        []
+      end
+    end
+
     def serialize_record(record)
       case record
       when Campaign
@@ -711,6 +778,17 @@ module Tools
           current_step_number: record.current_step_number,
           next_send_at: record.next_send_at,
           progress_percentage: record.progress_percentage,
+          created_at: record.created_at
+        }
+      when SupportTicket
+        {
+          id: record.id,
+          ticket_number: record.ticket_number,
+          title: record.title,
+          status: record.status,
+          priority: record.priority,
+          category: record.category,
+          source: record.source,
           created_at: record.created_at
         }
       else

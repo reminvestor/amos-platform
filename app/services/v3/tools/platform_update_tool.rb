@@ -118,8 +118,8 @@ module V3
           "data" => data
         })
       rescue => e
-        Rails.logger.error "[V3::PlatformUpdate] Error: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
-        error_response("Update failed: #{e.message}")
+        Rails.logger.error "[V3::PlatformUpdate] Error: #{e.class}: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+        V3::AiErrorTransformer.transform(e, type: type, tool: "platform_update", data: data)
       end
 
       private
@@ -212,11 +212,9 @@ module V3
           canvas_type: canvas_slug,
           canvas_data: { app_module_id: app_module.id }
         )
-      rescue ActiveRecord::RecordInvalid => e
-        error_response("Validation failed: #{e.message}")
       rescue => e
-        Rails.logger.error "[V3::PlatformUpdate] App module update failed: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
-        error_response("Failed to update app module: #{e.message}")
+        Rails.logger.error "[V3::PlatformUpdate] App module update failed: #{e.class}: #{e.message}"
+        V3::AiErrorTransformer.transform(e, type: "app_module", tool: "platform_update")
       end
 
       def edit_landing_page_section(landing_page_id, data)
@@ -313,8 +311,8 @@ module V3
           result
         end
       rescue => e
-        Rails.logger.error "[V3::PlatformUpdate] Landing page regeneration failed: #{e.message}"
-        error_response("Failed to regenerate landing page: #{e.message}")
+        Rails.logger.error "[V3::PlatformUpdate] Landing page regeneration failed: #{e.class}: #{e.message}"
+        V3::AiErrorTransformer.transform(e, type: "landing_page", tool: "platform_update")
       end
 
       # ═══════════════════════════════════════════════════════════════
@@ -470,11 +468,9 @@ module V3
           message: "Updated domain '#{domain.full_domain}' (#{update_data.keys.join(', ')})",
           canvas_type: "custom_domains"
         )
-      rescue ActiveRecord::RecordInvalid => e
-        error_response("Validation failed: #{e.message}")
       rescue => e
-        Rails.logger.error "[V3::PlatformUpdate] Custom domain update failed: #{e.message}"
-        error_response("Failed to update custom domain: #{e.message}")
+        Rails.logger.error "[V3::PlatformUpdate] Custom domain update failed: #{e.class}: #{e.message}"
+        V3::AiErrorTransformer.transform(e, type: "custom_domain", tool: "platform_update")
       end
 
       # ═══════════════════════════════════════════════════════════════
@@ -691,11 +687,9 @@ module V3
           record: record.attributes.except('entity_id'),
           message: "Updated #{type.titleize} ##{id} (#{update_data.keys.join(', ')})"
         )
-      rescue ActiveRecord::RecordInvalid => e
-        error_response("Validation failed: #{e.message}")
       rescue => e
-        Rails.logger.error "[V3::PlatformUpdate] Dynamic module update failed: #{e.message}"
-        error_response("Failed to update #{type} ##{id}: #{e.message}")
+        Rails.logger.error "[V3::PlatformUpdate] Dynamic module update failed: #{e.class}: #{e.message}"
+        V3::AiErrorTransformer.transform(e, type: type, tool: "platform_update")
       end
 
       def resolve_dynamic_model(type)

@@ -117,8 +117,8 @@ module V3
           query_data(type, args)
         end
       rescue => e
-        Rails.logger.error "[V3::PlatformQuery] Error: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
-        error_response("Query failed: #{e.message}")
+        Rails.logger.error "[V3::PlatformQuery] Error: #{e.class}: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+        V3::AiErrorTransformer.transform(e, type: type, tool: "platform_query")
       end
 
       private
@@ -763,8 +763,8 @@ module V3
           message: "#{records.length} #{type} record(s)#{total > records.length ? " (#{total} total)" : ''}"
         )
       rescue => e
-        Rails.logger.error "[V3::PlatformQuery] Dynamic module query failed: #{e.message}"
-        error_response("Query failed for #{type}: #{e.message}")
+        Rails.logger.error "[V3::PlatformQuery] Dynamic module query failed: #{e.class}: #{e.message}"
+        V3::AiErrorTransformer.transform(e, type: type, tool: "platform_query")
       end
 
       def resolve_dynamic_model(type)

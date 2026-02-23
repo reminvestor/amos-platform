@@ -150,8 +150,8 @@ module V3
           )
         end
       rescue => e
-        Rails.logger.error "[V3::PlatformExecute] Error: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
-        error_response("Execution failed: #{e.message}")
+        Rails.logger.error "[V3::PlatformExecute] Error: #{e.class}: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+        V3::AiErrorTransformer.transform(e, tool: "platform_execute", action: action)
       end
 
       private

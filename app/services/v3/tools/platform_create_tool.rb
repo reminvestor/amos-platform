@@ -10,7 +10,7 @@ module V3
     #
     class PlatformCreateTool < ::Tools::BaseTool
       # Types that need special builder routing (not just DB creates)
-      BUILDER_TYPES = %w[landing_page website web_app workflow automation app module sync scheduled_task integration custom_domain].freeze
+      BUILDER_TYPES = %w[landing_page website web_app workflow automation app module sync scheduled_task integration custom_domain email_sequence].freeze
 
       def self.metadata
         {
@@ -22,16 +22,23 @@ module V3
 
             Examples:
             - type: "contact", data: { first_name: "Jane", email: "j@example.com", lifecycle_stage: "customer" }
-            - type: "contact_group", data: { name: "VIP Customers" }
-            - type: "email_template", data: { name: "Welcome", subject: "Welcome!", body: "<h1>Hi!</h1>" }
+            - type: "contact", data: { contacts: [{first_name: "A", email: "a@b.com"}, {first_name: "B", email: "b@c.com"}] } (batch)
+            - type: "contact_group", data: { name: "VIP Customers", contact_ids: [1, 2, 3] }
+            - type: "contact_group", data: { name: "Leads", contact_emails: ["a@b.com", "c@d.com"] }
+            - type: "email_template", data: { name: "Welcome", subject: "Welcome!", body: "<h1>Hi {{first_name}}!</h1><p>Your content here...</p>" }
             - type: "campaign", data: { name: "Summer Sale", email_template_id: 5 }
             - type: "automation", data: { name: "Welcome Flow", trigger: "contact_created", action: "send_email", action_config: { template_id: 5 } }
-            - type: "landing_page", data: { title: "My Page", description: "Lead gen page" }
+            - type: "landing_page", data: { title: "CloudSync Pro", description: "SaaS collaboration tool", business_info: { value_proposition: "Real-time collaboration for teams", key_benefits: ["Instant sync", "Smart scheduling", "Automated reports"], target_audience: "Remote teams" } }
+            - type: "email_sequence", data: { name: "Welcome Series", emails: [{ subject: "Welcome!", body: "<h1>Hi {{first_name}}!</h1>...", delay_days: 0 }, { subject: "Getting Started", body: "...", delay_days: 3 }] }
             - type: "app", data: { name: "CRM", description: "Contact management" }
 
+            Email sequence (one-call): pass 'emails' array to auto-create templates, contact group, sequence, and steps in one call.
             Automation triggers: contact_created, form_submit, record_updated, status_changed, field_changed, schedule, webhook
             Automation actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user
             Contact fields: email (required), first_name, last_name, lifecycle_stage, status, phone, company, custom_fields.
+            Contact group: name (required), contact_ids or contact_emails to add members.
+            Landing page: title, description, business_info (value_proposition, key_benefits, target_audience), key_details (pricing, social_proof), design_style.
+            Email template: name, subject, body (HTML with {{first_name}}, {{company}} merge tags).
           DESC
           category: "v3_core",
           input_schema: {
@@ -43,7 +50,7 @@ module V3
               },
               data: {
                 type: "object",
-                description: "Object data. Fields depend on type. Use the platform_query tool with type='schema' and object='typename' to see available fields."
+                description: "Object data. Fields depend on type — see examples above. Just pass the fields you have; unknown fields are auto-stored as custom_fields."
               }
             },
             required: %w[type data]
@@ -87,8 +94,8 @@ module V3
           "data" => data
         })
       rescue => e
-        Rails.logger.error "[V3::PlatformCreate] Error: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
-        error_response("Creation failed: #{e.message}")
+        Rails.logger.error "[V3::PlatformCreate] Error: #{e.class}: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+        V3::AiErrorTransformer.transform(e, type: type, tool: "platform_create", data: data)
       end
 
       private
@@ -167,6 +174,8 @@ module V3
           build_scheduled_task(data)
         when "custom_domain"
           build_custom_domain(data)
+        when "email_sequence"
+          build_email_sequence(data)
         else
           error_response("Unknown builder type: #{type}")
         end
@@ -179,16 +188,111 @@ module V3
       def build_landing_page(data)
         Rails.logger.info "[V3::PlatformCreate] Building landing page: #{data['title'] || data[:title]}"
 
-        # Delegate to the existing GenerateLandingPageTool which handles
-        # AI HTML generation, image generation, form injection, etc.
         generator = ::Tools::GenerateLandingPageTool.new(
           user: user,
           entity: entity,
           context: context
         )
 
-        # Pass through all data fields — GenerateLandingPageTool accepts many optional fields
+        # Enrich sparse data: if model only passed title/description, extract
+        # structured content from the description so the generator has richer inputs.
+        desc = (data["description"] || data[:description]).to_s
+        if desc.length > 30 && (data["business_info"] || data[:business_info]).blank?
+          data["content_focus"] ||= desc
+        end
+
         generator.execute(data)
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # EMAIL SEQUENCE — One-call builder: creates templates + group + sequence + steps
+      # ═══════════════════════════════════════════════════════════════
+
+      def build_email_sequence(data)
+        data = (data.is_a?(Hash) ? data : {}).deep_symbolize_keys
+        name = data[:name] || "Email Sequence"
+        emails = data[:emails] || data[:steps]
+
+        unless emails.is_a?(Array) && emails.any?
+          # Fall through to standard CreateObjectTool for simple sequence creation
+          create_tool = ::Tools::CreateObjectTool.new(user: user, entity: entity, context: context)
+          return create_tool.execute({ "object_type" => "email_sequences", "data" => data.stringify_keys })
+        end
+
+        Rails.logger.info "[V3::PlatformCreate] Building email sequence '#{name}' with #{emails.length} emails"
+
+        created_templates = []
+        emails.each_with_index do |email_data, idx|
+          email_data = email_data.deep_symbolize_keys
+          template_name = email_data[:name] || "#{name} - Email #{idx + 1}"
+          subject = email_data[:subject] || template_name
+          body = email_data[:body] || "<p>#{subject}</p>"
+
+          template = entity.email_templates.find_by(name: template_name)
+          template ||= EmailTemplate.create!(
+            name: template_name,
+            subject: subject,
+            body: body,
+            user: user,
+            entity: entity
+          )
+          created_templates << template
+        end
+
+        # Auto-create or use provided contact group
+        contact_group_id = data[:contact_group_id]
+        unless contact_group_id
+          group = entity.contact_groups.find_by(name: "#{name} Recipients")
+          group ||= ContactGroup.create!(
+            name: "#{name} Recipients",
+            user: user,
+            entity: entity
+          )
+          contact_group_id = group.id
+        end
+
+        sequence = EmailSequence.create!(
+          name: name,
+          goal: data[:goal],
+          entity: entity,
+          contact_group_id: contact_group_id,
+          status: "draft"
+        )
+
+        created_templates.each_with_index do |template, idx|
+          email_data = emails[idx].deep_symbolize_keys
+          delay_hours = (email_data[:delay_days] || 0).to_i * 24
+          delay_hours = email_data[:delay_hours].to_i if email_data[:delay_hours].present?
+
+          SequenceStep.create!(
+            email_sequence: sequence,
+            email_template: template,
+            step_number: idx + 1,
+            delay_hours: delay_hours
+          )
+        end
+
+        Rails.logger.info "[V3::PlatformCreate] Built email sequence '#{name}' (ID: #{sequence.id}) with #{created_templates.length} steps"
+
+        success_response(
+          object_type: "email_sequence",
+          id: sequence.id,
+          name: name,
+          status: "draft",
+          contact_group_id: contact_group_id,
+          steps_created: created_templates.length,
+          templates: created_templates.map { |t| { id: t.id, name: t.name, subject: t.subject } },
+          message: "Email sequence '#{name}' created with #{created_templates.length} email(s). " \
+                   "Templates, contact group, sequence, and steps are all set up. " \
+                   "Add contacts to the group, then enroll them with platform_execute(action: 'enroll_sequence', sequence_id: #{sequence.id}).",
+          next_actions: [
+            "Add contacts to group: platform_update(type: 'contact_group', id: #{contact_group_id}, data: { contact_ids: [...] })",
+            "Enroll contacts: platform_execute(action: 'enroll_sequence', sequence_id: #{sequence.id})"
+          ]
+        )
+      rescue => e
+        Rails.logger.error "[V3::PlatformCreate] Email sequence build failed: #{e.class}: #{e.message}"
+        V3::AiErrorTransformer.transform(e, type: "email_sequence", tool: "platform_create", data: data)
       end
 
       # ═══════════════════════════════════════════════════════════════
@@ -955,9 +1059,20 @@ module V3
         stream_progress("Planning app '#{name}'...", percentage: 0)
 
         begin
-          # Check for an existing resumable plan before creating a new one.
-          # This prevents duplicate modules when a user says "build it again".
-          existing_plan = find_resumable_plan(name)
+          existing_plan = find_existing_plan(name)
+
+          if existing_plan&.status == "completed"
+            return return_completed_plan(existing_plan, name)
+          end
+
+          if existing_plan&.status == "building"
+            return success_response(
+              app_id: existing_plan.id,
+              name: name,
+              message: "App '#{name}' is currently being built. Please wait for it to finish.",
+              in_progress: true
+            )
+          end
 
           plan = if existing_plan
             Rails.logger.info "[V3::PlatformCreate] Resuming existing plan #{existing_plan.id} (status: #{existing_plan.status}) for '#{name}'"
@@ -987,20 +1102,25 @@ module V3
             progress_callback: build_progress,
             cancellation_check: cancel_check
           )
-          result = existing_plan ? builder.execute! : builder.execute!
+          result = builder.execute!
 
           if result[:success] == true
             stream_progress("App '#{name}' is ready!", percentage: 100)
 
-            built_module = plan.reload.app_modules.first
+            modules = plan.reload.app_modules.where(status: "active")
+            built_module = modules.first
             canvas_data = built_module ? { app_module_id: built_module.id } : {}
+            module_list = modules.map { |m| "#{m.name} (#{m.slug})" }.join(", ")
 
             success_response(
               app_id: plan.id,
               name: name,
-              modules: result[:results][:modules]&.map { |m| { id: m[:id], name: m[:name], slug: m[:slug] } } || [],
+              modules: modules.map { |m| { id: m.id, name: m.name, slug: m.slug, status: m.status } },
               workflows: result[:results][:workflows]&.length || 0,
-              message: "App '#{name}' is built and ready to use!",
+              message: "App '#{name}' is built and active with #{modules.count} module(s): #{module_list}. " \
+                       "All modules have database tables, CRUD operations, and UI canvases ready. " \
+                       "To add data, use platform_create(type: 'module_slug', data: {...}). " \
+                       "The app is complete — present the result to the user.",
               canvas_type: built_module ? "module_manager" : nil,
               canvas_data: canvas_data
             )
@@ -1026,12 +1146,26 @@ module V3
         end
       end
 
-      def find_resumable_plan(name)
+      def find_existing_plan(name)
         ApplicationPlan.where(entity_id: entity.id)
-          .where(status: %w[paused building failed])
-          .where("created_at > ?", 7.days.ago)
+          .where(status: %w[completed paused building failed approved drafting])
+          .where("created_at > ?", 30.days.ago)
           .order(created_at: :desc)
           .detect { |p| p.name.downcase.strip == name.downcase.strip }
+      end
+
+      def return_completed_plan(plan, name)
+        modules = plan.app_modules.where(status: "active")
+        built_module = modules.first
+
+        success_response(
+          app_id: plan.id,
+          name: name,
+          modules: modules.map { |m| { id: m.id, name: m.name, slug: m.slug } },
+          message: "App '#{name}' already exists and is active with #{modules.count} module(s): #{modules.map(&:name).join(', ')}. You can use it now or ask me to modify it.",
+          canvas_type: built_module ? "module_manager" : nil,
+          canvas_data: built_module ? { app_module_id: built_module.id } : {}
+        )
       end
 
       def build_cancellation_check(build_start_time)

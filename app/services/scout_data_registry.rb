@@ -21,13 +21,12 @@ class ScoutDataRegistry
       scoped_by: "entity_id",
       creatable: true,
       creation_schema: {
-        required: [ "name", "email_template_id" ],
-        optional: [ "subject", "scheduled_at", "description", "from_email", "from_name", "contact_group_ids" ],
+        required: [ "name" ],
+        optional: [ "email_template_id", "subject", "scheduled_at", "description", "from_email", "from_name", "contact_group_ids" ],
         defaults: {
-          status: "draft",
-          from_email: -> { entity.default_from_email },
-          from_name: -> { entity.name }
-        }
+          status: "draft"
+        },
+        notes: "email_template_id is optional but recommended. Attach contact_group_ids to set recipients. Status auto-defaults to 'draft'."
       }
     },
 
@@ -110,8 +109,9 @@ class ScoutDataRegistry
       creatable: true,
       creation_schema: {
         required: [ "name" ],
-        optional: [ "description", "contact_ids" ],
-        defaults: {}
+        optional: [ "description", "contact_ids", "contact_emails" ],
+        defaults: {},
+        notes: "user is auto-assigned. Use contact_ids or contact_emails to add members on creation. Duplicate names return the existing group."
       }
     },
 
@@ -135,7 +135,8 @@ class ScoutDataRegistry
       creation_schema: {
         required: [ "name", "subject", "body" ],
         optional: [ "description" ],
-        defaults: {}
+        defaults: {},
+        notes: "body should be complete HTML with merge tags like {{first_name}}, {{company}}. Duplicate names return the existing template."
       }
     },
 
@@ -214,14 +215,15 @@ class ScoutDataRegistry
       scoped_by: 'entity_id',
       creatable: true,
       creation_schema: {
-        required: ['name', 'contact_group_id'],
-        optional: ['goal', 'status'],
+        required: ['name'],
+        optional: ['contact_group_id', 'goal', 'status'],
         defaults: {
           status: 'draft',
           enrolled_count: 0,
           completed_count: 0,
           active_count: 0
-        }
+        },
+        notes: "contact_group_id is auto-created if not provided. For one-call creation, use platform_create(type: 'email_sequence', data: { name: '...', emails: [{ subject: '...', body: '...', delay_days: 0 }] })."
       }
     },
 
@@ -251,7 +253,8 @@ class ScoutDataRegistry
           sent_count: 0,
           opened_count: 0,
           clicked_count: 0
-        }
+        },
+        notes: "Must provide EITHER email_template_id OR both subject and body. step_number must be unique within the sequence."
       }
     },
 
@@ -274,12 +277,13 @@ class ScoutDataRegistry
       scoped_by: 'entity_id',
       creatable: true,
       creation_schema: {
-        required: ['email_sequence_id', 'contact_id', 'entity_id'],
+        required: ['email_sequence_id', 'contact_id'],
         optional: ['status', 'next_send_at'],
         defaults: {
           status: 'pending',
           current_step_number: 0
-        }
+        },
+        notes: "entity_id is auto-assigned. Duplicate enrollment returns the existing record."
       }
     },
 
@@ -302,13 +306,14 @@ class ScoutDataRegistry
       scoped_by: 'entity_id',
       creatable: true,
       creation_schema: {
-        required: ['name', 'contact_id'],
-        optional: ['stage', 'value', 'probability', 'expected_close_date', 'user_id', 'notes'],
+        required: ['name'],
+        optional: ['contact_id', 'contact_email', 'stage', 'value', 'probability', 'expected_close_date', 'user_id', 'notes'],
         defaults: {
           stage: 'lead',
           probability: 10,
           value: 0
-        }
+        },
+        notes: "Provide contact_id or contact_email to link to a contact (auto-creates if contact_email not found). stage values: lead, qualified, proposal, negotiation, closed_won, closed_lost."
       }
     },
 
@@ -337,7 +342,41 @@ class ScoutDataRegistry
           status: 'pending',
           priority: 'medium',
           activity_type: 'task'
-        }
+        },
+        notes: "Must provide EITHER contact_id OR opportunity_id (or both). activity_type values: note, email, call, meeting, task. status values: pending, in_progress, completed, cancelled. priority values: low, normal, high, urgent."
+      }
+    },
+
+    'support_tickets' => {
+      model: 'SupportTicket',
+      description: 'Support tickets for tracking user-reported issues, bugs, and feature requests',
+      queryable_fields: [
+        'id', 'ticket_number', 'title', 'status', 'priority', 'category', 'source',
+        'created_at', 'updated_at', 'resolved_at'
+      ],
+      filterable_fields: [
+        'status', 'priority', 'category', 'source', 'created_at', 'resolved_at'
+      ],
+      metrics: [
+        'affected_user_count', 'debug_session_count', 'time_to_resolution_minutes'
+      ],
+      relationships: [
+        'entity', 'user', 'debug_sessions', 'bounty'
+      ],
+      scoped_by: 'entity_id',
+      creatable: true,
+      creation_schema: {
+        required: ['title'],
+        optional: ['description', 'category', 'priority'],
+        defaults: {
+          source: 'user_reported',
+          status: 'open',
+          priority: 'medium',
+          category: 'bug'
+        },
+        notes: "ticket_number is auto-generated (AMOS-XXXXX). Duplicate issues are auto-merged. " \
+               "category values: bug, performance, feature_request, security, data_issue, agent_error, integration_error, ui_issue, documentation. " \
+               "priority values: low, medium, high, critical."
       }
     }
   }.freeze
