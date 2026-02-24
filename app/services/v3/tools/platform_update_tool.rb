@@ -230,7 +230,7 @@ module V3
         default_canvas = app_module.module_canvases.find_by(is_default: true)
         canvas_slug = default_canvas ? "module_#{default_canvas.slug}" : nil
 
-        success_response(
+        result = {
           id: app_module.id,
           type: "app_module",
           name: app_module.name,
@@ -240,7 +240,18 @@ module V3
           message: "Updated app '#{app_module.name}' (#{updated_fields.join(', ')})",
           canvas_type: canvas_slug,
           canvas_data: { app_module_id: app_module.id }
-        )
+        }
+
+        if updated_fields.include?("schema")
+          current_fields = app_module.metadata&.dig("schema", "fields") || []
+          result[:schema_fields] = current_fields.map do |f|
+            entry = { name: f["name"], type: f["field_type"] || f["type"], required: f["required"] }
+            entry[:options] = f["options"] if f["options"].present?
+            entry
+          end
+        end
+
+        success_response(**result)
       rescue => e
         Rails.logger.error "[V3::PlatformUpdate] App module update failed: #{e.class}: #{e.message}"
         V3::AiErrorTransformer.transform(e, type: "app_module", tool: "platform_update")

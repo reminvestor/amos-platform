@@ -720,6 +720,24 @@ module V3
             }
           end
           record[:steps] = steps if steps.any?
+        when "app_modules"
+          app_module = entity.app_modules.find_by(id: id) ||
+                       entity.app_modules.find_by(slug: id.to_s)
+          return unless app_module
+
+          schema = app_module.metadata&.dig("schema") || {}
+          fields = schema["fields"] || []
+          if fields.any?
+            record[:schema_fields] = fields.map do |f|
+              entry = { name: f["name"], type: f["field_type"] || f["type"], required: f["required"] }
+              entry[:options] = f["options"] if f["options"].present?
+              entry[:reference] = f["reference_module"] || f["references"] if (f["reference_module"] || f["references"]).present?
+              entry
+            end
+          end
+
+          record[:app_name] = app_module.app&.name if app_module.app
+          record[:description] = app_module.description if app_module.description.present?
         end
       rescue => e
         Rails.logger.warn "[PlatformQuery] enrich_single_record failed for #{type}##{id}: #{e.message}"

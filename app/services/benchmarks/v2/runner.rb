@@ -380,6 +380,17 @@ module Benchmarks
         when "platform_update"
           parts << "id=#{result['id']}" if result["id"]
           parts << "updated_fields=#{result['updated_fields']&.join(', ')}" if result["updated_fields"]
+          schema_fields = result["schema_fields"]
+          if schema_fields.is_a?(Array)
+            field_summaries = schema_fields.first(10).map do |f|
+              f = f.stringify_keys if f.respond_to?(:stringify_keys)
+              s = "#{f['name']}(#{f['type']})"
+              s += " opts=#{f['options'].join(',')}" if f["options"].is_a?(Array)
+              s += " required" if f["required"]
+              s
+            end
+            parts << "resulting_schema: [#{field_summaries.join('; ')}]"
+          end
         end
 
         parts.reject(&:blank?).join(" | ").truncate(1200)
@@ -423,8 +434,34 @@ module Benchmarks
           "query #{type}#{filter_summary}"
         when "platform_update"
           type = input["type"] || input[:type]
+          id = input["id"] || input[:id]
           data = input["data"] || input[:data] || {}
-          "update #{type} id=#{input['id'] || input[:id]}: #{data.keys.first(5).join(', ')}"
+          parts = ["update #{type} id=#{id}"]
+
+          if type.to_s =~ /app_module|module/
+            schema = data["schema"] || data[:schema]
+            if schema.is_a?(Hash)
+              fields = schema["fields"] || schema[:fields] || []
+              field_summaries = fields.map do |f|
+                f = f.stringify_keys if f.respond_to?(:stringify_keys)
+                name = f["name"]
+                ftype = f["field_type"] || f["type"]
+                opts = f["options"]
+                req = f["required"]
+                s = "#{name}(#{ftype})"
+                s += " opts=#{opts.join(',')}" if opts.is_a?(Array)
+                s += " required" if req
+                s
+              end
+              parts << "schema: [#{field_summaries.join('; ')}]"
+            end
+            direct = data.keys.map(&:to_s) - %w[schema metadata components]
+            parts << direct.join(", ") if direct.any?
+          else
+            parts << data.keys.first(5).join(", ")
+          end
+
+          parts.join(": ")
         when "platform_execute"
           action = input["action"] || input[:action]
           extra = []

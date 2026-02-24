@@ -75,6 +75,7 @@ module Benchmarks
         landing_page_iterative_edit: Scenarios::LandingPageIterativeEdit.build,
         email_sequence_refinement: Scenarios::EmailSequenceRefinement.build,
         campaign_edit_and_retarget: Scenarios::CampaignEditAndRetarget.build,
+        app_module_schema_edit: Scenarios::AppModuleSchemaEdit.build,
 
         # ═══════════════════════════════════════════════════════════
         # L4: Adversarial / edge cases (what breaks in production)

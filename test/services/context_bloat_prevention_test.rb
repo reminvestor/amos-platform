@@ -51,7 +51,7 @@ class ContextBloatPreventionTest < ActiveSupport::TestCase
     assert_match /Tool Efficiency/, tool_instructions
     assert_match /Quick Asset Type Guide/, tool_instructions
     assert_match /Show Visual Assets/, tool_instructions
-    assert_match /Freeform Canvas/, tool_instructions
+    assert_match /Dashboards, Reports/, tool_instructions
   end
 
   test "full prompt does not contain duplicate tool listing sections" do
