@@ -409,24 +409,38 @@ module Api
         return
       end
 
-      # Clear API cache
-      Rails.cache.delete("api_user_id:#{user.api_key}")
+      ActiveRecord::Base.transaction do
+        # Clear API cache
+        Rails.cache.delete("api_user_id:#{user.api_key}")
 
-      # Hard-delete entities where user is sole owner
-      user.entity_users.where(role: "owner").each do |entity_user|
-        entity = entity_user.entity
-        next unless entity
+        # Collect entities where user is sole owner (scoped to THIS user only)
+        sole_owned_entities = user.entity_users.where(role: "owner").filter_map do |eu|
+          entity = eu.entity
+          next unless entity
+          entity if entity.entity_users.where(role: "owner").count == 1
+        end
 
-        if entity.entity_users.where(role: "owner").count == 1
+        # Remove user's entity_users first to bypass prevent_owner_removal callback
+        # (the callback correctly prevents removal in normal use, but during account
+        # deletion we intentionally remove the sole owner before destroying the entity)
+        user.entity_users.delete_all
+
+        # Now destroy sole-owned entities (no entity_user callbacks to block it)
+        sole_owned_entities.each do |entity|
           Rails.logger.info "🗑️ Permanent deletion: Destroying entity #{entity.id} (#{entity.name}) - user #{user_id} was sole owner"
           entity.destroy!
         end
+
+        # Destroy the user
+        user.reload
+        unless user.destroy
+          raise ActiveRecord::Rollback, "Failed to destroy user #{user_id}"
+        end
+
+        Rails.logger.info "🗑️ User #{user_id} (#{user_email}) permanently deleted their account"
       end
 
-      user.reload
-
-      if user.destroy
-        Rails.logger.info "🗑️ User #{user_id} (#{user_email}) permanently deleted their account"
+      if user.destroyed?
         render json: { message: "Account permanently deleted" }, status: :ok
       else
         Rails.logger.error "❌ Failed to permanently delete account for user #{user_id}: #{user.errors.full_messages.join(', ')}"

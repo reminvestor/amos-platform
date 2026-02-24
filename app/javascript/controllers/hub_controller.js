@@ -246,14 +246,20 @@ export default class extends Controller {
               <span class="text-muted small ms-2">${this.formatTime(message.created_at)}</span>
             </div>
           ` : ''}
-          <div class="message-bubble p-3 ${bubbleClass}">
-            <div class="message-text">${this.escapeHtml(message.content)}</div>
+          <div class="message-bubble p-3 ${bubbleClass}" style="position: relative;">
+            <div class="message-text" style="user-select: text;">${this.escapeHtml(message.content)}</div>
             ${message.needs_response && !isFromCurrentUser ? `
               <div class="needs-response mt-2 d-flex align-items-center gap-2 text-warning">
                 <i class="bi bi-hourglass-split"></i>
                 <span class="small">Waiting for your response</span>
               </div>
             ` : ''}
+            <button class="btn btn-sm copy-message-btn" title="Copy message"
+              data-action="click->hub#copyMessage"
+              data-content="${this.escapeAttr(message.content)}"
+              style="position: absolute; top: 4px; right: 4px; opacity: 0; transition: opacity 0.15s; padding: 2px 6px; font-size: 0.75rem; background: var(--bg-secondary, #f0f0f0); border: 1px solid var(--border-primary, #ddd); border-radius: 4px; cursor: pointer;">
+              <i class="bi bi-clipboard"></i>
+            </button>
           </div>
           ${isFromCurrentUser ? `
             <div class="text-end">
@@ -450,8 +456,36 @@ export default class extends Controller {
     return div.innerHTML.replace(/\n/g, "<br>")
   }
 
+  escapeAttr(text) {
+    return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  }
+
+  async copyMessage(event) {
+    const btn = event.currentTarget
+    const content = btn.dataset.content
+    try {
+      await navigator.clipboard.writeText(content)
+      const icon = btn.querySelector("i")
+      icon.className = "bi bi-check"
+      setTimeout(() => { icon.className = "bi bi-clipboard" }, 1500)
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement("textarea")
+      textarea.value = content
+      textarea.style.position = "fixed"
+      textarea.style.opacity = "0"
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand("copy")
+      document.body.removeChild(textarea)
+      const icon = btn.querySelector("i")
+      icon.className = "bi bi-check"
+      setTimeout(() => { icon.className = "bi bi-clipboard" }, 1500)
+    }
+  }
+
   get csrfToken() {
-    return document.querySelector("meta[name='csrf-token']")?.content
+    return document.querySelector("meta[name='csrf-token']")?.content || ''
   }
 
   get currentUserId() {

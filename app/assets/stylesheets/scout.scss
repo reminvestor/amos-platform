@@ -2123,6 +2123,16 @@ html[data-theme="light"] {
   min-width: 0;
 }
 
+/* Copy message button - shown on hover */
+.message-bubble:hover .copy-message-btn,
+.message-bubble:hover .copy-msg-btn {
+  opacity: 0.6 !important;
+}
+.message-bubble .copy-message-btn:hover,
+.message-bubble .copy-msg-btn:hover {
+  opacity: 1 !important;
+}
+
 .hub-message-header {
   display: flex;
   align-items: center;

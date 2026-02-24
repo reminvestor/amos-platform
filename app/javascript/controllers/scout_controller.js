@@ -1319,6 +1319,9 @@ export default class extends Controller {
         this.currentStreamingContent = undefined
         this.streamingMessageElement = null
 
+        // Add copy button to the finalized AI message
+        this.addCopyButtonToLastAiMessage()
+
         // Render source attribution badges if sources are available
         console.log("🔍 Checking for sources in finalResponseData...")
         console.log("📊 finalResponseData:", finalResponseData)
@@ -1704,6 +1707,54 @@ export default class extends Controller {
       console.log(`✅ Quick reply buttons rendered: ${suggestions.join(', ')}`)
     } catch (error) {
       console.error("❌ Error rendering quick replies:", error)
+    }
+  }
+
+  addCopyButtonToLastAiMessage() {
+    try {
+      const messages = this.chatMessagesTarget.querySelectorAll('.message.assistant-message')
+      const lastMessage = messages[messages.length - 1]
+      if (!lastMessage) return
+
+      const bubble = lastMessage.querySelector('.message-bubble')
+      if (!bubble || bubble.querySelector('.copy-msg-btn')) return
+
+      bubble.style.position = 'relative'
+      const btn = document.createElement('button')
+      btn.className = 'copy-msg-btn'
+      btn.title = 'Copy message'
+      btn.innerHTML = '<i data-lucide="clipboard-copy" style="width:14px;height:14px;"></i>'
+      btn.style.cssText = 'position:absolute;top:6px;right:6px;opacity:0;transition:opacity 0.15s;padding:4px 6px;background:var(--bg-secondary,#f0f0f0);border:1px solid var(--border-primary,#ddd);border-radius:4px;cursor:pointer;display:flex;align-items:center;z-index:1;'
+
+      btn.addEventListener('click', async () => {
+        const text = bubble.innerText || bubble.textContent
+        try {
+          await navigator.clipboard.writeText(text)
+        } catch {
+          const ta = document.createElement('textarea')
+          ta.value = text
+          ta.style.cssText = 'position:fixed;opacity:0'
+          document.body.appendChild(ta)
+          ta.select()
+          document.execCommand('copy')
+          document.body.removeChild(ta)
+        }
+        btn.innerHTML = '<i data-lucide="check" style="width:14px;height:14px;"></i>'
+        if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] })
+        setTimeout(() => {
+          btn.innerHTML = '<i data-lucide="clipboard-copy" style="width:14px;height:14px;"></i>'
+          if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] })
+        }, 1500)
+      })
+
+      bubble.addEventListener('mouseenter', () => { btn.style.opacity = '0.6' })
+      bubble.addEventListener('mouseleave', () => { btn.style.opacity = '0' })
+      btn.addEventListener('mouseenter', () => { btn.style.opacity = '1' })
+
+      bubble.appendChild(btn)
+      if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] })
+    } catch (e) {
+      console.error('Failed to add copy button:', e)
     }
   }
 
