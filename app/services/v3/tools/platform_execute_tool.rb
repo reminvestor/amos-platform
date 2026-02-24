@@ -24,6 +24,8 @@ module V3
             - add_integration_operations: Add API operations to an integration
             - generate_action: Auto-generate an IntegrationAction from an operation
             - send_campaign: Send an email campaign
+            - enroll_sequence: Enroll contacts into an email sequence
+            - activate_sequence: Activate an email sequence (draft → active, starts sending)
             - generate_file: Generate CSV/PDF/Excel files
             - generate_image: Generate an image from a prompt
             - publish_landing_page: Publish a landing page
@@ -125,6 +127,8 @@ module V3
           execute_send_campaign(args)
         when "enroll_sequence"
           execute_enroll_sequence(args)
+        when "activate_sequence"
+          execute_activate_sequence(args)
         when "publish_landing_page"
           execute_publish_landing_page(args)
         when "send_email"
@@ -146,7 +150,7 @@ module V3
         else
           error_response(
             "Unknown action: #{action}",
-            available_actions: %w[integration test_integration configure_integration_auth add_integration_operations generate_action send_campaign publish_landing_page send_email generate_file generate_image delete verify_domain verify_email_domain set_primary_domain assign_domain]
+            available_actions: %w[integration test_integration configure_integration_auth add_integration_operations generate_action send_campaign enroll_sequence activate_sequence publish_landing_page send_email generate_file generate_image delete verify_domain verify_email_domain set_primary_domain assign_domain]
           )
         end
       rescue => e
@@ -467,7 +471,7 @@ module V3
 
         return error_response("Missing: sequence_id") if sequence_id.blank?
 
-        sequence = EmailSequence.visible_to_user(user).find_by(id: sequence_id)
+        sequence = entity.email_sequences.find_by(id: sequence_id)
         return error_response("Sequence not found: #{sequence_id}") unless sequence
 
         enrolled = 0
@@ -490,6 +494,41 @@ module V3
           enrolled_count: enrolled,
           message: "Enrolled #{enrolled} contact(s) in sequence '#{sequence.name}'"
         )
+      end
+
+      def execute_activate_sequence(args)
+        sequence_id = get_arg(args, :sequence_id)
+        return error_response("Missing: sequence_id") if sequence_id.blank?
+
+        sequence = entity.email_sequences.find_by(id: sequence_id)
+        return error_response("Sequence not found: #{sequence_id}") unless sequence
+
+        if sequence.status == "active"
+          return success_response(
+            sequence_id: sequence.id,
+            status: "active",
+            message: "Sequence '#{sequence.name}' is already active."
+          )
+        end
+
+        unless sequence.sequence_steps.any?
+          return error_response("Sequence '#{sequence.name}' has no steps. Add email steps before activating.")
+        end
+
+        sequence.enroll_contacts! if sequence.contact_group.present?
+
+        if sequence.activate!
+          success_response(
+            sequence_id: sequence.id,
+            name: sequence.name,
+            status: "active",
+            enrolled_count: sequence.reload.enrolled_count,
+            step_count: sequence.step_count,
+            message: "Sequence '#{sequence.name}' is now active with #{sequence.enrolled_count} contact(s) enrolled."
+          )
+        else
+          error_response("Could not activate sequence '#{sequence.name}'. Current status: #{sequence.status}")
+        end
       end
 
       def execute_publish_landing_page(args)

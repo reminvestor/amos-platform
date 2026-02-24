@@ -158,6 +158,12 @@ module Tools
         data[:email_template_id] = data[:email_template_id].to_i
       end
 
+      # Extract contact_group references before Campaign.new (uses join table, not column)
+      contact_group_ids = Array(data.delete(:contact_group_ids)).compact
+      contact_group_id = data.delete(:contact_group_id)
+      data.delete(:contact_group)
+      contact_group_ids << contact_group_id if contact_group_id.present?
+
       # Find-or-create by name
       name = data[:name]
       if name.present?
@@ -173,6 +179,14 @@ module Tools
       campaign.user = user
       campaign.entity = entity
       campaign.save!
+
+      if contact_group_ids.any?
+        contact_group_ids.each do |gid|
+          group = entity.contact_groups.find_by(id: gid)
+          campaign.contact_groups << group if group && !campaign.contact_groups.include?(group)
+        end
+        Rails.logger.info "✅ Auto-linked #{contact_group_ids.size} group(s) to campaign '#{campaign.name}'"
+      end
 
       Rails.logger.info "✅ Created campaign: #{campaign.name} (ID: #{campaign.id})"
       campaign
@@ -785,8 +799,9 @@ module Tools
         ]
       when "email_sequences"
         [
-          "Add steps: platform_create(type: 'sequence_step', data: { email_sequence_id: #{id}, step_number: 1, delay_hours: 0, email_template_id: TEMPLATE_ID })",
-          "Enroll contacts: platform_execute(action: 'enroll_sequence', sequence_id: #{id})"
+          "⚠️ This sequence has 0 email steps — it won't send anything yet. You MUST add steps with content next.",
+          "Add each step: platform_create(type: 'sequence_step', data: { email_sequence_id: #{id}, step_number: 1, delay_hours: 0, subject: 'Welcome!', body: '<h1>Hi {{first_name}}</h1><p>Your content...</p>' })",
+          "After adding all steps: platform_execute(action: 'activate_sequence', sequence_id: #{id})"
         ]
       when "sequence_steps"
         ["Step added. Add more steps or enroll contacts in the sequence."]

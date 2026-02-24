@@ -49,7 +49,7 @@ module V3
             properties: {
               type: {
                 type: "string",
-                description: "Object type to query (e.g., 'contacts', 'campaigns', 'landing_pages', 'schema', 'stats', 'integrations', 'custom_domains', 'integration_operations', 'integration_actions')"
+                description: "Object type to query. Values: 'contacts', 'campaigns', 'landing_pages', 'email_templates', 'email_sequences', 'contact_groups', 'schema', 'stats', 'integrations' (list connections), 'integration_operations' (list API endpoints for an integration — use this to see what an integration can do), 'integration_actions' (list generated action mappings), 'custom_domains', 'documents'"
               },
               id: {
                 type: ["string", "integer"],
@@ -340,11 +340,13 @@ module V3
         end
 
         available = Integration.where(entity_id: [nil, entity.id]).map do |i|
+          matching_conn = connections.find { |c| c[:slug] == i.slug }
           {
             name: i.name,
             slug: i.slug,
             category: i.category,
-            connected: connections.any? { |c| c[:slug] == i.slug }
+            connected: matching_conn.present? && matching_conn[:status].to_s.in?(%w[connected limited]),
+            connection_status: matching_conn&.dig(:status)&.to_s
           }
         end rescue connections
 
@@ -422,6 +424,31 @@ module V3
             has_mapping_code: action.mapping_code.present?,
             last_used_at: action.last_used_at
           }
+        end
+
+        if actions.empty? && integration_slug.present? && integration.present?
+          operations = integration.integration_operations.enabled.order(:name)
+          if operations.any?
+            ops_data = operations.map do |op|
+              {
+                id: op.id,
+                operation_id: op.operation_id,
+                name: op.name,
+                description: op.description,
+                http_method: op.http_method,
+                path: op.path_template,
+                safe: op.safe?
+              }
+            end
+            return success_response(
+              integration: integration_slug,
+              actions: [],
+              operations: ops_data,
+              count: ops_data.length,
+              message: "No generated action mappings, but this integration has #{ops_data.length} API operation(s) ready to use. " \
+                       "Call platform_execute(action: 'integration', integration: '#{integration_slug}', operation: 'OPERATION_ID', inputs: {...}) to run one."
+            )
+          end
         end
 
         success_response(
@@ -668,13 +695,19 @@ module V3
           records = data[:records] || []
           total = data[:total_available] || data[:total_count] || records.length
 
+          filter_desc = filters.present? ? " matching filters" : ""
+          msg = "#{records.length} #{type}#{filter_desc}."
+          msg += " #{total} total in database (showing #{records.length})." if total > records.length
+
           success_response(
             type: type,
             records: records,
             count: records.length,
-            total: total,
+            total_matching: records.length,
+            total_in_database: total,
             has_more: total > records.length,
             filters_applied: filters,
+            message: msg,
             metadata: result[:metadata]
           )
         else

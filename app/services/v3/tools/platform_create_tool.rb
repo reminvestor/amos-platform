@@ -34,10 +34,10 @@ module V3
 
             Smart behaviors:
             - Duplicate prevention: contacts by email, groups/campaigns/sequences/opportunities by name — returns existing if found.
-            - Auto-create dependencies: campaign with subject+body auto-creates template. sequence_step with subject+body auto-creates template. email_sequence without contact_group auto-creates one. activity with contact_email auto-finds or creates the contact. opportunity with contact_email auto-finds or creates the contact.
+            - Auto-create dependencies: campaign with subject+body auto-creates template. campaign with contact_group_id auto-links the group. sequence_step with subject+body auto-creates template. email_sequence without contact_group auto-creates one. activity with contact_email auto-finds or creates the contact. opportunity with contact_email auto-finds or creates the contact.
             - Defaults: status defaults to 'draft' (campaigns, sequences), 'pending' (enrollments, activities), 'lead' (opportunities).
 
-            Email sequence (one-call): pass 'emails' array to auto-create templates, contact group, sequence, and steps in one call.
+            Email sequence (one-call): pass 'emails' array to auto-create templates, contact group, sequence, and steps in one call. Contacts from the linked group are auto-enrolled. Pass activate: true to immediately start sending.
             Automation triggers: contact_created, form_submit, record_updated, status_changed, field_changed, schedule, webhook
             Automation actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user
             Contact fields: email (required), first_name, last_name, lifecycle_stage, status, phone, company, custom_fields.
@@ -223,7 +223,6 @@ module V3
         emails = data[:emails] || data[:steps]
 
         unless emails.is_a?(Array) && emails.any?
-          # Fall through to standard CreateObjectTool for simple sequence creation
           create_tool = ::Tools::CreateObjectTool.new(user: user, entity: entity, context: context)
           return create_tool.execute({ "object_type" => "email_sequences", "data" => data.stringify_keys })
         end
@@ -261,44 +260,76 @@ module V3
         end
 
         sequence = EmailSequence.visible_to_user(user).find_by(name: name)
-        sequence ||= EmailSequence.create!(
-          name: name,
-          goal: data[:goal],
-          entity: entity,
-          contact_group_id: contact_group_id,
-          status: "draft"
-        )
+        if sequence
+          sequence.update!(contact_group_id: contact_group_id) if contact_group_id && sequence.contact_group_id.nil?
+        else
+          sequence = EmailSequence.create!(
+            name: name,
+            goal: data[:goal],
+            entity: entity,
+            created_by: user,
+            contact_group_id: contact_group_id,
+            status: "draft"
+          )
+        end
 
         created_templates.each_with_index do |template, idx|
           email_data = emails[idx].deep_symbolize_keys
           delay_hours = (email_data[:delay_days] || 0).to_i * 24
           delay_hours = email_data[:delay_hours].to_i if email_data[:delay_hours].present?
 
-          SequenceStep.create!(
-            email_sequence: sequence,
-            email_template: template,
-            step_number: idx + 1,
-            delay_hours: delay_hours
-          )
+          existing_step = sequence.sequence_steps.find_by(step_number: idx + 1)
+          if existing_step
+            existing_step.update!(email_template: template, delay_hours: delay_hours)
+          else
+            SequenceStep.create!(
+              email_sequence: sequence,
+              email_template: template,
+              step_number: idx + 1,
+              delay_hours: delay_hours
+            )
+          end
         end
 
         Rails.logger.info "[V3::PlatformCreate] Built email sequence '#{name}' (ID: #{sequence.id}) with #{created_templates.length} steps"
+
+        # Auto-enroll contacts from the linked group
+        enrolled_count = sequence.enroll_contacts!
+        Rails.logger.info "[V3::PlatformCreate] Auto-enrolled #{enrolled_count} contact(s) from group #{contact_group_id}"
+
+        # Auto-activate if requested or if contacts are enrolled and ready
+        should_activate = data[:activate] == true || data[:status]&.to_s == "active"
+        if should_activate && sequence.sequence_steps.any?
+          sequence.activate!
+          Rails.logger.info "[V3::PlatformCreate] Auto-activated sequence '#{name}'"
+        end
+
+        sequence.reload
+        status_msg = case sequence.status
+        when "active"
+          "active and sending to #{sequence.enrolled_count} contact(s)"
+        when "draft"
+          enrolled_count > 0 ?
+            "in draft with #{enrolled_count} contact(s) enrolled. Activate with: platform_execute(action: 'activate_sequence', sequence_id: #{sequence.id})" :
+            "in draft. Add contacts to the group, then activate with: platform_execute(action: 'activate_sequence', sequence_id: #{sequence.id})"
+        else
+          sequence.status
+        end
 
         success_response(
           object_type: "email_sequence",
           id: sequence.id,
           name: name,
-          status: "draft",
+          status: sequence.status,
           contact_group_id: contact_group_id,
+          enrolled_count: sequence.enrolled_count,
           steps_created: created_templates.length,
-          templates: created_templates.map { |t| { id: t.id, name: t.name, subject: t.subject } },
-          message: "Email sequence '#{name}' created with #{created_templates.length} email(s). " \
-                   "Templates, contact group, sequence, and steps are all set up. " \
-                   "Add contacts to the group, then enroll them with platform_execute(action: 'enroll_sequence', sequence_id: #{sequence.id}).",
-          next_actions: [
-            "Add contacts to group: platform_update(type: 'contact_group', id: #{contact_group_id}, data: { contact_ids: [...] })",
-            "Enroll contacts: platform_execute(action: 'enroll_sequence', sequence_id: #{sequence.id})"
-          ]
+          steps: created_templates.each_with_index.map { |t, idx|
+            step = emails[idx].deep_symbolize_keys
+            delay_h = step[:delay_hours].present? ? step[:delay_hours].to_i : (step[:delay_days] || 0).to_i * 24
+            { step: idx + 1, subject: t.subject, delay_hours: delay_h, template_id: t.id }
+          },
+          message: "Email sequence '#{name}' created with #{created_templates.length} email(s) — #{status_msg}."
         )
       rescue => e
         Rails.logger.error "[V3::PlatformCreate] Email sequence build failed: #{e.class}: #{e.message}"

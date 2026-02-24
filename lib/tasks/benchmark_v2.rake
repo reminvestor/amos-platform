@@ -67,6 +67,30 @@ namespace :benchmark do
       print_summary(results, display_model)
     end
 
+    desc "Run multiple scenarios by ID (SCENARIOS=id1,id2,id3 MODEL=claude-sonnet-4-6)"
+    task pick: :environment do
+      scenario_list = ENV["SCENARIOS"].presence
+      abort "Usage: SCENARIOS=id1,id2,id3 rails benchmark:v2:pick" unless scenario_list
+
+      entity = Entity.find_by(slug: "amos-labs") || Entity.first
+      user = entity&.users&.first
+      abort "No entity/user found" unless entity && user
+
+      ids = scenario_list.split(",").map(&:strip).map(&:to_sym)
+      ids.each do |id|
+        abort "Unknown scenario: #{id}. Run 'rails benchmark:v2:list' to see available IDs." unless Benchmarks::V2::ScenarioLibrary.get(id)
+      end
+
+      model = ENV["MODEL"].presence
+      display_model = model || V3::AgentLoop::DEFAULT_AUTO_MODEL
+      puts "\n🚀 Running #{ids.size} selected scenarios (model: #{display_model})..."
+
+      runner = Benchmarks::V2::Runner.new(entity: entity, user: user, model: model)
+      results = runner.run_suite_with_progress(:single, scenario_ids: ids) { |r| print_scenario_result(r) }
+
+      print_summary(results, display_model)
+    end
+
     desc "Run full benchmark suite (MODEL=claude-sonnet-4-6 to override model)"
     task full: :environment do
       entity = Entity.find_by(slug: "amos-labs") || Entity.first

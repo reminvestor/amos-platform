@@ -64,6 +64,9 @@ module Benchmarks
 
         app_build_multi_module: Scenarios::AppBuildMultiModule.build,
         data_analysis_and_report: Scenarios::DataAnalysisAndReport.build,
+        email_sequence_full_lifecycle: Scenarios::EmailSequenceFullLifecycle.build,
+        integration_discovery_and_use: Scenarios::IntegrationDiscoveryAndUse.build,
+        cross_platform_workflow: Scenarios::CrossPlatformWorkflow.build,
 
         # ═══════════════════════════════════════════════════════════
         # L4: Adversarial / edge cases (what breaks in production)
@@ -72,6 +75,7 @@ module Benchmarks
         ambiguous_request_handling: Scenarios::AmbiguousRequestHandling.build,
         nonexistent_data_graceful: Scenarios::NonexistentDataGraceful.build,
         error_recovery_mid_workflow: Scenarios::ErrorRecoveryMidWorkflow.build,
+        integration_error_graceful: Scenarios::IntegrationErrorGraceful.build,
       }.freeze
     end
   end
