@@ -124,6 +124,15 @@ class User < ApplicationRecord
     "#{first_name} #{last_name}"
   end
 
+  # Prevent soft-deleted users from signing in via Devise
+  def active_for_authentication?
+    super && deleted_at.nil?
+  end
+
+  def inactive_message
+    deleted_at.present? ? :account_deactivated : super
+  end
+
   def marketer?
     role == "marketer"
   end

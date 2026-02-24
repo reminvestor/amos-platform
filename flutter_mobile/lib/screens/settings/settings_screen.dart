@@ -161,15 +161,91 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  Future<void> _showDeleteAccountDialog(BuildContext context) async {
+  Future<void> _showDeactivateAccountDialog(BuildContext context) async {
     final passwordController = TextEditingController();
-    bool isDeleting = false;
+    bool isProcessing = false;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Delete Account'),
+          title: const Text('Deactivate Account'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Your account will be deactivated and you will be signed out. Your data will be preserved and you can reactivate your account by contacting support.',
+              ),
+              const SizedBox(height: 16),
+              const Text('Enter your password to confirm:'),
+              const SizedBox(height: 8),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                enabled: !isProcessing,
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                  prefixIcon: Icon(LucideIcons.lock),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isProcessing ? null : () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: isProcessing
+                  ? null
+                  : () async {
+                      if (passwordController.text.isEmpty) return;
+                      setDialogState(() => isProcessing = true);
+                      try {
+                        await ref
+                            .read(authStateProvider.notifier)
+                            .deactivateAccount(passwordController.text);
+                        if (context.mounted) Navigator.pop(context, true);
+                      } catch (e) {
+                        setDialogState(() => isProcessing = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to deactivate account. Please check your password and try again.'),
+                            ),
+                          );
+                          Navigator.pop(context, false);
+                        }
+                      }
+                    },
+              child: isProcessing
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text('Deactivate', style: TextStyle(color: context.errorColor)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    passwordController.dispose();
+
+    if (confirmed == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your account has been deactivated.')),
+      );
+    }
+  }
+
+  Future<void> _showPermanentlyDeleteAccountDialog(BuildContext context) async {
+    final passwordController = TextEditingController();
+    bool isProcessing = false;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Permanently Delete Account'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,7 +259,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               TextField(
                 controller: passwordController,
                 obscureText: true,
-                enabled: !isDeleting,
+                enabled: !isProcessing,
                 decoration: const InputDecoration(
                   labelText: 'Password',
                   prefixIcon: Icon(LucideIcons.lock),
@@ -193,47 +269,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: isDeleting ? null : () => Navigator.pop(context, false),
+              onPressed: isProcessing ? null : () => Navigator.pop(context, false),
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: isDeleting
+              onPressed: isProcessing
                   ? null
                   : () async {
-                      if (passwordController.text.isEmpty) {
-                        return;
-                      }
-                      setDialogState(() => isDeleting = true);
+                      if (passwordController.text.isEmpty) return;
+                      setDialogState(() => isProcessing = true);
                       try {
                         await ref
                             .read(authStateProvider.notifier)
-                            .deleteAccount(passwordController.text);
-                        if (context.mounted) {
-                          Navigator.pop(context, true);
-                        }
+                            .permanentlyDeleteAccount(passwordController.text);
+                        if (context.mounted) Navigator.pop(context, true);
                       } catch (e) {
-                        setDialogState(() => isDeleting = false);
+                        setDialogState(() => isProcessing = false);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text(
-                                  'Failed to delete account. Please check your password and try again.'),
+                              content: Text('Failed to delete account. Please check your password and try again.'),
                             ),
                           );
                           Navigator.pop(context, false);
                         }
                       }
                     },
-              child: isDeleting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(
-                      'Delete Account',
-                      style: TextStyle(color: context.errorColor),
-                    ),
+              child: isProcessing
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text('Permanently Delete', style: TextStyle(color: context.errorColor)),
             ),
           ],
         ),
@@ -244,7 +308,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (confirmed == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your account has been deleted.')),
+        const SnackBar(content: Text('Your account has been permanently deleted.')),
       );
     }
   }
@@ -434,10 +498,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: () => _launchUrl(context, _termsOfServiceUrl),
           ),
           _SettingsTile(
-            icon: LucideIcons.trash2,
-            title: 'Delete Account',
+            icon: LucideIcons.pauseCircle,
+            title: 'Deactivate Account',
             trailing: const Icon(LucideIcons.chevronRight),
-            onTap: () => _showDeleteAccountDialog(context),
+            onTap: () => _showDeactivateAccountDialog(context),
+          ),
+          _SettingsTile(
+            icon: LucideIcons.trash2,
+            title: 'Permanently Delete Account',
+            trailing: const Icon(LucideIcons.chevronRight),
+            onTap: () => _showPermanentlyDeleteAccountDialog(context),
           ),
 
           // Support Section
