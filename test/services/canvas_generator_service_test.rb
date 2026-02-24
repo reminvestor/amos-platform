@@ -549,15 +549,13 @@ class CanvasGeneratorServiceTest < ActiveSupport::TestCase
     list_canvas = canvases.find_by(slug: 'tasks_list')
     assert_not_nil list_canvas
     assert list_canvas.html_content.present?, 'List canvas should have HTML'
-    assert list_canvas.js_content.present?, 'List canvas should have JS from generator'
-    assert list_canvas.css_content.present?, 'List canvas should have CSS from generator'
     assert list_canvas.is_default, 'List canvas should be default'
     assert_equal 'data_grid', list_canvas.canvas_type
+    assert_equal 'static', list_canvas.metadata['generated_by'], 'Static templates used for initial build'
 
     form_canvas = canvases.find_by(slug: 'tasks_form')
     assert_not_nil form_canvas
     assert form_canvas.html_content.present?
-    assert form_canvas.js_content.present?
     assert_equal 'form', form_canvas.canvas_type
 
     detail_canvas = canvases.find_by(slug: 'tasks_detail')
@@ -584,47 +582,56 @@ class CanvasGeneratorServiceTest < ActiveSupport::TestCase
     assert_not_nil canvas.metadata['generated_by']
   end
 
-  test 'build service build_related_models_context returns empty for modules without relationships' do
+  test 'build service creates static canvases with ai_upgrade_pending flag' do
     plan = create_test_plan
     build_service = ApplicationBuildService.new(plan)
 
     app_module = create_test_module('standalone')
-    module_spec = { 'name' => 'Standalone', 'slug' => 'standalone' }
+    module_spec = { 'name' => 'Standalone', 'slug' => 'standalone', 'views' => %w[list], 'fields' => [{ 'name' => 'title', 'type' => 'string' }] }
 
-    result = build_service.send(:build_related_models_context, app_module, module_spec)
-    assert_equal [], result
+    build_service.send(:create_module_canvases, app_module, module_spec)
+
+    canvas = app_module.module_canvases.first
+    assert_not_nil canvas
+    assert_equal 'static', canvas.metadata['generated_by']
+    assert_equal true, canvas.metadata['ai_upgrade_pending']
   end
 
-  test 'build service build_related_models_context finds parent for belongs_to' do
+  test 'build service creates canvases for modules with relationships' do
     plan = create_test_plan(modules: [
       { 'name' => 'Projects', 'slug' => 'projects' },
       { 'name' => 'Tasks', 'slug' => 'tasks', 'relationship' => { 'type' => 'belongs_to', 'parent_model' => 'projects' } }
     ])
     build_service = ApplicationBuildService.new(plan)
-    parent_module = create_test_module('projects')
 
-    task_module = create_test_module('tasks_child')
+    task_module = create_test_module('tasks_rel')
     module_spec = {
       'name' => 'Tasks',
-      'slug' => 'tasks',
+      'slug' => 'tasks_rel',
+      'views' => %w[list form],
+      'fields' => [{ 'name' => 'title', 'type' => 'string' }],
       'relationship' => { 'type' => 'belongs_to', 'parent_model' => 'projects' }
     }
 
-    result = build_service.send(:build_related_models_context, task_module, module_spec)
-    assert result.any? { |r| r[:relationship_type] == 'belongs_to' }
+    build_service.send(:create_module_canvases, task_module, module_spec)
+    assert_equal 2, task_module.module_canvases.count
   end
 
-  test 'build service build_related_models_context finds children for has_many' do
-    plan = create_test_plan(modules: [
-      { 'name' => 'Projects2', 'slug' => 'projects2' },
-      { 'name' => 'Tasks2', 'slug' => 'tasks2', 'relationship' => { 'type' => 'belongs_to', 'parent_model' => 'projects2' } }
-    ])
+  test 'build service skips locked canvases during rebuild' do
+    plan = create_test_plan
     build_service = ApplicationBuildService.new(plan)
-    parent_module = create_test_module('projects2')
 
-    module_spec = { 'name' => 'Projects2', 'slug' => 'projects2' }
-    result = build_service.send(:build_related_models_context, parent_module, module_spec)
-    assert result.any? { |r| r[:relationship_type] == 'has_many' && r[:slug] == 'tasks2' }
+    app_module = create_test_module('locktest')
+    module_spec = { 'name' => 'LockTest', 'slug' => 'locktest', 'views' => %w[list], 'fields' => [{ 'name' => 'title', 'type' => 'string' }] }
+
+    build_service.send(:create_module_canvases, app_module, module_spec)
+    canvas = app_module.module_canvases.first
+    original_html = canvas.html_content
+    canvas.update!(locked_at: Time.current, lock_reason: 'user_customized')
+
+    build_service.send(:create_module_canvases, app_module, module_spec)
+    canvas.reload
+    assert_equal original_html, canvas.html_content, 'Locked canvas should not be overwritten'
   end
 
   # ══════════════════════════════════════════════════════════════
