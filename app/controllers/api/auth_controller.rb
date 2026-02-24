@@ -5,7 +5,7 @@ module Api
     skip_before_action :authenticate_user!, only: [:login, :register, :verify_mfa, :login_with_device_token, :refresh_token, :resend_mfa_code]
     skip_before_action :verify_authenticity_token
 
-    before_action :authenticate_api_user!, only: [:me, :logout, :regenerate_api_key]
+    before_action :authenticate_api_user!, only: [:me, :refresh_token, :logout, :regenerate_api_key, :delete_account, :permanently_delete_account]
 
     def register
       # Validate required fields
@@ -102,7 +102,7 @@ module Api
     end
 
     def login
-      user = User.find_by(email: params[:email]&.downcase)
+      user = User.where(deleted_at: nil).find_by(email: params[:email]&.downcase)
 
       # Check account lockout BEFORE password verification (Story 0.1)
       if user&.account_locked?
@@ -171,7 +171,7 @@ module Api
         return
       end
 
-      user = User.find_by(email: email)
+      user = User.where(deleted_at: nil).find_by(email: email)
 
       # Check account lockout BEFORE device token validation (Story 0.1)
       # Prevents bypassing lockout via device tokens
@@ -358,6 +358,88 @@ module Api
       end
     end
 
+    def delete_account
+      user = @current_user
+      user_id = user.id
+      user_email = user.email
+
+      # Require password confirmation for account deletion
+      unless user.valid_password?(params[:password])
+        render json: { message: "Incorrect password" }, status: :unauthorized
+        return
+      end
+
+      # Clear API cache
+      Rails.cache.delete("api_user_id:#{user.api_key}")
+
+      now = Time.current
+
+      # Soft-delete entities where user is sole owner
+      user.entity_users.where(role: "owner").each do |entity_user|
+        entity = entity_user.entity
+        next unless entity
+
+        if entity.entity_users.where(role: "owner").count == 1
+          entity.update!(deleted_at: now)
+          Rails.logger.info "🗑️ Account deletion: Soft-deleted entity #{entity.id} (#{entity.name}) - user #{user_id} was sole owner"
+        end
+      end
+
+      # Soft-delete the user and invalidate their credentials
+      user.update!(
+        deleted_at: now,
+        api_key: SecureRandom.hex(32) # Invalidate current token
+      )
+
+      Rails.logger.info "🗑️ User #{user_id} (#{user_email}) soft-deleted their account"
+      render json: { message: "Account deactivated successfully" }, status: :ok
+    rescue StandardError => e
+      Rails.logger.error "❌ Error deactivating account for user #{user_id}: #{e.message}"
+      render json: { message: "An error occurred. Please contact support." }, status: :internal_server_error
+    end
+
+    def permanently_delete_account
+      user = @current_user
+      user_id = user.id
+      user_email = user.email
+
+      # Require password confirmation
+      unless user.valid_password?(params[:password])
+        render json: { message: "Incorrect password" }, status: :unauthorized
+        return
+      end
+
+      # Clear API cache
+      Rails.cache.delete("api_user_id:#{user.api_key}")
+
+      # Hard-delete entities where user is sole owner
+      user.entity_users.where(role: "owner").each do |entity_user|
+        entity = entity_user.entity
+        next unless entity
+
+        if entity.entity_users.where(role: "owner").count == 1
+          Rails.logger.info "🗑️ Permanent deletion: Destroying entity #{entity.id} (#{entity.name}) - user #{user_id} was sole owner"
+          entity.destroy!
+        end
+      end
+
+      user.reload
+
+      if user.destroy
+        Rails.logger.info "🗑️ User #{user_id} (#{user_email}) permanently deleted their account"
+        render json: { message: "Account permanently deleted" }, status: :ok
+      else
+        Rails.logger.error "❌ Failed to permanently delete account for user #{user_id}: #{user.errors.full_messages.join(', ')}"
+        render json: { message: "Failed to delete account. Please contact support." }, status: :unprocessable_entity
+      end
+    rescue ActiveRecord::InvalidForeignKey => e
+      Rails.logger.error "❌ Foreign key constraint prevented permanent deletion of user #{user_id}: #{e.message}"
+      render json: { message: "Cannot delete account due to existing records. Please contact support." }, status: :unprocessable_entity
+    rescue StandardError => e
+      Rails.logger.error "❌ Error permanently deleting account for user #{user_id}: #{e.message}"
+      render json: { message: "An error occurred. Please contact support." }, status: :internal_server_error
+    end
+
     def regenerate_api_key
       new_key = SecureRandom.hex(32)
 
@@ -387,10 +469,10 @@ module Api
       # Cache only the user_id to avoid ActiveRecord association serialization issues
       # Full User object caching breaks associations like .entity
       user_id = Rails.cache.fetch("api_user_id:#{token}", expires_in: 5.minutes) do
-        User.where(api_key: token).pick(:id)
+        User.where(api_key: token, deleted_at: nil).pick(:id)
       end
 
-      @current_user = User.includes(:entity).find_by(id: user_id) if user_id
+      @current_user = User.includes(:entity).where(deleted_at: nil).find_by(id: user_id) if user_id
 
       unless @current_user
         render json: { message: "Invalid token" }, status: :unauthorized
