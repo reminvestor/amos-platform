@@ -46,60 +46,69 @@ module LandingPageRendering
     clean_html
   end
 
-  # Fix truncated HTML by ensuring proper structure
+  # Fix truncated HTML by ensuring proper structure.
+  # IMPORTANT: Close unclosed tags near where they open (not at end of document)
+  # to prevent strip_malformed_scripts from swallowing valid HTML content.
   def ensure_html_structure(html)
     result = html.dup
 
-    # Close any unclosed script tags (common truncation issue)
-    open_scripts = result.scan(/<script[^>]*>/i).count
-    close_scripts = result.scan(%r{</script>}i).count
-    if open_scripts > close_scripts
-      (open_scripts - close_scripts).times do
-        result += "\n</script>"
+    result = close_unclosed_tags_inline(result, "script")
+    result = close_unclosed_tags_inline(result, "style")
+
+    # These are safe to close at end (they don't interact with strip_malformed_scripts)
+    %w[form select].each do |tag|
+      open_count = result.scan(/<#{tag}[^>]*>/i).count
+      close_count = result.scan(%r{</#{tag}>}i).count
+      if open_count > close_count
+        (open_count - close_count).times { result += "\n</#{tag}>" }
+        Rails.logger.warn "⚠️ Fixed #{open_count - close_count} unclosed <#{tag}> tag(s)"
       end
-      Rails.logger.warn "⚠️ Fixed #{open_scripts - close_scripts} unclosed script tag(s)"
     end
 
-    # Close any unclosed style tags
-    open_styles = result.scan(/<style[^>]*>/i).count
-    close_styles = result.scan(%r{</style>}i).count
-    if open_styles > close_styles
-      (open_styles - close_styles).times do
-        result += "\n</style>"
-      end
-      Rails.logger.warn "⚠️ Fixed #{open_styles - close_styles} unclosed style tag(s)"
-    end
-
-    # Close any unclosed form tags
-    open_forms = result.scan(/<form[^>]*>/i).count
-    close_forms = result.scan(%r{</form>}i).count
-    if open_forms > close_forms
-      (open_forms - close_forms).times do
-        result += "\n</form>"
-      end
-      Rails.logger.warn "⚠️ Fixed #{open_forms - close_forms} unclosed form tag(s)"
-    end
-
-    # Close any unclosed select tags (common in truncated forms)
-    open_selects = result.scan(/<select[^>]*>/i).count
-    close_selects = result.scan(%r{</select>}i).count
-    if open_selects > close_selects
-      (open_selects - close_selects).times do
-        result += "\n</select>"
-      end
-      Rails.logger.warn "⚠️ Fixed #{open_selects - close_selects} unclosed select tag(s)"
-    end
-
-    # Ensure </body> tag exists
     unless result.include?("</body>")
       result += "\n</body>"
       Rails.logger.warn "⚠️ Added missing </body> tag"
     end
 
-    # Ensure </html> tag exists
     unless result.include?("</html>")
       result += "\n</html>"
       Rails.logger.warn "⚠️ Added missing </html> tag"
+    end
+
+    result
+  end
+
+  # Close unclosed <script>/<style> tags right before the next HTML element tag,
+  # so the closing tag wraps only the orphaned content — not the rest of the page.
+  def close_unclosed_tags_inline(html, tag_name)
+    result = html.dup
+    safety = 0
+
+    while (open_c = result.scan(/<#{tag_name}[^>]*>/i).count) >
+          (close_c = result.scan(%r{</#{tag_name}>}i).count)
+      safety += 1
+      break if safety > 5
+
+      last_open_pos = result.rindex(/<#{tag_name}[^>]*>/i)
+      break unless last_open_pos
+
+      after = result[(last_open_pos)..]
+      # Skip past the opening tag itself
+      open_tag_end = after.index(">")
+      break unless open_tag_end
+
+      # Find the next HTML element tag (not a closing tag for this same type)
+      search_start = open_tag_end + 1
+      next_tag_pos = after.index(/<(?!\/?#{tag_name})[a-z!\/]/i, search_start)
+
+      if next_tag_pos
+        insert_at = last_open_pos + next_tag_pos
+        result.insert(insert_at, "\n</#{tag_name}>\n")
+      else
+        result += "\n</#{tag_name}>"
+      end
+
+      Rails.logger.warn "⚠️ Closed unclosed <#{tag_name}> tag inline (#{open_c} open, #{close_c} close)"
     end
 
     result
@@ -256,10 +265,14 @@ module LandingPageRendering
         /for\s*\([^)]*\)\s*\{\s*[^}]*\z/,             # Unclosed for
         /while\s*\([^)]*\)\s*\{\s*[^}]*\z/,           # Unclosed while
         /\{\s*[^}]*\z/,                               # Unclosed brace at end
-        /['"][^'"]*\z/                                # Unclosed string
       ]
 
       is_malformed = incomplete_patterns.any? { |pattern| script_content.match?(pattern) }
+
+      # Check for unclosed strings: odd number of unescaped quotes
+      double_quotes = script_content.scan(/(?<!\\)"/).count
+      single_quotes = script_content.scan(/(?<!\\)'/).count
+      is_malformed ||= double_quotes.odd? || single_quotes.odd?
 
       # Also check for balanced braces
       open_braces = script_content.count("{")

@@ -372,6 +372,10 @@ module Tools
         data.delete('enroll_contacts')
       end
 
+      # Filter to only valid columns (AI may pass 'emails', 'steps', etc.)
+      valid_columns = EmailSequence.column_names - %w[id entity_id created_at updated_at]
+      data = data.select { |k, _| valid_columns.include?(k.to_s) }
+
       sequence.update!(data) if data.any?
       format_email_sequence(sequence)
     end
@@ -380,7 +384,11 @@ module Tools
       visible_seq_ids = EmailSequence.visible_to_user(user).select(:id)
       step = SequenceStep.where(email_sequence_id: visible_seq_ids).find(id)
 
-      step.update!(data)
+      # Filter to only valid columns
+      valid_columns = SequenceStep.column_names - %w[id email_sequence_id created_at updated_at]
+      data = data.select { |k, _| valid_columns.include?(k.to_s) }
+
+      step.update!(data) if data.any?
       format_sequence_step(step)
     end
 
