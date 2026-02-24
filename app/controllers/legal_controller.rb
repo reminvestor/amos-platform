@@ -2,9 +2,9 @@
 
 class LegalController < ApplicationController
   # Skip authentication for viewing legal pages and accept_terms (for pending OAuth users)
-  skip_before_action :authenticate_user!, only: [:terms, :privacy, :accept_terms, :submit_terms]
-  skip_before_action :check_onboarding_status, only: [:terms, :privacy, :accept_terms, :submit_terms]
-  skip_before_action :check_token_balance, only: [:terms, :privacy, :accept_terms, :submit_terms]
+  skip_before_action :authenticate_user!, only: [:terms, :privacy, :support, :accept_terms, :submit_terms]
+  skip_before_action :check_onboarding_status, only: [:terms, :privacy, :support, :accept_terms, :submit_terms]
+  skip_before_action :check_token_balance, only: [:terms, :privacy, :support, :accept_terms, :submit_terms]
 
   layout "devise"
 
@@ -17,6 +17,10 @@ class LegalController < ApplicationController
 
   def privacy
     # Public privacy policy page
+  end
+
+  def support
+    # Public support page
   end
 
   def accept_terms

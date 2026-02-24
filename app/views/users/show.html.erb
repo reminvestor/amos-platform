@@ -264,12 +264,18 @@
           </h4>
         </div>
         <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 1rem;">
-          Once you delete your account, there is no going back. Please be certain.
+          Deactivate to temporarily disable your account, or permanently delete all your data.
         </p>
-        <button type="button" class="admin-btn" style="background: #DC2626; border-color: #DC2626; width: 100%;" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
-          <i data-lucide="trash-2"></i>
-          <span>Delete My Account</span>
-        </button>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <button type="button" class="admin-btn admin-btn-outline" style="border-color: #EAB308; color: #EAB308; width: 100%;" data-bs-toggle="modal" data-bs-target="#deactivateAccountModal">
+            <i data-lucide="pause-circle"></i>
+            <span>Deactivate Account</span>
+          </button>
+          <button type="button" class="admin-btn" style="background: #DC2626; border-color: #DC2626; width: 100%;" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+            <i data-lucide="trash-2"></i>
+            <span>Permanently Delete Account</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -320,36 +326,72 @@
   </div>
 </div>
 
-<%# Delete Account Modal %>
+<%# Deactivate Account Modal %>
+<div class="modal fade" id="deactivateAccountModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background: #1F2937; border: 1px solid rgba(234, 179, 8, 0.3);">
+      <div class="modal-header" style="background: rgba(234, 179, 8, 0.1); border-bottom: 1px solid rgba(234, 179, 8, 0.3);">
+        <h5 class="modal-title" style="color: #EAB308; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="pause-circle"></i>
+          Deactivate Account
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <%= form_tag deactivate_user_path(current_user), method: :post, data: { turbo: false } do %>
+        <div class="modal-body">
+          <p style="color: white;">Your account will be deactivated:</p>
+          <ul style="color: #94A3B8;">
+            <li>You will be signed out immediately</li>
+            <li>Your data will be preserved</li>
+            <li>You can reactivate by contacting support</li>
+          </ul>
+          <div class="admin-form-group mt-3">
+            <label class="admin-label">Enter your password to confirm</label>
+            <%= password_field_tag :password, nil, class: "admin-input", required: true, placeholder: "Your password" %>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top: 1px solid rgba(234, 179, 8, 0.3);">
+          <button type="button" class="admin-btn admin-btn-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="admin-btn" style="background: #EAB308; border-color: #EAB308; color: #000;">Deactivate My Account</button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<%# Permanently Delete Account Modal %>
 <div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content" style="background: #1F2937; border: 1px solid rgba(239, 68, 68, 0.3);">
       <div class="modal-header" style="background: rgba(239, 68, 68, 0.1); border-bottom: 1px solid rgba(239, 68, 68, 0.3);">
         <h5 class="modal-title" style="color: #EF4444; display: flex; align-items: center; gap: 0.5rem;">
           <i data-lucide="alert-triangle"></i>
-          Delete Account
+          Permanently Delete Account
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
-        <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #EF4444;">
-          <strong>Warning:</strong> This action cannot be undone!
+      <%= form_tag destroy_account_user_path(current_user), method: :delete, data: { turbo: false } do %>
+        <div class="modal-body">
+          <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #EF4444;">
+            <strong>Warning:</strong> This action cannot be undone!
+          </div>
+          <p style="color: white;">Once you permanently delete your account:</p>
+          <ul style="color: #94A3B8;">
+            <li>All your data will be permanently deleted</li>
+            <li>You will lose access to all campaigns and contacts</li>
+            <li>Your landing pages will be removed</li>
+            <li>This action is irreversible</li>
+          </ul>
+          <div class="admin-form-group mt-3">
+            <label class="admin-label">Enter your password to confirm</label>
+            <%= password_field_tag :password, nil, class: "admin-input", required: true, placeholder: "Your password" %>
+          </div>
         </div>
-        <p style="color: white;">Once you delete your account:</p>
-        <ul style="color: #94A3B8;">
-          <li>All your data will be permanently deleted</li>
-          <li>You will lose access to all campaigns and contacts</li>
-          <li>Your landing pages will be deactivated</li>
-          <li>This action is irreversible</li>
-        </ul>
-        <p style="color: white; font-weight: 600;"><strong>Are you absolutely sure you want to continue?</strong></p>
-      </div>
-      <div class="modal-footer" style="border-top: 1px solid rgba(239, 68, 68, 0.3);">
-        <button type="button" class="admin-btn admin-btn-outline" data-bs-dismiss="modal">Cancel</button>
-        <%= button_to "Yes, Delete My Account", registration_path(current_user), method: :delete, 
-            data: { confirm: "Are you ABSOLUTELY SURE? Type 'DELETE' to confirm.", turbo: false }, 
-            class: "admin-btn", style: "background: #DC2626; border-color: #DC2626;" %>
-      </div>
+        <div class="modal-footer" style="border-top: 1px solid rgba(239, 68, 68, 0.3);">
+          <button type="button" class="admin-btn admin-btn-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="admin-btn" style="background: #DC2626; border-color: #DC2626;">Yes, Permanently Delete</button>
+        </div>
+      <% end %>
     </div>
   </div>
 </div>
