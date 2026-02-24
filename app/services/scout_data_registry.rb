@@ -6,7 +6,7 @@ class ScoutDataRegistry
       description: "Email marketing campaigns with performance metrics",
       queryable_fields: [
         "id", "name", "subject", "status", "created_at", "sent_at", "scheduled_at",
-        "description", "from_email", "from_name"
+        "description", "from_email", "from_name", "email_template_id"
       ],
       filterable_fields: [
         "status", "created_at", "sent_at", "scheduled_at"

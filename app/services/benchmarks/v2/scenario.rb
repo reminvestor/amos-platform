@@ -20,6 +20,7 @@ module Benchmarks
       CATEGORIES = %i[
         app_building
         content_creation
+        iterative_editing
         integrations
         file_handling
         data_analysis

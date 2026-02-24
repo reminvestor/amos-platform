@@ -69,6 +69,14 @@ module Benchmarks
         cross_platform_workflow: Scenarios::CrossPlatformWorkflow.build,
 
         # ═══════════════════════════════════════════════════════════
+        # L3: Iterative editing (create → refine → hone)
+        # ═══════════════════════════════════════════════════════════
+
+        landing_page_iterative_edit: Scenarios::LandingPageIterativeEdit.build,
+        email_sequence_refinement: Scenarios::EmailSequenceRefinement.build,
+        campaign_edit_and_retarget: Scenarios::CampaignEditAndRetarget.build,
+
+        # ═══════════════════════════════════════════════════════════
         # L4: Adversarial / edge cases (what breaks in production)
         # ═══════════════════════════════════════════════════════════
 

@@ -648,7 +648,6 @@ module V3
       end
 
       def fetch_single_record(type, id, includes)
-        # Use UniversalQueryEngine
         query_engine = UniversalQueryEngine.new(user, entity)
         result = query_engine.execute_get_data(
           objects: [type],
@@ -662,9 +661,11 @@ module V3
           data = result[:data][type]
           records = data&.dig(:records) || []
           if records.any?
+            record = records.first
+            enrich_single_record!(type, id, record)
             success_response(
               type: type,
-              record: records.first,
+              record: record,
               metadata: result[:metadata]
             )
           else
@@ -673,6 +674,55 @@ module V3
         else
           error_response(result[:error] || "Query failed")
         end
+      end
+
+      # When fetching a single record by ID, auto-include linked data
+      # so the AI has everything it needs for follow-up edits
+      def enrich_single_record!(type, id, record)
+        case type
+        when "campaigns"
+          campaign = entity.campaigns.find_by(id: id)
+          return unless campaign
+
+          if campaign.email_template.present?
+            record[:email_template] = {
+              id: campaign.email_template.id,
+              name: campaign.email_template.name,
+              subject: campaign.email_template.subject,
+              body_preview: campaign.email_template.body.to_s.truncate(300)
+            }
+          end
+
+          groups = campaign.contact_groups.map { |g| { id: g.id, name: g.name, contact_count: g.contacts.count } }
+          record[:contact_groups] = groups if groups.any?
+
+        when "email_sequences"
+          sequence = EmailSequence.visible_to_user(user).find_by(id: id)
+          return unless sequence
+
+          record[:contact_group] = {
+            id: sequence.contact_group&.id,
+            name: sequence.contact_group&.name
+          } if sequence.contact_group
+
+          steps = sequence.sequence_steps.includes(:email_template).order(:step_number).map do |step|
+            {
+              id: step.id,
+              step_number: step.step_number,
+              delay_hours: step.delay_hours,
+              delay_display: step.delay_hours == 0 ? "Immediately" : "#{step.delay_hours}h (#{(step.delay_hours / 24.0).round(1)} days)",
+              email_template: step.email_template ? {
+                id: step.email_template.id,
+                name: step.email_template.name,
+                subject: step.email_template.subject,
+                body_preview: step.email_template.body.to_s.truncate(300)
+              } : nil
+            }
+          end
+          record[:steps] = steps if steps.any?
+        end
+      rescue => e
+        Rails.logger.warn "[PlatformQuery] enrich_single_record failed for #{type}##{id}: #{e.message}"
       end
 
       def fetch_records(type, filters, order_by, limit, includes, search)
@@ -694,6 +744,14 @@ module V3
           data = result[:data][type] || {}
           records = data[:records] || []
           total = data[:total_available] || data[:total_count] || records.length
+
+          # Auto-enrich small result sets with linked data
+          if records.length <= 5
+            records.each do |record|
+              record_id = record[:id] || record["id"]
+              enrich_single_record!(type, record_id, record) if record_id
+            end
+          end
 
           filter_desc = filters.present? ? " matching filters" : ""
           msg = "#{records.length} #{type}#{filter_desc}."

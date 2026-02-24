@@ -331,10 +331,11 @@ module Tools
     def update_email_template(id, data)
       template = entity.email_templates.find(id)
 
-      # Ensure HTML content is properly formatted
-      if data['html_content'].present? && !data['html_content'].include?('<html')
-        data['html_content'] = wrap_in_html(data['html_content'])
-      end
+      # Filter to only valid columns
+      valid_columns = EmailTemplate.column_names - %w[id entity_id user_id created_at updated_at]
+      data = data.select { |k, _| valid_columns.include?(k.to_s) }
+
+      return error_response("No valid fields to update. Updatable fields: #{valid_columns.join(', ')}") if data.empty?
 
       template.update!(data)
       format_email_template(template)
@@ -485,8 +486,7 @@ module Tools
         id: template.id,
         name: template.name,
         subject: template.subject,
-        from_name: template.from_name,
-        from_email: template.from_email,
+        body_preview: template.body.to_s.truncate(200),
         campaign_count: template.campaigns.count,
         created_at: template.created_at,
         updated_at: template.updated_at

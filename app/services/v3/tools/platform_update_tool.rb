@@ -27,8 +27,23 @@ module V3
             - Can also use id=MODULE_SLUG to find the default canvas for that module
             When a user says "lock this", "don't change this form", "keep this", or "this is final" → lock it immediately.
             
+            Campaign updates:
+            - data: { email_template_id: 5 } — link or change the email template
+            - data: { add_contact_group_ids: [3, 7] } — ADD groups to targeting (keeps existing)
+            - data: { remove_contact_group_ids: [3] } — remove specific groups from targeting
+            - data: { contact_group_ids: [3, 7] } — REPLACE all groups (use add_ to append instead)
+            
+            Email template updates:
+            - data: { subject: "New Subject Line", body: "<p>New content</p>" }
+            
+            Sequence step updates (type: "sequence_step"):
+            - data: { delay_hours: 72 } — change timing (use hours, e.g., 3 days = 72)
+            
             Examples:
             - type: "contact", id: 42, data: { lifecycle_stage: "customer" }
+            - type: "campaign", id: 5, data: { add_contact_group_ids: [3] }
+            - type: "email_template", id: 10, data: { subject: "Better Subject" }
+            - type: "sequence_step", id: 8, data: { delay_hours: 72 }
             - type: "app_module", id: 7, data: { name: "New Name", schema: { fields: [{ name: "priority", type: "select", options: ["low", "medium", "high"] }] } }
             - type: "landing_page", id: 189, data: { section: "hero", instruction: "Center the text" }
             - type: "landing_page", id: 189, data: { instruction: "Redesign with a dark theme and bold typography" }
@@ -236,6 +251,19 @@ module V3
         instruction = data["instruction"] || data[:instruction]
         action = data["action"] || data[:action] || "update"
         content = data["content"] || data[:content]
+
+        # Auto-construct instruction from data fields when AI passes structured data
+        # instead of a plain English instruction (common pattern)
+        if instruction.blank? && action == "update"
+          extra_fields = data.except("section", :section, "instruction", :instruction,
+                                     "action", :action, "content", :content,
+                                     "landing_page_id", :landing_page_id)
+          if extra_fields.any?
+            parts = extra_fields.map { |k, v| "Change #{k.to_s.humanize.downcase} to '#{v}'" }
+            instruction = parts.join(". ")
+            Rails.logger.info "[V3::PlatformUpdate] Auto-constructed instruction from data fields: #{instruction}"
+          end
+        end
 
         tool = ::Tools::EditLandingPageSectionTool.new(user: user, entity: entity, context: context)
         result = tool.execute({
