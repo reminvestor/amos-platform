@@ -161,6 +161,94 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _showDeleteAccountDialog(BuildContext context) async {
+    final passwordController = TextEditingController();
+    bool isDeleting = false;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Delete Account'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This action is permanent and cannot be undone. All your data, including campaigns, contacts, and integrations, will be permanently deleted.',
+              ),
+              const SizedBox(height: 16),
+              const Text('Enter your password to confirm:'),
+              const SizedBox(height: 8),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                enabled: !isDeleting,
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                  prefixIcon: Icon(LucideIcons.lock),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isDeleting ? null : () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: isDeleting
+                  ? null
+                  : () async {
+                      if (passwordController.text.isEmpty) {
+                        return;
+                      }
+                      setDialogState(() => isDeleting = true);
+                      try {
+                        await ref
+                            .read(authStateProvider.notifier)
+                            .deleteAccount(passwordController.text);
+                        if (context.mounted) {
+                          Navigator.pop(context, true);
+                        }
+                      } catch (e) {
+                        setDialogState(() => isDeleting = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Failed to delete account. Please check your password and try again.'),
+                            ),
+                          );
+                          Navigator.pop(context, false);
+                        }
+                      }
+                    },
+              child: isDeleting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(
+                      'Delete Account',
+                      style: TextStyle(color: context.errorColor),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    passwordController.dispose();
+
+    if (confirmed == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your account has been deleted.')),
+      );
+    }
+  }
+
   void _showEmailNotificationSettings(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -344,6 +432,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: 'Terms of Service',
             trailing: const Icon(LucideIcons.chevronRight),
             onTap: () => _launchUrl(context, _termsOfServiceUrl),
+          ),
+          _SettingsTile(
+            icon: LucideIcons.trash2,
+            title: 'Delete Account',
+            trailing: const Icon(LucideIcons.chevronRight),
+            onTap: () => _showDeleteAccountDialog(context),
           ),
 
           // Support Section

@@ -94,6 +94,16 @@ class AuthService {
     });
   }
 
+  Future<void> deleteAccount(String password) async {
+    await _api.delete('/api/auth/delete_account', data: {
+      'password': password,
+    });
+    // Clear token from ApiClient and storage
+    ApiClient.instance.clearAuthToken();
+    await _storage.delete(_tokenKey);
+    await _storage.delete(_userKey);
+  }
+
   Future<void> logout() async {
     try {
       await _api.post('/api/auth/logout');

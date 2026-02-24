@@ -254,6 +254,24 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  Future<void> deleteAccount(String password) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      // Unregister device from push notifications
+      final pushService = PushNotificationService();
+      await pushService.unregisterDevice();
+
+      await _authService.deleteAccount(password);
+      state = const AuthState();
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+      rethrow;
+    }
+  }
+
   Future<void> logout() async {
     state = state.copyWith(isLoading: true);
     try {

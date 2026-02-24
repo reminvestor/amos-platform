@@ -41,6 +41,7 @@ Rails.application.routes.draw do
     post 'auth/resend-mfa', to: 'auth#resend_mfa_code'
     post 'auth/register', to: 'auth#register'
     post 'auth/logout', to: 'auth#logout'
+    delete 'auth/delete_account', to: 'auth#delete_account'
     get 'auth/me', to: 'auth#me'
     post 'auth/refresh_token', to: 'auth#refresh_token'
     post 'auth/regenerate_api_key', to: 'auth#regenerate_api_key'
@@ -542,9 +543,10 @@ Rails.application.routes.draw do
     post "users/sessions/use_backup_code", to: "users/sessions#use_backup_code"
   end
 
-  # Legal pages (terms and privacy) - accessible without login
+  # Legal pages (terms, privacy, support) - accessible without login
   get "terms", to: "legal#terms", as: :terms_of_service
   get "privacy", to: "legal#privacy", as: :privacy_policy
+  get "support", to: "legal#support", as: :support
   get "accept-terms", to: "legal#accept_terms", as: :accept_terms
   post "accept-terms", to: "legal#submit_terms"
 
