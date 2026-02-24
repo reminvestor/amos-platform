@@ -26,8 +26,8 @@ jobs:
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # Optional: for GitLeaks Pro features
 
       - name: Upload SARIF report
-        if: failure()
-        uses: github/codeql-action/upload-sarif@v3
+        if: failure() && hashFiles('results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif
           category: gitleaks

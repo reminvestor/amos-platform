@@ -457,7 +457,7 @@ export default class extends Controller {
   }
 
   escapeAttr(text) {
-    return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/`/g, "&#96;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   }
 
   async copyMessage(event) {
