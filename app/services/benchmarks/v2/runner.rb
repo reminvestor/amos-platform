@@ -193,13 +193,22 @@ module Benchmarks
             tool_counts[tool] += 1
           when :canvas_suggestion
             canvas_key = event[:canvas].to_s
+            canvas_data = event[:data] || {}
             unless seen_canvases.include?(canvas_key)
               seen_canvases << canvas_key
+              summary = "Canvas: #{canvas_key}"
+              if canvas_key == "freeform_canvas" && canvas_data.present?
+                html_size = (canvas_data[:html] || canvas_data["html"]).to_s.length
+                has_js = (canvas_data[:javascript] || canvas_data["javascript"]).present?
+                has_css = (canvas_data[:css] || canvas_data["css"]).present?
+                title = canvas_data[:title] || canvas_data["title"]
+                summary = "Freeform canvas '#{title}': #{html_size} chars HTML, js=#{has_js}, css=#{has_css}"
+              end
               result[:tool_calls] << {
                 tool_name: "load_canvas",
                 success: true,
                 error: nil,
-                result_summary: "Canvas: #{canvas_key}",
+                result_summary: summary,
                 result_count: nil
               }
             end
@@ -422,6 +431,23 @@ module Benchmarks
           extra << "sequence_id=#{input['sequence_id'] || input[:sequence_id]}" if input['sequence_id'] || input[:sequence_id]
           extra << "group_id=#{input['group_id'] || input[:group_id]}" if input['group_id'] || input[:group_id]
           "execute #{action}#{extra.any? ? " (#{extra.join(', ')})" : ""}"
+        when "load_canvas"
+          canvas = input["canvas_name"] || input[:canvas_name]
+          data = input["canvas_data"] || input[:canvas_data] || {}
+          if canvas == "freeform_canvas" && data.present?
+            html_len = (data["html"] || data[:html]).to_s.length
+            has_js = (data["javascript"] || data[:javascript]).present?
+            has_css = (data["css"] || data[:css]).present?
+            title = data["title"] || data[:title]
+            libs = (data["library_scripts"] || data[:library_scripts] || []).join(", ")
+            parts = ["freeform '#{title}': #{html_len} chars HTML"]
+            parts << "js=yes" if has_js
+            parts << "css=yes" if has_css
+            parts << "libs=#{libs}" if libs.present?
+            parts.join(", ")
+          else
+            "load #{canvas}"
+          end
         else
           tool_name.to_s
         end.truncate(600)
