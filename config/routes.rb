@@ -42,6 +42,7 @@ Rails.application.routes.draw do
     post 'auth/register', to: 'auth#register'
     post 'auth/logout', to: 'auth#logout'
     delete 'auth/delete_account', to: 'auth#delete_account'
+    delete 'auth/permanently_delete_account', to: 'auth#permanently_delete_account'
     get 'auth/me', to: 'auth#me'
     post 'auth/refresh_token', to: 'auth#refresh_token'
     post 'auth/regenerate_api_key', to: 'auth#regenerate_api_key'
@@ -573,7 +574,12 @@ Rails.application.routes.draw do
     end
 
     # User management
-    resources :users, only: [ :show, :edit, :update ]
+    resources :users, only: [ :show, :edit, :update ] do
+      member do
+        post :deactivate
+        delete :destroy_account
+      end
+    end
 
     # Admin namespace
     namespace :admin do
