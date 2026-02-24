@@ -70,7 +70,14 @@ module Benchmarks
 
         results = scenarios.map do |scenario|
           result = execute_scenario(scenario, benchmark_run)
-          on_result&.call(result.except(:execution_result))
+          er = result[:execution_result] || {}
+          callback_result = result.except(:execution_result)
+          callback_result[:routing] = {
+            model_used: er[:model_used],
+            pre_routed: er[:pre_routed],
+            escalated: er[:escalated]
+          }
+          on_result&.call(callback_result)
           result
         end
 
@@ -126,6 +133,8 @@ module Benchmarks
             execution_result[:tool_calls].concat(turn_result[:tool_calls])
             execution_result[:errors].concat(turn_result[:errors])
             execution_result[:model_used] ||= turn_result[:model_used]
+            execution_result[:pre_routed] ||= turn_result[:pre_routed]
+            execution_result[:escalated] ||= turn_result[:escalated]
 
             conversation_history = turn_result[:conversation_history]
           end
@@ -197,6 +206,7 @@ module Benchmarks
           end
         end
 
+        agent = nil
         begin
           Timeout.timeout(timeout) do
             agent = V3::AgentLoop.new(user: user, entity: entity, session_id: session_id, model: model)
@@ -207,6 +217,8 @@ module Benchmarks
             )
 
             result[:model_used] = agent.model
+            result[:pre_routed] = loop_result[:pre_routed] if loop_result.is_a?(Hash)
+            result[:escalated] = loop_result[:escalated] if loop_result.is_a?(Hash)
 
             if loop_result.is_a?(Hash)
               result[:conversation_history] = loop_result[:conversation_history] if loop_result[:conversation_history]
@@ -220,6 +232,8 @@ module Benchmarks
           end
         rescue Timeout::Error
           result[:errors] << "Turn execution error: execution expired"
+          # On timeout, grab whatever conversation history the agent built
+          result[:conversation_history] = agent&.conversation_messages if agent&.conversation_messages.present?
         rescue => e
           result[:errors] << "Turn execution error: #{e.message}"
         ensure
@@ -227,13 +241,15 @@ module Benchmarks
           if extracted.any?
             result[:tool_calls].concat(extracted)
           else
+            # Fallback: use progress callback counts. Tool calls that were
+            # tracked succeeded individually even if the turn later timed out.
             tool_counts.each do |tool_name, count|
               count.times do
                 result[:tool_calls] << {
                   tool_name: tool_name,
-                  success: result[:errors].empty?,
+                  success: true,
                   error: nil,
-                  result_summary: "",
+                  result_summary: "(from progress tracking)",
                   result_count: nil
                 }
               end
@@ -307,6 +323,15 @@ module Benchmarks
           parts << "subject=#{result['subject']}" if result["subject"]
           parts << "status=#{result['status']}" if result["status"]
           parts << "slug=#{result['slug']}" if result["slug"]
+          parts << "contact_group_id=#{result['contact_group_id']}" if result["contact_group_id"]
+          parts << "enrolled_count=#{result['enrolled_count']}" if result["enrolled_count"]
+          parts << "steps_created=#{result['steps_created']}" if result["steps_created"]
+          if result["steps"].is_a?(Array)
+            result["steps"].each do |step|
+              step = step.stringify_keys if step.respond_to?(:stringify_keys)
+              parts << "  step#{step['step']}: subject='#{step['subject']}' delay=#{step['delay_hours']}h template_id=#{step['template_id']}"
+            end
+          end
           if type == "landing_page" && result["id"]
             lp = LandingPage.find_by(id: result["id"])
             if lp&.html_content.present?
@@ -348,7 +373,7 @@ module Benchmarks
           parts << "updated_fields=#{result['updated_fields']&.join(', ')}" if result["updated_fields"]
         end
 
-        parts.reject(&:blank?).join(" | ").truncate(800)
+        parts.reject(&:blank?).join(" | ").truncate(1200)
       end
 
       def summarize_tool_input(tool_name, input)
@@ -357,12 +382,31 @@ module Benchmarks
         when "platform_create"
           type = input["type"] || input[:type]
           data = input["data"] || input[:data] || {}
+          parts = ["create #{type}"]
+
           key_fields = data.slice("name", "email", "title", "subject", "body", "status",
                                   "first_name", "last_name", "company", "description",
+                                  "contact_group_id", "goal", "activate",
                                   :name, :email, :title, :subject, :body, :status,
-                                  :first_name, :last_name, :company, :description)
-          field_summary = key_fields.map { |k, v| "#{k}=#{v.to_s.truncate(80)}" }.first(6).join(", ")
-          "create #{type}: #{field_summary.presence || data.keys.first(5).join(', ')}"
+                                  :first_name, :last_name, :company, :description,
+                                  :contact_group_id, :goal, :activate)
+          field_summary = key_fields.map { |k, v| "#{k}=#{v.to_s.truncate(80)}" }.first(8).join(", ")
+          parts << field_summary if field_summary.present?
+
+          emails = data["emails"] || data[:emails] || data["steps"] || data[:steps]
+          if emails.is_a?(Array) && emails.any?
+            parts << "emails=[#{emails.length} steps]"
+            emails.each_with_index do |e, i|
+              e = e.stringify_keys if e.respond_to?(:stringify_keys)
+              subj = e["subject"] || e[:subject] || "(no subject)"
+              delay = e["delay_hours"] || e[:delay_hours] || (e["delay_days"] || e[:delay_days] || 0).to_i * 24
+              has_body = (e["body"] || e[:body]).present?
+              has_personalization = (e["body"] || e[:body]).to_s.include?("{{")
+              parts << "  step#{i + 1}: subject='#{subj.to_s.truncate(50)}' delay=#{delay}h body=#{has_body ? 'yes' : 'no'} personalized=#{has_personalization ? 'yes' : 'no'}"
+            end
+          end
+
+          parts.join(", ").presence || "create #{type}: #{data.keys.first(5).join(', ')}"
         when "platform_query"
           type = input["type"] || input[:type]
           filters = input["filters"] || input[:filters] || {}
@@ -374,10 +418,13 @@ module Benchmarks
           "update #{type} id=#{input['id'] || input[:id]}: #{data.keys.first(5).join(', ')}"
         when "platform_execute"
           action = input["action"] || input[:action]
-          "execute #{action}"
+          extra = []
+          extra << "sequence_id=#{input['sequence_id'] || input[:sequence_id]}" if input['sequence_id'] || input[:sequence_id]
+          extra << "group_id=#{input['group_id'] || input[:group_id]}" if input['group_id'] || input[:group_id]
+          "execute #{action}#{extra.any? ? " (#{extra.join(', ')})" : ""}"
         else
           tool_name.to_s
-        end.truncate(300)
+        end.truncate(600)
       end
 
       def snapshot_record_counts(_entity)

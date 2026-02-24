@@ -405,12 +405,13 @@ module Tools
       data[:completed_count] ||= 0
       data[:active_count] ||= 0
 
-      # Find-or-create by name
+      # Find-or-create by name — if existing, reset to draft so it can be rebuilt
       name = data[:name]
       if name.present?
         existing = EmailSequence.visible_to_user(user).find_by(name: name)
         if existing
-          Rails.logger.info "♻️ Email sequence '#{name}' already exists (ID: #{existing.id}) — returning existing"
+          Rails.logger.info "♻️ Email sequence '#{name}' already exists (ID: #{existing.id}, status: #{existing.status}) — resetting to draft"
+          existing.update!(status: "draft") if existing.status != "draft"
           @was_existing = true
           return existing
         end
@@ -798,11 +799,19 @@ module Tools
           "Use in a sequence step: platform_create(type: 'sequence_step', data: { email_sequence_id: SEQ_ID, email_template_id: #{id}, step_number: 1, delay_hours: 0 })"
         ]
       when "email_sequences"
-        [
-          "⚠️ This sequence has 0 email steps — it won't send anything yet. You MUST add steps with content next.",
-          "Add each step: platform_create(type: 'sequence_step', data: { email_sequence_id: #{id}, step_number: 1, delay_hours: 0, subject: 'Welcome!', body: '<h1>Hi {{first_name}}</h1><p>Your content...</p>' })",
-          "After adding all steps: platform_execute(action: 'activate_sequence', sequence_id: #{id})"
-        ]
+        seq = EmailSequence.find_by(id: id)
+        step_count = seq&.sequence_steps&.count || 0
+        if step_count > 0 && seq&.status == "active"
+          ["Sequence is active with #{step_count} step(s). No further action needed unless you want to modify it."]
+        elsif step_count > 0
+          ["Sequence has #{step_count} step(s) in #{seq&.status} status. Activate with: platform_execute(action: 'activate_sequence', sequence_id: #{id})"]
+        else
+          [
+            "⚠️ REQUIRED: This sequence has 0 email steps — it CANNOT send anything. You MUST add steps NOW.",
+            "Add each step: platform_create(type: 'sequence_step', data: { email_sequence_id: #{id}, step_number: 1, delay_hours: 0, subject: 'Welcome!', body: '<h1>Hi {{first_name}}</h1><p>Your content...</p>' })",
+            "After adding ALL steps: platform_execute(action: 'activate_sequence', sequence_id: #{id})"
+          ]
+        end
       when "sequence_steps"
         ["Step added. Add more steps or enroll contacts in the sequence."]
       when "opportunities"

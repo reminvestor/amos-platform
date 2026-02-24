@@ -14,41 +14,50 @@ module Benchmarks
         ].freeze
 
         def self.cleanup!(entity)
-          # Delete sequences first (they reference the group via FK)
-          EmailSequence.where(entity: entity).where("name ILIKE ?", SEQUENCE_NAME_PATTERN).find_each do |seq|
-            seq.sequence_enrollments.delete_all
-            seq.sequence_steps.each { |s| s.update_columns(email_template_id: nil) }
-            seq.sequence_steps.delete_all
-            seq.destroy!
-          rescue => e
-            Rails.logger.debug "[BenchmarkCleanup] EmailSequence #{seq.id}: #{e.message}"
+          conn = ActiveRecord::Base.connection
+
+          # 1. Delete sequences matching name pattern
+          seq_ids = EmailSequence.where(entity: entity).where("name ILIKE ?", SEQUENCE_NAME_PATTERN).pluck(:id)
+
+          # 2. Also get sequences linked to our group
+          group_ids = ContactGroup.where(entity: entity, name: GROUP_NAME).pluck(:id)
+          if group_ids.any?
+            seq_ids += EmailSequence.where(contact_group_id: group_ids).pluck(:id)
           end
 
-          # Also clean any sequences linked to our group
-          ContactGroup.where(entity: entity, name: GROUP_NAME).find_each do |g|
-            g.email_sequences.find_each do |seq|
-              seq.sequence_enrollments.delete_all
-              seq.sequence_steps.delete_all
-              seq.destroy!
-            rescue => e
-              Rails.logger.debug "[BenchmarkCleanup] EmailSequence #{seq.id}: #{e.message}"
-            end
-            g.contacts.clear
-            CampaignGroup.where(contact_group_id: g.id).delete_all
-            g.destroy!
-          rescue => e
-            Rails.logger.debug "[BenchmarkCleanup] ContactGroup #{g.id}: #{e.message}"
+          seq_ids.uniq!
+
+          # 3. Batch-delete sequence dependencies
+          if seq_ids.any?
+            template_ids = SequenceStep.where(email_sequence_id: seq_ids).pluck(:email_template_id).compact
+            SequenceEmailDelivery.where(email_sequence_id: seq_ids).delete_all
+            SequenceEnrollment.where(email_sequence_id: seq_ids).delete_all
+            SequenceStep.where(email_sequence_id: seq_ids).update_all(email_template_id: nil)
+            SequenceStep.where(email_sequence_id: seq_ids).delete_all
+            EmailSequence.where(id: seq_ids).delete_all
+            EmailTemplate.where(id: template_ids, entity: entity).delete_all if template_ids.any?
           end
 
+          # 4. Clean groups
+          if group_ids.any?
+            CampaignGroup.where(contact_group_id: group_ids).delete_all
+            conn.execute("DELETE FROM contact_groups_contacts WHERE contact_group_id IN (#{group_ids.join(',')})")
+            ContactGroup.where(id: group_ids).delete_all
+          end
+
+          # 5. Clean contacts
           test_emails = TEST_CONTACTS.map { |c| c[:email] }
-          Contact.where(entity: entity, email: test_emails).find_each do |c|
-            c.sequence_enrollments.delete_all
-            ActiveRecord::Base.connection.execute(
-              "DELETE FROM contact_groups_contacts WHERE contact_id = #{c.id}"
-            )
-            c.destroy
-          rescue => e
-            Rails.logger.debug "[BenchmarkCleanup] Contact #{c.id}: #{e.message}"
+          contact_ids = Contact.where(entity: entity, email: test_emails).pluck(:id)
+          if contact_ids.any?
+            id_list = contact_ids.join(",")
+            SequenceEmailDelivery.where(contact_id: contact_ids).delete_all
+            SequenceEnrollment.where(contact_id: contact_ids).delete_all
+            EmailDelivery.where(contact_id: contact_ids).delete_all
+            SmsDelivery.where(contact_id: contact_ids).delete_all
+            Activity.where(contact_id: contact_ids).delete_all
+            Opportunity.where(contact_id: contact_ids).delete_all
+            conn.execute("DELETE FROM contact_groups_contacts WHERE contact_id IN (#{id_list})")
+            Contact.where(id: contact_ids).delete_all
           end
         rescue => e
           Rails.logger.warn "[BenchmarkCleanup] email_sequence_full_lifecycle cleanup failed: #{e.message}"

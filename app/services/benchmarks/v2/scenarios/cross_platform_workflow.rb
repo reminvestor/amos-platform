@@ -25,45 +25,53 @@ module Benchmarks
         ).freeze
 
         def self.cleanup!(entity)
-          Campaign.where(entity: entity).where("name ILIKE ?", CAMPAIGN_PATTERN).find_each do |c|
-            c.campaign_groups.delete_all
-            c.email_deliveries.delete_all
-            c.destroy
-          rescue => e
-            Rails.logger.debug "[BenchmarkCleanup] Campaign #{c.id}: #{e.message}"
+          conn = ActiveRecord::Base.connection
+
+          # 1. Clean campaigns
+          campaign_ids = Campaign.where(entity: entity).where("name ILIKE ?", CAMPAIGN_PATTERN).pluck(:id)
+          if campaign_ids.any?
+            CampaignGroup.where(campaign_id: campaign_ids).delete_all
+            EmailDelivery.where(campaign_id: campaign_ids).delete_all
+            Campaign.where(id: campaign_ids).delete_all
           end
 
-          ContactGroup.where(entity: entity, name: GROUP_NAME).find_each do |g|
-            g.contacts.clear
-            g.email_sequences.find_each do |seq|
-              seq.sequence_enrollments.delete_all
-              seq.sequence_steps.delete_all
-              seq.destroy
-            rescue => e
-              Rails.logger.debug "[BenchmarkCleanup] EmailSequence #{seq.id}: #{e.message}"
+          # 2. Clean groups
+          group_ids = ContactGroup.where(entity: entity, name: GROUP_NAME).pluck(:id)
+          if group_ids.any?
+            seq_ids = EmailSequence.where(contact_group_id: group_ids).pluck(:id)
+            if seq_ids.any?
+              SequenceEmailDelivery.where(email_sequence_id: seq_ids).delete_all
+              SequenceEnrollment.where(email_sequence_id: seq_ids).delete_all
+              SequenceStep.where(email_sequence_id: seq_ids).update_all(email_template_id: nil)
+              SequenceStep.where(email_sequence_id: seq_ids).delete_all
+              EmailSequence.where(id: seq_ids).delete_all
             end
-            CampaignGroup.where(contact_group_id: g.id).delete_all
-            g.destroy
-          rescue => e
-            Rails.logger.debug "[BenchmarkCleanup] ContactGroup #{g.id}: #{e.message}"
+            CampaignGroup.where(contact_group_id: group_ids).delete_all
+            conn.execute("DELETE FROM contact_groups_contacts WHERE contact_group_id IN (#{group_ids.join(',')})")
+            ContactGroup.where(id: group_ids).delete_all
           end
 
-          # Clean ALL benchmark-related contacts AND any contacts created in the
-          # last 8 days so the "last 7 days" query only returns our seeded data
-          contacts_to_remove = Contact.where(entity: entity).where(
+          # 3. Clean contacts (benchmark emails + anything created recently)
+          contact_ids = Contact.where(entity: entity).where(
             "email IN (?) OR created_at > ?", ALL_BENCHMARK_EMAILS, 8.days.ago
-          )
-          contacts_to_remove.find_each do |c|
-            c.sequence_enrollments.delete_all
-            ActiveRecord::Base.connection.execute(
-              "DELETE FROM contact_groups_contacts WHERE contact_id = #{c.id}"
-            )
-            c.destroy
-          rescue => e
-            Rails.logger.debug "[BenchmarkCleanup] Contact #{c.id}: #{e.message}"
-          end
+          ).pluck(:id)
+          force_delete_contacts!(conn, contact_ids) if contact_ids.any?
         rescue => e
           Rails.logger.warn "[BenchmarkCleanup] cross_platform_workflow cleanup failed: #{e.message}"
+        end
+
+        def self.force_delete_contacts!(conn, contact_ids)
+          return if contact_ids.empty?
+          id_list = contact_ids.join(",")
+          SequenceEmailDelivery.where(contact_id: contact_ids).delete_all
+          SequenceEnrollment.where(contact_id: contact_ids).delete_all
+          EmailDelivery.where(contact_id: contact_ids).delete_all
+          SmsDelivery.where(contact_id: contact_ids).delete_all
+          Activity.where(contact_id: contact_ids).delete_all
+          Opportunity.where(contact_id: contact_ids).delete_all
+          LandingPageSubmission.where(contact_id: contact_ids).update_all(contact_id: nil)
+          conn.execute("DELETE FROM contact_groups_contacts WHERE contact_id IN (#{id_list})")
+          Contact.where(id: contact_ids).delete_all
         end
 
         def self.setup_contacts!(entity, user)

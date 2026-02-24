@@ -1004,15 +1004,16 @@ module V3
       def process_date_filters(filters)
         return filters unless filters.is_a?(Hash)
 
+        now = Time.current
         filters.transform_values do |value|
           case value.to_s
-          when "today" then Date.current
-          when "yesterday" then Date.yesterday
-          when "last_7_days" then 7.days.ago..Date.current
-          when "last_30_days" then 30.days.ago..Date.current
-          when "last_90_days" then 90.days.ago..Date.current
-          when "this_month" then Date.current.beginning_of_month..Date.current
-          when "this_year" then Date.current.beginning_of_year..Date.current
+          when "today" then now.beginning_of_day..now
+          when "yesterday" then 1.day.ago.beginning_of_day..1.day.ago.end_of_day
+          when "last_7_days" then 7.days.ago.beginning_of_day..now
+          when "last_30_days" then 30.days.ago.beginning_of_day..now
+          when "last_90_days" then 90.days.ago.beginning_of_day..now
+          when "this_month" then now.beginning_of_month..now
+          when "this_year" then now.beginning_of_year..now
           else value
           end
         end

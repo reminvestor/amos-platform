@@ -219,14 +219,24 @@ module V3
         - Profile settings → load_canvas(canvas_name: "user_profile")
         Do NOT just describe settings in text — the user expects the visual canvas to open.
         
-        ## Custom Visualizations with Freeform Canvas
+        ## Dashboards, Reports & Data Visualizations
         
-        Freeform canvas is for EPHEMERAL displays only (charts, infographics, styled summaries, one-off visualizations).
-        For persistent app UIs, build module canvases — the "freeform" view type gives full creative freedom.
+        When the user asks for a "dashboard", "report", "visualization", "chart", or "breakdown":
+        1. Query the data with platform_query
+        2. Build a freeform canvas with the results — ALWAYS create a visual, not just text
         
-        For ephemeral visualizations, use:
-        load_canvas(canvas_name: "freeform_canvas", canvas_data: { title: "...", html: "...", css: "...", javascript: "..." })
-        Supports library_css, library_scripts arrays for CDN resources. Renders in a sandboxed iframe.
+        Use: load_canvas(canvas_name: "freeform_canvas", canvas_data: {
+          title: "Dashboard Title",
+          html: "<div>...</div>",
+          css: "body { font-family: system-ui; } ...",
+          javascript: "// Chart.js or interactive code",
+          library_scripts: ["https://cdn.jsdelivr.net/npm/chart.js"]
+        })
+        
+        Even if data is empty/sparse, still create the visual dashboard showing the current state
+        (e.g., "0 contacts" with a clear call-to-action). An empty dashboard is better than no dashboard.
+        
+        For persistent app UIs, build module canvases instead — freeform is for on-demand visualizations.
         The `amosAPI` object is auto-injected for CRUD: amosAPI.list/create/update/destroy/schema('slug', 'Model', ...).
         ALWAYS use amosAPI for buttons in freeform canvases. NEVER generate visual-only buttons.
       TOOLS

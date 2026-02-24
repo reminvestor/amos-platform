@@ -29,7 +29,7 @@ module V3
             - type: "campaign", data: { name: "Summer Sale", email_template_id: 5 }
             - type: "automation", data: { name: "Welcome Flow", trigger: "contact_created", action: "send_email", action_config: { template_id: 5 } }
             - type: "landing_page", data: { title: "CloudSync Pro", description: "SaaS collaboration tool", business_info: { value_proposition: "Real-time collaboration for teams", key_benefits: ["Instant sync", "Smart scheduling", "Automated reports"], target_audience: "Remote teams" } }
-            - type: "email_sequence", data: { name: "Welcome Series", emails: [{ subject: "Welcome!", body: "<h1>Hi {{first_name}}!</h1>...", delay_days: 0 }, { subject: "Getting Started", body: "...", delay_days: 3 }] }
+            - type: "email_sequence", data: { name: "Welcome Series", contact_group_id: 40, activate: true, emails: [{ subject: "Welcome!", body: "<h1>Hi {{first_name}}!</h1><p>We're glad you're here.</p>", delay_hours: 0 }, { subject: "Getting Started", body: "<h1>Hi {{first_name}}</h1><p>Here's how to get started...</p>", delay_hours: 72 }] }
             - type: "app", data: { name: "CRM", description: "Contact management" }
 
             Smart behaviors:
@@ -37,7 +37,7 @@ module V3
             - Auto-create dependencies: campaign with subject+body auto-creates template. campaign with contact_group_id auto-links the group. sequence_step with subject+body auto-creates template. email_sequence without contact_group auto-creates one. activity with contact_email auto-finds or creates the contact. opportunity with contact_email auto-finds or creates the contact.
             - Defaults: status defaults to 'draft' (campaigns, sequences), 'pending' (enrollments, activities), 'lead' (opportunities).
 
-            Email sequence (one-call): pass 'emails' array to auto-create templates, contact group, sequence, and steps in one call. Contacts from the linked group are auto-enrolled. Pass activate: true to immediately start sending.
+            Email sequence (PREFERRED one-call builder): ALWAYS pass the 'emails' array with subject, body (HTML with {{first_name}} personalization), and delay_hours for each step. Include contact_group_id to link to an existing group, and activate: true to start sending immediately. This single call auto-creates templates, steps, enrolls contacts, and activates — no follow-up calls needed.
             Automation triggers: contact_created, form_submit, record_updated, status_changed, field_changed, schedule, webhook
             Automation actions: send_email, add_to_campaign, update_field, create_activity, call_webhook, notify_user
             Contact fields: email (required), first_name, last_name, lifecycle_stage, status, phone, company, custom_fields.

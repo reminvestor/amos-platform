@@ -16,6 +16,11 @@ class Contact < ApplicationRecord
   has_many :sequence_enrollments, dependent: :destroy
   has_many :email_sequences, through: :sequence_enrollments
 
+  # Delivery tracking
+  has_many :email_deliveries, dependent: :destroy
+  has_many :sequence_email_deliveries, dependent: :destroy
+  has_many :sms_deliveries, dependent: :destroy
+
   # CRM associations
   has_many :opportunities, dependent: :destroy
   has_many :activities, dependent: :destroy

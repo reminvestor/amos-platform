@@ -8,19 +8,19 @@ module Benchmarks
         ALL_BENCHMARK_SLUGS = %w[bench-crm-api bench-mailservice].freeze
 
         def self.cleanup!(entity)
-          Integration.where(entity: entity, slug: ALL_BENCHMARK_SLUGS).find_each do |i|
-            i.integration_actions.delete_all
-            IntegrationLog.where(integration_operation_id: i.integration_operations.select(:id)).delete_all
-            i.integration_operations.delete_all
-            i.connections.each do |c|
-              c.integration_credentials.delete_all
-              c.integration_logs.delete_all
-              c.destroy
-            end
-            i.destroy
-          rescue => e
-            Rails.logger.debug "[BenchmarkCleanup] Integration #{i.id}: #{e.message}"
-          end
+          integration_ids = Integration.where(entity: entity, slug: ALL_BENCHMARK_SLUGS).pluck(:id)
+          return if integration_ids.empty?
+
+          op_ids = IntegrationOperation.where(integration_id: integration_ids).pluck(:id)
+          conn_ids = Connection.where(integration_id: integration_ids).pluck(:id)
+
+          IntegrationAction.where(integration_id: integration_ids).delete_all
+          IntegrationLog.where(integration_operation_id: op_ids).delete_all if op_ids.any?
+          IntegrationLog.where(connection_id: conn_ids).delete_all if conn_ids.any?
+          IntegrationOperation.where(id: op_ids).delete_all if op_ids.any?
+          IntegrationCredential.where(connection_id: conn_ids).delete_all if conn_ids.any?
+          Connection.where(id: conn_ids).delete_all if conn_ids.any?
+          Integration.where(id: integration_ids).delete_all
         rescue => e
           Rails.logger.warn "[BenchmarkCleanup] integration_discovery cleanup failed: #{e.message}"
         end
@@ -38,10 +38,14 @@ module Benchmarks
             is_active: true,
             is_verified: false
           )
+          op_ids = integration.integration_operations.pluck(:id)
+          conn_ids = integration.connections.pluck(:id)
           integration.integration_actions.delete_all
-          IntegrationLog.where(integration_operation_id: integration.integration_operations.select(:id)).delete_all
+          IntegrationLog.where(integration_operation_id: op_ids).delete_all if op_ids.any?
+          IntegrationLog.where(connection_id: conn_ids).delete_all if conn_ids.any?
           integration.integration_operations.delete_all
-          integration.connections.each { |c| c.integration_credentials.delete_all; c.integration_logs.delete_all; c.destroy }
+          IntegrationCredential.where(connection_id: conn_ids).delete_all if conn_ids.any?
+          Connection.where(id: conn_ids).delete_all if conn_ids.any?
 
           [
             { operation_id: "list_contacts", name: "List Contacts", description: "Retrieve all contacts", http_method: "GET", path_template: "/contacts" },

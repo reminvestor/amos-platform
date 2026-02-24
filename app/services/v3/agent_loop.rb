@@ -21,7 +21,7 @@ module V3
     MAX_REPEATED_FAILURES = 3
     MAX_TOOL_RESULT_SIZE = 50_000 # 50KB limit per tool result
 
-    attr_reader :user, :entity, :session_id, :model
+    attr_reader :user, :entity, :session_id, :model, :conversation_messages
     attr_accessor :suggested_canvas, :canvas_data
 
     # Default model for auto mode - fast and cheap
@@ -62,14 +62,16 @@ module V3
       @prompt_builder = V3::SystemPromptBuilder.new(user: user, entity: entity, session_id: session_id, client_ip: client_ip)
       @compaction = V3::ConversationCompactionService.new(user: user, entity: entity, model: @model)
       @tools_called = []
-      @tool_call_history = []  # Records tool name per call for loop detection
-      @tool_turns = []         # Records per-turn tool usage: [{turn: 1, tools: ["platform_create", "platform_create", ...]}]
+      @tool_call_history = []
+      @tool_turns = []
+      @tool_errors = []
       @suggested_canvas = nil
       @canvas_data = {}
       @loop_start_time = nil
       @user_message = nil
-      @hallucination_guard_count = 0  # Number of times hallucination guard has fired (allows up to 2 nudges)
+      @hallucination_guard_count = 0
       @escalated = false
+      @pre_routed = false
       @original_model = @model
 
       Rails.logger.info "[V3::AgentLoop] Initialized with model: #{@model} (explicit: #{model.present?})"
@@ -91,7 +93,8 @@ module V3
       )
 
       # 2. Prepare conversation messages
-      conversation_messages = prepare_messages(conversation_history)
+      @conversation_messages = prepare_messages(conversation_history)
+      conversation_messages = @conversation_messages
 
       # 3. Compact if needed
       conversation_messages = @compaction.compact_if_needed(
@@ -100,10 +103,21 @@ module V3
       )
 
       # 4. Add current user message (merge if last message is also from user)
-      if conversation_messages.last && conversation_messages.last[:role] == "user"
-        existing_text = conversation_messages.last[:content].map { |c| c[:text] }.join("\n")
-        conversation_messages.last[:content] = [{ text: "#{existing_text}\n#{message}" }]
-        Rails.logger.info "[V3::AgentLoop] Merged consecutive user message with previous"
+      #    NEVER merge into a message that contains tool_result blocks — that would
+      #    destroy the tool_use/tool_result pairing required by the API.
+      last_msg = conversation_messages.last
+      if last_msg && last_msg[:role] == "user"
+        has_tool_results = last_msg[:content].is_a?(Array) &&
+          last_msg[:content].any? { |c| c.is_a?(Hash) && (c[:tool_result] || c["tool_result"]) }
+
+        if has_tool_results
+          conversation_messages << { role: "user", content: [{ text: message }] }
+          Rails.logger.warn "[V3::AgentLoop] Previous user message has tool_results — adding new message instead of merging"
+        else
+          existing_text = last_msg[:content].map { |c| c[:text] }.join("\n")
+          last_msg[:content] = [{ text: "#{existing_text}\n#{message}" }]
+          Rails.logger.info "[V3::AgentLoop] Merged consecutive user message with previous"
+        end
       else
         conversation_messages << {
           role: "user",
@@ -120,12 +134,15 @@ module V3
                         "#{conversation_messages.length} messages, #{tools.length} tools"
       Rails.logger.info "[V3::AgentLoop] Message pattern: #{roles}"
 
-      # 6. Run the agent loop
+      # 6. Pre-route: upgrade model for messages that need stronger reasoning
+      pre_route_model!(message, conversation_history)
+
+      # 7. Run the agent loop
       @loop_start_time = Time.current
       @user_message = message
       result = run_loop(system_prompt, conversation_messages, tools, progress_callback)
 
-      # 7. Check if we need to escalate to a stronger model
+      # 8. Check if we need to escalate to a stronger model
       if should_escalate?(result, message)
         result = escalate_and_retry!(system_prompt, conversation_messages, tools, progress_callback, result)
       end
@@ -157,6 +174,8 @@ module V3
         turn_count += 1
         if turn_count > MAX_TOOL_TURNS
           Rails.logger.warn "[V3::AgentLoop] Max turns (#{MAX_TOOL_TURNS}) exceeded"
+          final_text = accumulated_content.presence || "I've reached the maximum number of steps for this request."
+          conversation_messages << { role: "assistant", content: [{ text: final_text }] }
           break
         end
 
@@ -270,6 +289,13 @@ module V3
           end
 
           Rails.logger.info "[V3::AgentLoop] Turn #{turn_count}: text only (#{turn_text.length} chars) — done"
+          # Add final assistant response to conversation history so multi-turn
+          # callers get a properly alternating user/assistant sequence.
+          # Without this, the history ends on a user(tool_results) message,
+          # and the next turn's user message would merge into it — destroying
+          # the tool_use/tool_result pairing required by the API.
+          final_text = turn_text.presence || accumulated_content.presence || "I'm ready to help."
+          conversation_messages << { role: "assistant", content: [{ text: final_text }] }
           break
         end
 
@@ -293,10 +319,10 @@ module V3
         # Execute tools (with steering check between each)
         tool_results = execute_tools_with_steering(tool_calls, progress_callback)
 
-        # Track failure counts
         tool_calls.each_with_index do |tc, idx|
           if result_is_error?(tool_results[idx])
             failure_counts[tc[:name]] += 1
+            @tool_errors << { tool: tc[:name], error: tool_results[idx].to_s.truncate(200) }
             if failure_counts[tc[:name]] >= MAX_REPEATED_FAILURES
               Rails.logger.warn "[V3::AgentLoop] Tool #{tc[:name]} failed #{MAX_REPEATED_FAILURES} times"
             end
@@ -519,12 +545,13 @@ module V3
     # This prevents the hallucination guard from firing after escalation, where the previous
     # model's successful tool calls are in the conversation history.
     def conversation_has_tool_results?(conversation_messages)
-      conversation_messages.any? do |msg|
-        next false unless msg[:content].is_a?(Array)
-        msg[:content].any? do |block|
-          block[:tool_result].present? || block.dig(:tool_result, :content).present?
-        end
-      end
+      conversation_messages.any? { |msg| has_tool_result_blocks?(msg) }
+    end
+
+    def has_tool_result_blocks?(msg)
+      content = msg[:content] || msg["content"]
+      return false unless content.is_a?(Array)
+      content.any? { |block| block[:tool_result].present? || block.dig(:tool_result, :content).present? }
     end
 
     # Check if the USER's message is asking for a concrete action (create, edit, update, delete, etc.)
@@ -640,7 +667,14 @@ module V3
           content = content.map { |c| { text: c["text"] || c[:text] } }
         end
 
-        if merged.last && merged.last[:role] == role
+        has_tool_blocks = content.is_a?(Array) && content.any? { |c|
+          c.is_a?(Hash) && (c[:tool_use] || c["tool_use"] || c[:tool_result] || c["tool_result"])
+        }
+        prev_has_tool_blocks = merged.last && merged.last[:content].is_a?(Array) && merged.last[:content].any? { |c|
+          c.is_a?(Hash) && (c[:tool_use] || c["tool_use"] || c[:tool_result] || c["tool_result"])
+        }
+
+        if merged.last && merged.last[:role] == role && !has_tool_blocks && !prev_has_tool_blocks
           existing_text = merged.last[:content].map { |c| c[:text] }.join("\n")
           new_text = content.map { |c| c[:text] }.join("\n")
           merged.last[:content] = [{ text: "#{existing_text}\n#{new_text}" }]
@@ -666,12 +700,14 @@ module V3
           message_already_saved: false
         },
         tools_used: @tools_called.uniq,
+        tool_errors: @tool_errors,
         suggested_canvas: @suggested_canvas,
         canvas_data: @canvas_data,
         model_used: @model,
         version: "v3",
         note: note,
         escalated: @escalated,
+        pre_routed: @pre_routed,
         original_model: @original_model
       }
     end
@@ -736,10 +772,7 @@ module V3
       end
 
       # Pattern 4: Tool loop — same tool called across MULTIPLE turns
-      # Important: calling platform_create 10x in ONE turn is a batch operation (good).
-      # Calling the same tool across 4+ separate turns suggests the model is stuck in a loop.
       if @tool_turns.length >= 4
-        # Count how many distinct turns each tool appears in
         tool_turn_counts = Hash.new(0)
         @tool_turns.each do |turn_info|
           turn_info[:tools].uniq.each { |tool| tool_turn_counts[tool] += 1 }
@@ -755,7 +788,35 @@ module V3
         return "complex_request_no_tools"
       end
 
+      # Pattern 6: Fabricated data — response contains numbered lists of names/data
+      #   that weren't returned by any tool. Common qwen failure: tool returns 3 contacts
+      #   but response lists 6 with invented names.
+      if tools_used.any? && response_has_fabricated_data?(response_text)
+        return "fabricated_data"
+      end
+
+      # Pattern 7: Tool errors ignored — tools returned errors but model claimed success
+      if result[:tool_errors].present? && result[:tool_errors].any? &&
+         response_text.match?(/\b(done|completed|success|created|activated|everything.{0,20}(set up|ready|working))\b/i)
+        return "errors_ignored"
+      end
+
       nil
+    end
+
+    def response_has_fabricated_data?(text)
+      return false if text.blank?
+
+      # Look for numbered lists of fabricated people/entities (a common hallucination pattern)
+      # e.g., "1. Emma Rivera\n2. John Smith\n3. Ana Garcia\n4. David Lee\n5. Sarah Chen\n6. Mike Johnson"
+      numbered_names = text.scan(/\d+\.\s+\*?\*?[A-Z][a-z]+\s+[A-Z][a-z]+/).length
+      return true if numbered_names >= 5
+
+      # Look for fabricated email addresses that follow a suspiciously regular pattern
+      fabricated_emails = text.scan(/[a-z]+\.[a-z]+@[a-z]+\.(com|org|net)/).length
+      return true if fabricated_emails >= 4
+
+      false
     end
 
     def escalate_and_retry!(system_prompt, conversation_messages, tools, progress_callback, failed_result)
@@ -780,6 +841,7 @@ module V3
       @tools_called = []
       @tool_call_history = []
       @tool_turns = []
+      @tool_errors = []
       @hallucination_guard_count = 0
       @suggested_canvas = nil
       @canvas_data = {}
@@ -851,11 +913,74 @@ module V3
       end
     end
 
+    # ═══════════════════════════════════════════════════════════════
+    # PRE-ROUTING — Classify message and upgrade model BEFORE calling LLM
+    #
+    # The cheap model (qwen) handles 80% of requests well. But certain
+    # message patterns consistently need stronger reasoning. Rather than
+    # running qwen → fail → escalate (wasting time), we route directly
+    # to Sonnet for these patterns.
+    #
+    # Design principle: conservative. Only pre-route when the signal is
+    # strong. False negatives (qwen gets a hard task) are fine — the
+    # post-completion escalation catches those. False positives (Sonnet
+    # gets an easy task) waste money.
+    # ═══════════════════════════════════════════════════════════════
+
+    def pre_route_model!(message, conversation_history)
+      return if user_selected_model?
+      return if high_capability_model?(@model)
+      return if @model.include?("sonnet")
+
+      reason = detect_pre_route_reason(message, conversation_history)
+      return unless reason
+
+      upgrade_model = ESCALATION_MODEL
+      Rails.logger.info "[V3::AgentLoop] Pre-routing: #{@model} → #{upgrade_model} (reason: #{reason})"
+      @pre_routed = true
+      @model = upgrade_model
+    end
+
+    def detect_pre_route_reason(message, conversation_history)
+      return nil if message.blank?
+      msg = message.downcase
+
+      # 1. Ambiguous/strategic requests — no specific action, asking for advice
+      #    "help me grow my business", "what should I do", "how can I improve"
+      if msg.match?(/\b(help me|what should|how (can|do|should) i|advice|strategy|recommend|suggest)\b/i) &&
+         !msg.match?(/\b(create|build|send|update|delete|add|remove|import|set up|activate)\b/i)
+        return "ambiguous_strategic"
+      end
+
+      # 2. Data analysis / reporting / performance questions
+      #    "show me my Q4 results", "campaign performance", "give me a report"
+      if msg.match?(/\b(performance|analytics?|report|dashboard|results|metrics|breakdown|roi|conversion rate|open rate|click rate)\b/i)
+        return "analysis_reporting"
+      end
+
+      # 3. Error/problem resolution — user reporting something broken
+      #    "not working", "failed", "can't connect", "fix this"
+      if msg.match?(/\b(not working|broken|failed|error|issue|problem|can'?t connect|fix|troubleshoot|wrong|bug)\b/i)
+        return "error_resolution"
+      end
+
+      # 4. Multi-turn conversation getting complex — 6+ user turns deep
+      #    Tool calls inflate the raw message count, so count actual user
+      #    messages to measure real conversation depth.
+      if conversation_history.is_a?(Array)
+        user_turn_count = conversation_history.count { |m| (m[:role] || m["role"]) == "user" && !has_tool_result_blocks?(m) }
+        if user_turn_count >= 6
+          return "deep_conversation"
+        end
+      end
+
+      nil
+    end
+
     def complex_request?(message)
       return false if message.blank?
       msg = message.downcase
 
-      # Requests that typically need stronger reasoning
       complex_patterns = /\b(build|create.*app|design|architect|analyze|summarize|explain.*pdf|review.*document|multi.?step|integrate|migrate|refactor|plan)\b/i
       msg.match?(complex_patterns)
     end

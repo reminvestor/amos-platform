@@ -182,9 +182,15 @@ namespace :benchmark do
       status = r[:score][:passed] ? "✅" : "❌"
       puts ""
       puts "#{status} #{r[:scenario_id]} (#{r[:level]})"
+      routing_info = []
+      routing = r[:routing] || {}
+      routing_info << "pre-routed" if routing[:pre_routed]
+      routing_info << "escalated" if routing[:escalated]
+      model_used = routing[:model_used]
+      routing_suffix = routing_info.any? ? " [#{routing_info.join(', ')}→#{model_used}]" : ""
       puts "   Score: #{r[:score][:total_score]}/#{r[:score][:max_score]} " \
            "(assertions: #{r[:score][:assertion_score]}/#{r[:score][:assertion_max]}, " \
-           "judge: #{r[:score][:judge_score]}/#{r[:score][:judge_max]})"
+           "judge: #{r[:score][:judge_score]}/#{r[:score][:judge_max]})#{routing_suffix}"
       puts "   Time: #{(r[:duration_ms] / 1000.0).round(1)}s"
 
       r[:score][:assertion_details]&.each do |detail|

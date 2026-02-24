@@ -12,7 +12,6 @@ module Benchmarks
                     "%client management%", "client_management%", "client-management%")
             .pluck(:id)
 
-          # Also find orphaned modules (app_id nil) that match benchmark slug patterns
           orphan_ids = AppModule.where(entity: entity, app_id: nil)
             .where("slug LIKE ? OR slug LIKE ? OR slug LIKE ?", *MODULE_SLUG_PATTERNS)
             .pluck(:id)
@@ -26,7 +25,8 @@ module Benchmarks
 
           delete_module_dependencies!(mod_ids) if mod_ids.any?
           AppModule.where(id: mod_ids).delete_all if mod_ids.any?
-          AgentPlugin.where(app_id: app_ids).delete_all if app_ids.any?
+
+          delete_plugin_dependencies_by_app!(app_ids) if app_ids.any?
           App.where(id: app_ids).delete_all if app_ids.any?
 
           ApplicationPlan.where(entity: entity)
@@ -37,7 +37,7 @@ module Benchmarks
           Rails.logger.warn "[BenchmarkCleanup] app_build cleanup failed: #{e.message}"
         end
 
-        DEPENDENT_TABLES = %w[
+        MODULE_DEP_TABLES = %w[
           module_canvases module_actions module_codes module_design_sessions
           custom_field_definitions module_webhooks tool_definitions
           scheduled_agent_tasks module_integrations website_pages
@@ -48,10 +48,49 @@ module Benchmarks
           return if mod_ids.empty?
           id_list = mod_ids.join(",")
           conn = ActiveRecord::Base.connection
-          DEPENDENT_TABLES.each do |table|
+          MODULE_DEP_TABLES.each do |table|
             conn.execute("DELETE FROM #{table} WHERE app_module_id IN (#{id_list})") rescue nil
           end
-          AgentPlugin.where(app_module_id: mod_ids).delete_all rescue nil
+
+          plugin_ids = AgentPlugin.where(app_module_id: mod_ids).pluck(:id)
+          delete_plugin_cascade!(plugin_ids) if plugin_ids.any?
+        end
+
+        def self.delete_plugin_dependencies_by_app!(app_ids)
+          plugin_ids = AgentPlugin.where(app_id: app_ids).pluck(:id)
+          delete_plugin_cascade!(plugin_ids) if plugin_ids.any?
+        end
+
+        def self.delete_plugin_cascade!(plugin_ids)
+          return if plugin_ids.empty?
+
+          # Delete everything that references agent_plugins via FK
+          AgentTool.where(agent_plugin_id: plugin_ids).delete_all
+          AgentCapability.where(agent_plugin_id: plugin_ids).delete_all
+          AgentCapabilityBelief.where(agent_plugin_id: plugin_ids).delete_all
+          AgentTemplateBinding.where(agent_plugin_id: plugin_ids).delete_all
+          LoadoutVersion.where(agent_plugin_id: plugin_ids).delete_all
+
+          exec_ids = AgentPluginExecution.where(agent_plugin_id: plugin_ids).pluck(:id)
+          if exec_ids.any?
+            AgentInputRequest.where(agent_plugin_execution_id: exec_ids).delete_all
+            exec_ids.each_slice(500) { |batch| AgentPluginExecution.where(id: batch).delete_all }
+          end
+
+          AgentEnergyTransaction.where(agent_plugin_id: plugin_ids).delete_all
+          AgentEnergyState.where(agent_plugin_id: plugin_ids).delete_all
+          AgentDecisionBoundary.where(agent_plugin_id: plugin_ids).delete_all
+          AgentReflection.where(agent_plugin_id: plugin_ids).delete_all
+          AgentLifecycleEvent.where(agent_plugin_id: plugin_ids).delete_all
+          AgentSchoolEnrollment.where(agent_plugin_id: plugin_ids).delete_all
+          AgentGoal.where(agent_plugin_id: plugin_ids).delete_all
+          RagStore.where(agent_plugin_id: plugin_ids).update_all(agent_plugin_id: nil)
+          DecisionTrace.where(agent_plugin_id: plugin_ids).update_all(agent_plugin_id: nil)
+          ScheduledAgentTask.where(agent_plugin_id: plugin_ids).update_all(agent_plugin_id: nil)
+
+          AgentPlugin.where(id: plugin_ids).delete_all
+        rescue => e
+          Rails.logger.warn "[BenchmarkCleanup] plugin cascade failed: #{e.message}"
         end
 
         def self.build
